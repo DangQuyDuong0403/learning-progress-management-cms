@@ -1589,7 +1589,7 @@ const CreateReadingChallenge = () => {
                                      'undo',
                                      'redo'
                                    ],
-                                   shouldNotGroupWhenFull: false
+                                   shouldNotGroupWhenFull: true
                                  },
                                  heading: {
                                    options: [

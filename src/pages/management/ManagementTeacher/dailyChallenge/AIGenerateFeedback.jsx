@@ -133,6 +133,45 @@ const AIGenerateFeedback = () => {
     }
   }, []);
 
+  // Helper: parse feedback from API response (handle JSON string, object, or plain string)
+  const parseFeedbackFromResponse = React.useCallback((feedbackData) => {
+    if (!feedbackData) return '';
+    
+    // If it's already a string
+    if (typeof feedbackData === 'string') {
+      // Check if it's a JSON string like {"feedback":"..."}
+      try {
+        const parsed = JSON.parse(feedbackData);
+        if (parsed && typeof parsed === 'object' && parsed.feedback) {
+          // Extract feedback from JSON object and handle \n
+          return String(parsed.feedback).replace(/\\n/g, '\n');
+        }
+      } catch {
+        // Not a JSON string, return as is but handle \n
+        return feedbackData.replace(/\\n/g, '\n');
+      }
+      // Handle \n in plain string
+      return feedbackData.replace(/\\n/g, '\n');
+    }
+    
+    // If it's an object
+    if (typeof feedbackData === 'object' && feedbackData !== null) {
+      if (typeof feedbackData.feedback === 'string') {
+        return feedbackData.feedback.replace(/\\n/g, '\n');
+      }
+      // If object doesn't have feedback property, try to stringify and parse
+      const stringified = JSON.stringify(feedbackData);
+      try {
+        const parsed = JSON.parse(stringified);
+        if (parsed && parsed.feedback) {
+          return String(parsed.feedback).replace(/\\n/g, '\n');
+        }
+      } catch {}
+    }
+    
+    return '';
+  }, []);
+
   // Helper: extract image srcs from html (data URLs or http urls)
   const extractImageSources = React.useCallback((html) => {
     if (!html || typeof html !== 'string') return [];
@@ -250,6 +289,14 @@ const AIGenerateFeedback = () => {
   const [speakingReferenceText, setSpeakingReferenceText] = useState('');
   const [speakingResult, setSpeakingResult] = useState(null);
   const [writingCriteria, setWritingCriteria] = useState(null);
+  // Manual speaking scores (for manual mode input)
+  const [manualSpeakingScores, setManualSpeakingScores] = useState({
+    pronunciationScore: null,
+    accuracyScore: null,
+    fluencyScore: null,
+    completenessScore: null,
+    prosodyScore: null,
+  });
   // Determine section type early (used by multiple hooks below and callbacks defined afterwards)
   const sectionType = useMemo(() => {
     const title = (section?.sectionTitle || section?.title || '').toLowerCase();
@@ -317,6 +364,13 @@ const AIGenerateFeedback = () => {
         // Speaking: clear AI metrics and inline form state, reset view
         setSpeakingResult(null);
         setSpeakingReferenceText('');
+        setManualSpeakingScores({
+          pronunciationScore: null,
+          accuracyScore: null,
+          fluencyScore: null,
+          completenessScore: null,
+          prosodyScore: null,
+        });
         const secId = section?.id || prefill?.section?.id;
         if (secId) {
           setWritingSectionFeedbacks(prev => ({ ...prev, [secId]: [] }));
@@ -361,6 +415,15 @@ const AIGenerateFeedback = () => {
   const [editFeedback, setEditFeedback] = useState('');
   const [editSuggestedScore, setEditSuggestedScore] = useState(null);
   const [editWritingCriteria, setEditWritingCriteria] = useState(null);
+  // Edit modal state for speaking
+  const [editSpeakingFeedback, setEditSpeakingFeedback] = useState('');
+  const [editSpeakingScores, setEditSpeakingScores] = useState({
+    pronunciationScore: null,
+    accuracyScore: null,
+    fluencyScore: null,
+    completenessScore: null,
+    prosodyScore: null,
+  });
 
   // Restore AI generated data from sessionStorage when component mounts
   // Only restore once when component first mounts, not when rightMode changes
@@ -504,6 +567,19 @@ const AIGenerateFeedback = () => {
     });
   }, []);
 
+  // Handler for manual speaking scores input
+  const handleManualSpeakingScoreChange = useCallback((scoreKey, value) => {
+    setManualSpeakingScores((prev) => {
+      const numValue = value === '' || value === null || value === undefined
+        ? null
+        : (Number.isFinite(Number(value)) ? Number(value) : null);
+      return {
+        ...prev,
+        [scoreKey]: numValue,
+      };
+    });
+  }, []);
+
   // Map to reuse existing comment/highlight logic structure
   const studentAnswers = useMemo(() => {
     if (!section || !section?.id) return {};
@@ -536,16 +612,38 @@ const AIGenerateFeedback = () => {
     }
 
     if (sectionType === 'speaking') {
-      // Return object format for speaking feedback
+      // Combine all speaking data into overallFeedback as JSON string
+      // Include metrics from speakingResult (AI generated) or manualSpeakingScores (manual input)
+      const metrics = speakingResult || {};
+      const manualMetrics = {
+        pronunciationScore: manualSpeakingScores.pronunciationScore ?? metrics.pronunciationScore,
+        accuracyScore: manualSpeakingScores.accuracyScore ?? metrics.accuracyScore,
+        fluencyScore: manualSpeakingScores.fluencyScore ?? metrics.fluencyScore,
+        completenessScore: manualSpeakingScores.completenessScore ?? metrics.completenessScore,
+        prosodyScore: manualSpeakingScores.prosodyScore ?? metrics.prosodyScore,
+      };
+      
+      // Build combined data object
+      const speakingData = {
+        feedback: baseHtml,
+        pronunciationScores: manualMetrics,
+        referenceText: speakingReferenceText || metrics.referenceText || null,
+        recognizedText: metrics.recognizedText || null,
+      };
+      
+      // Convert to JSON string for overallFeedback
+      const overallFeedbackJson = JSON.stringify(speakingData);
+      
       return {
-        overallFeedback: baseHtml,
+        overallFeedback: overallFeedbackJson,
         suggestedScore: Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null,
         criteriaFeedback: null,
+        metrics: null, // Don't include metrics separately, everything is in overallFeedback
       };
     }
 
     return baseHtml;
-  }, [feedback, sectionType, writingCriteria, suggestedScore]);
+  }, [feedback, sectionType, writingCriteria, suggestedScore, speakingResult, manualSpeakingScores, speakingReferenceText]);
 
   // Parse combined feedback html (legacy) or object to rebuild writing criteria for display
   const parseCriteriaFromFeedback = useCallback((data) => {
@@ -647,7 +745,29 @@ const AIGenerateFeedback = () => {
     }
   }, []);
 
-  // Parse speaking metrics from a combined feedback html (best-effort)
+  // Parse speaking data from overallFeedback (JSON string format)
+  const parseSpeakingFromOverallFeedback = useCallback((overallFeedback) => {
+    if (!overallFeedback) return null;
+    
+    try {
+      // Try to parse as JSON string first (new format)
+      const parsed = JSON.parse(overallFeedback);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          feedback: parsed.feedback || '',
+          pronunciationScores: parsed.pronunciationScores || {},
+          referenceText: parsed.referenceText || null,
+          recognizedText: parsed.recognizedText || null,
+        };
+      }
+    } catch {
+      // Not JSON, try legacy format parsing
+    }
+    
+    return null;
+  }, []);
+
+  // Parse speaking metrics from a combined feedback html (best-effort) - legacy format
   const parseSpeakingFromFeedback = useCallback((data) => {
     if (!data) return null;
     if (typeof data === 'object') {
@@ -929,8 +1049,52 @@ const AIGenerateFeedback = () => {
   }, [selectedComment, writingSectionFeedbacks]);
 
   // Helper function to parse text and display images from URLs
-  const parseTextWithImages = useCallback((text) => {
+  // Helper to check if text is only an image URL (no other text)
+  const isOnlyImageUrl = useCallback((text) => {
+    if (!text) return false;
+    const trimmed = text.trim();
+    // Match URL that may have query parameters
+    const urlRegex = /^(https?:\/\/[^\s]+)$/;
+    const imageExtensions = /\.(jpg|jpeg|png|gif|bmp|webp|svg)(\?|$|&)/i;
+    // Check if the entire text is just an image URL (possibly with query params)
+    if (urlRegex.test(trimmed)) {
+      // Extract the base URL (before query params) to check extension
+      const urlWithoutQuery = trimmed.split('?')[0];
+      return imageExtensions.test(urlWithoutQuery);
+    }
+    return false;
+  }, []);
+
+  const parseTextWithImages = useCallback((text, isImageOnlyAnswer = false) => {
     if (!text) return text;
+    
+    // If it's image-only answer, only render the image, no text
+    if (isImageOnlyAnswer) {
+      const trimmed = text.trim();
+      const imageExtensions = /\.(jpg|jpeg|png|gif|bmp|webp|svg)(\?|$|&)/i;
+      const urlWithoutQuery = trimmed.split('?')[0];
+      if (imageExtensions.test(urlWithoutQuery)) {
+        return (
+          <img 
+            key="img-only"
+            src={trimmed} 
+            alt="Student uploaded"
+            style={{
+              maxWidth: '100%',
+              height: 'auto',
+              display: 'block',
+              margin: '12px 0',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+            }}
+            onError={(e) => {
+              // If image fails to load, just hide it completely for image-only answers
+              e.target.style.display = 'none';
+            }}
+          />
+        );
+      }
+    }
     
     // Regex to match URLs (including image URLs)
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -963,10 +1127,15 @@ const AIGenerateFeedback = () => {
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
             }}
             onError={(e) => {
-              // If image fails to load, show the URL as text
-              e.target.style.display = 'none';
-              const urlText = document.createTextNode(url);
-              e.target.parentNode.appendChild(urlText);
+              // If image fails to load and it's image-only answer, just hide it
+              // Otherwise show the URL as text
+              if (isImageOnlyAnswer) {
+                e.target.style.display = 'none';
+              } else {
+                e.target.style.display = 'none';
+                const urlText = document.createTextNode(url);
+                e.target.parentNode.appendChild(urlText);
+              }
             }}
           />
         );
@@ -1174,8 +1343,9 @@ const AIGenerateFeedback = () => {
     // If rightMode is 'ai' and this is AI generated data, load it
     // If rightMode is 'manual' or null, load data normally
     // If rightMode is 'ai' but this is NOT AI generated data, skip (to allow fresh generation)
-    if (rightMode === 'ai' && !isAIGenerated) return;
-    if (rightMode === null) return; // Don't load in mode chooser
+    // For speaking: if we have existing data, always load it (will auto-set rightMode to 'ai' in auto-set effect)
+    if (rightMode === 'ai' && !isAIGenerated && sectionType !== 'speaking') return;
+    if (rightMode === null && sectionType !== 'speaking') return; // Don't load in mode chooser (except for speaking which will auto-set mode)
 
     if (sectionType === 'writing') {
       if (typeof fb === 'object') {
@@ -1211,34 +1381,115 @@ const AIGenerateFeedback = () => {
 
     if (sectionType === 'speaking') {
       if (typeof fb === 'object') {
-        const speakingData = fb?.metrics || fb;
-        if (speakingData) {
-          setSpeakingResult(speakingData);
-          setHasAIGenerated(true);
-        }
+        // Try to parse from overallFeedback (new JSON format)
         const overall = typeof fb?.overallFeedback === 'string' ? fb.overallFeedback : '';
         if (overall) {
+          const parsedData = parseSpeakingFromOverallFeedback(overall);
+          if (parsedData) {
+            // Set feedback text
+            setFeedback(parsedData.feedback || '');
+            
+            // Set pronunciation scores
+            const scores = parsedData.pronunciationScores || {};
+            setManualSpeakingScores({
+              pronunciationScore: scores.pronunciationScore ?? null,
+              accuracyScore: scores.accuracyScore ?? null,
+              fluencyScore: scores.fluencyScore ?? null,
+              completenessScore: scores.completenessScore ?? null,
+              prosodyScore: scores.prosodyScore ?? null,
+            });
+            
+            // Set speaking result with all data
+            setSpeakingResult({
+              pronunciationScore: scores.pronunciationScore ?? null,
+              accuracyScore: scores.accuracyScore ?? null,
+              fluencyScore: scores.fluencyScore ?? null,
+              completenessScore: scores.completenessScore ?? null,
+              prosodyScore: scores.prosodyScore ?? null,
+              referenceText: parsedData.referenceText || null,
+              recognizedText: parsedData.recognizedText || null,
+            });
+            
+            // Set reference text if available
+            if (parsedData.referenceText) {
+              setSpeakingReferenceText(parsedData.referenceText);
+            }
+            
+            setHasAIGenerated(true);
+          } else {
+            // Fallback to legacy format
+            const speakingData = fb?.metrics || fb;
+            if (speakingData) {
+              setSpeakingResult(speakingData);
+              setManualSpeakingScores({
+                pronunciationScore: speakingData.pronunciationScore ?? null,
+                accuracyScore: speakingData.accuracyScore ?? null,
+                fluencyScore: speakingData.fluencyScore ?? null,
+                completenessScore: speakingData.completenessScore ?? null,
+                prosodyScore: speakingData.prosodyScore ?? null,
+              });
+              setHasAIGenerated(true);
+            }
+            const overallText = typeof fb?.overallFeedback === 'string' ? fb.overallFeedback : '';
+            if (overallText) {
+              setFeedback((prev) => {
+                if (!prev || typeof prev !== 'string' || prev === '[object Object]') return overallText;
+                return prev !== overallText ? prev : overallText;
+              });
+            }
+          }
+        }
+      } else if (typeof fb === 'string') {
+        // Try to parse as JSON string (new format)
+        const parsedData = parseSpeakingFromOverallFeedback(fb);
+        if (parsedData) {
+          setFeedback(parsedData.feedback || '');
+          const scores = parsedData.pronunciationScores || {};
+          setManualSpeakingScores({
+            pronunciationScore: scores.pronunciationScore ?? null,
+            accuracyScore: scores.accuracyScore ?? null,
+            fluencyScore: scores.fluencyScore ?? null,
+            completenessScore: scores.completenessScore ?? null,
+            prosodyScore: scores.prosodyScore ?? null,
+          });
+          setSpeakingResult({
+            pronunciationScore: scores.pronunciationScore ?? null,
+            accuracyScore: scores.accuracyScore ?? null,
+            fluencyScore: scores.fluencyScore ?? null,
+            completenessScore: scores.completenessScore ?? null,
+            prosodyScore: scores.prosodyScore ?? null,
+            referenceText: parsedData.referenceText || null,
+            recognizedText: parsedData.recognizedText || null,
+          });
+          if (parsedData.referenceText) {
+            setSpeakingReferenceText(parsedData.referenceText);
+          }
+          setHasAIGenerated(true);
+        } else {
+          // Fallback to legacy format
+          const sp = parseSpeakingFromFeedback(fb);
+          if (sp) {
+            setSpeakingResult(sp);
+            setManualSpeakingScores({
+              pronunciationScore: sp.pronunciationScore ?? null,
+              accuracyScore: sp.accuracyScore ?? null,
+              fluencyScore: sp.fluencyScore ?? null,
+              completenessScore: sp.completenessScore ?? null,
+              prosodyScore: sp.prosodyScore ?? null,
+            });
+            setHasAIGenerated(true);
+          }
           setFeedback((prev) => {
+            const overall = extractOverallFeedback(fb);
+            if (!overall) return prev;
             if (!prev || typeof prev !== 'string' || prev === '[object Object]') return overall;
             return prev !== overall ? prev : overall;
           });
         }
-      } else if (typeof fb === 'string') {
-        const sp = parseSpeakingFromFeedback(fb);
-        if (sp) {
-          setSpeakingResult(sp);
-          setHasAIGenerated(true);
-        }
-        setFeedback((prev) => {
-          const overall = extractOverallFeedback(fb);
-          if (!overall) return prev;
-          if (!prev || typeof prev !== 'string' || prev === '[object Object]') return overall;
-          return prev !== overall ? prev : overall;
-        });
       }
     }
     // intentionally left blank for speaking reference text
-  }, [sectionType, prefill?.feedback, parseCriteriaFromFeedback, parseSpeakingFromFeedback, extractOverallFeedback, rightMode, hasClearedData]);
+  }, [sectionType, prefill?.feedback, parseCriteriaFromFeedback, parseSpeakingFromFeedback, parseSpeakingFromOverallFeedback, extractOverallFeedback, rightMode, hasClearedData]);
 
   // Fetch submission result if not fully provided
   useEffect(() => {
@@ -1343,6 +1594,13 @@ const AIGenerateFeedback = () => {
     return () => { mounted = false; };
   }, [submissionQuestionId, prefill?.submissionQuestionId, prefill?.type]);
 
+  const buildPromptFromContent = useCallback(() => {
+    const essay = studentAnswer?.text || studentAnswer?.essay || '';
+    const transcript = section?.transcript || section?.sectionsContent || '';
+    const base = sectionType === 'writing' ? essay : transcript;
+    return base;
+  }, [sectionType, studentAnswer, section]);
+
   // Fetch questionWeight and receivedWeight from grading API
   useEffect(() => {
     let mounted = true;
@@ -1374,20 +1632,102 @@ const AIGenerateFeedback = () => {
             return gradingData.receivedWeight;
           });
         }
-        // Feedback: only load from API when in manual mode
-        // Don't load feedback/criteria when rightMode is 'ai' or null (to allow fresh generation)
-        if (rightMode === 'manual') {
+        // Feedback: load from API when in manual mode or ai mode with existing data (edit mode)
+        // Don't load feedback/criteria when rightMode is null (to allow fresh generation)
+        if (rightMode === 'manual' || (rightMode === 'ai' && isEditMode)) {
           const fb = gradingData.feedback;
           if (fb) {
             if (sectionType === 'speaking') {
-              const sp = parseSpeakingFromFeedback(fb);
-              if (sp) {
-                setSpeakingResult(sp);
-                setHasAIGenerated(true);
-              }
-              const overall = extractOverallFeedback(fb);
-              if (typeof overall === 'string') {
-                setFeedback(overall);
+              // Try to parse from overallFeedback (new JSON format)
+              if (typeof fb === 'object' && fb.overallFeedback) {
+                const parsedData = parseSpeakingFromOverallFeedback(fb.overallFeedback);
+                if (parsedData) {
+                  setFeedback(parsedData.feedback || '');
+                  const scores = parsedData.pronunciationScores || {};
+                  setManualSpeakingScores({
+                    pronunciationScore: scores.pronunciationScore ?? null,
+                    accuracyScore: scores.accuracyScore ?? null,
+                    fluencyScore: scores.fluencyScore ?? null,
+                    completenessScore: scores.completenessScore ?? null,
+                    prosodyScore: scores.prosodyScore ?? null,
+                  });
+                  setSpeakingResult({
+                    pronunciationScore: scores.pronunciationScore ?? null,
+                    accuracyScore: scores.accuracyScore ?? null,
+                    fluencyScore: scores.fluencyScore ?? null,
+                    completenessScore: scores.completenessScore ?? null,
+                    prosodyScore: scores.prosodyScore ?? null,
+                    referenceText: parsedData.referenceText || null,
+                    recognizedText: parsedData.recognizedText || null,
+                  });
+                  if (parsedData.referenceText) {
+                    setSpeakingReferenceText(parsedData.referenceText);
+                  }
+                  setHasAIGenerated(true);
+                } else {
+                  // Fallback to legacy format
+                  const sp = parseSpeakingFromFeedback(fb);
+                  if (sp) {
+                    setSpeakingResult(sp);
+                    setManualSpeakingScores({
+                      pronunciationScore: sp.pronunciationScore ?? null,
+                      accuracyScore: sp.accuracyScore ?? null,
+                      fluencyScore: sp.fluencyScore ?? null,
+                      completenessScore: sp.completenessScore ?? null,
+                      prosodyScore: sp.prosodyScore ?? null,
+                    });
+                    setHasAIGenerated(true);
+                  }
+                  const overall = extractOverallFeedback(fb.overallFeedback || '');
+                  if (typeof overall === 'string') {
+                    setFeedback(overall);
+                  }
+                }
+              } else if (typeof fb === 'string') {
+                // Try to parse as JSON string (new format)
+                const parsedData = parseSpeakingFromOverallFeedback(fb);
+                if (parsedData) {
+                  setFeedback(parsedData.feedback || '');
+                  const scores = parsedData.pronunciationScores || {};
+                  setManualSpeakingScores({
+                    pronunciationScore: scores.pronunciationScore ?? null,
+                    accuracyScore: scores.accuracyScore ?? null,
+                    fluencyScore: scores.fluencyScore ?? null,
+                    completenessScore: scores.completenessScore ?? null,
+                    prosodyScore: scores.prosodyScore ?? null,
+                  });
+                  setSpeakingResult({
+                    pronunciationScore: scores.pronunciationScore ?? null,
+                    accuracyScore: scores.accuracyScore ?? null,
+                    fluencyScore: scores.fluencyScore ?? null,
+                    completenessScore: scores.completenessScore ?? null,
+                    prosodyScore: scores.prosodyScore ?? null,
+                    referenceText: parsedData.referenceText || null,
+                    recognizedText: parsedData.recognizedText || null,
+                  });
+                  if (parsedData.referenceText) {
+                    setSpeakingReferenceText(parsedData.referenceText);
+                  }
+                  setHasAIGenerated(true);
+                } else {
+                  // Fallback to legacy format
+                  const sp = parseSpeakingFromFeedback(fb);
+                  if (sp) {
+                    setSpeakingResult(sp);
+                    setManualSpeakingScores({
+                      pronunciationScore: sp.pronunciationScore ?? null,
+                      accuracyScore: sp.accuracyScore ?? null,
+                      fluencyScore: sp.fluencyScore ?? null,
+                      completenessScore: sp.completenessScore ?? null,
+                      prosodyScore: sp.prosodyScore ?? null,
+                    });
+                    setHasAIGenerated(true);
+                  }
+                  const overall = extractOverallFeedback(fb);
+                  if (typeof overall === 'string') {
+                    setFeedback(overall);
+                  }
+                }
               }
             } else {
               const parsed = parseCriteriaFromFeedback(fb);
@@ -1409,22 +1749,26 @@ const AIGenerateFeedback = () => {
             }
           }
           if (sectionType === 'writing') {
-            const highlights = Array.isArray(gradingData.highlightComments) ? gradingData.highlightComments : [];
-            const secKey = section?.id || prefill?.section?.id || String(gradingData.submissionQuestionId || subQid || '');
-            if (secKey) {
-              const mappedHighlights = highlights
-                .map((c) => ({
-                  id: String(c?.id || `feedback-${Date.now()}-${Math.random()}`),
-                  startIndex: Number(c?.startIndex ?? 0),
-                  endIndex: Number(c?.endIndex ?? 0),
-                  comment: typeof c?.comment === 'string' ? c.comment : '',
-                  timestamp: c?.timestamp || new Date().toISOString(),
-                }))
-                .filter((fbItem) => fbItem.endIndex > fbItem.startIndex && fbItem.comment);
-              setWritingSectionFeedbacks((prev) => ({
-                ...prev,
-                [secKey]: mappedHighlights,
-              }));
+            // Check if answer is image-only - don't load highlights for images
+            const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
+            if (!isOnlyImageUrl(answerText)) {
+              const highlights = Array.isArray(gradingData.highlightComments) ? gradingData.highlightComments : [];
+              const secKey = section?.id || prefill?.section?.id || String(gradingData.submissionQuestionId || subQid || '');
+              if (secKey) {
+                const mappedHighlights = highlights
+                  .map((c) => ({
+                    id: String(c?.id || `feedback-${Date.now()}-${Math.random()}`),
+                    startIndex: Number(c?.startIndex ?? 0),
+                    endIndex: Number(c?.endIndex ?? 0),
+                    comment: typeof c?.comment === 'string' ? c.comment : '',
+                    timestamp: c?.timestamp || new Date().toISOString(),
+                  }))
+                  .filter((fbItem) => fbItem.endIndex > fbItem.startIndex && fbItem.comment);
+                setWritingSectionFeedbacks((prev) => ({
+                  ...prev,
+                  [secKey]: mappedHighlights,
+                }));
+              }
             }
           }
         }
@@ -1436,10 +1780,17 @@ const AIGenerateFeedback = () => {
     fetchGrading();
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submissionQuestionId, prefill?.submissionQuestionId, rightMode, hasClearedData]);
+  }, [submissionQuestionId, prefill?.submissionQuestionId, rightMode, hasClearedData, isEditMode, sectionType, parseSpeakingFromOverallFeedback, buildPromptFromContent, isOnlyImageUrl, studentAnswer]);
 
   // Prefill highlight comments (if navigated from Edit with existing grading)
   useEffect(() => {
+    // Check if answer is image-only - don't load highlights for images
+    const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
+    if (isOnlyImageUrl(answerText)) {
+      // Don't load highlights for image-only answers
+      return;
+    }
+    
     const highlights = Array.isArray(prefill?.highlightComments) ? prefill.highlightComments : [];
     const secId = (section && section.id) || (prefill?.section && prefill.section.id);
     if (secId && highlights.length > 0) {
@@ -1458,7 +1809,7 @@ const AIGenerateFeedback = () => {
     }
     // run once when section id becomes available or prefill changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section?.id, prefill?.highlightComments]);
+  }, [section?.id, prefill?.highlightComments, studentAnswer, isOnlyImageUrl, buildPromptFromContent]);
 
   // Auto-set rightMode to 'ai' if there's AI generated data (for writing), otherwise 'manual' if there's existing score or feedback (edit mode)
   // Only auto-set once on mount when there's existing data, not when user manually changes mode
@@ -1537,6 +1888,50 @@ const AIGenerateFeedback = () => {
       }
     }
     
+    // For speaking type, check if there's existing data (should auto-set to 'ai' mode)
+    if (sectionType === 'speaking' && currentSubmissionQuestionId) {
+      const hasPrefillData = prefill?.feedback && (
+        (typeof prefill.feedback === 'string' && prefill.feedback.trim() !== '') ||
+        (typeof prefill.feedback === 'object' && prefill.feedback !== null)
+      );
+      
+      if (hasPrefillData) {
+        // Check if feedback contains speaking data (pronunciation scores, etc.)
+        const fb = prefill.feedback;
+        let hasSpeakingData = false;
+        
+        // Try to parse from overallFeedback (new JSON format)
+        if (typeof fb === 'object' && fb.overallFeedback) {
+          const parsedData = parseSpeakingFromOverallFeedback(fb.overallFeedback);
+          if (parsedData && (parsedData.pronunciationScores || parsedData.feedback || parsedData.referenceText || parsedData.recognizedText)) {
+            hasSpeakingData = true;
+          }
+        } else if (typeof fb === 'string') {
+          // Try to parse as JSON string (new format)
+          const parsedData = parseSpeakingFromOverallFeedback(fb);
+          if (parsedData && (parsedData.pronunciationScores || parsedData.feedback || parsedData.referenceText || parsedData.recognizedText)) {
+            hasSpeakingData = true;
+          } else {
+            // Check legacy format
+            const sp = parseSpeakingFromFeedback(fb);
+            if (sp) {
+              hasSpeakingData = true;
+            }
+          }
+        } else if (typeof fb === 'object' && (fb.metrics || fb.pronunciationScore || fb.accuracyScore)) {
+          hasSpeakingData = true;
+        }
+        
+        if (hasSpeakingData) {
+          // This is speaking with existing data, set to 'ai' mode
+          setRightMode('ai');
+          setHasAutoSetMode(true);
+          setIsEditMode(true); // Mark as edit mode since we have existing data
+          return;
+        }
+      }
+    }
+    
     // For non-writing or when no AI data exists, check for existing score/feedback
     const hasExistingScore = (typeof prefill?.score === 'number' && prefill.score !== '' && prefill.score != null) ||
                             (typeof prefill?.score === 'string' && prefill.score.trim() !== '');
@@ -1548,7 +1943,7 @@ const AIGenerateFeedback = () => {
       setRightMode('manual');
       setHasAutoSetMode(true); // Mark that we've auto-set, so we don't auto-set again
     }
-  }, [prefill?.score, prefill?.feedback, prefill?.highlightComments, hasAutoSetMode, sectionType, submissionQuestionId, prefill?.submissionQuestionId, parseCriteriaFromFeedback]);
+  }, [prefill?.score, prefill?.feedback, prefill?.highlightComments, hasAutoSetMode, sectionType, submissionQuestionId, prefill?.submissionQuestionId, parseCriteriaFromFeedback, parseSpeakingFromOverallFeedback, parseSpeakingFromFeedback]);
 
   const handleBack = useCallback(() => {
     const role = user?.role?.toLowerCase();
@@ -1582,13 +1977,6 @@ const AIGenerateFeedback = () => {
     });
   }, [navigate, user, challengeId, submissionId, location.state, location.search, classId, className, challengeName, studentName]);
 
-  const buildPromptFromContent = useCallback(() => {
-    const essay = studentAnswer?.text || studentAnswer?.essay || '';
-    const transcript = section?.transcript || section?.sectionsContent || '';
-    const base = sectionType === 'writing' ? essay : transcript;
-    return base;
-  }, [sectionType, studentAnswer, section]);
-
   const handleGenerateAI = useCallback(async () => {
     try {
       setIsGenerating(true);
@@ -1615,8 +2003,10 @@ const AIGenerateFeedback = () => {
         if (overallFeedback) setFeedback(overallFeedback);
         const normalizedSuggested = clampSuggestedScoreValue(suggestedScoreValue);
         setSuggestedScore(normalizedSuggested);
+        // Check if answer is image-only - don't save highlights for images
+        const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
         let mappedComments = [];
-        if (section?.id && aiComments.length > 0) {
+        if (section?.id && aiComments.length > 0 && !isOnlyImageUrl(answerText)) {
           mappedComments = aiComments
             .map((c) => ({
               id: c?.id || `feedback-${Date.now()}-${Math.random()}`,
@@ -1648,13 +2038,18 @@ const AIGenerateFeedback = () => {
           spaceToast.error('Không tìm thấy audio của học sinh để chấm phát âm');
           return;
         }
+        // questionText là đề bài (prompt/transcript)
+        const questionText = section?.transcript || section?.sectionsContent || section?.prompt || '';
+        // Strip HTML và duration markers từ questionText
+        const cleanedQuestionText = questionText ? stripHtmlToText(questionText).replace(/\[\[dur_\d+\]\]/g, '').trim() : undefined;
         const refText = (speakingReferenceText && speakingReferenceText.trim()) ? speakingReferenceText.trim() : undefined;
         
         // Log request payload
-        const requestPayload = { audioUrl, referenceText: refText };
+        const requestPayload = { audioUrl, questionText: cleanedQuestionText, referenceText: refText };
         console.log('=== SPEAKING AI GENERATE - REQUEST ===');
         console.log('Request Payload:', requestPayload);
         console.log('Audio URL:', audioUrl);
+        console.log('Question Text:', cleanedQuestionText);
         console.log('Reference Text:', refText);
         
         const res = await dailyChallengeApi.assessPronunciation(requestPayload);
@@ -1726,7 +2121,8 @@ const AIGenerateFeedback = () => {
         // Map to right panel
         // Note: pronunciationScore is NOT automatically set to score - user must input Weight manually
         const pronunciationScore = typeof data?.pronunciationScore === 'number' ? data.pronunciationScore : null;
-        const speakingFeedback = data?.feedback ? String(data.feedback) : '';
+        // Parse feedback from response (handle JSON string, object, or plain string)
+        const speakingFeedback = parseFeedbackFromResponse(data?.feedback);
         // Don't auto-set score from pronunciationScore - let user input Weight manually
         // if (pronunciationScore !== null) setScore(pronunciationScore);
         if (speakingFeedback) setFeedback(speakingFeedback);
@@ -1767,7 +2163,7 @@ const AIGenerateFeedback = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, studentAnswer, section, speakingReferenceText, getBackendMessage]);
+  }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, studentAnswer, section, speakingReferenceText, getBackendMessage, stripHtmlToText, parseFeedbackFromResponse, buildPromptFromContent, isOnlyImageUrl]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -2008,41 +2404,56 @@ const AIGenerateFeedback = () => {
                     />
                   </div>
                   {/* Student's Answer (below) - Pastel yellow/cream background to distinguish from prompt */}
-                  <div
-                    style={{
-                      whiteSpace: 'pre-wrap',
-                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                      background: theme === 'sun' ? '#FFF4E6' : 'rgba(167, 139, 250, 0.12)',
-                      borderRadius: 12,
-                      border: theme === 'sun' ? '1px solid rgba(255, 193, 7, 0.25)' : '1px solid rgba(167, 139, 250, 0.25)',
-                      padding: 16,
-                      minHeight: 120,
-                      maxHeight: 420,
-                      overflowY: 'auto',
-                      position: 'relative',
-                      userSelect: 'text',
-                      cursor: 'text',
-                    }}
-                    onMouseUp={(e) => {
-                      if (section?.id) {
-                        handleTextSelection(section.id, e.currentTarget);
-                      }
-                    }}
-                    onMouseDown={() => {
-                      setTimeout(() => {
-                        setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
-                      }, 0);
-                    }}
-                  >
-                    {section?.id && (writingSectionFeedbacks[section.id]?.length > 0) ? (
-                      renderEssayWithHighlights(
-                        (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || ''),
-                        section.id
-                      )
-                    ) : (
-                      parseTextWithImages((studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim() || '—')
-                    )}
-                  </div>
+                  {(() => {
+                    const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
+                    const isImageOnly = isOnlyImageUrl(answerText);
+                    return (
+                      <div
+                        style={{
+                          whiteSpace: 'pre-wrap',
+                          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                          background: isImageOnly ? 'transparent' : (theme === 'sun' ? '#FFF4E6' : 'rgba(167, 139, 250, 0.12)'),
+                          borderRadius: 12,
+                          border: isImageOnly ? 'none' : (theme === 'sun' ? '1px solid rgba(255, 193, 7, 0.25)' : '1px solid rgba(167, 139, 250, 0.25)'),
+                          padding: 16,
+                          minHeight: 120,
+                          maxHeight: 420,
+                          overflowY: 'auto',
+                          position: 'relative',
+                          userSelect: 'text',
+                          cursor: 'text',
+                        }}
+                        onMouseUp={(e) => {
+                          if (section?.id && !isImageOnly) {
+                            handleTextSelection(section.id, e.currentTarget);
+                          }
+                        }}
+                        onMouseDown={() => {
+                          if (!isImageOnly) {
+                            setTimeout(() => {
+                              setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
+                            }, 0);
+                          }
+                        }}
+                      >
+                        {(() => {
+                          // If image-only answer, never render highlights, only render image
+                          if (isImageOnly) {
+                            return parseTextWithImages(answerText || '—', true);
+                          }
+                          // Otherwise, render with highlights if available
+                          return section?.id && (writingSectionFeedbacks[section.id]?.length > 0) ? (
+                            renderEssayWithHighlights(
+                              (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || ''),
+                              section.id
+                            )
+                          ) : (
+                            parseTextWithImages(answerText || '—', false)
+                          );
+                        })()}
+                      </div>
+                    );
+                  })()}
                   
                   {/* Floating Toolbar for text selection (same as DailyChallengeSubmissionDetail) */}
                   {textSelection.visible && textSelection.sectionId === section?.id && (
@@ -2291,7 +2702,21 @@ const AIGenerateFeedback = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 520 }}>
                     <Card
                       hoverable
-                      onClick={() => setRightMode('manual')}
+                      onClick={() => {
+                        // Clear AI-generated data when switching to manual mode
+                        // This ensures manual mode starts fresh without AI data
+                        if (sectionType === 'speaking') {
+                          setSpeakingResult(null);
+                          setManualSpeakingScores({
+                            pronunciationScore: null,
+                            accuracyScore: null,
+                            fluencyScore: null,
+                            completenessScore: null,
+                            prosodyScore: null,
+                          });
+                        }
+                        setRightMode('manual');
+                      }}
                       style={{
                         borderRadius: 12,
                         border: `2px solid ${primaryColor}40`,
@@ -2346,6 +2771,17 @@ const AIGenerateFeedback = () => {
                         setWritingCriteria(null);
                         setHasAIGenerated(false);
                         setIsEditMode(false); // Reset to add mode when going back to mode chooser
+                        // Clear speaking data when back to mode chooser
+                        if (sectionType === 'speaking') {
+                          setSpeakingResult(null);
+                          setManualSpeakingScores({
+                            pronunciationScore: null,
+                            accuracyScore: null,
+                            fluencyScore: null,
+                            completenessScore: null,
+                            prosodyScore: null,
+                          });
+                        }
                         setRightMode(null);
                       }}
                       className={`class-menu-back-button ${theme}-class-menu-back-button`}
@@ -2391,42 +2827,47 @@ const AIGenerateFeedback = () => {
                       <span>{scoreError}</span>
                     </div>
                   )}
-                  {sectionType === 'speaking' && speakingResult && (
+                  {sectionType === 'speaking' && (
                     <div style={{ marginTop: 0 }}>
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
-                        color: theme === 'sun' ? '#1E40AF' : '#8377A0'
+                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                        marginBottom: 12
                       }}>
                         <Text strong>Pronunciation result</Text>
                       </div>
                       <div style={{
-                        marginTop: 8,
                         display: 'grid',
                         gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
                         gap: 12
                       }}>
                         {[{
                           label: 'Pronunciation',
-                          value: Number.isFinite(Number(speakingResult?.pronunciationScore)) ? speakingResult.pronunciationScore : '-'
+                          key: 'pronunciationScore',
+                          value: manualSpeakingScores.pronunciationScore ?? null
                         },{
                           label: 'Accuracy',
-                          value: Number.isFinite(Number(speakingResult?.accuracyScore)) ? speakingResult.accuracyScore : '-'
+                          key: 'accuracyScore',
+                          value: manualSpeakingScores.accuracyScore ?? null
                         },{
                           label: 'Fluency',
-                          value: Number.isFinite(Number(speakingResult?.fluencyScore)) ? speakingResult.fluencyScore : '-'
+                          key: 'fluencyScore',
+                          value: manualSpeakingScores.fluencyScore ?? null
                         },{
                           label: 'Completeness',
-                          value: Number.isFinite(Number(speakingResult?.completenessScore)) ? speakingResult.completenessScore : '-'
+                          key: 'completenessScore',
+                          value: manualSpeakingScores.completenessScore ?? null
                         },{
                           label: 'Prosody',
-                          value: Number.isFinite(Number(speakingResult?.prosodyScore)) ? speakingResult.prosodyScore : '-'
+                          key: 'prosodyScore',
+                          value: manualSpeakingScores.prosodyScore ?? null
                         }].map((item, idx) => {
                           const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
                           return (
                           <div
-                            key={`manual-speaking-top-${item.label}-${idx}`}
+                            key={`manual-speaking-${item.label}-${idx}`}
                             style={{
                               borderRadius: 12,
                               padding: '12px 14px',
@@ -2434,14 +2875,30 @@ const AIGenerateFeedback = () => {
                               border: `1px solid ${ss.border}`
                             }}
                           >
-                            <div style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 600 }}>{item.label}</div>
-                            <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#1F2937', marginTop: 2 }}>{item.value}</div>
+                            <div style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 600, marginBottom: 8 }}>{item.label}</div>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={0.1}
+                              value={item.value === null || item.value === undefined ? '' : item.value}
+                              onChange={(e) => handleManualSpeakingScoreChange(item.key, e.target.value)}
+                              placeholder="0"
+                              style={{
+                                width: '100%',
+                                borderRadius: 8,
+                                border: `2px solid ${primaryColor}40`,
+                                background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.15)',
+                                fontSize: 16,
+                                fontWeight: 600
+                              }}
+                            />
                           </div>
                           );
                         })}
                       </div>
-                      {/* Reference Text and Recognized Text */}
-                      {(speakingResult?.referenceText || speakingResult?.recognizedText) && (
+                      {/* Reference Text and Recognized Text - only show if from AI result */}
+                      {speakingResult && (speakingResult?.referenceText || speakingResult?.recognizedText) && (
                         <div style={{ marginTop: 16 }}>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             {/* Reference Text */}
@@ -2493,41 +2950,41 @@ const AIGenerateFeedback = () => {
                       )}
                     </div>
                   )}
-                  <div
-                    style={{
-                      marginTop: 6,
-                      borderRadius: 16,
-                      padding: 20,
-                      border: theme === 'sun'
-                        ? '2px solid rgba(78, 205, 196, 0.55)'
-                        : '2px solid rgba(76, 201, 240, 0.45)',
-                      background: theme === 'sun'
-                        ? 'linear-gradient(140deg, rgba(229, 250, 246, 0.95) 0%, rgba(204, 244, 237, 0.9) 100%)'
-                        : 'linear-gradient(140deg, rgba(40, 56, 90, 0.92) 0%, rgba(46, 70, 110, 0.9) 55%, rgba(52, 82, 131, 0.9) 100%)',
-                      boxShadow: theme === 'sun'
-                        ? '0 6px 18px rgba(78, 205, 196, 0.22)'
-                        : '0 6px 18px rgba(46, 70, 110, 0.3)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-                      <Text strong style={{ fontSize: 16, color: theme === 'sun' ? '#1E3A8A' : '#C7D2FE' }}>Feedback</Text>
+                  <div style={{ marginTop: 16 }}>
+                    <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Feedback</Text>
+                    <div
+                      style={{
+                        borderRadius: 16,
+                        padding: 20,
+                        border: theme === 'sun'
+                          ? '2px solid rgba(78, 205, 196, 0.55)'
+                          : '2px solid rgba(76, 201, 240, 0.45)',
+                        background: theme === 'sun'
+                          ? 'linear-gradient(140deg, rgba(229, 250, 246, 0.95) 0%, rgba(204, 244, 237, 0.9) 100%)'
+                          : 'linear-gradient(140deg, rgba(40, 56, 90, 0.92) 0%, rgba(46, 70, 110, 0.9) 55%, rgba(52, 82, 131, 0.9) 100%)',
+                        boxShadow: theme === 'sun'
+                          ? '0 6px 18px rgba(78, 205, 196, 0.22)'
+                          : '0 6px 18px rgba(46, 70, 110, 0.3)'
+                      }}
+                    >
                       {sectionType === 'writing' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Text type="secondary" style={{ fontWeight: 600, color: theme === 'sun' ? '#0f172a' : '#E0E7FF' }}>Suggested Score</Text>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={10}
-                            step={0.1}
-                            value={suggestedScore === null || suggestedScore === undefined ? '' : suggestedScore}
-                            onChange={handleSuggestedScoreChange}
-                            placeholder="0"
-                            style={{ width: 120, borderRadius: 8, border: `2px solid ${primaryColor}40`, background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.15)' }}
-                          />
-                          <span style={{ fontSize: '14px', color: theme === 'sun' ? '#1f2937' : '#E0E7FF', fontWeight: 500 }}>/ 10</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Text type="secondary" style={{ fontWeight: 600, color: theme === 'sun' ? '#0f172a' : '#E0E7FF' }}>Suggested Score</Text>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={0.1}
+                              value={suggestedScore === null || suggestedScore === undefined ? '' : suggestedScore}
+                              onChange={handleSuggestedScoreChange}
+                              placeholder="0"
+                              style={{ width: 120, borderRadius: 8, border: `2px solid ${primaryColor}40`, background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.15)' }}
+                            />
+                            <span style={{ fontSize: '14px', color: theme === 'sun' ? '#1f2937' : '#E0E7FF', fontWeight: 500 }}>/ 10</span>
+                          </div>
                         </div>
                       )}
-                    </div>
                     <div
                       className="feedback-editor-wrap"
                       style={{
@@ -2559,28 +3016,12 @@ const AIGenerateFeedback = () => {
                         }}
                       />
                     </div>
+                    </div>
                   </div>
                   {/* Writing criteria editors */}
                   {sectionType === 'writing' && (
-                    <div
-                      style={{
-                        marginTop: 16,
-                        borderRadius: 18,
-                        padding: 20,
-                        border: theme === 'sun'
-                          ? '2px solid rgba(167, 139, 250, 0.45)'
-                          : '2px solid rgba(196, 181, 253, 0.45)',
-                        background: theme === 'sun'
-                          ? 'linear-gradient(145deg, rgba(245, 238, 255, 0.96) 0%, rgba(228, 218, 255, 0.9) 100%)'
-                          : 'linear-gradient(145deg, rgba(47, 38, 78, 0.92) 0%, rgba(63, 51, 102, 0.9) 55%, rgba(78, 66, 125, 0.9) 100%)',
-                        boxShadow: theme === 'sun'
-                          ? '0 6px 18px rgba(167, 139, 250, 0.22)'
-                          : '0 6px 18px rgba(63, 51, 102, 0.28)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-                        <Text strong style={{ fontSize: 16, color: theme === 'sun' ? '#4C1D95' : '#E0E7FF' }}>Criteria Feedback</Text>
-                      </div>
+                    <div>
+                      <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Criteria Feedback</Text>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {WRITING_CRITERIA_KEYS.map((item) => {
                           const data = writingCriteria?.[item.key] || {};
@@ -2655,7 +3096,21 @@ const AIGenerateFeedback = () => {
                       <div style={{ display: 'flex' }}>
                         <Button
                           icon={<ArrowLeftOutlined />}
-                          onClick={() => { setRightMode(null); }}
+                          onClick={() => {
+                            // Clear AI-generated speaking data when back to mode chooser
+                            // This ensures manual mode starts fresh without AI data
+                            if (sectionType === 'speaking') {
+                              setSpeakingResult(null);
+                              setManualSpeakingScores({
+                                pronunciationScore: null,
+                                accuracyScore: null,
+                                fluencyScore: null,
+                                completenessScore: null,
+                                prosodyScore: null,
+                              });
+                            }
+                            setRightMode(null);
+                          }}
                           className={`class-menu-back-button ${theme}-class-menu-back-button`}
                           style={{ height: 32, borderRadius: 8, fontWeight: 500, fontSize: 14 }}
                         >
@@ -2666,32 +3121,31 @@ const AIGenerateFeedback = () => {
                       <div />
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      {hasAIGenerated && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Text strong>Weight</Text>
-                          <Input
-                            type="number"
-                            value={score}
-                            onChange={handleScoreChange}
-                            min={0}
-                            max={questionWeight}
-                            step={0.1}
-                            placeholder="0"
-                            status={scoreError ? 'error' : ''}
-                            style={{
-                              width: 120,
-                              borderRadius: 8,
-                              border: scoreError 
-                                ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
-                                : `2px solid ${primaryColor}40`,
-                              background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
-                            }}
-                          />
-                          <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
-                            / {questionWeight}
-                          </span>
-                        </div>
-                      )}
+                      {/* Weight input - always show in AI mode (user input, not AI generated) */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Text strong>Weight</Text>
+                        <Input
+                          type="number"
+                          value={score}
+                          onChange={handleScoreChange}
+                          min={0}
+                          max={questionWeight}
+                          step={0.1}
+                          placeholder="0"
+                          status={scoreError ? 'error' : ''}
+                          style={{
+                            width: 120,
+                            borderRadius: 8,
+                            border: scoreError 
+                              ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
+                              : `2px solid ${primaryColor}40`,
+                            background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
+                          }}
+                        />
+                        <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
+                          / {questionWeight}
+                        </span>
+                      </div>
                       {hasAIGenerated && sectionType === 'writing' && (
                         <Button
                           icon={<EditOutlined />}
@@ -2714,8 +3168,48 @@ const AIGenerateFeedback = () => {
                           Edit
                         </Button>
                       )}
+                      {hasAIGenerated && sectionType === 'speaking' && (
+                        <Button
+                          icon={<EditOutlined />}
+                          onClick={() => {
+                            setEditSpeakingFeedback(feedback);
+                            setEditSpeakingScores({
+                              pronunciationScore: speakingResult?.pronunciationScore ?? null,
+                              accuracyScore: speakingResult?.accuracyScore ?? null,
+                              fluencyScore: speakingResult?.fluencyScore ?? null,
+                              completenessScore: speakingResult?.completenessScore ?? null,
+                              prosodyScore: speakingResult?.prosodyScore ?? null,
+                            });
+                            setEditModalVisible(true);
+                          }}
+                          style={{
+                            height: 32,
+                            borderRadius: 8,
+                            fontWeight: 500,
+                            fontSize: 14,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
                     </div>
                   </div>
+                  {scoreError && (
+                    <div style={{ 
+                      fontSize: '12px', 
+                      color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+                      marginLeft: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}>
+                      <span>⚠️</span>
+                      <span>{scoreError}</span>
+                    </div>
+                  )}
                   {sectionType === 'speaking' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {/* Inline form row (top before generation) */}
@@ -3014,26 +3508,53 @@ const AIGenerateFeedback = () => {
                       ) : (
                         <Text strong>Feedback</Text>
                       )}
-                            <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
-                              <CKEditor
-                                editor={ClassicEditor}
-                                data={feedback}
-                                onChange={(event, editor) => setFeedback(editor.getData())}
-                                config={{
-                                  toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
-                                  removePlugins: ['StickyToolbar']
-                                }}
-                                onReady={(editor) => {
-                                  try {
-                                    const el = editor.ui?.getEditableElement?.();
-                                    if (el) {
-                                      el.style.minHeight = '300px';
-                                      el.style.color = '#000';
-                                    }
-                                  } catch {}
-                                }}
-                              />
+                      {sectionType === 'writing' ? (
+                        <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
+                          <CKEditor
+                            editor={ClassicEditor}
+                            data={feedback}
+                            onChange={(event, editor) => setFeedback(editor.getData())}
+                            config={{
+                              toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
+                              removePlugins: ['StickyToolbar']
+                            }}
+                            onReady={(editor) => {
+                              try {
+                                const el = editor.ui?.getEditableElement?.();
+                                if (el) {
+                                  el.style.minHeight = '300px';
+                                  el.style.color = '#000';
+                                }
+                              } catch {}
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ 
+                          marginTop: 6, 
+                          borderRadius: 12, 
+                          border: `2px solid ${primaryColor}80`, 
+                          background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.95)',
+                          padding: 16,
+                          minHeight: '100px'
+                        }}>
+                          {feedback && (
+                            <div 
+                              style={{ 
+                                fontSize: 14, 
+                                lineHeight: 1.7, 
+                                color: theme === 'sun' ? '#333' : '#1F2937'
+                              }}
+                              dangerouslySetInnerHTML={{ __html: feedback }}
+                            />
+                          )}
+                          {!feedback && (
+                            <div style={{ fontSize: 14, lineHeight: 1.7, color: theme === 'sun' ? '#999' : '#666', fontStyle: 'italic' }}>
+                              No feedback available
                             </div>
+                          )}
+                        </div>
+                      )}
                           </div>
                         </div>
                       )}
@@ -3101,24 +3622,9 @@ const AIGenerateFeedback = () => {
                   {hasAIGenerated && sectionType === 'writing' && rightMode === 'ai' && (
                     <>
                       {/* Feedback first */}
-                      <div
-                        style={{
-                          marginTop: 6,
-                          borderRadius: 16,
-                          padding: 20,
-                          border: theme === 'sun'
-                            ? '2px solid rgba(78, 205, 196, 0.35)'
-                            : '2px solid rgba(76, 201, 240, 0.45)',
-                          background: theme === 'sun'
-                            ? 'linear-gradient(140deg, rgba(229, 250, 246, 0.95) 0%, rgba(204, 244, 237, 0.9) 100%)'
-                            : 'linear-gradient(140deg, rgba(40, 56, 90, 0.92) 0%, rgba(46, 70, 110, 0.9) 55%, rgba(52, 82, 131, 0.9) 100%)',
-                          boxShadow: theme === 'sun'
-                            ? '0 6px 18px rgba(78, 205, 196, 0.22)'
-                            : '0 6px 18px rgba(46, 70, 110, 0.3)'
-                        }}
-                      >
+                      <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-                          <Text strong style={{ fontSize: 16, color: theme === 'sun' ? '#1E3A8A' : '#C7D2FE' }}>Feedback</Text>
+                          <Text strong style={{ fontSize: 14, display: 'block' }}>Feedback</Text>
                           {sectionType === 'writing' && (() => {
                             const scoreNum = Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null;
                             const scoreVal = scoreNum != null ? `${scoreNum}/10` : '-';
@@ -3135,66 +3641,66 @@ const AIGenerateFeedback = () => {
                             );
                           })()}
                         </div>
-                        {sectionType === 'writing' && (() => {
-                          const scoreNum = Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null;
-                          const percent = scoreNum != null ? Math.max(0, Math.min(100, (scoreNum / 10) * 100)) : 0;
-                          const level = scoreNum == null ? 'neutral' : (scoreNum < 4 ? 'low' : (scoreNum < 7 ? 'mid' : 'high'));
-                          const barColor = level === 'low' ? '#EF4444' : level === 'mid' ? '#F59E0B' : level === 'high' ? '#22C55E' : 'transparent';
-                          return (
-                            <div style={{ height: 8, borderRadius: 8, background: 'rgba(0,0,0,0.08)', overflow: 'hidden', marginBottom: 12 }}>
-                              <div style={{ width: `${percent}%`, height: '100%', borderRadius: 8, background: barColor, transition: 'width 0.3s ease' }} />
-                            </div>
-                          );
-                        })()}
                         <div
                           style={{
-                            borderRadius: 12,
+                            marginTop: 0,
+                            borderRadius: 16,
+                            padding: 20,
                             border: theme === 'sun'
-                              ? '2px solid rgba(78, 205, 196, 0.25)'
-                              : '2px solid rgba(76, 201, 240, 0.35)',
-                            background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.95)',
-                            padding: 16,
-                            minHeight: '100px'
+                              ? '2px solid rgba(78, 205, 196, 0.35)'
+                              : '2px solid rgba(76, 201, 240, 0.45)',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(140deg, rgba(229, 250, 246, 0.95) 0%, rgba(204, 244, 237, 0.9) 100%)'
+                              : 'linear-gradient(140deg, rgba(40, 56, 90, 0.92) 0%, rgba(46, 70, 110, 0.9) 55%, rgba(52, 82, 131, 0.9) 100%)',
+                            boxShadow: theme === 'sun'
+                              ? '0 6px 18px rgba(78, 205, 196, 0.22)'
+                              : '0 6px 18px rgba(46, 70, 110, 0.3)'
                           }}
                         >
-                          {feedback && (
-                            <div 
-                              style={{ 
-                                fontSize: 14, 
-                                lineHeight: 1.7, 
-                                color: theme === 'sun' ? '#333' : '#1F2937'
-                              }}
-                              dangerouslySetInnerHTML={{ __html: feedback }}
-                            />
-                          )}
-                          {!feedback && (
-                            <div style={{ fontSize: 14, lineHeight: 1.7, color: theme === 'sun' ? '#999' : '#666', fontStyle: 'italic' }}>
-                              No feedback available
-                            </div>
-                          )}
+                          {sectionType === 'writing' && (() => {
+                            const scoreNum = Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null;
+                            const percent = scoreNum != null ? Math.max(0, Math.min(100, (scoreNum / 10) * 100)) : 0;
+                            const level = scoreNum == null ? 'neutral' : (scoreNum < 4 ? 'low' : (scoreNum < 7 ? 'mid' : 'high'));
+                            const barColor = level === 'low' ? '#EF4444' : level === 'mid' ? '#F59E0B' : level === 'high' ? '#22C55E' : 'transparent';
+                            return (
+                              <div style={{ height: 8, borderRadius: 8, background: 'rgba(0,0,0,0.08)', overflow: 'hidden', marginBottom: 12 }}>
+                                <div style={{ width: `${percent}%`, height: '100%', borderRadius: 8, background: barColor, transition: 'width 0.3s ease' }} />
+                              </div>
+                            );
+                          })()}
+                          <div
+                            style={{
+                              borderRadius: 12,
+                              border: theme === 'sun'
+                                ? '2px solid rgba(78, 205, 196, 0.25)'
+                                : '2px solid rgba(76, 201, 240, 0.35)',
+                              background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.95)',
+                              padding: 16,
+                              minHeight: '100px'
+                            }}
+                          >
+                            {feedback && (
+                              <div 
+                                style={{ 
+                                  fontSize: 14, 
+                                  lineHeight: 1.7, 
+                                  color: theme === 'sun' ? '#333' : '#1F2937'
+                                }}
+                                dangerouslySetInnerHTML={{ __html: feedback }}
+                              />
+                            )}
+                            {!feedback && (
+                              <div style={{ fontSize: 14, lineHeight: 1.7, color: theme === 'sun' ? '#999' : '#666', fontStyle: 'italic' }}>
+                                No feedback available
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                       {/* Criteria feedback cards */}
                       {writingCriteria && (
-                        <div
-                          style={{
-                            marginTop: 16,
-                            borderRadius: 18,
-                            padding: 20,
-                            border: theme === 'sun'
-                              ? '2px solid rgba(167, 139, 250, 0.45)'
-                              : '2px solid rgba(196, 181, 253, 0.45)',
-                            background: theme === 'sun'
-                              ? 'linear-gradient(145deg, rgba(245, 238, 255, 0.96) 0%, rgba(228, 218, 255, 0.9) 100%)'
-                              : 'linear-gradient(145deg, rgba(47, 38, 78, 0.92) 0%, rgba(63, 51, 102, 0.9) 55%, rgba(78, 66, 125, 0.9) 100%)',
-                            boxShadow: theme === 'sun'
-                              ? '0 6px 18px rgba(167, 139, 250, 0.22)'
-                              : '0 6px 18px rgba(63, 51, 102, 0.28)'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-                            <Text strong style={{ fontSize: 16, color: theme === 'sun' ? '#4C1D95' : '#E0E7FF' }}>Criteria Feedback</Text>
-                          </div>
+                        <div>
+                          <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Criteria Feedback</Text>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             {WRITING_CRITERIA_KEYS.map((item) => {
                               const data = writingCriteria?.[item.key];
@@ -3562,20 +4068,50 @@ const AIGenerateFeedback = () => {
             key="save" 
             type="primary" 
             onClick={() => {
-              setFeedback(editFeedback);
-              setSuggestedScore(editSuggestedScore);
-              setWritingCriteria(editWritingCriteria);
-              // Update sessionStorage
-              const currentSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
-              if (currentSubmissionQuestionId) {
-                saveAIGeneratedData(currentSubmissionQuestionId, {
-                  feedback: editFeedback,
-                  suggestedScore: editSuggestedScore,
-                  writingCriteria: editWritingCriteria,
-                  writingSectionFeedbacks: writingSectionFeedbacks,
-                  hasAIGenerated: true,
-                  sectionType: 'writing',
-                });
+              if (sectionType === 'writing') {
+                setFeedback(editFeedback);
+                setSuggestedScore(editSuggestedScore);
+                setWritingCriteria(editWritingCriteria);
+                // Update sessionStorage
+                const currentSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
+                if (currentSubmissionQuestionId) {
+                  saveAIGeneratedData(currentSubmissionQuestionId, {
+                    feedback: editFeedback,
+                    suggestedScore: editSuggestedScore,
+                    writingCriteria: editWritingCriteria,
+                    writingSectionFeedbacks: writingSectionFeedbacks,
+                    hasAIGenerated: true,
+                    sectionType: 'writing',
+                  });
+                }
+              } else if (sectionType === 'speaking') {
+                setFeedback(editSpeakingFeedback);
+                // Update speakingResult with edited scores
+                setSpeakingResult(prev => ({
+                  ...prev,
+                  pronunciationScore: editSpeakingScores.pronunciationScore ?? prev?.pronunciationScore,
+                  accuracyScore: editSpeakingScores.accuracyScore ?? prev?.accuracyScore,
+                  fluencyScore: editSpeakingScores.fluencyScore ?? prev?.fluencyScore,
+                  completenessScore: editSpeakingScores.completenessScore ?? prev?.completenessScore,
+                  prosodyScore: editSpeakingScores.prosodyScore ?? prev?.prosodyScore,
+                }));
+                // Update sessionStorage
+                const currentSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
+                if (currentSubmissionQuestionId) {
+                  saveAIGeneratedData(currentSubmissionQuestionId, {
+                    feedback: editSpeakingFeedback,
+                    speakingResult: {
+                      ...speakingResult,
+                      pronunciationScore: editSpeakingScores.pronunciationScore ?? speakingResult?.pronunciationScore,
+                      accuracyScore: editSpeakingScores.accuracyScore ?? speakingResult?.accuracyScore,
+                      fluencyScore: editSpeakingScores.fluencyScore ?? speakingResult?.fluencyScore,
+                      completenessScore: editSpeakingScores.completenessScore ?? speakingResult?.completenessScore,
+                      prosodyScore: editSpeakingScores.prosodyScore ?? speakingResult?.prosodyScore,
+                    },
+                    hasAIGenerated: true,
+                    sectionType: 'speaking',
+                  });
+                }
               }
               setEditModalVisible(false);
               spaceToast.success('Feedback updated');
@@ -3623,69 +4159,146 @@ const AIGenerateFeedback = () => {
           </Button>
         ]}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Speaking Scores - hiển thị trước Feedback cho speaking */}
+          {sectionType === 'speaking' && (
+            <div>
+              <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Pronunciation Scores</Text>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+                {[{
+                  label: 'Pronunciation',
+                  key: 'pronunciationScore',
+                },{
+                  label: 'Accuracy',
+                  key: 'accuracyScore',
+                },{
+                  label: 'Fluency',
+                  key: 'fluencyScore',
+                },{
+                  label: 'Completeness',
+                  key: 'completenessScore',
+                },{
+                  label: 'Prosody',
+                  key: 'prosodyScore',
+                }].map((item, idx) => {
+                  const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
+                  const currentValue = editSpeakingScores[item.key] ?? null;
+                  return (
+                    <div
+                      key={`edit-speaking-${item.key}-${idx}`}
+                      style={{
+                        borderRadius: 12,
+                        border: `2px solid ${ss.border}`,
+                        background: ss.bg,
+                        padding: 16,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 8
+                      }}
+                    >
+                      <Text strong style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 4 }}>{item.label}</Text>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={10}
+                        step={0.1}
+                        value={currentValue === null || currentValue === undefined ? '' : currentValue}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const numValue = val === '' || val === null || val === undefined
+                            ? null
+                            : (Number.isFinite(Number(val)) ? Number(val) : null);
+                          setEditSpeakingScores(prev => ({
+                            ...prev,
+                            [item.key]: numValue,
+                          }));
+                        }}
+                        placeholder="0"
+                        style={{
+                          width: '100%',
+                          borderRadius: 8,
+                          border: `2px solid ${primaryColor}40`,
+                          background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.15)',
+                          fontSize: 16,
+                          fontWeight: 600
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Feedback */}
-          <div
-            style={{
-              borderRadius: 12,
-              padding: 16,
-              border: theme === 'sun'
-                ? '2px solid rgba(78, 205, 196, 0.35)'
-                : '2px solid rgba(76, 201, 240, 0.45)',
-              background: theme === 'sun'
-                ? 'linear-gradient(140deg, rgba(229, 250, 246, 0.95) 0%, rgba(204, 244, 237, 0.9) 100%)'
-                : 'linear-gradient(140deg, rgba(40, 56, 90, 0.92) 0%, rgba(46, 70, 110, 0.9) 55%, rgba(52, 82, 131, 0.9) 100%)',
-            }}
-          >
+          <div>
             <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Feedback</Text>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Suggested Score - giống Score (0-10) của Task Response */}
-              {sectionType === 'writing' && (
-                <div>
-                  <Text style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>Score (0-10)</Text>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={10}
-                    step={0.1}
-                    value={editSuggestedScore === null || editSuggestedScore === undefined ? '' : editSuggestedScore}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '' || val === null || val === undefined) {
-                        setEditSuggestedScore(null);
-                        return;
-                      }
-                      const normalized = clampSuggestedScoreValue(val);
-                      if (normalized !== null) {
-                        setEditSuggestedScore(normalized);
-                      }
-                    }}
-                    placeholder="0"
-                    style={{ width: 120, borderRadius: 8 }}
-                  />
-                </div>
-              )}
-              {/* Feedback editor */}
-              <div>
-                <Text style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>Feedback</Text>
-                <div className="feedback-editor-wrap" style={{ borderRadius: 8, background: '#fff', border: theme === 'sun' ? '1px solid rgba(78, 205, 196, 0.25)' : '1px solid rgba(76, 201, 240, 0.35)' }}>
-                  <CKEditor
-                    editor={ClassicEditor}
-                    data={editFeedback}
-                    onChange={(event, editor) => setEditFeedback(editor.getData())}
-                    config={{
-                      toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
-                      removePlugins: ['StickyToolbar']
-                    }}
-                    onReady={(editor) => {
-                      try {
-                        const el = editor.ui?.getEditableElement?.();
-                        if (el) {
-                          el.style.minHeight = '200px';
-                          el.style.color = '#000';
+            <div
+              style={{
+                borderRadius: 12,
+                padding: 16,
+                border: theme === 'sun'
+                  ? '2px solid rgba(78, 205, 196, 0.35)'
+                  : '2px solid rgba(76, 201, 240, 0.45)',
+                background: theme === 'sun'
+                  ? 'linear-gradient(140deg, rgba(229, 250, 246, 0.95) 0%, rgba(204, 244, 237, 0.9) 100%)'
+                  : 'linear-gradient(140deg, rgba(40, 56, 90, 0.92) 0%, rgba(46, 70, 110, 0.9) 55%, rgba(52, 82, 131, 0.9) 100%)',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Suggested Score - giống Score (0-10) của Task Response */}
+                {sectionType === 'writing' && (
+                  <div>
+                    <Text style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>Score (0-10)</Text>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      step={0.1}
+                      value={editSuggestedScore === null || editSuggestedScore === undefined ? '' : editSuggestedScore}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || val === null || val === undefined) {
+                          setEditSuggestedScore(null);
+                          return;
                         }
-                      } catch {}
-                    }}
-                  />
+                        const normalized = clampSuggestedScoreValue(val);
+                        if (normalized !== null) {
+                          setEditSuggestedScore(normalized);
+                        }
+                      }}
+                      placeholder="0"
+                      style={{ width: 120, borderRadius: 8 }}
+                    />
+                  </div>
+                )}
+                {/* Feedback editor */}
+                <div>
+                  <div className="feedback-editor-wrap" style={{ borderRadius: 8, background: '#fff', border: theme === 'sun' ? '1px solid rgba(78, 205, 196, 0.25)' : '1px solid rgba(76, 201, 240, 0.35)' }}>
+                    <CKEditor
+                      editor={ClassicEditor}
+                      data={sectionType === 'writing' ? editFeedback : editSpeakingFeedback}
+                      onChange={(event, editor) => {
+                        if (sectionType === 'writing') {
+                          setEditFeedback(editor.getData());
+                        } else {
+                          setEditSpeakingFeedback(editor.getData());
+                        }
+                      }}
+                      config={{
+                        toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
+                        removePlugins: ['StickyToolbar']
+                      }}
+                      onReady={(editor) => {
+                        try {
+                          const el = editor.ui?.getEditableElement?.();
+                          if (el) {
+                            el.style.minHeight = '200px';
+                            el.style.color = '#000';
+                          }
+                        } catch {}
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

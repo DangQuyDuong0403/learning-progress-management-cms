@@ -78,6 +78,32 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
     return `${diffInMonths} ${t('header.monthsAgo') || 'months ago'}`;
   };
 
+  // Safely render HTML content (only allows formatting tags)
+  const renderNotificationHTML = (htmlString) => {
+    if (!htmlString) return { __html: '' };
+    
+    // Sanitize: only allow safe formatting tags
+    // Allowed tags: b, strong, i, em, u, br, span, p
+    const allowedTags = ['b', 'strong', 'i', 'em', 'u', 'br', 'span', 'p'];
+    const tagPattern = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
+    
+    const sanitized = htmlString.replace(tagPattern, (match, tagName) => {
+      const lowerTag = tagName.toLowerCase();
+      if (allowedTags.includes(lowerTag)) {
+        // Strip attributes and keep only the tag name
+        // For closing tags, return as is; for opening tags, remove attributes
+        if (match.startsWith('</')) {
+          return `</${lowerTag}>`;
+        } else {
+          return `<${lowerTag}>`;
+        }
+      }
+      return ''; // Remove disallowed tags
+    });
+    
+    return { __html: sanitized };
+  };
+
   // Group notifications by date
   const groupNotificationsByDate = (notifs) => {
     const now = new Date();
@@ -1046,7 +1072,10 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                                         <div className="notification-title"><strong>{notification.title}</strong></div>
                                       )}
                                       {notification.message && (
-                                        <div className="notification-message">{notification.message}</div>
+                                        <div 
+                                          className="notification-message"
+                                          dangerouslySetInnerHTML={renderNotificationHTML(notification.message)}
+                                        />
                                       )}
                                     </div>
                                     <span className="notification-time">
@@ -1128,7 +1157,10 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                                         <div className="notification-title"><strong>{notification.title}</strong></div>
                                       )}
                                       {notification.message && (
-                                        <div className="notification-message">{notification.message}</div>
+                                        <div 
+                                          className="notification-message"
+                                          dangerouslySetInnerHTML={renderNotificationHTML(notification.message)}
+                                        />
                                       )}
                                     </div>
                                     <span className="notification-time">

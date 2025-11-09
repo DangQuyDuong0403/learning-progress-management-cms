@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Input, Tooltip, Typography, Upload, Space } from "antd";
-import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, SaveOutlined, ThunderboltOutlined, CheckOutlined, CloudUploadOutlined, CloseOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, SaveOutlined, ThunderboltOutlined, CheckOutlined, CloudUploadOutlined, CloseOutlined, SearchOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -77,6 +77,7 @@ const AIGenerateListening = () => {
   // Lesson Focus dropdown states
   const [isLessonFocusDropdownOpen, setIsLessonFocusDropdownOpen] = useState(false);
   const [isCustomFocusInputOpen, setIsCustomFocusInputOpen] = useState(false); // Track if Custom Focus input field is open (checkbox checked)
+  const [lessonFocusSearchTerm, setLessonFocusSearchTerm] = useState(""); // Search term for lesson focus
 
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
@@ -591,6 +592,79 @@ const AIGenerateListening = () => {
               >
                 <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px', marginBottom: '20px' }}>AI Generation Settings</Title>
                 
+                {/* Chapter and Lesson - Side by Side (Read-only) - Moved to top */}
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                  {/* Chapter - Read-only */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
+                      Chapter
+                  </Typography.Text>
+                    <div
+                    style={{
+                        width: '100%',
+                        minHeight: '36px',
+                        padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: `2px solid ${theme === 'sun' ? '#d9d9d9' : '#666'}`,
+                      background: theme === 'sun' ? '#f5f5f5' : 'rgba(100, 100, 100, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        zIndex: 10,
+                        cursor: 'default',
+                        opacity: 0.6
+                      }}
+                    >
+                      <span style={{ 
+                        color: hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name
+                          ? (theme === 'sun' ? '#666' : '#999') 
+                          : (theme === 'sun' ? '#999' : '#999'),
+                        fontSize: '14px',
+                        fontWeight: 400
+                      }}>
+                        {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
+                      </span>
+                    </div>
+                </div>
+
+                  {/* Lesson - Read-only */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
+                      Lesson
+                    </Typography.Text>
+                    <div
+                      style={{
+                        width: '100%',
+                        minHeight: '36px',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: `2px solid ${theme === 'sun' ? '#d9d9d9' : '#666'}`,
+                        background: theme === 'sun' ? '#f5f5f5' : 'rgba(100, 100, 100, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        zIndex: 10,
+                        cursor: 'default',
+                        opacity: 0.6
+                      }}
+                    >
+                      <span style={{ 
+                        color: hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name
+                          ? (theme === 'sun' ? '#666' : '#999') 
+                          : (theme === 'sun' ? '#999' : '#999'),
+                        fontSize: '14px',
+                        fontWeight: 400
+                      }}>
+                        {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Level and Lesson Focus - Side by Side */}
                 <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
                   {/* Level Selection - Custom 2-Level Dropdown */}
@@ -631,7 +705,7 @@ const AIGenerateListening = () => {
                         ? (theme === 'sun' ? '#000' : '#fff') 
                         : (theme === 'sun' ? '#999' : '#999'),
                       fontSize: '14px',
-                      fontWeight: 400
+                      fontWeight: selectedLevel ? 600 : 400
                     }}>
                       {selectedLevel 
                         ? (() => {
@@ -751,7 +825,7 @@ const AIGenerateListening = () => {
                             >
                               <span style={{
                                 fontSize: '13px',
-                                fontWeight: 400,
+                                fontWeight: 600,
                                 color: levelType === type.value
                                   ? primaryColor
                                   : (theme === 'sun' ? '#000' : '#000')
@@ -891,6 +965,10 @@ const AIGenerateListening = () => {
                       }
                       const willOpen = !isLessonFocusDropdownOpen;
                       setIsLessonFocusDropdownOpen(willOpen);
+                      // Reset search term when closing dropdown
+                      if (!willOpen) {
+                        setLessonFocusSearchTerm("");
+                      }
                       if (willOpen && customLessonFocus.length > 0 && !isCustomFocusInputOpen) {
                         setIsCustomFocusInputOpen(true);
                       }
@@ -1064,7 +1142,10 @@ const AIGenerateListening = () => {
                   {isLessonFocusDropdownOpen && (
                     <>
                       <div
-                        onClick={() => setIsLessonFocusDropdownOpen(false)}
+                        onClick={() => {
+                          setIsLessonFocusDropdownOpen(false);
+                          setLessonFocusSearchTerm("");
+                        }}
                         style={{
                           position: 'fixed',
                           top: 0,
@@ -1099,6 +1180,22 @@ const AIGenerateListening = () => {
                         }}
                         onClick={(e) => e.stopPropagation()}
                       >
+                        {/* Search Bar */}
+                        <div style={{ padding: '12px', borderBottom: `1px solid ${primaryColor}20` }}>
+                          <Input
+                            prefix={<SearchOutlined style={{ color: primaryColor }} />}
+                            placeholder="Search lesson focus..."
+                            value={lessonFocusSearchTerm}
+                            onChange={(e) => setLessonFocusSearchTerm(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              borderRadius: '8px',
+                              border: `2px solid ${primaryColor}40`,
+                              background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.95)',
+                            }}
+                          />
+                        </div>
+
                         <div style={{
                           flex: 1,
                           overflowY: 'auto',
@@ -1107,7 +1204,14 @@ const AIGenerateListening = () => {
                           scrollbarWidth: 'thin',
                           scrollbarColor: `${primaryColor}40 transparent`
                         }}>
-                          {lessonFocusOptions.map((option) => {
+                          {lessonFocusOptions
+                            .filter((option) => {
+                              if (!lessonFocusSearchTerm) return true;
+                              const searchLower = lessonFocusSearchTerm.toLowerCase();
+                              return option.label.toLowerCase().includes(searchLower) ||
+                                     option.value.toLowerCase().includes(searchLower);
+                            })
+                            .map((option) => {
                               const isSelected = lessonFocus.includes(option.value);
                               const isCustom = option.value === 'CUSTOM';
                               const isCustomChecked = isCustom ? (isCustomFocusInputOpen || customLessonFocus.length > 0) : isSelected;
@@ -1290,78 +1394,6 @@ const AIGenerateListening = () => {
                   </div>
                 </div>
 
-                {/* Chapter and Lesson - Side by Side (Read-only) */}
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                  {/* Chapter - Read-only */}
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Chapter
-                  </Typography.Text>
-                    <div
-                    style={{
-                        width: '100%',
-                        minHeight: '36px',
-                        padding: '6px 12px',
-                      borderRadius: '8px',
-                      border: `2px solid ${primaryColor}60`,
-                      background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.3s ease',
-                        position: 'relative',
-                        zIndex: 10,
-                        cursor: 'default',
-                        opacity: 0.7
-                      }}
-                    >
-                      <span style={{ 
-                        color: hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name
-                          ? (theme === 'sun' ? '#000' : '#fff') 
-                          : (theme === 'sun' ? '#999' : '#999'),
-                        fontSize: '14px',
-                        fontWeight: 400
-                      }}>
-                        {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
-                      </span>
-                    </div>
-                </div>
-
-                  {/* Lesson - Read-only */}
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Lesson
-                    </Typography.Text>
-                    <div
-                      style={{
-                        width: '100%',
-                        minHeight: '36px',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: `2px solid ${primaryColor}60`,
-                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.3s ease',
-                        position: 'relative',
-                        zIndex: 10,
-                        cursor: 'default',
-                        opacity: 0.7
-                      }}
-                    >
-                      <span style={{ 
-                        color: hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name
-                          ? (theme === 'sun' ? '#000' : '#fff') 
-                          : (theme === 'sun' ? '#999' : '#999'),
-                        fontSize: '14px',
-                        fontWeight: 400
-                      }}>
-                        {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
 
                 {/* Vocabulary List and Description - Side by Side */}
                 <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
@@ -1374,6 +1406,7 @@ const AIGenerateListening = () => {
                     value={vocabularyList}
                     onChange={(e) => setVocabularyList(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
+                    placeholder="newword, new word..."
                     style={{
                         width: '100%',
                       borderRadius: '8px',
@@ -1385,15 +1418,16 @@ const AIGenerateListening = () => {
                   />
                 </div>
 
-                {/* Description */}
+                {/* Additional Description */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Description
+                      Additional Description
                   </Typography.Text>
                   <TextArea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
+                    placeholder="Optional: Add any additional instructions or context..."
                     style={{
                         width: '100%',
                       fontSize: '14px',
