@@ -10,6 +10,10 @@ export default function CustomCursor() {
     const rocketRef = useRef(null);
     const woodPointerRef = useRef(null);
     const woodCursorRef = useRef(null);
+    const cosmicPointerRef = useRef(null);
+    const cosmicCursorRef = useRef(null);
+    const celestialPointerRef = useRef(null);
+    const celestialCursorRef = useRef(null);
     const [mounted, setMounted] = React.useState(false);
     const [cursorType, setCursorType] = React.useState(() => {
         return localStorage.getItem('customCursorType') || 'space';
@@ -46,12 +50,24 @@ export default function CustomCursor() {
         
         // Get the appropriate cursor element based on cursor type
         const isSpaceCursor = cursorType === 'space';
+        const isWoodCursor = cursorType === 'wood';
+        const isCosmicCursor = cursorType === 'cosmic';
+        const isCelestialCursor = cursorType === 'celestial';
+        
         const helmetEl = isSpaceCursor ? helmetRef.current : null;
         const rocketEl = isSpaceCursor ? rocketRef.current : null;
-        const woodPointerEl = !isSpaceCursor ? woodPointerRef.current : null;
-        const woodCursorEl = !isSpaceCursor ? woodCursorRef.current : null;
+        const woodPointerEl = isWoodCursor ? woodPointerRef.current : null;
+        const woodCursorEl = isWoodCursor ? woodCursorRef.current : null;
+        const cosmicPointerEl = isCosmicCursor ? cosmicPointerRef.current : null;
+        const cosmicCursorEl = isCosmicCursor ? cosmicCursorRef.current : null;
+        const celestialPointerEl = isCelestialCursor ? celestialPointerRef.current : null;
+        const celestialCursorEl = isCelestialCursor ? celestialCursorRef.current : null;
         
-        const activeEl = isSpaceCursor ? (helmetEl || rocketEl) : (woodPointerEl || woodCursorEl);
+        const activeEl = isSpaceCursor ? (helmetEl || rocketEl) 
+            : isWoodCursor ? (woodPointerEl || woodCursorEl)
+            : isCosmicCursor ? (cosmicPointerEl || cosmicCursorEl)
+            : isCelestialCursor ? (celestialPointerEl || celestialCursorEl)
+            : null;
         if (!activeEl) return undefined;
 
         // Hide the system cursor while this component is mounted
@@ -67,7 +83,7 @@ export default function CustomCursor() {
                 rocketEl.dataset.visible = '1';
                 rocketEl.dataset.hover = '0'; // Initial state: not hovering
             }
-        } else {
+        } else if (isWoodCursor) {
             if (woodPointerEl) {
                 woodPointerEl.dataset.visible = '1';
                 woodPointerEl.dataset.hover = '0'; // Initial state: show pointer
@@ -75,6 +91,24 @@ export default function CustomCursor() {
             if (woodCursorEl) {
                 woodCursorEl.dataset.visible = '1';
                 woodCursorEl.dataset.hover = '0'; // Initial state: hide hand cursor
+            }
+        } else if (isCosmicCursor) {
+            if (cosmicPointerEl) {
+                cosmicPointerEl.dataset.visible = '1';
+                cosmicPointerEl.dataset.hover = '0'; // Initial state: show pointer
+            }
+            if (cosmicCursorEl) {
+                cosmicCursorEl.dataset.visible = '1';
+                cosmicCursorEl.dataset.hover = '0'; // Initial state: hide cursor
+            }
+        } else if (isCelestialCursor) {
+            if (celestialPointerEl) {
+                celestialPointerEl.dataset.visible = '1';
+                celestialPointerEl.dataset.hover = '0'; // Initial state: show pointer
+            }
+            if (celestialCursorEl) {
+                celestialCursorEl.dataset.visible = '1';
+                celestialCursorEl.dataset.hover = '0'; // Initial state: hide cursor
             }
         }
 
@@ -92,7 +126,7 @@ export default function CustomCursor() {
                 if (rocketEl) {
                     rocketEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
                 }
-            } else {
+            } else if (isWoodCursor) {
                 // Position wood cursors (pointer always visible, cursor only on hover)
                 if (woodPointerEl) {
                     woodPointerEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
@@ -100,6 +134,22 @@ export default function CustomCursor() {
                 if (woodCursorEl) {
                     // Always update position, opacity is controlled by CSS based on data-hover
                     woodCursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+                }
+            } else if (isCosmicCursor) {
+                // Position cosmic cursors (pointer always visible, cursor only on hover)
+                if (cosmicPointerEl) {
+                    cosmicPointerEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+                }
+                if (cosmicCursorEl) {
+                    cosmicCursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+                }
+            } else if (isCelestialCursor) {
+                // Position celestial cursors (pointer always visible, cursor only on hover)
+                if (celestialPointerEl) {
+                    celestialPointerEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+                }
+                if (celestialCursorEl) {
+                    celestialCursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
                 }
             }
 
@@ -118,18 +168,30 @@ export default function CustomCursor() {
             if (isSpaceCursor) {
                 if (helmetEl) helmetEl.dataset.visible = '1';
                 if (rocketEl) rocketEl.dataset.visible = '1';
-            } else {
+            } else if (isWoodCursor) {
                 if (woodPointerEl) woodPointerEl.dataset.visible = '1';
                 if (woodCursorEl) woodCursorEl.dataset.visible = '1';
+            } else if (isCosmicCursor) {
+                if (cosmicPointerEl) cosmicPointerEl.dataset.visible = '1';
+                if (cosmicCursorEl) cosmicCursorEl.dataset.visible = '1';
+            } else if (isCelestialCursor) {
+                if (celestialPointerEl) celestialPointerEl.dataset.visible = '1';
+                if (celestialCursorEl) celestialCursorEl.dataset.visible = '1';
             }
         };
         const onPointerLeave = () => {
             if (isSpaceCursor) {
                 if (helmetEl) helmetEl.dataset.visible = '0';
                 if (rocketEl) rocketEl.dataset.visible = '0';
-            } else {
+            } else if (isWoodCursor) {
                 if (woodPointerEl) woodPointerEl.dataset.visible = '0';
                 if (woodCursorEl) woodCursorEl.dataset.visible = '0';
+            } else if (isCosmicCursor) {
+                if (cosmicPointerEl) cosmicPointerEl.dataset.visible = '0';
+                if (cosmicCursorEl) cosmicCursorEl.dataset.visible = '0';
+            } else if (isCelestialCursor) {
+                if (celestialPointerEl) celestialPointerEl.dataset.visible = '0';
+                if (celestialCursorEl) celestialCursorEl.dataset.visible = '0';
             }
         };
 
@@ -137,15 +199,27 @@ export default function CustomCursor() {
             if (isSpaceCursor) {
                 if (helmetEl) helmetEl.dataset.hover = isHover ? '1' : '0';
                 if (rocketEl) rocketEl.dataset.hover = isHover ? '1' : '0';
-            } else {
+            } else if (isWoodCursor) {
                 // Wood pointer: hide when hovering (data-hover="1" -> opacity: 0)
                 // Wood cursor: show when hovering (data-hover="1" -> opacity: 1)
-                // Both use the same hover state but CSS handles visibility differently
                 if (woodPointerEl) woodPointerEl.dataset.hover = isHover ? '1' : '0';
                 if (woodCursorEl) {
                     woodCursorEl.dataset.hover = isHover ? '1' : '0';
-                    // Update transform immediately to keep cursor at pointer position
                     woodCursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+                }
+            } else if (isCosmicCursor) {
+                // Cosmic pointer: hide when hovering, cursor: show when hovering
+                if (cosmicPointerEl) cosmicPointerEl.dataset.hover = isHover ? '1' : '0';
+                if (cosmicCursorEl) {
+                    cosmicCursorEl.dataset.hover = isHover ? '1' : '0';
+                    cosmicCursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+                }
+            } else if (isCelestialCursor) {
+                // Celestial pointer: hide when hovering, cursor: show when hovering
+                if (celestialPointerEl) celestialPointerEl.dataset.hover = isHover ? '1' : '0';
+                if (celestialCursorEl) {
+                    celestialCursorEl.dataset.hover = isHover ? '1' : '0';
+                    celestialCursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
                 }
             }
         };
@@ -196,12 +270,26 @@ export default function CustomCursor() {
             if (rocketEl) {
                 rocketEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
             }
-        } else {
+        } else if (isWoodCursor) {
             if (woodPointerEl) {
                 woodPointerEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
             }
             if (woodCursorEl) {
                 woodCursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+            }
+        } else if (isCosmicCursor) {
+            if (cosmicPointerEl) {
+                cosmicPointerEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+            }
+            if (cosmicCursorEl) {
+                cosmicCursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+            }
+        } else if (isCelestialCursor) {
+            if (celestialPointerEl) {
+                celestialPointerEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
+            }
+            if (celestialCursorEl) {
+                celestialCursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0) translate(-50%, -50%)`;
             }
         }
         // No RAF loop since both elements are updated on pointermove
@@ -233,7 +321,7 @@ export default function CustomCursor() {
                 draggable={false}
             />
         </>
-    ) : (
+    ) : cursorType === 'wood' ? (
         <>
             <img
                 ref={woodPointerRef}
@@ -250,7 +338,41 @@ export default function CustomCursor() {
                 draggable={false}
             />
         </>
-    );
+    ) : cursorType === 'cosmic' ? (
+        <>
+            <img
+                ref={cosmicPointerRef}
+                src="/img/cosmic-cursor.png"
+                alt="cursor-cosmic-pointer"
+                className="cc-cursor cc-cursor-cosmic-pointer"
+                draggable={false}
+            />
+            <img
+                ref={cosmicCursorRef}
+                src="/img/cosmic-pointer.png"
+                alt="cursor-cosmic-hand"
+                className="cc-cursor cc-cursor-cosmic-cursor"
+                draggable={false}
+            />
+        </>
+    ) : cursorType === 'celestial' ? (
+        <>
+            <img
+                ref={celestialPointerRef}
+                src="/img/celestial-cursor.png"
+                alt="cursor-celestial-pointer"
+                className="cc-cursor cc-cursor-celestial-pointer"
+                draggable={false}
+            />
+            <img
+                ref={celestialCursorRef}
+                src="/img/celestial-pointer.png"
+                alt="cursor-celestial-hand"
+                className="cc-cursor cc-cursor-celestial-cursor"
+                draggable={false}
+            />
+        </>
+    ) : null;
 
     // Use portal to render directly to body, ensuring it's always on top
     if (!mounted) return null;
