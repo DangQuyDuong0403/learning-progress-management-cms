@@ -496,15 +496,23 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
     return result;
   }, []);
-
-  // Build filtered full list (type/status only). Search is handled by API already.
+  // Build filtered full list (type/status and search text). 
+  // Frontend filter ensures exact match even if API returns partial matches.
   const filteredAllChallenges = React.useMemo(() => {
     return allChallenges.filter((challenge) => {
+      // Filter by type
       const matchesType = typeFilter.length === 0 || typeFilter.includes(challenge.type);
+      
+      // Filter by status
       const matchesStatus = statusFilter.length === 0 || statusFilter.includes(challenge.status);
-      return matchesType && matchesStatus;
+      
+      // Filter by search text - ensure title contains the entire search phrase (case-insensitive)
+      const matchesSearch = !searchDebounce || !searchDebounce.trim() || 
+        (challenge.title && challenge.title.toLowerCase().includes(searchDebounce.toLowerCase().trim()));
+      
+      return matchesType && matchesStatus && matchesSearch;
     });
-  }, [allChallenges, typeFilter, statusFilter]);
+  }, [allChallenges, typeFilter, statusFilter, searchDebounce]);
 
   // Recompute page data whenever pagination or filtered full list changes
   useEffect(() => {

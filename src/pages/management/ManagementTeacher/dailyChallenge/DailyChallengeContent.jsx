@@ -99,7 +99,7 @@ const processPassageContent = (content, theme, challengeType) => {
 
 // Sortable Passage Item Component
 const SortablePassageItem = memo(
-  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType }) => {
+  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType, activeDragDimensions }) => {
     const [showTranscript, setShowTranscript] = useState(false);
     const [showMore, setShowMore] = useState(false);
     const passageContentRef = useRef(null);
@@ -131,12 +131,14 @@ const SortablePassageItem = memo(
     
     // Removed plain-text transcript conversion to preserve rich content (bold, images, tables)
     
+    // Optimized: Only animate during active sorting/dragging to reduce lag
     const animateLayoutChanges = useCallback((args) => {
       const { isSorting, wasDragging } = args;
       if (isSorting || wasDragging) {
         return defaultAnimateLayoutChanges(args);
       }
-      return true;
+      // Skip animation when not actively sorting to improve performance
+      return false;
     }, []);
 
     const {
@@ -151,14 +153,36 @@ const SortablePassageItem = memo(
       animateLayoutChanges,
     });
 
+    // Store ref for the item
+    const itemRef = useRef(null);
+
     const style = useMemo(
-      () => ({
-        transform: transform ? CSS.Transform.toString(transform) : undefined,
-        transition: transition || undefined,
-        opacity: isDragging ? 0.5 : 1,
-        willChange: 'transform',
-      }),
-      [transform, transition, isDragging]
+      () => {
+        const baseStyle = {
+          transform: transform ? CSS.Transform.toString(transform) : undefined,
+          transition: isDragging ? 'none' : (transition || undefined), // No transition when dragging to reduce lag
+          opacity: isDragging ? 0.6 : 1,
+          willChange: isDragging ? 'transform' : 'auto', // Optimize only when dragging
+          pointerEvents: isDragging ? 'none' : 'auto', // Disable pointer events when dragging
+        };
+        
+        // Fix stretching/shrinking by preserving dimensions when dragging
+        if (isDragging && activeDragDimensions) {
+          return {
+            ...baseStyle,
+            width: `${activeDragDimensions.width}px`,
+            minWidth: `${activeDragDimensions.width}px`,
+            maxWidth: `${activeDragDimensions.width}px`,
+            height: `${activeDragDimensions.height}px`,
+            minHeight: `${activeDragDimensions.height}px`,
+            maxHeight: `${activeDragDimensions.height}px`,
+            boxSizing: 'border-box',
+          };
+        }
+        
+        return baseStyle;
+      },
+      [transform, transition, isDragging, activeDragDimensions]
     );
 
     const handleEdit = useCallback(() => {
@@ -177,7 +201,11 @@ const SortablePassageItem = memo(
 
     return (
       <div
-        ref={setNodeRef}
+        ref={(node) => {
+          setNodeRef(node);
+          itemRef.current = node;
+        }}
+        data-id={passage.id}
         style={style}
         className={`passage-item ${theme}-passage-item ${isDragging ? 'dragging' : ''}`}
       >
@@ -1183,13 +1211,15 @@ const renderRearrangeQuestionInline = (question, theme) => {
 
 // Sortable Question Item Component
 const SortableQuestionItem = memo(
-  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t, challengeType }) => {
+  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t, challengeType, activeDragDimensions }) => {
+    // Optimized: Only animate during active sorting/dragging to reduce lag
     const animateLayoutChanges = useCallback((args) => {
       const { isSorting, wasDragging } = args;
       if (isSorting || wasDragging) {
         return defaultAnimateLayoutChanges(args);
       }
-      return true;
+      // Skip animation when not actively sorting to improve performance
+      return false;
     }, []);
 
     const {
@@ -1204,14 +1234,36 @@ const SortableQuestionItem = memo(
       animateLayoutChanges,
     });
 
+    // Store ref for the item
+    const itemRef = useRef(null);
+
     const style = useMemo(
-      () => ({
-        transform: transform ? CSS.Transform.toString(transform) : undefined,
-        transition: transition || undefined,
-        opacity: isDragging ? 0.5 : 1,
-        willChange: 'transform',
-      }),
-      [transform, transition, isDragging]
+      () => {
+        const baseStyle = {
+          transform: transform ? CSS.Transform.toString(transform) : undefined,
+          transition: isDragging ? 'none' : (transition || undefined), // No transition when dragging to reduce lag
+          opacity: isDragging ? 0.6 : 1,
+          willChange: isDragging ? 'transform' : 'auto', // Optimize only when dragging
+          pointerEvents: isDragging ? 'none' : 'auto', // Disable pointer events when dragging
+        };
+        
+        // Fix stretching/shrinking by preserving dimensions when dragging
+        if (isDragging && activeDragDimensions) {
+          return {
+            ...baseStyle,
+            width: `${activeDragDimensions.width}px`,
+            minWidth: `${activeDragDimensions.width}px`,
+            maxWidth: `${activeDragDimensions.width}px`,
+            height: `${activeDragDimensions.height}px`,
+            minHeight: `${activeDragDimensions.height}px`,
+            maxHeight: `${activeDragDimensions.height}px`,
+            boxSizing: 'border-box',
+          };
+        }
+        
+        return baseStyle;
+      },
+      [transform, transition, isDragging, activeDragDimensions]
     );
 
     const handleEdit = useCallback(() => {
@@ -2029,7 +2081,11 @@ const SortableQuestionItem = memo(
 
     return (
       <div
-        ref={setNodeRef}
+        ref={(node) => {
+          setNodeRef(node);
+          itemRef.current = node;
+        }}
+        data-id={question.id}
         style={style}
         className={`question-item ${theme}-question-item ${isDragging ? 'dragging' : ''}`}
       >
@@ -2189,27 +2245,40 @@ const SortableQuestionItem = memo(
               // Build placeholders in question text for each correct item having positionId
               let displayText = question.questionText;
               const allChips = [];
+              
+              // First, collect all correct items with their order
+              const correctItems = [];
               if (question.content && Array.isArray(question.content.data)) {
                 question.content.data.forEach((item) => {
                   if (item && item.value) {
                     const isCorrect = Boolean(item?.correct === true || item?.positionId);
                     allChips.push({ value: item.value, isCorrect });
+                    
+                    // Track correct items for numbering
+                    if (item.positionId && item.correct === true) {
+                      correctItems.push({
+                        positionId: item.positionId,
+                        value: item.value,
+                        index: correctItems.length + 1 // Number starts from 1
+                      });
+                    }
                   }
-                  if (item && item.positionId && item.correct === true) {
-                    const pattern = `[[pos_${item.positionId}]]`;
-                    const value = String(item.value || '')
-                      .replace(/<[^>]*>/g,' ')
-                      .replace(/&nbsp;/g,' ')
-                      .trim();
-                    const indexNum = (allChips.filter(c => c.isCorrect).length) + 1;
-                    displayText = displayText.replace(
-                      pattern,
-                      `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBgColor};border:2px solid ${correctBorderColor};border-radius:8px;color:${correctTextColor};margin:0 6px 6px 6px;">
-                        <span style=\"display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${correctBorderColor};color:#ffffff;font-size:11px;\">${indexNum}</span>
-                        <span style=\"white-space:normal;word-break:break-word;\">${value}</span>
-                      </span>`
-                    );
-                  }
+                });
+                
+                // Now replace placeholders with correct numbering
+                correctItems.forEach((correctItem) => {
+                  const pattern = `[[pos_${correctItem.positionId}]]`;
+                  const value = String(correctItem.value || '')
+                    .replace(/<[^>]*>/g,' ')
+                    .replace(/&nbsp;/g,' ')
+                    .trim();
+                  displayText = displayText.replace(
+                    pattern,
+                    `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBgColor};border:2px solid ${correctBorderColor};border-radius:8px;color:${correctTextColor};margin:0 6px 6px 6px;">
+                      <span style=\"display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${correctBorderColor};color:#ffffff;font-size:11px;\">${correctItem.index}</span>
+                      <span style=\"white-space:normal;word-break:break-word;\">${value}</span>
+                    </span>`
+                  );
                 });
               }
               return (
@@ -2758,6 +2827,9 @@ const DailyChallengeContent = () => {
   const [passages, setPassages] = useState([]);
   const [searchText, setSearchText] = useState("");
   
+  // Store dimensions of item being dragged to prevent stretching/shrinking
+  const [activeDragDimensions, setActiveDragDimensions] = useState(null);
+  
   // Challenge Details states
   const [challengeDetails, setChallengeDetails] = useState(null);
   const [challengeLoading, setChallengeLoading] = useState(false);
@@ -2799,12 +2871,12 @@ const DailyChallengeContent = () => {
   const [savingQuestion, setSavingQuestion] = useState(false); // Loading state for saving question
   const [exportLoading, setExportLoading] = useState(false);
 
-  // Sensors for drag and drop
+  // Sensors for drag and drop - optimized for instant response (no delay like CreateReadingChallenge)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
-        delay: 0,
+        distance: 5, // Reduced for faster response
+        delay: 0, // No delay for instant drag start
       },
     }),
     useSensor(KeyboardSensor, {
@@ -4177,9 +4249,23 @@ const DailyChallengeContent = () => {
     ));
   }, []);
 
-  const handleDragStart = useCallback(() => {
+  const handleDragStart = useCallback((event) => {
+    const { active } = event;
     document.body.style.overflow = 'hidden';
     document.body.classList.add('is-dragging');
+    
+    // Capture dimensions of the item being dragged to prevent stretching/shrinking
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+      const activeNode = document.querySelector(`[data-id="${active.id}"]`);
+      if (activeNode) {
+        const rect = activeNode.getBoundingClientRect();
+        setActiveDragDimensions({ 
+          width: rect.width, 
+          height: rect.height 
+        });
+      }
+    }, 0);
   }, []);
 
   useEffect(() => {
@@ -4193,64 +4279,72 @@ const DailyChallengeContent = () => {
     const { active, over } = event;
     document.body.style.overflow = '';
     document.body.classList.remove('is-dragging');
+    
+    // Clear active drag dimensions
+    setActiveDragDimensions(null);
 
-    if (active.id !== over?.id) {
-      // Check if we're dragging a passage or question
-      const isPassage = passages.some(p => p.id === active.id);
+    if (!over || active.id === over.id) return;
+
+    // Optimized: Use Map for O(1) lookup instead of findIndex O(n)
+    const passageIdMap = new Map(passages.map((p, idx) => [p.id, idx]));
+    const questionIdMap = new Map(questions.map((q, idx) => [q.id, idx]));
+    
+    const isPassage = passageIdMap.has(active.id);
+    
+    if (isPassage) {
+      // Handle passage reordering - optimized
+      const oldIndex = passageIdMap.get(active.id);
+      const newIndex = passageIdMap.get(over.id);
       
-      if (isPassage) {
-        // Handle passage reordering
-        setPassages((items) => {
-          const oldIndex = items.findIndex((item) => item.id === active.id);
-          const newIndex = items.findIndex((item) => item.id === over.id);
+      if (oldIndex === undefined || newIndex === undefined) return;
 
-          if (oldIndex === -1 || newIndex === -1) return items;
-
-          const newItems = arrayMove(items, oldIndex, newIndex);
-
-          // Update orderNumber based on visible items (not deleted)
-          const visibleItems = newItems.filter(p => !p.toBeDeleted);
-          return newItems.map((passage) => {
-            if (passage.toBeDeleted) {
-              return passage; // Keep deleted items as-is
-            }
-            
-            // Update orderNumber based on visible items order
-            const visibleIndex = visibleItems.findIndex(item => item.id === passage.id);
-            return {
-              ...passage,
-              orderNumber: visibleIndex + 1,
-            };
-          });
+      setPassages((items) => {
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        
+        // Optimized: Build order map once and reuse
+        const visibleOrderMap = new Map();
+        let orderCounter = 1;
+        newItems.forEach((item) => {
+          if (!item.toBeDeleted) {
+            visibleOrderMap.set(item.id, orderCounter++);
+          }
         });
-      } else {
-        // Handle question reordering
-        setQuestions((items) => {
-          const oldIndex = items.findIndex((item) => item.id === active.id);
-          const newIndex = items.findIndex((item) => item.id === over.id);
-
-          if (oldIndex === -1 || newIndex === -1) return items;
-
-          const newItems = arrayMove(items, oldIndex, newIndex);
-
-          // Update orderNumber based on visible items (not deleted)
-          const visibleItems = newItems.filter(q => !q.toBeDeleted);
-          return newItems.map((question) => {
-            if (question.toBeDeleted) {
-              return question; // Keep deleted items as-is
-            }
-            
-            // Update orderNumber based on visible items order
-            const visibleIndex = visibleItems.findIndex(item => item.id === question.id);
-            return {
-              ...question,
-              orderNumber: visibleIndex + 1,
-            };
-          });
+        
+        // Update orderNumber only for visible items
+        return newItems.map((passage) => {
+          if (passage.toBeDeleted) return passage;
+          const orderNum = visibleOrderMap.get(passage.id);
+          return orderNum ? { ...passage, orderNumber: orderNum } : passage;
         });
-      }
+      });
+    } else {
+      // Handle question reordering - optimized
+      const oldIndex = questionIdMap.get(active.id);
+      const newIndex = questionIdMap.get(over.id);
+      
+      if (oldIndex === undefined || newIndex === undefined) return;
+
+      setQuestions((items) => {
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        
+        // Optimized: Build order map once and reuse
+        const visibleOrderMap = new Map();
+        let orderCounter = 1;
+        newItems.forEach((item) => {
+          if (!item.toBeDeleted) {
+            visibleOrderMap.set(item.id, orderCounter++);
+          }
+        });
+        
+        // Update orderNumber only for visible items
+        return newItems.map((question) => {
+          if (question.toBeDeleted) return question;
+          const orderNum = visibleOrderMap.get(question.id);
+          return orderNum ? { ...question, orderNumber: orderNum } : question;
+        });
+      });
     }
-  }, [passages]);
+  }, [passages, questions]);
 
   // Filter questions (exclude deleted ones and apply search filter)
   const filteredQuestions = useMemo(() => {
@@ -4984,6 +5078,7 @@ const DailyChallengeContent = () => {
                       theme={theme}
                       t={t}
                       challengeType={challengeDetails?.challengeType}
+                      activeDragDimensions={activeDragDimensions}
                     />
                   ))}
 
@@ -5001,6 +5096,7 @@ const DailyChallengeContent = () => {
                       theme={theme}
                       t={t}
                       challengeType={challengeDetails?.challengeType}
+                      activeDragDimensions={activeDragDimensions}
                     />
                   ))}
                 </SortableContext>

@@ -308,7 +308,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Handle dropdown answer change
     const handleDropdownAnswerChange = useCallback((dropdownId, value) => {
-        const limitedValue = (value ?? '').slice(0, 200);
+        const limitedValue = (value ?? '').slice(0, 50);
 		setDropdowns((prev) =>
 			prev.map((dropdown) =>
 				dropdown.id === dropdownId
@@ -500,7 +500,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			input.placeholder = 'type correct answer...';
 			input.value = dropdown.correctAnswer || '';
 			input.className = 'dropdown-input';
-			input.maxLength = 200;
+			input.maxLength = 50;
 			input.style.cssText = `
 			border: none;
 			outline: none;
@@ -519,7 +519,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Character counter (hidden by default in compact mode)
 			const counter = document.createElement('span');
 			counter.className = 'dropdown-char-counter';
-			counter.textContent = `${(input.value || '').length}/200`;
+			counter.textContent = `${(input.value || '').length}/50`;
 			counter.style.cssText = `
 			font-size: 12px;
 			color: #999;
@@ -535,13 +535,13 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			let inputTimeout;
 			input.addEventListener('input', (e) => {
 				const newValueRaw = e.target.value || '';
-				const newValue = newValueRaw.slice(0, 200);
+				const newValue = newValueRaw.slice(0, 50);
 				if (newValueRaw !== newValue) {
 					e.target.value = newValue;
 				}
 				// Update answer text and counter in real-time
 				answerText.textContent = newValue || '';
-				counter.textContent = `${newValue.length}/200`;
+				counter.textContent = `${newValue.length}/50`;
 
 				// Debounce state update to reduce re-renders
 				clearTimeout(inputTimeout);
@@ -1448,7 +1448,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Change incorrect option text for a specific dropdown
 	const handleIncorrectOptionChange = (dropdownId, optionId, value) => {
-		const limitedValue = (value ?? '').slice(0, 200);
+		const limitedValue = (value ?? '').slice(0, 50);
 		setDropdowns((prev) =>
 			prev.map((dropdown) =>
 				dropdown.id === dropdownId
@@ -2806,7 +2806,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 															e.target.value
 														)
 													}
-										maxLength={200}
+										maxLength={50}
 													placeholder='Type correct option'
 													style={{
 														padding: '10px 12px',
@@ -2826,8 +2826,8 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 														whiteSpace: 'nowrap',
 													}}>
 																{`${
-																	(dropdown.correctAnswer || '').slice(0, 200).length
-																}/200`}
+																	(dropdown.correctAnswer || '').slice(0, 50).length
+																}/50`}
 												</span>
 											</div>
 										</div>
@@ -2888,7 +2888,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 																	e.target.value
 																)
 															}
-																maxLength={200}
+																maxLength={50}
 															placeholder={`Option ${optIndex + 1}`}
 															style={{
 																flex: 1,
@@ -2905,7 +2905,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 																color: '#999',
 																whiteSpace: 'nowrap',
 															}}>
-																	{`${(option.text || '').slice(0, 200).length}/200`}
+																	{`${(option.text || '').slice(0, 50).length}/50`}
 														</span>
 														<Button
 															type='text'
