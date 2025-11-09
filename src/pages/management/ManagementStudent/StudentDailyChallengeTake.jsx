@@ -6250,7 +6250,17 @@ const ReorderContainer = ({ theme, data, globalQuestionNumber }) => {
     const words = (data?.content?.data || [])
       .map(it => it.value)
       .filter(Boolean);
-    return words.length ? words : ['I','love','programming','very','much'];
+    const defaultWords = words.length ? words : ['I','love','programming','very','much'];
+    // Always shuffle words for REORDER questions
+    const shuffle = (arr) => {
+      const a = Array.isArray(arr) ? [...arr] : [];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    return shuffle(defaultWords);
   });
   const [droppedItems, setDroppedItems] = React.useState({});
   const [dragOverIndex, setDragOverIndex] = React.useState(null);
@@ -7627,6 +7637,7 @@ const StudentDailyChallengeTake = () => {
     const type = location.state?.challengeType || location.state?.type || 'GV';
     const challengeId = id; // Get challengeId from URL params
     const submissionStatusFromState = location.state?.submissionStatus || null; // Get submission status
+    const viewAnswer = !!location.state?.viewAnswer; // Check if viewing submitted answer
     
     if (!challengeId) {
       spaceToast.error('Challenge ID is missing');
@@ -7665,9 +7676,10 @@ const StudentDailyChallengeTake = () => {
         const resolvedStatusRaw = submissionMeta?.status || submissionStatusFromState || '';
         const resolvedStatus = typeof resolvedStatusRaw === 'string' ? resolvedStatusRaw.toUpperCase() : '';
         const statusRequiresViewOnly = resolvedStatus === 'SUBMITTED' || resolvedStatus === 'GRADED';
-        const effectiveViewOnly = statusRequiresViewOnly || !!isViewOnly;
+        // If viewAnswer flag is set, always enable view-only mode
+        const effectiveViewOnly = viewAnswer || statusRequiresViewOnly || !!isViewOnly;
 
-        if (statusRequiresViewOnly && !isViewOnly) {
+        if ((viewAnswer || statusRequiresViewOnly) && !isViewOnly) {
           setIsViewOnly(true);
         }
         
@@ -7820,9 +7832,11 @@ const StudentDailyChallengeTake = () => {
         
         // Determine which API to use based on submission status and challenge type
         // For WR and SP types with SUBMITTED status, use result API instead of draft API
+        // When viewAnswer flag is set, use draft API (not result API) to view submitted answer
         const shouldUseResultAPI = (resolvedStatus === 'SUBMITTED' || resolvedStatus === 'GRADED') && (type === 'WR' || type === 'SP');
         if (shouldUseResultAPI && !isViewOnly) setIsViewOnly(true);
         
+        // Always use draft API when viewAnswer flag is set (to view submitted answer)
         const apiCall = shouldUseResultAPI 
           ? dailyChallengeApi.getSubmissionResult(finalSubmissionId)
           : dailyChallengeApi.getDraftSubmission(finalSubmissionId);
@@ -8442,13 +8456,23 @@ const StudentDailyChallengeTake = () => {
     const normalizedType = (questionType === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
       : (questionType === 'REARRANGE') ? 'REORDER'
       : questionType;
-    // For FILL_BLANK, always process even if answer object is empty
+    
+    const contentData = [];
+    
+    // For FILL_BLANK and REWRITE, always process even if answer is empty
+    // For other types, if answer is empty, return minimal structure with empty content.data
     if (normalizedType !== 'FILL_BLANK' && normalizedType !== 'REWRITE') {
       if (!answer && answer !== 0 && answer !== '') {
-        return null; // Skip empty answers for other types
+        // Return minimal structure with questionId and empty content.data
+        // This ensures question ID is always sent to backend
+        return {
+          questionId: questionId,
+          content: {
+            data: []
+          }
+        };
       }
     }
-    const contentData = [];
 
     // Lookup original content items for this question to preserve IDs
     const originalItems = contentDataByQuestionIdRef.current.get(questionId) || [];
@@ -8667,10 +8691,8 @@ const StudentDailyChallengeTake = () => {
       }
     }
 
-    if (contentData.length === 0) {
-      return null; // Skip if no valid answer data
-    }
-
+    // Always return an object with questionId, even if contentData is empty
+    // This ensures question ID is always sent to backend
     return {
       questionId: questionId,
       content: {
@@ -8857,6 +8879,43 @@ const StudentDailyChallengeTake = () => {
   // Collect all answers from registered collectors
   const collectAllAnswers = () => {
     const questionAnswers = [];
+    const collectedQuestionIds = new Set();
+
+    // First, collect all question IDs from all sections
+    const allQuestionIds = new Set();
+    
+    // Collect from questions array
+    questions.forEach(q => {
+      if (q.id) allQuestionIds.add(q.id);
+    });
+    
+    // Collect from reading sections
+    readingSections.forEach(section => {
+      if (section.questions && Array.isArray(section.questions)) {
+        section.questions.forEach(q => {
+          if (q.id) allQuestionIds.add(q.id);
+        });
+      }
+    });
+    
+    // Collect from listening sections
+    listeningSections.forEach(section => {
+      if (section.questions && Array.isArray(section.questions)) {
+        section.questions.forEach(q => {
+          if (q.id) allQuestionIds.add(q.id);
+        });
+      }
+    });
+    
+    // Collect from writing sections
+    writingSections.forEach(section => {
+      if (section.id) allQuestionIds.add(section.id);
+    });
+    
+    // Collect from speaking sections
+    speakingSections.forEach(section => {
+      if (section.id) allQuestionIds.add(section.id);
+    });
 
     // Collect from all registered answer collectors
     answerCollectorsRef.current.forEach((getAnswerFn, questionId) => {
@@ -8866,20 +8925,114 @@ const StudentDailyChallengeTake = () => {
         if (answerData && typeof answerData === 'object') {
           const { answer, questionType, options } = answerData;
           
-          // Only format if answer is not null/undefined/empty
-          if (answer !== null && answer !== undefined && answer !== '') {
-            const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType, options);
-            
-            if (formattedAnswer && formattedAnswer.content && formattedAnswer.content.data && formattedAnswer.content.data.length > 0) {
-              questionAnswers.push(formattedAnswer);
-            }
+          // Format answer even if empty (to ensure question ID is sent)
+          const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType, options);
+          
+          if (formattedAnswer) {
+            // Always add formatted answer, even if content.data is empty
+            // This ensures question ID is always sent to backend
+            questionAnswers.push(formattedAnswer);
+            collectedQuestionIds.add(questionId);
           }
         }
       } catch (error) {
         console.error(`❌ [Collect Answers] Error collecting answer for question ${questionId}:`, error);
-        // On error, skip this question (don't add empty content)
       }
     });
+
+    // For questions that don't have registered collectors, create empty answers
+    allQuestionIds.forEach(questionId => {
+      if (!collectedQuestionIds.has(questionId)) {
+        // Find question data to get type and options
+        let questionData = null;
+        let questionType = null;
+        let options = null;
+        
+        // Search in questions array
+        const foundInQuestions = questions.find(q => q.id === questionId);
+        if (foundInQuestions) {
+          questionData = foundInQuestions;
+          questionType = foundInQuestions.type || foundInQuestions.questionType;
+          options = foundInQuestions.options || foundInQuestions.content?.data;
+        } else {
+          // Search in reading sections
+          for (const section of readingSections) {
+            if (section.questions) {
+              const found = section.questions.find(q => q.id === questionId);
+              if (found) {
+                questionData = found;
+                questionType = found.type || found.questionType;
+                options = found.options || found.content?.data;
+                break;
+              }
+            }
+          }
+          
+          // Search in listening sections
+          if (!questionData) {
+            for (const section of listeningSections) {
+              if (section.questions) {
+                const found = section.questions.find(q => q.id === questionId);
+                if (found) {
+                  questionData = found;
+                  questionType = found.type || found.questionType;
+                  options = found.options || found.content?.data;
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Search in writing sections
+          if (!questionData) {
+            const found = writingSections.find(s => s.id === questionId);
+            if (found) {
+              questionData = found;
+              questionType = 'WRITING';
+              options = found.content?.data;
+            }
+          }
+          
+          // Search in speaking sections
+          if (!questionData) {
+            const found = speakingSections.find(s => s.id === questionId);
+            if (found) {
+              questionData = found;
+              questionType = found.type === 'SPEAKING_WITH_AUDIO_SECTION' ? 'SPEAKING_WITH_AUDIO' : 'SPEAKING';
+              options = found.content?.data;
+            }
+          }
+        }
+        
+        // Create empty answer for this question
+        if (questionData) {
+          try {
+            const formattedAnswer = formatAnswerForAPI(questionId, null, questionType, options);
+            if (formattedAnswer) {
+              questionAnswers.push(formattedAnswer);
+            } else {
+              // If formatAnswerForAPI returns null, create minimal structure with question ID
+              questionAnswers.push({
+                questionId: questionId,
+                content: {
+                  data: []
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`❌ [Collect Answers] Error creating empty answer for question ${questionId}:`, error);
+            // Create minimal structure as fallback
+            questionAnswers.push({
+              questionId: questionId,
+              content: {
+                data: []
+              }
+            });
+          }
+        }
+      }
+    });
+
     return questionAnswers;
   };
 
