@@ -597,6 +597,25 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
     return hasNoSidebar();
   };
 
+  const getRoleDisplayName = () => {
+    switch (user?.role) {
+      case 'ADMIN':
+        return 'Admin';
+      case 'MANAGER':
+        return 'Manager';
+      case 'TEACHER':
+        return 'Teacher';
+      case 'TEACHING_ASSISTANT':
+        return 'Teaching Assistant';
+      case 'STUDENT':
+        return 'Student';
+      case 'TEST_TAKER':
+        return 'Test Taker';
+      default:
+        return 'User';
+    }
+  };
+
   return (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
@@ -1258,13 +1277,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
               {/* User Role Display */}
               <li className="themed-nav-item">
                 <span className={`user-role ${theme}-user-role`}>
-                  {user?.role === 'ADMIN' ? 'Admin' : 
-                   user?.role === 'MANAGER' ? 'Manager' : 
-                   user?.role === 'TEACHER' ? 'Teacher' :
-                   user?.role === 'TEACHING_ASSISTANT' ? 'Teaching Assistant' :
-                   user?.role === 'STUDENT' ? 'Student' :
-                   user?.role === 'TEST_TAKER' ? 'Test Taker' :  
-                   'User'}
+                  {getRoleDisplayName()}
                 </span>
               </li>
 
@@ -1320,7 +1333,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                           color: theme === 'sun' ? '#1e40af' : '#fff',
                           marginBottom: '2px'
                         }}>
-                          {profileData?.fullName || user?.fullName || user?.name || 'User'}
+                          {profileData?.fullName || user?.fullName || user?.name || getRoleDisplayName()}
                         </div>
                         <div style={{ 
                           fontSize: '12px', 
