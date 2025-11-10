@@ -59,7 +59,7 @@ const Settings = () => {
 
 	// Cursor selection state
 	const getCurrentCursor = () => {
-		return localStorage.getItem('customCursorType') || 'space'; // 'space' or 'wood'
+		return localStorage.getItem('customCursorType') || 'space'; // 'space', 'wood', 'cosmic', 'celestial'
 	};
 
 	const [selectedCursor, setSelectedCursor] = useState(getCurrentCursor());
@@ -337,6 +337,36 @@ const Settings = () => {
 											</div>
 											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
 												 {t('settings.woodCursor') || 'Wood Cursor'}
+											</Text>
+										</div>
+										<div 
+											className={`cursor-option ${selectedCursor === 'cosmic' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('cosmic')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/cosmic-pointer.png" 
+													alt="Cosmic Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.cosmicCursor') || 'Cosmic Cursor'}
+											</Text>
+										</div>
+										<div 
+											className={`cursor-option ${selectedCursor === 'celestial' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('celestial')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/celestial-pointer.png" 
+													alt="Celestial Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.celestialCursor') || 'Celestial Cursor'}
 											</Text>
 										</div>
 									</div>

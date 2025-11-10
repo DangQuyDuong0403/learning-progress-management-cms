@@ -85,6 +85,82 @@
     filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
 }
 
+/* Cosmic pointer - shown by default, hidden on hover */
+.cc-cursor-cosmic-pointer {
+    width: 32px;
+    height: 32px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-cosmic-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-cosmic-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Cosmic cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-cosmic-cursor {
+    width: 32px;
+    height: 32px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-cosmic-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-cosmic-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+/* Celestial pointer - shown by default, hidden on hover */
+.cc-cursor-celestial-pointer {
+    width: 32px;
+    height: 32px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-celestial-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-celestial-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Celestial cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-celestial-cursor {
+    width: 32px;
+    height: 32px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-celestial-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-celestial-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
 /* Hide native cursor only when the feature is active */
 body.custom-cursor-enabled {
     cursor: none !important;

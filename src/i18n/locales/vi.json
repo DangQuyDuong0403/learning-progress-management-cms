@@ -2202,6 +2202,8 @@
     "cursor": "Con trỏ",
     "woodCursor": "Con trỏ gỗ",
     "spaceCursor": "Con trỏ không gian",
+    "cosmicCursor": "Con trỏ vũ trụ",
+    "celestialCursor": "Con trỏ thiên thể",
     "selectPreferredCursor": "Chọn con trỏ ưa thích",
     "cursorChanged": "Con trỏ đã thay đổi thành công",
     "theme": "Giao diện",
