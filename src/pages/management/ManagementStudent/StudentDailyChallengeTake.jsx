@@ -25,11 +25,8 @@ import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
 import { useTestSecurity } from "../../../hooks/useTestSecurity";
 import TextTranslator from "../../../component/TextTranslator/TextTranslator";
 import CustomCursor from "../../../component/cursor/CustomCursor";
-import { 
-  getDeviceFingerprint, 
-  getSavedFingerprintHash,
-  saveFingerprintHash,
-  compareFingerprints,
+import {
+  getDeviceFingerprint,
   getIPAddress
 } from '../../../utils/fingerprintUtils';
 import { notificationApi } from '../../../apis/apis';
@@ -7563,32 +7560,15 @@ const StudentDailyChallengeTake = () => {
         : await getIPAddress().catch(() => 'unknown');
       ipAddressRef.current = detectedIp || 'unknown';
 
-      // Lấy fingerprint đã lưu (nếu có)
-      const savedFingerprint = getSavedFingerprintHash('dailyChallengeDeviceFingerprint');
-      
-      // So sánh fingerprint
-      let isDeviceMismatch = false;
-      if (savedFingerprint && savedFingerprint.hash) {
-        isDeviceMismatch = !compareFingerprints(currentHash, savedFingerprint.hash);
-        
-        // Nếu device khác, backend sẽ gửi device_mismatch qua SSE
-        if (isDeviceMismatch) {
-          console.warn('⚠️ Device fingerprint mismatch detected!');
-        }
-      } else {
-        // Lần đầu tiên, lưu fingerprint
-        saveFingerprintHash(currentHash, 'dailyChallengeDeviceFingerprint');
-      }
-
       // Tạo session start log
       const sessionStartLog = {
         eventId: 0,
         event: "SESSION_START",
         timestamp: new Date().toISOString(),
-        oldValue: savedFingerprint ? [savedFingerprint.hash] : [],
+        oldValue: [],
         newValue: [currentHash],
         durationMs: 0,
-        content: isDeviceMismatch ? "Device fingerprint mismatch detected" : "Session started",
+        content: "Session started",
         deviceFingerprint: currentHash,
         ipAddress: ipAddressRef.current
       };
