@@ -592,8 +592,8 @@ const StudentDailyChallengeList = () => {
         });
         return (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
-            <span style={{ fontSize: '17px' }}>{dateStr}</span>
-            <span style={{ fontSize: '12px', color: '#888', marginTop: 2 }}>{timeStr}</span>
+            <span style={{ fontSize: '17px', fontWeight: 600, color: '#1f2937' }}>{timeStr}</span>
+            <span style={{ fontSize: '14px', color: '#888', marginTop: 2 }}>{dateStr}</span>
           </div>
         );
       },
@@ -691,10 +691,6 @@ const StudentDailyChallengeList = () => {
             }}>
               {(typeof computedScore === 'number' ? computedScore.toFixed(1) : (parseFloat(computedScore)?.toFixed ? parseFloat(computedScore).toFixed(1) : String(computedScore)))}
               /10
-            </span>
-            <span style={{ fontSize: '12px', color: '#888', marginTop: 2 }}>
-              {(typeof record.totalWeight === 'number' ? record.totalWeight.toFixed(2) : (record.totalWeight ?? '-'))}
-              /{record.maxPossibleWeight ?? '-'}
             </span>
           </div>
         );
