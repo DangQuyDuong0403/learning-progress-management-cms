@@ -176,7 +176,7 @@ const AIGenerateReading = () => {
   ], [t, primaryColor, primaryColorWithAlpha]);
 
   // Level options constants
-  const academicLevels = [
+  const academicLevels = useMemo(() => [
     { value: 'L1', label: 'L1 - Level 1 - Elementary Grade 1' },
     { value: 'L2', label: 'L2 - Level 2 - Elementary Grade 2' },
     { value: 'L3', label: 'L3 - Level 3 - Elementary Grade 3' },
@@ -190,16 +190,16 @@ const AIGenerateReading = () => {
     { value: 'L11', label: 'L11 - Level 11 - High School Grade 11' },
     { value: 'L12', label: 'L12 - Level 12 - High School Grade 12' },
     { value: 'UNIVERSITY', label: 'University Level - Academic English for higher education' },
-  ];
+  ], []);
 
-  const cefrLevels = [
+  const cefrLevels = useMemo(() => [
     { value: 'A1', label: 'A1 - Beginner' },
     { value: 'A2', label: 'A2 - Elementary' },
     { value: 'B1', label: 'B1 - Intermediate' },
     { value: 'B2', label: 'B2 - Upper Intermediate' },
     { value: 'C1', label: 'C1 - Advanced' },
     { value: 'C2', label: 'C2 - Proficiency' },
-  ];
+  ], []);
 
   // Lesson Focus options constants
   const lessonFocusOptions = [
@@ -359,6 +359,56 @@ const AIGenerateReading = () => {
     if (id) fetchHierarchy();
     return () => { mounted = false; };
   }, [id]);
+
+  // Set default level from hierarchy when both hierarchy and systemLevels are available
+  useEffect(() => {
+    // Only set if selectedLevel is not already set (to avoid overwriting user selection)
+    if (selectedLevel) return;
+    
+    if (hierarchy?.level) {
+      const levelId = String(hierarchy.level.id || '');
+      const levelCode = hierarchy.level.levelCode || '';
+      const levelName = hierarchy.level.levelName || '';
+      
+      // Try to find in systemLevels first (by id)
+      const foundInSystem = systemLevels.find(l => l.value === levelId);
+      if (foundInSystem) {
+        setSelectedLevel(levelId);
+        setLevelType('system');
+        return;
+      }
+      
+      // Try to find in academicLevels (by value/code)
+      const foundInAcademic = academicLevels.find(l => 
+        l.value === levelCode || 
+        l.value === levelName ||
+        l.label.toLowerCase().includes(levelName.toLowerCase())
+      );
+      if (foundInAcademic) {
+        setSelectedLevel(foundInAcademic.value);
+        setLevelType('academic');
+        return;
+      }
+      
+      // Try to find in cefrLevels (by value/code)
+      const foundInCefr = cefrLevels.find(l => 
+        l.value === levelCode || 
+        l.value === levelName ||
+        l.label.toLowerCase().includes(levelName.toLowerCase())
+      );
+      if (foundInCefr) {
+        setSelectedLevel(foundInCefr.value);
+        setLevelType('cefr');
+        return;
+      }
+      
+      // If not found in any list but has levelId, assume it's a system level
+      if (levelId) {
+        setSelectedLevel(levelId);
+        setLevelType('system');
+      }
+    }
+  }, [hierarchy, systemLevels, selectedLevel, academicLevels, cefrLevels]);
 
   // Fetch Camkey levels (system levels)
   useEffect(() => {
@@ -1206,7 +1256,7 @@ const AIGenerateReading = () => {
                                       setIsLevelDropdownOpen(false);
                                       setHoveredLevelType(null);
                                     }}
-                                    style={{
+              style={{
                                       padding: '12px 16px',
                                       borderRadius: '8px',
                                       cursor: 'pointer',
@@ -1741,12 +1791,12 @@ const AIGenerateReading = () => {
                         width: '100%',
                         fontSize: '14px',
                         borderRadius: '8px',
-                        border: `2px solid ${primaryColor}99`,
-                        background: theme === 'sun'
-                          ? 'rgba(240, 249, 255, 0.5)'
-                          : 'rgba(244, 240, 255, 0.3)',
-                        outline: 'none',
-                        boxShadow: 'none',
+                border: `2px solid ${primaryColor}99`,
+                background: theme === 'sun'
+                  ? 'rgba(240, 249, 255, 0.5)'
+                  : 'rgba(244, 240, 255, 0.3)',
+                outline: 'none',
+                boxShadow: 'none',
                       }}
                     />
                   </div>
@@ -1847,14 +1897,14 @@ const AIGenerateReading = () => {
             {/* Generated passage display - Only show after generation, below Generate Passage button */}
             {passageMode === 'generate' && passage && passage.trim() && (
               <div className={`passage-ckeditor-wrapper ${theme}-passage-ckeditor-wrapper`} style={{
-                marginTop: 16,
+                  marginTop: 16,
                 borderRadius: '12px',
-                border: theme === 'sun'
-                  ? '2px solid rgba(113, 179, 253, 0.25)'
-                  : '2px solid rgba(138, 122, 255, 0.2)',
-                background: theme === 'sun'
-                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
-                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  border: theme === 'sun'
+                    ? '2px solid rgba(113, 179, 253, 0.25)'
+                    : '2px solid rgba(138, 122, 255, 0.2)',
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
                 padding: '12px',
                 overflow: 'hidden'
               }}>
@@ -1881,11 +1931,11 @@ const AIGenerateReading = () => {
                       if (mainEl) {
                         mainEl.style.minHeight = '400px';
                       }
-                    } catch (e) {
+                        } catch (e) {
                       console.error('CKEditor onReady error:', e);
-                    }
-                  }}
-                />
+                        }
+                      }}
+                    />
               </div>
             )}
               </>
