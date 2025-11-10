@@ -26,6 +26,7 @@ import { spaceToast } from "../../../../component/SpaceToastify";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
+import CustomCursor from "../../../../component/cursor/CustomCursor";
 
 const ClassMenu = () => {
   const { t } = useTranslation();
@@ -265,6 +266,7 @@ const ClassMenu = () => {
     return (
       <ThemedLayout>
         <div className={`class-menu-container ${isSunTheme ? 'light-theme' : 'dark-theme'}`}>
+          {(userRole === 'student' || userRole === 'test_taker') && <CustomCursor />}
           <LoadingWithEffect loading={true} message={t('classMenu.loadingClassInfo')} />
         </div>
       </ThemedLayout>
@@ -274,6 +276,7 @@ const ClassMenu = () => {
   return (
     <ThemedLayout>
       <div className={`class-menu-container ${isSunTheme ? 'light-theme' : 'dark-theme'}`}>
+        {(userRole === 'student' || userRole === 'test_taker') && <CustomCursor />}
         {/* Page Title */}
         <div className="page-title-container" style={{ marginBottom: '24px' }}>
           <Typography.Title 

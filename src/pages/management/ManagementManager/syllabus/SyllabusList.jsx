@@ -1256,7 +1256,7 @@ const SyllabusList = () => {
 		<Modal
 			title={
 				<div style={{ textAlign: 'center', fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)' }}>
-					{t('syllabusManagement.editSyllabus')}
+					{editingSyllabus ? t('syllabusManagement.editSyllabus') : t('syllabusManagement.addSyllabus')}
 				</div>
 			}
 			open={isModalVisible}

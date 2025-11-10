@@ -4,6 +4,13 @@
  */
 
 /**
+ * Secret key (raw string) để tăng tính bảo mật cho fingerprint hash.
+ * - Giá trị ưu tiên lấy từ biến môi trường REACT_APP_DEVICE_FINGERPRINT_SECRET
+ * - Nếu chưa cấu hình env, sử dụng fallback UID cố định (nên thay bằng giá trị riêng của bạn)
+ */
+const FINGERPRINT_SECRET_KEY =process.env.REACT_APP_DEVICE_FINGERPRINT_SECRET;
+
+/**
  * Lấy IP address từ API bên thứ ba
  * @returns {Promise<string>} IP address hoặc 'unknown' nếu không lấy được
  */
@@ -256,8 +263,6 @@ export const createFingerprintString = (fingerprint) => {
     fingerprint.ipAddress, // Thêm IP vào đầu để dễ nhận biết
     fingerprint.userAgent,
     fingerprint.platform,
-    fingerprint.language,
-    fingerprint.languages,
     fingerprint.screenWidth + 'x' + fingerprint.screenHeight,
     fingerprint.screenColorDepth,
     fingerprint.devicePixelRatio,
@@ -274,6 +279,7 @@ export const createFingerprintString = (fingerprint) => {
     fingerprint.localStorage,
     fingerprint.indexedDB,
     fingerprint.webdriver,
+    FINGERPRINT_SECRET_KEY, // Thêm secret key để khó giả mạo fingerprint
   ];
 
   return components.join('|');
@@ -314,6 +320,10 @@ export const getDeviceFingerprint = async () => {
   const fingerprint = await collectFingerprint();
   const fingerprintString = createFingerprintString(fingerprint);
   const hash = await hashFingerprint(fingerprintString);
+
+  console.log('[fingerprintUtils] fingerprint:', fingerprint);
+  console.log('[fingerprintUtils] fingerprintString:', fingerprintString);
+  console.log('[fingerprintUtils] hash:', hash);
   
   return {
     fingerprint,

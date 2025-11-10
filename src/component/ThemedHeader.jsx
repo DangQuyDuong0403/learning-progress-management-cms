@@ -597,6 +597,37 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
     return hasNoSidebar();
   };
 
+  const getRoleDisplayName = () => {
+    switch (user?.role) {
+      case 'ADMIN':
+        return 'Admin';
+      case 'MANAGER':
+        return 'Manager';
+      case 'TEACHER':
+        return 'Teacher';
+      case 'TEACHING_ASSISTANT':
+        return 'Teaching Assistant';
+      case 'STUDENT':
+        return 'Student';
+      case 'TEST_TAKER':
+        return 'Test Taker';
+      default:
+        return 'User';
+    }
+  };
+
+  // Helper function to get valid avatar URL
+  const getAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl || avatarUrl === 'string' || avatarUrl.trim() === '') {
+      return '/img/avatar_1.png';
+    }
+    // Check if it's a valid URL (starts with http://, https://, or /)
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/')) {
+      return avatarUrl;
+    }
+    return '/img/avatar_1.png';
+  };
+
   return (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
@@ -1053,9 +1084,9 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                                 style={{ cursor: notification.targetUrl ? 'pointer' : 'default' }}
                               >
                                 <div className="notification-content">
-                                  {notification.avatarUrl && (
+                                  {notification.avatarUrl && notification.avatarUrl !== 'string' && (
                                     <img 
-                                      src={notification.avatarUrl} 
+                                      src={getAvatarUrl(notification.avatarUrl)} 
                                       alt=""
                                       style={{
                                         width: '32px',
@@ -1138,9 +1169,9 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                                 style={{ cursor: notification.targetUrl ? 'pointer' : 'default' }}
                               >
                                 <div className="notification-content">
-                                  {notification.avatarUrl && (
+                                  {notification.avatarUrl && notification.avatarUrl !== 'string' && (
                                     <img 
-                                      src={notification.avatarUrl} 
+                                      src={getAvatarUrl(notification.avatarUrl)} 
                                       alt=""
                                       style={{
                                         width: '32px',
@@ -1258,13 +1289,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
               {/* User Role Display */}
               <li className="themed-nav-item">
                 <span className={`user-role ${theme}-user-role`}>
-                  {user?.role === 'ADMIN' ? 'Admin' : 
-                   user?.role === 'MANAGER' ? 'Manager' : 
-                   user?.role === 'TEACHER' ? 'Teacher' :
-                   user?.role === 'TEACHING_ASSISTANT' ? 'Teaching Assistant' :
-                   user?.role === 'STUDENT' ? 'Student' :
-                   user?.role === 'TEST_TAKER' ? 'Test Taker' :  
-                   'User'}
+                  {getRoleDisplayName()}
                 </span>
               </li>
 
@@ -1282,7 +1307,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                 >
                   <div className={`user-avatar ${theme}-user-avatar`}>
                     <img 
-                      src={profileData?.avatarUrl || "/img/avatar_1.png"} 
+                      src={getAvatarUrl(profileData?.avatarUrl)} 
                       alt="Profile" 
                       className="avatar-image"
                     />
@@ -1304,7 +1329,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                   <li style={{ padding: '16px', borderBottom: theme === 'sun' ? '1px solid rgba(30, 64, 175, 0.1)' : '1px solid rgba(77, 208, 255, 0.2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <img 
-                        src={profileData?.avatarUrl || "/img/avatar_1.png"} 
+                        src={getAvatarUrl(profileData?.avatarUrl)} 
                         alt="Profile" 
                         style={{ 
                           width: '40px', 
@@ -1320,7 +1345,7 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                           color: theme === 'sun' ? '#1e40af' : '#fff',
                           marginBottom: '2px'
                         }}>
-                          {profileData?.fullName || user?.fullName || user?.name || 'User'}
+                          {profileData?.fullName || user?.fullName || user?.name || getRoleDisplayName()}
                         </div>
                         <div style={{ 
                           fontSize: '12px', 

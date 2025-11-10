@@ -97,6 +97,34 @@ const AIGenerateQuestions = () => {
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
 
+  // Helper function to extract backend error messages
+  const getBackendMessage = useCallback((resOrErr) => {
+    try {
+      // Error object (axios error)
+      if (resOrErr?.response?.data) {
+        return (
+          resOrErr.response.data.error ||
+          resOrErr.response.data.message ||
+          resOrErr.response.data.data?.message ||
+          null
+        );
+      }
+      // Axios response (success response)
+      if (resOrErr?.data) {
+        return (
+          resOrErr.message ||
+          resOrErr.data.message ||
+          resOrErr.data.data?.message ||
+          resOrErr.data.error ||
+          null
+        );
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // State for question type configurations (list all types, default quantity 0)
   const allQuestionTypes = useMemo(() => [
     'MULTIPLE_CHOICE',
@@ -282,7 +310,7 @@ const AIGenerateQuestions = () => {
   ], [t, primaryColor, primaryColorWithAlpha]);
 
   // Level options constants
-  const academicLevels = [
+  const academicLevels = useMemo(() => [
     { value: 'L1', label: 'L1 - Level 1 - Elementary Grade 1' },
     { value: 'L2', label: 'L2 - Level 2 - Elementary Grade 2' },
     { value: 'L3', label: 'L3 - Level 3 - Elementary Grade 3' },
@@ -296,16 +324,16 @@ const AIGenerateQuestions = () => {
     { value: 'L11', label: 'L11 - Level 11 - High School Grade 11' },
     { value: 'L12', label: 'L12 - Level 12 - High School Grade 12' },
     { value: 'UNIVERSITY', label: 'University Level - Academic English for higher education' },
-  ];
+  ], []);
 
-  const cefrLevels = [
+  const cefrLevels = useMemo(() => [
     { value: 'A1', label: 'A1 - Beginner' },
     { value: 'A2', label: 'A2 - Elementary' },
     { value: 'B1', label: 'B1 - Intermediate' },
     { value: 'B2', label: 'B2 - Upper Intermediate' },
     { value: 'C1', label: 'C1 - Advanced' },
     { value: 'C2', label: 'C2 - Proficiency' },
-  ];
+  ], []);
 
   // Lesson Focus options constants
   const lessonFocusOptions = [
@@ -403,6 +431,56 @@ const AIGenerateQuestions = () => {
     if (id) fetchHierarchy();
     return () => { mounted = false; };
   }, [id]);
+
+  // Set default level from hierarchy when both hierarchy and systemLevels are available
+  useEffect(() => {
+    // Only set if selectedLevel is not already set (to avoid overwriting user selection)
+    if (selectedLevel) return;
+    
+    if (hierarchy?.level) {
+      const levelId = String(hierarchy.level.id || '');
+      const levelCode = hierarchy.level.levelCode || '';
+      const levelName = hierarchy.level.levelName || '';
+      
+      // Try to find in systemLevels first (by id)
+      const foundInSystem = systemLevels.find(l => l.value === levelId);
+      if (foundInSystem) {
+        setSelectedLevel(levelId);
+        setLevelType('system');
+        return;
+      }
+      
+      // Try to find in academicLevels (by value/code)
+      const foundInAcademic = academicLevels.find(l => 
+        l.value === levelCode || 
+        l.value === levelName ||
+        l.label.toLowerCase().includes(levelName.toLowerCase())
+      );
+      if (foundInAcademic) {
+        setSelectedLevel(foundInAcademic.value);
+        setLevelType('academic');
+        return;
+      }
+      
+      // Try to find in cefrLevels (by value/code)
+      const foundInCefr = cefrLevels.find(l => 
+        l.value === levelCode || 
+        l.value === levelName ||
+        l.label.toLowerCase().includes(levelName.toLowerCase())
+      );
+      if (foundInCefr) {
+        setSelectedLevel(foundInCefr.value);
+        setLevelType('cefr');
+        return;
+      }
+      
+      // If not found in any list but has levelId, assume it's a system level
+      if (levelId) {
+        setSelectedLevel(levelId);
+        setLevelType('system');
+      }
+    }
+  }, [hierarchy, systemLevels, selectedLevel, academicLevels, cefrLevels]);
 
   // Fetch Camkey levels (published levels) for level dropdown
   useEffect(() => {
@@ -744,12 +822,12 @@ const AIGenerateQuestions = () => {
       
     } catch (error) {
       console.error('Error generating AI questions:', error);
-      const msg = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Failed to generate AI questions';
-      spaceToast.error(msg);
+      const beErr = getBackendMessage(error);
+      spaceToast.error(beErr || error?.response?.data?.error || 'Failed to generate AI questions');
     } finally {
       setIsGenerating(false);
     }
-  }, [promptDescription, t, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList]);
+  }, [promptDescription, t, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, getBackendMessage]);
 
   // Generate questions from uploaded file + optional description
   const handleGenerateFromFile = useCallback(async () => {
@@ -779,11 +857,12 @@ const AIGenerateQuestions = () => {
       }
     } catch (err) {
       console.error('Generate from file error:', err);
-      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate from file');
+      const beErr = getBackendMessage(err);
+      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate from file');
     } finally {
       setIsGenerating(false);
     }
-  }, [uploadedFile, promptDescription, normalizeQuestionsFromAI]);
+  }, [uploadedFile, promptDescription, normalizeQuestionsFromAI, getBackendMessage]);
 
   // Handle save
   const handleSave = useCallback(async () => {
@@ -980,11 +1059,12 @@ const AIGenerateQuestions = () => {
       });
     } catch (error) {
       console.error('Error saving AI generated questions:', error);
-      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to save AI questions');
+      const beErr = getBackendMessage(error);
+      spaceToast.error(beErr || error?.response?.data?.error || 'Failed to save AI questions');
     } finally {
       setSaving(false);
     }
-  }, [id, promptDescription, questions, navigate, user, challengeInfo, t]);
+  }, [id, promptDescription, questions, navigate, user, challengeInfo, t, getBackendMessage]);
   
 
 
