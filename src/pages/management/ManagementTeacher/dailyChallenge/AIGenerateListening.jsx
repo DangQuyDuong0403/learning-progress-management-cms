@@ -94,7 +94,7 @@ const AIGenerateListening = () => {
   ], [t, primaryColor, primaryColorWithAlpha]);
 
   // Level options constants
-  const academicLevels = [
+  const academicLevels = useMemo(() => [
     { value: 'L1', label: 'L1 - Level 1 - Elementary Grade 1' },
     { value: 'L2', label: 'L2 - Level 2 - Elementary Grade 2' },
     { value: 'L3', label: 'L3 - Level 3 - Elementary Grade 3' },
@@ -108,16 +108,16 @@ const AIGenerateListening = () => {
     { value: 'L11', label: 'L11 - Level 11 - High School Grade 11' },
     { value: 'L12', label: 'L12 - Level 12 - High School Grade 12' },
     { value: 'UNIVERSITY', label: 'University Level - Academic English for higher education' },
-  ];
+  ], []);
 
-  const cefrLevels = [
+  const cefrLevels = useMemo(() => [
     { value: 'A1', label: 'A1 - Beginner' },
     { value: 'A2', label: 'A2 - Elementary' },
     { value: 'B1', label: 'B1 - Intermediate' },
     { value: 'B2', label: 'B2 - Upper Intermediate' },
     { value: 'C1', label: 'C1 - Advanced' },
     { value: 'C2', label: 'C2 - Proficiency' },
-  ];
+  ], []);
 
   // Lesson Focus options constants
   const lessonFocusOptions = [
@@ -221,6 +221,56 @@ const AIGenerateListening = () => {
     return () => { mounted = false; };
   }, [id]);
 
+  // Set default level from hierarchy when both hierarchy and systemLevels are available
+  useEffect(() => {
+    // Only set if selectedLevel is not already set (to avoid overwriting user selection)
+    if (selectedLevel) return;
+    
+    if (hierarchy?.level) {
+      const levelId = String(hierarchy.level.id || '');
+      const levelCode = hierarchy.level.levelCode || '';
+      const levelName = hierarchy.level.levelName || '';
+      
+      // Try to find in systemLevels first (by id)
+      const foundInSystem = systemLevels.find(l => l.value === levelId);
+      if (foundInSystem) {
+        setSelectedLevel(levelId);
+        setLevelType('system');
+        return;
+      }
+      
+      // Try to find in academicLevels (by value/code)
+      const foundInAcademic = academicLevels.find(l => 
+        l.value === levelCode || 
+        l.value === levelName ||
+        l.label.toLowerCase().includes(levelName.toLowerCase())
+      );
+      if (foundInAcademic) {
+        setSelectedLevel(foundInAcademic.value);
+        setLevelType('academic');
+        return;
+      }
+      
+      // Try to find in cefrLevels (by value/code)
+      const foundInCefr = cefrLevels.find(l => 
+        l.value === levelCode || 
+        l.value === levelName ||
+        l.label.toLowerCase().includes(levelName.toLowerCase())
+      );
+      if (foundInCefr) {
+        setSelectedLevel(foundInCefr.value);
+        setLevelType('cefr');
+        return;
+      }
+      
+      // If not found in any list but has levelId, assume it's a system level
+      if (levelId) {
+        setSelectedLevel(levelId);
+        setLevelType('system');
+      }
+    }
+  }, [hierarchy, systemLevels, selectedLevel, academicLevels, cefrLevels]);
+
   // Fetch Camkey levels (published levels) for level dropdown
   useEffect(() => {
     let mounted = true;
@@ -307,21 +357,6 @@ const AIGenerateListening = () => {
       }
     }).filter(Boolean).map((q, idx) => ({ ...q, id: idx + 1, title: `Question ${idx + 1}` }));
   }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchHierarchy = async () => {
-      try {
-        const res = await dailyChallengeApi.getChallengeHierarchy(id);
-        const data = res?.data?.data || res?.data || res;
-        if (mounted) setHierarchy(data || null);
-      } catch (e) {
-        if (mounted) setHierarchy(null);
-      }
-    };
-    if (id) fetchHierarchy();
-    return () => { mounted = false; };
-  }, [id]);
 
   const handleUploadAudio = useCallback(async (file) => {
     try {
@@ -599,16 +634,16 @@ const AIGenerateListening = () => {
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
                       Chapter
                   </Typography.Text>
-                    <div
-                    style={{
+              <div
+                style={{
                         width: '100%',
                         minHeight: '36px',
                         padding: '6px 12px',
                       borderRadius: '8px',
                       border: `2px solid ${theme === 'sun' ? '#d9d9d9' : '#666'}`,
                       background: theme === 'sun' ? '#f5f5f5' : 'rgba(100, 100, 100, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
                         justifyContent: 'space-between',
                         transition: 'all 0.3s ease',
                         position: 'relative',
@@ -626,7 +661,7 @@ const AIGenerateListening = () => {
                       }}>
                         {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
                       </span>
-                    </div>
+                </div>
                 </div>
 
                   {/* Lesson - Read-only */}
@@ -661,8 +696,8 @@ const AIGenerateListening = () => {
                       }}>
                         {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
                       </span>
-                    </div>
-                  </div>
+                </div>
+              </div>
                 </div>
 
                 {/* Level and Lesson Focus - Side by Side */}

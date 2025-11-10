@@ -131,6 +131,8 @@ const DailyChallengeSubmissionDetail = () => {
   
   // Other sections collapse states (default collapsed)
   const [isTeacherFeedbackCollapsed, setIsTeacherFeedbackCollapsed] = useState(false);
+  // Teacher feedback detail modal
+  const [teacherFeedbackDetailVisible, setTeacherFeedbackDetailVisible] = useState(false);
   
   const [isAntiCheatCollapsed, setIsAntiCheatCollapsed] = useState(false);
   // Anti-cheat modal controls
@@ -1465,6 +1467,14 @@ const DailyChallengeSubmissionDetail = () => {
         }));
 
         const visibleViolationCount = mappedEvents.filter(e => e.event !== 'ANSWER_CHANGE').length;
+        // Count DEVICE_MISMATCH occurrences if provided
+        const deviceMismatchCount = (logsData?.eventCounts?.DEVICE_MISMATCH) != null
+          ? (logsData.eventCounts.DEVICE_MISMATCH || 0)
+          : mappedEvents.filter(e => e.event === 'DEVICE_MISMATCH').length;
+        // Count SESSION START occurrences (api may use START or SESSION_START)
+        const sessionStartCount = (eventCounts?.START != null ? eventCounts.START : 0)
+          + (eventCounts?.SESSION_START != null ? eventCounts.SESSION_START : 0)
+          || mappedEvents.filter(e => e.event === 'START' || e.event === 'SESSION_START').length;
 
         setAntiCheatData({
           totalViolations: visibleViolationCount,
@@ -1472,6 +1482,8 @@ const DailyChallengeSubmissionDetail = () => {
           copyCount: (eventCounts.COPY_ATTEMPT || eventCounts.COPY || 0),
           pasteCount: (eventCounts.PASTE_ATTEMPT || eventCounts.PASTE || 0),
           totalTabBlurDuration: 0,
+          deviceMismatchCount,
+          sessionStartCount,
           events: mappedEvents,
         });
       } catch (e) {
@@ -1898,8 +1910,9 @@ const DailyChallengeSubmissionDetail = () => {
               const isCorrectAnswer = isMulti ? correctKeys.includes(key) : (key === correctKey || (q.type === 'TRUE_OR_FALSE' && opt === correctKey));
               const isSelected = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.includes(key)) : (studentAnswer === key || (q.type === 'TRUE_OR_FALSE' && opt === studentAnswer));
               const isSelectedWrong = isSelected && !isCorrectAnswer;
-              const isCorrectMissing = !isSelected && isCorrectAnswer && isMulti;
               const isUnanswered = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.length === 0) : (!isSelected && studentAnswer == null);
+              // MULTIPLE_SELECT: only show yellow when no option was selected at all
+              const isCorrectMissing = isMulti ? (isUnanswered && isCorrectAnswer) : false;
               
               return (
                 <div key={key} style={{
@@ -4374,7 +4387,7 @@ const DailyChallengeSubmissionDetail = () => {
                   loading={savingFeedback}
                   onClick={() => { 
                     setOverallFeedbackDraft(teacherFeedback || ''); 
-                    setFinalScoreDraft(submissionData?.submission?.score?.toString() || '');
+                    setFinalScoreDraft(submissionData?.submission?.rawScore?.toString() || '');
                     setPenaltyAppliedDraft(submissionData?.submission?.penaltyApplied?.toString() || '0');
                     setOverallFeedbackModalVisible(true); 
                   }}
@@ -4448,7 +4461,7 @@ const DailyChallengeSubmissionDetail = () => {
             style={{ 
               transition: 'all 0.3s ease',
               overflowX: 'visible',
-              overflowY: 'hidden',
+              overflowY: 'visible',
               position: 'relative'
             }}
           >
@@ -4714,12 +4727,8 @@ const DailyChallengeSubmissionDetail = () => {
                                 if (hasScore) {
                                   const finalScore = submission.score;
                                   const penaltyApplied = submission.penaltyApplied ?? 0;
-                                  if (penaltyApplied > 0) {
-                                    const penaltyPercent = Math.round(penaltyApplied * 100);
-                                    scoreDisplay = `${finalScore}d(-${penaltyPercent}%)`;
-                                  } else {
-                                    scoreDisplay = `${finalScore}d`;
-                                  }
+                                  // Display only the numeric score without unit or penalty percentage
+                                  scoreDisplay = `${finalScore}`;
                                 }
                                 
                                 const dynamicFontSize = scoreDisplay.length > 8 ? 24 : scoreDisplay.length > 5 ? 28 : 36; // prevent wrapping for long scores
@@ -4803,13 +4812,13 @@ const DailyChallengeSubmissionDetail = () => {
                                     display: 'block',
                                     marginBottom: '4px'
                                   }}>
-                                    Raw Score (Điểm gốc):
+                                    Raw Score:
                                   </Typography.Text>
                                   <Typography.Text strong style={{ 
                                     fontSize: '16px', 
                                     color: theme === 'sun' ? '#333' : '#fff'
                                   }}>
-                                    {rawScore}d
+                                    {rawScore}
                                   </Typography.Text>
                                 </div>
                                 {penaltyApplied > 0 && (
@@ -4820,7 +4829,7 @@ const DailyChallengeSubmissionDetail = () => {
                                       display: 'block',
                                       marginBottom: '4px'
                                     }}>
-                                      Penalty Applied (Tỷ lệ phạt):
+                                      Penalty Applied:
                                     </Typography.Text>
                                     <Typography.Text strong style={{ 
                                       fontSize: '16px', 
@@ -5100,10 +5109,56 @@ const DailyChallengeSubmissionDetail = () => {
                         || submissionData?.submission?.teacherFeedback 
                         || submissionData?.teacherFeedback 
                         || '';
+                      const plainText = (displayFeedback || '').replace(/<[^>]*>/g, '').trim();
+                      const isLong = plainText.length > 200;
                       return (
                         <div style={{ border: '1px solid #eee', borderRadius: '8px', padding: '16px', background: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.03)' }}>
-                          <div style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#e2e8f0' }}
-                            dangerouslySetInnerHTML={{ __html: displayFeedback || '<i>No feedback yet</i>' }} />
+                          {plainText ? (
+                            <>
+                              <div
+                                style={{
+                                  fontSize: '15px',
+                                  lineHeight: '1.8',
+                                  color: theme === 'sun' ? '#333' : '#e2e8f0',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  wordBreak: 'break-word'
+                                }}
+                              >
+                                {plainText}
+                              </div>
+                              {isLong && (
+                                <div style={{ marginTop: 12, textAlign: 'center' }}>
+                                  <Button
+                                    onClick={() => setTeacherFeedbackDetailVisible(true)}
+                                    className={`create-button ${theme}-create-button`}
+                                    style={{
+                                      height: '32px',
+                                      borderRadius: '8px',
+                                      fontWeight: 500,
+                                      fontSize: '14px',
+                                      padding: '0 18px',
+                                      border: 'none',
+                                      background: theme === 'sun'
+                                        ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                                        : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                                      color: '#000000',
+                                      boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                                    }}
+                                  >
+                                    View details
+                                  </Button>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div style={{ fontSize: '14px', color: theme === 'sun' ? '#666' : '#999', fontStyle: 'italic' }}>
+                              No feedback yet
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
@@ -5221,6 +5276,38 @@ const DailyChallengeSubmissionDetail = () => {
                               <span style={{ fontSize: '12px' }}>Paste</span>
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.pasteCount}</div>
+                          </div>
+
+                          {/* Device Mismatch Card */}
+                          <div style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: theme === 'sun' ? '#FFEDED' : 'rgba(255,77,79,0.08)',
+                            border: `1px solid ${theme === 'sun' ? 'rgba(255,77,79,0.25)' : 'rgba(255,77,79,0.25)'}`
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ff4d4f', marginBottom: '4px' }}>
+                              <CloseCircleOutlined />
+                              <span style={{ fontSize: '12px' }}>Device mismatch</span>
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.deviceMismatchCount || 0}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+                          {/* Session Start Card */}
+                          <div style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: '8px',
+                            background: theme === 'sun' ? '#E9FBF0' : 'rgba(82,196,26,0.08)',
+                            border: `1px solid ${theme === 'sun' ? 'rgba(82,196,26,0.25)' : 'rgba(82,196,26,0.25)'}`
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#52c41a', marginBottom: '4px' }}>
+                              <PlayCircleOutlined />
+                              <span style={{ fontSize: '12px' }}>Session start</span>
+                            </div>
+                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.sessionStartCount || 0}</div>
                           </div>
 
                           {/* Total Violations Card */}
@@ -5657,6 +5744,120 @@ const DailyChallengeSubmissionDetail = () => {
         </div>
       </Modal>
 
+      {/* Teacher Feedback Detail Modal */}
+      <Modal
+        title={
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '8px 0'
+            }}
+          >
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background:
+                  theme === 'sun'
+                    ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                boxShadow:
+                  theme === 'sun'
+                    ? '0 4px 10px rgba(60,153,255,0.35)'
+                    : '0 4px 10px rgba(131,119,160,0.35)'
+              }}
+            >
+              <FileTextOutlined style={{ color: '#000', fontSize: 18 }} />
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div
+                style={{
+                  fontSize: '20px',
+                  fontWeight: 700,
+                  color: theme === 'sun' ? '#1E40AF' : '#E2E8F0',
+                  marginBottom: 2
+                }}
+              >
+                Teacher Feedback
+              </div>
+            </div>
+          </div>
+        }
+        open={teacherFeedbackDetailVisible}
+        centered
+        onCancel={() => setTeacherFeedbackDetailVisible(false)}
+        width={640}
+        footer={[
+          <Button
+            key="close"
+            onClick={() => setTeacherFeedbackDetailVisible(false)}
+            style={{
+              height: '36px',
+              borderRadius: '6px',
+              fontWeight: 500,
+              padding: '0 24px',
+              border: 'none',
+              background: theme === 'sun'
+                ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              color: '#000000'
+            }}
+          >
+            Close
+          </Button>
+        ]}
+      >
+        <div
+          style={{
+            borderRadius: 12,
+            padding: 16,
+            border:
+              theme === 'sun'
+                ? '1px solid rgba(24, 144, 255, 0.25)'
+                : '1px solid rgba(139, 92, 246, 0.25)',
+            background:
+              theme === 'sun'
+                ? 'linear-gradient(180deg, rgba(102,174,255,0.08), rgba(60,153,255,0.04))'
+                : 'linear-gradient(180deg, rgba(139,92,246,0.12), rgba(96,78,196,0.06))',
+            boxShadow:
+              theme === 'sun'
+                ? '0 6px 18px rgba(60,153,255,0.15)'
+                : '0 6px 18px rgba(131,119,160,0.18)'
+          }}
+        >
+          <div
+            style={{
+              maxHeight: 380,
+              overflowY: 'auto',
+              paddingRight: 8
+            }}
+          >
+            <div
+              style={{
+                fontSize: 15,
+                lineHeight: 1.9,
+                color: theme === 'sun' ? '#0F172A' : '#E2E8F0',
+                wordBreak: 'break-word'
+              }}
+              dangerouslySetInnerHTML={{
+                __html:
+                  (teacherFeedback ||
+                    submissionData?.submission?.teacherFeedback ||
+                    submissionData?.teacherFeedback ||
+                    '<i>No feedback yet</i>')
+              }}
+            />
+          </div>
+        </div>
+      </Modal>
+
       {/* Anti-Cheat Log Modal */}
       <Modal
         title={
@@ -5700,6 +5901,8 @@ const DailyChallengeSubmissionDetail = () => {
           const totalTabSwitch = filteredEvents.filter(e => e.event === 'TAB_SWITCH' || e.event === 'TAB_BLUR').length;
           const totalCopy = filteredEvents.filter(e => e.event === 'COPY' || e.event === 'COPY_ATTEMPT').length;
           const totalPaste = filteredEvents.filter(e => e.event === 'PASTE' || e.event === 'PASTE_ATTEMPT').length;
+          const totalDeviceMismatch = filteredEvents.filter(e => e.event === 'DEVICE_MISMATCH').length;
+          const totalSessionStart = filteredEvents.filter(e => e.event === 'START' || e.event === 'SESSION_START').length;
           const totalViolations = filteredEvents.length;
 
           // Pagination
@@ -5734,6 +5937,8 @@ const DailyChallengeSubmissionDetail = () => {
               case 'PASTE':
               case 'PASTE_ATTEMPT':
                 return { icon: <FileTextOutlined />, color: '#9c27b0', label: 'Paste attempt' };
+              case 'DEVICE_MISMATCH':
+                return { icon: <CloseCircleOutlined />, color: '#ff4d4f', label: 'Device mismatch' };
               case 'ANSWER_CHANGE':
                 return { icon: <EditOutlined />, color: '#1890ff', label: 'Answer changed' };
               default:
@@ -5753,6 +5958,8 @@ const DailyChallengeSubmissionDetail = () => {
               case 'PASTE':
               case 'PASTE_ATTEMPT':
                 return 'PASTE';
+              case 'DEVICE_MISMATCH':
+                return 'DEVICE MISMATCH';
               case 'ANSWER_CHANGE':
                 return 'ANSWER CHANGE';
               default:
@@ -5778,13 +5985,27 @@ const DailyChallengeSubmissionDetail = () => {
                   border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.15)' : 'rgba(255,255,255,0.1)'}`,
                   padding: '12px'
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F5F9FF' : 'rgba(24,144,255,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.2)' : 'rgba(24,144,255,0.2)'}` }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#1e40af' : '#aab' }}>
                         <ClockCircleOutlined />
                         <span style={{ fontSize: '12px' }}>Total events</span>
                       </div>
                       <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalViolations}</div>
+                    </div>
+                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#E9FBF0' : 'rgba(82,196,26,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(82,196,26,0.25)' : 'rgba(82,196,26,0.25)'}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#52c41a' }}>
+                        <PlayCircleOutlined />
+                        <span style={{ fontSize: '12px' }}>Session starts</span>
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalSessionStart}</div>
+                    </div>
+                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#FFEDED' : 'rgba(255,77,79,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(255,77,79,0.25)' : 'rgba(255,77,79,0.25)'}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff4d4f' }}>
+                        <CloseCircleOutlined />
+                        <span style={{ fontSize: '12px' }}>Device mismatch</span>
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalDeviceMismatch}</div>
                     </div>
                     <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#FFFBEA' : 'rgba(251,140,0,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(251,140,0,0.25)' : 'rgba(251,140,0,0.25)'}` }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff9800' }}>
@@ -5813,7 +6034,7 @@ const DailyChallengeSubmissionDetail = () => {
                 {/* Right: Activity log with pagination */}
                 <div>
                   <div style={{
-                    maxHeight: 'calc(70vh - 140px)', overflowY: 'auto', overflowX: 'hidden', padding: '10px', paddingBottom: '24px', boxSizing: 'border-box',
+                    maxHeight: 'calc(70vh - 100px)', overflowY: 'auto', overflowX: 'hidden', padding: '10px', paddingBottom: '24px', boxSizing: 'border-box',
                     background: theme === 'sun' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.03)',
                     borderRadius: '12px', border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(255, 255, 255, 0.1)'}`,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
@@ -5823,7 +6044,8 @@ const DailyChallengeSubmissionDetail = () => {
                     ) : (
                       pagedEvents.map((ev, idx) => {
                         const meta = getEventMeta(ev.event);
-                        const desc = ev.content || meta.label;
+                        const stripHtml = (s) => String(s || '').replace(/<[^>]*>/g, '').trim();
+                        const desc = stripHtml(ev.content) || meta.label;
                         const questionSuffix = ev.questionId ? ` (Q${ev.questionId})` : '';
                         const isCopy = ev.event === 'COPY' || ev.event === 'COPY_ATTEMPT';
                         const isPaste = ev.event === 'PASTE' || ev.event === 'PASTE_ATTEMPT';
@@ -6047,7 +6269,7 @@ const DailyChallengeSubmissionDetail = () => {
         `}</style>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-            Raw Score (Điểm gốc)
+            Raw Score
           </label>
           <Input
             type="number"
@@ -6067,7 +6289,7 @@ const DailyChallengeSubmissionDetail = () => {
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-            Penalty Applied (Tỷ lệ phạt, 0-1)
+            Penalty Applied (0-1)
           </label>
           <Input
             type="number"

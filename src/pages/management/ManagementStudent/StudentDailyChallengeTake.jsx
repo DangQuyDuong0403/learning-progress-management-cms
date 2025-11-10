@@ -25,11 +25,9 @@ import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
 import { useTestSecurity } from "../../../hooks/useTestSecurity";
 import TextTranslator from "../../../component/TextTranslator/TextTranslator";
 import CustomCursor from "../../../component/cursor/CustomCursor";
-import { 
-  getDeviceFingerprint, 
-  getSavedFingerprintHash,
-  saveFingerprintHash,
-  compareFingerprints 
+import {
+  getDeviceFingerprint,
+  getIPAddress
 } from '../../../utils/fingerprintUtils';
 import { notificationApi } from '../../../apis/apis';
 
@@ -1855,7 +1853,6 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
-
   return (
     <>
       <style>
@@ -2888,8 +2885,6 @@ const WritingSectionItem = ({ question, index, theme }) => {
   const removeFile = (fileId) => {
     setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
   };
-
-
   return (
     <>
       <style>
@@ -3670,7 +3665,6 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   useEffect(() => {
     if (triggerAutoSave) triggerAutoSave();
   }, [triggerAutoSave, isRecording, audioUrl, uploadedFiles]);
-
   return (
     <>
       <style>
@@ -4411,7 +4405,6 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
-
   return (
     <>
       <style>
@@ -6808,8 +6801,6 @@ const RewriteContainer = ({ theme, data, globalQuestionNumber }) => {
     </div>
   );
 };
-
-
 // Fill in the Blank Container Component
 const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
@@ -7219,8 +7210,32 @@ const StudentDailyChallengeTake = () => {
 
   // Device fingerprint state
   const deviceFingerprintHashRef = useRef(null);
+  const ipAddressRef = useRef(null);
   const sseConnectionRef = useRef(null);
   const sessionStartSentRef = useRef(false); // Track if session start has been sent
+  const mismatchPollIntervalRef = useRef(null);
+  const lastMismatchPollAtRef = useRef(0);
+
+  // Track last seen DEVICE_MISMATCH count per submission to avoid repeated modal
+  const getMismatchStorageKey = useCallback((subId) => `dc_device_mismatch_count_${subId}`, []);
+  const parseMismatchCount = useCallback((message) => {
+    if (!message || typeof message !== 'string') return 0;
+    // Try to extract number inside "Cảnh báo thứ: <b>N</b>" or any standalone number
+    const htmlMatch = message.match(/Cảnh báo thứ:\s*<b>(\d+)<\/b>/i);
+    if (htmlMatch && htmlMatch[1]) return parseInt(htmlMatch[1], 10) || 0;
+    const numMatch = message.match(/Cảnh báo\s*thứ[^0-9]*?(\d+)/i) || message.match(/(\d+)/);
+    if (numMatch && numMatch[1]) return parseInt(numMatch[1], 10) || 0;
+    return 0;
+  }, []);
+  const getLastMismatchCount = useCallback((subId) => {
+    try {
+      const v = localStorage.getItem(getMismatchStorageKey(subId));
+      return v ? parseInt(v, 10) || 0 : 0;
+    } catch { return 0; }
+  }, [getMismatchStorageKey]);
+  const setLastMismatchCount = useCallback((subId, count) => {
+    try { localStorage.setItem(getMismatchStorageKey(subId), String(count || 0)); } catch {}
+  }, [getMismatchStorageKey]);
 
   const extractSubmissionList = useCallback((response) => {
     if (!response) return [];
@@ -7460,6 +7475,73 @@ const StudentDailyChallengeTake = () => {
     }
   }, []);
 
+  // Reusable: Check submission logs for DEVICE_MISMATCH events immediately
+  const checkDeviceMismatchLogs = useCallback(async () => {
+    if (!submissionId || isViewOnly) return;
+    try {
+      console.log('🔍 [Device Monitoring] Checking logs for DEVICE_MISMATCH events, submissionId:', submissionId);
+      const response = await dailyChallengeApi.getSubmissionLogs(submissionId);
+      // Extract logs from response
+      const logs = response?.data?.logs || response?.data || response || [];
+      
+      if (!Array.isArray(logs)) {
+        console.warn('⚠️ [Device Monitoring] Logs is not an array:', logs);
+        return;
+      }
+
+      console.log(`📋 [Device Monitoring] Found ${logs.length} log(s)`);
+
+      // Check for DEVICE_MISMATCH events
+      const deviceMismatchEvents = logs.filter(log => 
+        log.event === 'DEVICE_MISMATCH' || log.event === 'device_mismatch'
+      );
+
+      if (deviceMismatchEvents.length > 0) {
+        console.warn(`⚠️ [Device Monitoring] Found ${deviceMismatchEvents.length} DEVICE_MISMATCH event(s)`);
+        
+        // Get the most recent DEVICE_MISMATCH event
+        const latestEvent = deviceMismatchEvents[deviceMismatchEvents.length - 1];
+        
+        // Extract message from content
+        const warningMessage = latestEvent.content || latestEvent.message || 
+          'Đã phát hiện sử dụng thiết bị khác. Cảnh báo gian lận.';
+
+        // Only show if count increased
+        const newCount = parseMismatchCount(warningMessage);
+        const lastCount = getLastMismatchCount(submissionId);
+        const shouldShow = newCount > lastCount;
+
+        if (shouldShow) {
+          setLastMismatchCount(submissionId, newCount);
+          console.log('✅ [Device Monitoring] Setting violation warning data from logs:', {
+            type: 'device_mismatch',
+            message: warningMessage,
+            timestamp: latestEvent.timestamp || new Date().toISOString(),
+            deviceFingerprint: latestEvent.deviceFingerprint,
+            ipAddress: latestEvent.ipAddress,
+          });
+          
+          setViolationWarningData({
+            type: 'device_mismatch',
+            message: warningMessage,
+            timestamp: latestEvent.timestamp || new Date().toISOString(),
+            deviceFingerprint: latestEvent.deviceFingerprint,
+            ipAddress: latestEvent.ipAddress,
+          });
+          setViolationWarningModalVisible(true);
+          console.log('✅ [Device Monitoring] Modal visibility set to true from logs');
+        } else {
+          console.log(`ℹ️ [Device Monitoring] Mismatch count from logs (${newCount}) not increased from last (${lastCount}); skipping modal.`);
+        }
+      } else {
+        console.log('✅ [Device Monitoring] No DEVICE_MISMATCH events found in logs');
+      }
+    } catch (error) {
+      console.error('❌ [Device Monitoring] Error checking logs:', error);
+      // Don't show error to user, just log it
+    }
+  }, [submissionId, isViewOnly, parseMismatchCount, getLastMismatchCount, setLastMismatchCount]);
+
   // Send session start event with device fingerprint
   const sendSessionStartEvent = useCallback(async (submissionChallengeId) => {
     // Chỉ gửi 1 lần mỗi session
@@ -7472,35 +7554,23 @@ const StudentDailyChallengeTake = () => {
       const deviceData = await getDeviceFingerprint();
       const currentHash = deviceData.hash;
       deviceFingerprintHashRef.current = currentHash;
-
-      // Lấy fingerprint đã lưu (nếu có)
-      const savedFingerprint = getSavedFingerprintHash('dailyChallengeDeviceFingerprint');
-      
-      // So sánh fingerprint
-      let isDeviceMismatch = false;
-      if (savedFingerprint && savedFingerprint.hash) {
-        isDeviceMismatch = !compareFingerprints(currentHash, savedFingerprint.hash);
-        
-        // Nếu device khác, backend sẽ gửi device_mismatch qua SSE
-        if (isDeviceMismatch) {
-          console.warn('⚠️ Device fingerprint mismatch detected!');
-        }
-      } else {
-        // Lần đầu tiên, lưu fingerprint
-        saveFingerprintHash(currentHash, 'dailyChallengeDeviceFingerprint');
-      }
+      // Ghi nhận IP từ fingerprint (kèm fallback tự lấy IP nếu chưa có)
+      const detectedIp = deviceData?.fingerprint?.ipAddress && deviceData.fingerprint.ipAddress !== 'unknown'
+        ? deviceData.fingerprint.ipAddress
+        : await getIPAddress().catch(() => 'unknown');
+      ipAddressRef.current = detectedIp || 'unknown';
 
       // Tạo session start log
       const sessionStartLog = {
         eventId: 0,
         event: "SESSION_START",
         timestamp: new Date().toISOString(),
-        oldValue: savedFingerprint ? [savedFingerprint.hash] : [],
+        oldValue: [],
         newValue: [currentHash],
         durationMs: 0,
-        content: isDeviceMismatch ? "Device fingerprint mismatch detected" : "Session started",
+        content: "Session started",
         deviceFingerprint: currentHash,
-        // ipAddress không cần truyền theo note
+        ipAddress: ipAddressRef.current
       };
 
       // Gửi log qua API
@@ -7508,11 +7578,15 @@ const StudentDailyChallengeTake = () => {
         await dailyChallengeApi.appendAntiCheatLogs(submissionChallengeId, [sessionStartLog]);
         sessionStartSentRef.current = true;
         console.log('✅ Session start event sent with device fingerprint');
+        // Immediately check for existing mismatch logs to notify right away
+        try {
+          await checkDeviceMismatchLogs();
+        } catch {}
       }
     } catch (error) {
       console.error('❌ Error sending session start event:', error);
     }
-  }, []);
+  }, [checkDeviceMismatchLogs]);
 
   // Helper function to get clipboard content (for paste) - async
   const getClipboardContent = useCallback(async () => {
@@ -7570,7 +7644,9 @@ const StudentDailyChallengeTake = () => {
       oldValue,
       newValue,
       durationMs: logEntry.durationMs || 0,
-      content: logEntry.message || JSON.stringify(sanitizedLog)
+      content: logEntry.message || JSON.stringify(sanitizedLog),
+      deviceFingerprint: deviceFingerprintHashRef.current || null,
+      ipAddress: ipAddressRef.current || null
     };
   }, [getSelectedText, getClipboardContent]);
 
@@ -7632,7 +7708,6 @@ const StudentDailyChallengeTake = () => {
     isAntiCheatEnabled && !isViewOnly,
     handleViolation
   );
-
   useEffect(() => {
     // Get challenge type from location state
     const type = location.state?.challengeType || location.state?.type || 'GV';
@@ -8109,22 +8184,32 @@ const StudentDailyChallengeTake = () => {
             // Format SSE: data chứa {content, timestamp, deviceFingerprint, ipAddress}
             const warningData = message.data || {};
             const warningMessage = warningData.content || warningData.message || 'Phát hiện thiết bị khác. Vui lòng sử dụng thiết bị đã đăng ký.';
+
+            // Only show modal if mismatch count increases
+            const newCount = parseMismatchCount(warningMessage);
+            const lastCount = getLastMismatchCount(submissionId);
+            const shouldShow = newCount > lastCount;
             
-            console.log('✅ [Device Monitoring] Setting violation warning data:', {
-              type: 'device_mismatch',
-              message: warningMessage,
-              timestamp: warningData.timestamp || new Date().toISOString(),
-            });
-            
-            setViolationWarningData({
-              type: 'device_mismatch',
-              message: warningMessage,
-              timestamp: warningData.timestamp || new Date().toISOString(),
-              deviceFingerprint: warningData.deviceFingerprint,
-              ipAddress: warningData.ipAddress,
-            });
-            setViolationWarningModalVisible(true);
-            console.log('✅ [Device Monitoring] Modal visibility set to true');
+            if (shouldShow) {
+              setLastMismatchCount(submissionId, newCount);
+              console.log('✅ [Device Monitoring] Setting violation warning data:', {
+                type: 'device_mismatch',
+                message: warningMessage,
+                timestamp: warningData.timestamp || new Date().toISOString(),
+              });
+              
+              setViolationWarningData({
+                type: 'device_mismatch',
+                message: warningMessage,
+                timestamp: warningData.timestamp || new Date().toISOString(),
+                deviceFingerprint: warningData.deviceFingerprint,
+                ipAddress: warningData.ipAddress,
+              });
+              setViolationWarningModalVisible(true);
+              console.log('✅ [Device Monitoring] Modal visibility set to true');
+            } else {
+              console.log(`ℹ️ [Device Monitoring] Mismatch count (${newCount}) not increased from last (${lastCount}); skipping modal.`);
+            }
           } else {
             console.log(`ℹ️ [Device Monitoring] Nhận event khác: ${message.type}`);
           }
@@ -8142,6 +8227,8 @@ const StudentDailyChallengeTake = () => {
         // onConnect
         () => {
           console.log('SSE connection established for device monitoring');
+          // Check immediately in case there was an existing mismatch before SSE
+          checkDeviceMismatchLogs();
         }
       );
 
@@ -8157,77 +8244,52 @@ const StudentDailyChallengeTake = () => {
         sseConnectionRef.current = null;
       }
     };
-  }, [submissionId, isViewOnly]);
+  }, [submissionId, isViewOnly, checkDeviceMismatchLogs]);
 
-  // Check submission logs for DEVICE_MISMATCH events
+  // Initial logs check (immediate, no delay)
   useEffect(() => {
     if (!submissionId || isViewOnly || loading) return;
+    checkDeviceMismatchLogs();
+  }, [submissionId, isViewOnly, loading, checkDeviceMismatchLogs]);
 
-    const checkDeviceMismatchLogs = async () => {
-      try {
-        console.log('🔍 [Device Monitoring] Checking logs for DEVICE_MISMATCH events, submissionId:', submissionId);
-        const response = await dailyChallengeApi.getSubmissionLogs(submissionId);
-        
-        // Extract logs from response
-        const logs = response?.data?.logs || response?.data || response || [];
-        
-        if (!Array.isArray(logs)) {
-          console.warn('⚠️ [Device Monitoring] Logs is not an array:', logs);
-          return;
-        }
+  // Fallback: Periodically poll logs to ensure both devices see updated mismatch count (in case SSE misses)
+  useEffect(() => {
+    const enabled = isAntiCheatEnabled && !isViewOnly && !!submissionId;
+    if (!enabled) {
+      if (mismatchPollIntervalRef.current) {
+        clearInterval(mismatchPollIntervalRef.current);
+        mismatchPollIntervalRef.current = null;
+      }
+      return;
+    }
 
-        console.log(`📋 [Device Monitoring] Found ${logs.length} log(s)`);
+    // Immediate check on mount
+    checkDeviceMismatchLogs();
 
-        // Check for DEVICE_MISMATCH events
-        const deviceMismatchEvents = logs.filter(log => 
-          log.event === 'DEVICE_MISMATCH' || log.event === 'device_mismatch'
-        );
+    // Poll every 5 seconds, debounced to avoid overlap
+    mismatchPollIntervalRef.current = setInterval(() => {
+      const now = Date.now();
+      if (now - lastMismatchPollAtRef.current < 3000) return;
+      lastMismatchPollAtRef.current = now;
+      checkDeviceMismatchLogs();
+    }, 5000);
 
-        if (deviceMismatchEvents.length > 0) {
-          console.warn(`⚠️ [Device Monitoring] Found ${deviceMismatchEvents.length} DEVICE_MISMATCH event(s)`);
-          
-          // Get the most recent DEVICE_MISMATCH event
-          const latestEvent = deviceMismatchEvents[deviceMismatchEvents.length - 1];
-          
-          // Extract message from content
-          const warningMessage = latestEvent.content || latestEvent.message || 
-            'Đã phát hiện sử dụng thiết bị khác. Cảnh báo gian lận.';
-          
-          console.log('✅ [Device Monitoring] Setting violation warning data from logs:', {
-            type: 'device_mismatch',
-            message: warningMessage,
-            timestamp: latestEvent.timestamp || new Date().toISOString(),
-            deviceFingerprint: latestEvent.deviceFingerprint,
-            ipAddress: latestEvent.ipAddress,
-          });
-          
-          setViolationWarningData({
-            type: 'device_mismatch',
-            message: warningMessage,
-            timestamp: latestEvent.timestamp || new Date().toISOString(),
-            deviceFingerprint: latestEvent.deviceFingerprint,
-            ipAddress: latestEvent.ipAddress,
-          });
-          setViolationWarningModalVisible(true);
-          console.log('✅ [Device Monitoring] Modal visibility set to true from logs');
-        } else {
-          console.log('✅ [Device Monitoring] No DEVICE_MISMATCH events found in logs');
-        }
-      } catch (error) {
-        console.error('❌ [Device Monitoring] Error checking logs:', error);
-        // Don't show error to user, just log it
+    // Also check when tab becomes visible (user focuses back)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkDeviceMismatchLogs();
       }
     };
-
-    // Check logs after a short delay to ensure submission is ready
-    const timeoutId = setTimeout(() => {
-      checkDeviceMismatchLogs();
-    }, 1000);
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      clearTimeout(timeoutId);
+      if (mismatchPollIntervalRef.current) {
+        clearInterval(mismatchPollIntervalRef.current);
+        mismatchPollIntervalRef.current = null;
+      }
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [submissionId, isViewOnly, loading]);
+  }, [isAntiCheatEnabled, isViewOnly, submissionId, checkDeviceMismatchLogs]);
 
   // Start or update countdown based on absolute deadline
   useEffect(() => {
@@ -8258,7 +8320,6 @@ const StudentDailyChallengeTake = () => {
   };
 
   // Removed localStorage persistence to avoid breaking inputs
-
   // Debounced auto-save trigger exposed to children via context
   const autoSaveDebounceRef = useRef(null);
   const markProgressDirty = React.useCallback(() => {
@@ -8876,7 +8937,6 @@ const StudentDailyChallengeTake = () => {
       console.warn(`⚠️ Could not restore ${pendingRestorations.length} answers after ${retryCount} retries`);
     }
   };
-
   // Collect all answers from registered collectors
   const collectAllAnswers = () => {
     const questionAnswers = [];
@@ -9496,7 +9556,6 @@ const StudentDailyChallengeTake = () => {
     return [...questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
   }, [questions]);
   const questionNav = getQuestionNavigation();
-
   // Calculate global question numbers based on display order
   const globalQuestionNumbers = React.useMemo(() => {
     const questionMap = new Map();
