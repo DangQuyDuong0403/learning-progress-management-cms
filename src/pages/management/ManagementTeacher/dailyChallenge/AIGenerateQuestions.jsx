@@ -97,6 +97,34 @@ const AIGenerateQuestions = () => {
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
 
+  // Helper function to extract backend error messages
+  const getBackendMessage = useCallback((resOrErr) => {
+    try {
+      // Error object (axios error)
+      if (resOrErr?.response?.data) {
+        return (
+          resOrErr.response.data.error ||
+          resOrErr.response.data.message ||
+          resOrErr.response.data.data?.message ||
+          null
+        );
+      }
+      // Axios response (success response)
+      if (resOrErr?.data) {
+        return (
+          resOrErr.message ||
+          resOrErr.data.message ||
+          resOrErr.data.data?.message ||
+          resOrErr.data.error ||
+          null
+        );
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // State for question type configurations (list all types, default quantity 0)
   const allQuestionTypes = useMemo(() => [
     'MULTIPLE_CHOICE',
@@ -794,12 +822,12 @@ const AIGenerateQuestions = () => {
       
     } catch (error) {
       console.error('Error generating AI questions:', error);
-      const msg = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Failed to generate AI questions';
-      spaceToast.error(msg);
+      const beErr = getBackendMessage(error);
+      spaceToast.error(beErr || error?.response?.data?.error || 'Failed to generate AI questions');
     } finally {
       setIsGenerating(false);
     }
-  }, [promptDescription, t, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList]);
+  }, [promptDescription, t, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, getBackendMessage]);
 
   // Generate questions from uploaded file + optional description
   const handleGenerateFromFile = useCallback(async () => {
@@ -829,11 +857,12 @@ const AIGenerateQuestions = () => {
       }
     } catch (err) {
       console.error('Generate from file error:', err);
-      spaceToast.error(err?.response?.data?.message || err?.message || 'Failed to generate from file');
+      const beErr = getBackendMessage(err);
+      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate from file');
     } finally {
       setIsGenerating(false);
     }
-  }, [uploadedFile, promptDescription, normalizeQuestionsFromAI]);
+  }, [uploadedFile, promptDescription, normalizeQuestionsFromAI, getBackendMessage]);
 
   // Handle save
   const handleSave = useCallback(async () => {
@@ -1030,11 +1059,12 @@ const AIGenerateQuestions = () => {
       });
     } catch (error) {
       console.error('Error saving AI generated questions:', error);
-      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to save AI questions');
+      const beErr = getBackendMessage(error);
+      spaceToast.error(beErr || error?.response?.data?.error || 'Failed to save AI questions');
     } finally {
       setSaving(false);
     }
-  }, [id, promptDescription, questions, navigate, user, challengeInfo, t]);
+  }, [id, promptDescription, questions, navigate, user, challengeInfo, t, getBackendMessage]);
   
 
 

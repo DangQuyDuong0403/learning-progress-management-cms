@@ -133,6 +133,18 @@ export default function Profile() {
     setIsEditEmailModalVisible(true);
   };
 
+  // Helper function to get valid avatar URL
+  const getAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl || avatarUrl === 'string' || avatarUrl.trim() === '') {
+      return '/img/avatar_1.png';
+    }
+    // Check if it's a valid URL (starts with http://, https://, or /)
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/')) {
+      return avatarUrl;
+    }
+    return '/img/avatar_1.png';
+  };
+
   
 
   // Show TableSpinner while fetching profile data or during fade animation
@@ -196,7 +208,7 @@ export default function Profile() {
                   onClick={() => document.getElementById('avatar-upload').click()}
                 >
                   <img 
-                    src={profileData?.avatarUrl || "/img/avatar_1.png"} 
+                    src={getAvatarUrl(profileData?.avatarUrl)} 
                     alt="Profile" 
                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
                   />

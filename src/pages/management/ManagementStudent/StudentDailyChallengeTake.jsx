@@ -37,6 +37,8 @@ const AnswerCollectionContext = createContext(null);
 const AnswerRestorationContext = createContext(null);
 // Context to trigger debounced auto-save when answers change
 const AutoSaveTriggerContext = createContext(null);
+// Context to indicate view-only mode for child components
+const ViewOnlyContext = createContext(false);
 
 // Memoized HTML renderer to keep DOM stable and preserve text selection
 const MemoizedHTML = React.memo(
@@ -108,6 +110,7 @@ const processPassageContent = (content, theme, challengeType) => {
 const SectionQuestionItem = ({ question, index, theme, sectionScore, globalQuestionNumbers }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
@@ -2696,6 +2699,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const [essayText, setEssayText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [wordCount, setWordCount] = useState(0);
@@ -2767,62 +2771,122 @@ const WritingSectionItem = ({ question, index, theme }) => {
         setWritingMode('handwriting');
         return;
       }
-      if (Array.isArray(answer) && answer.length > 0) {
-        // Handle array of file URLs or objects with URL
-        const files = answer
-          .filter(Boolean)
-          .map((item, index) => {
-            let fileUrl = null;
-            let fileName = null;
-            
-            // Check if item is an object with id/value (from submittedContent.data format)
-            if (typeof item === 'object' && item !== null) {
-              // Prefer id, then value, then name
-              fileUrl = item.id || item.value || item.url || item.name;
-              fileName = item.name || item.fileName || item.filename;
-            } else if (typeof item === 'string') {
-              // Item is directly a URL string
-              fileUrl = item;
-            }
-            
-            // Extract filename from URL if not provided
-            if (!fileName && fileUrl && typeof fileUrl === 'string') {
-              try {
-                // Try to extract filename from URL
-                const urlObj = new URL(fileUrl);
-                const pathParts = urlObj.pathname.split('/');
-                fileName = pathParts[pathParts.length - 1] || `image_${index + 1}`;
-                // Remove query parameters from filename if any
-                fileName = fileName.split('?')[0];
-              } catch (e) {
-                // If URL parsing fails, use default name
-                fileName = `image_${index + 1}.png`;
-              }
-            }
-            
-            // Default filename if still not found
-            if (!fileName) {
-              fileName = `image_${index + 1}.png`;
-            }
-            
-            return {
-              id: Date.now() + Math.random() + index,
-              name: fileName,
-              size: 0,
-              type: 'image/png', // Default to image type
-              url: fileUrl // Use the URL from id/value/url property
-            };
-          })
-          .filter(file => file.url); // Only keep files with valid URLs
-        
-        if (files.length > 0) {
-          console.log(`✅ WRITING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
-          setUploadedFiles(files);
-          // Don't set writingMode to 'handwriting' - keep default mode to show upload section
-          // Files will be displayed in the "Uploaded Files" section below options
-        } else {
-          console.warn(`⚠️ WRITING: No valid files extracted from answer for question ${question?.id}:`, answer);
+    if (Array.isArray(answer) && answer.length > 0) {
+      const isLikelyFileReference = (val) => {
+        if (typeof val !== 'string') return false;
+        const trimmed = val.trim();
+        if (!trimmed) return false;
+        if (/^(https?:\/\/|blob:|data:)/i.test(trimmed)) return true;
+        // Consider simple relative paths or filenames with common extensions as files
+        if (/\.(pdf|docx?|pptx?|xlsx?|jpg|jpeg|png|gif|bmp|webp|svg|mp3|wav|m4a|aac)$/i.test(trimmed.split('?')[0])) {
+          return true;
         }
+        return false;
+      };
+
+      const normalizedEntries = answer
+        .map((item, index) => {
+          if (!item) return null;
+          if (typeof item === 'string') {
+            const trimmed = item.trim();
+            const isFile = isLikelyFileReference(trimmed);
+            return {
+              raw: item,
+              value: trimmed,
+              fileUrl: isFile ? trimmed : null,
+              fileName: null,
+              index,
+              isFile
+            };
+          }
+          if (typeof item === 'object') {
+            const value = String(item.value ?? item.text ?? item.name ?? item.id ?? '').trim();
+            const urlCandidate = item.url || item.href || item.link || item.id || value;
+            const fileName = item.name || item.fileName || item.filename || null;
+            const isFile = isLikelyFileReference(urlCandidate);
+            return {
+              raw: item,
+              value,
+              fileUrl: isFile ? urlCandidate : (item.url && isLikelyFileReference(item.url) ? item.url : null),
+              fileName,
+              index,
+              isFile
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      const fileEntries = normalizedEntries.filter(entry => entry.isFile && entry.fileUrl);
+
+      if (fileEntries.length === 0) {
+        const text = normalizedEntries
+          .map(entry => entry.value)
+          .filter(Boolean)
+          .join('\n\n')
+          .trim();
+
+        if (text) {
+          console.log(`✍️ WRITING: Restored handwriting essay for question ${question?.id}`);
+          setEssayText(text);
+          setWritingMode('handwriting');
+          setUploadedFiles([]);
+        } else {
+          console.warn(`⚠️ WRITING: Array answer contained no recognizable text or files for question ${question?.id}:`, answer);
+        }
+        return;
+      }
+
+      const files = fileEntries
+        .map((entry, idx) => {
+          const raw = entry.raw;
+          let fileUrl = entry.fileUrl;
+          if (!fileUrl && typeof raw === 'object') {
+            fileUrl = raw.url || raw.id || raw.value || null;
+          }
+          if (!fileUrl && typeof raw === 'string') {
+            fileUrl = raw;
+          }
+
+          if (!fileUrl || typeof fileUrl !== 'string') return null;
+
+          let fileName = entry.fileName;
+          if (!fileName && typeof raw === 'object') {
+            fileName = raw.name || raw.fileName || raw.filename || null;
+          }
+
+          if (!fileName) {
+            try {
+              const urlObj = new URL(fileUrl, window.location.origin);
+              const pathParts = urlObj.pathname.split('/');
+              fileName = pathParts[pathParts.length - 1] || `attachment_${idx + 1}`;
+              fileName = fileName.split('?')[0];
+            } catch (e) {
+              const segments = fileUrl.split('/');
+              fileName = segments[segments.length - 1] || `attachment_${idx + 1}`;
+            }
+          }
+
+          if (!fileName) fileName = `attachment_${idx + 1}`;
+
+          return {
+            id: Date.now() + Math.random() + idx,
+            name: fileName,
+            size: (raw && typeof raw === 'object' && raw.size) || 0,
+            type: (raw && typeof raw === 'object' && (raw.type || raw.mimeType)) || 'application/octet-stream',
+            url: fileUrl
+          };
+        })
+        .filter(Boolean);
+
+      if (files.length > 0) {
+        console.log(`✅ WRITING: Restored ${files.length} uploaded file(s) for question ${question?.id}`);
+        setUploadedFiles(files);
+        setEssayText('');
+        setWritingMode(null);
+      } else {
+        console.warn(`⚠️ WRITING: No valid files extracted from answer for question ${question?.id}:`, answer);
+      }
         return;
       }
       if (answer && typeof answer === 'object' && answer.text) {
@@ -3112,6 +3176,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                       accept="image/*"
                       multiple
                       onChange={handleFileUpload}
+                      disabled={isViewOnly}
                       style={{ display: 'none' }}
                     />
                     <label
@@ -3215,6 +3280,8 @@ const WritingSectionItem = ({ question, index, theme }) => {
                     <textarea
                       value={essayText}
                       onChange={(e) => setEssayText(e.target.value)}
+                      readOnly={isViewOnly}
+                      disabled={isViewOnly}
                       placeholder="Start writing your essay here..."
                       style={{
                         width: '100%',
@@ -3633,23 +3700,10 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
         
         if (files.length > 0) {
           console.log(`✅ SPEAKING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
-          // Check if first item is a simple string (recorded audio) or object (uploaded file)
-          const firstItem = answer[0];
-          if (typeof firstItem === 'string') {
-            // Simple string URL - likely recorded audio
-            setAudioUrl(firstItem);
-            // If there are more files, add them to uploadedFiles
-            if (files.length > 1) {
-              setUploadedFiles(files.slice(1));
-            }
-          } else if (typeof firstItem === 'object' && firstItem !== null) {
-            // Object with id/value - uploaded files from submittedContent.data format
-            // All are uploaded files, set to uploadedFiles
-            setUploadedFiles(files);
-          } else {
-            // Fallback: set all to uploadedFiles
-            setUploadedFiles(files);
-          }
+          // When answer is an array, it means uploaded files (not recorded audio)
+          // Recorded audio is saved as a single string, not an array
+          // So set all to uploadedFiles
+          setUploadedFiles(files);
         } else {
           console.warn(`⚠️ SPEAKING: No valid files extracted from answer for question ${question?.id}:`, answer);
         }
@@ -3957,7 +4011,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             )}
 
             {/* Uploaded Files */}
-            {!isViewOnly && uploadedFiles.length > 0 && (
+            {uploadedFiles.length > 0 && (
               <div style={{ marginTop: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {uploadedFiles.map((file) => (
@@ -3991,6 +4045,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                         {file.name}
                       </span>
                         </div>
+                      {!isViewOnly && (
                       <button
                         onClick={() => removeFile(file.id)}
                         style={{
@@ -4012,6 +4067,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                       >
                         ✕
                       </button>
+                      )}
                       </div>
                       {file.url && (
                         <audio 
@@ -4319,24 +4375,11 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           .filter(file => file.url); // Only keep files with valid URLs
         
         if (files.length > 0) {
-          // Check if first item is a simple string (recorded audio) or object (uploaded file)
-          const firstItem = answer[0];
-          
-          if (typeof firstItem === 'string') {
-            // Simple string URL - likely recorded audio
-            setAudioUrl(firstItem);
-            // If there are more files, add them to uploadedFiles
-            if (files.length > 1) {
-              setUploadedFiles(files.slice(1));
-            }
-          } else if (typeof firstItem === 'object' && firstItem !== null) {
-            // Object with id/value - uploaded files from submittedContent.data format
-            // All are uploaded files, set to uploadedFiles
-            setUploadedFiles(files);
-          } else {
-            // Fallback: set all to uploadedFiles
-            setUploadedFiles(files);
-          }
+          console.log(`✅ SPEAKING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
+          // When answer is an array, it means uploaded files (not recorded audio)
+          // Recorded audio is saved as a single string, not an array
+          // So set all to uploadedFiles
+          setUploadedFiles(files);
         } else {
           console.warn(`⚠️ SPEAKING: No valid files extracted from answer for question ${question?.id}:`, answer);
         }
@@ -4829,7 +4872,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             )}
 
             {/* Uploaded Files */}
-            {!isViewOnly && uploadedFiles.length > 0 && (
+            {uploadedFiles.length > 0 && (
               <div style={{ marginTop: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {uploadedFiles.map((file) => (
@@ -4863,6 +4906,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                         {file.name}
                       </span>
                         </div>
+                      {!isViewOnly && (
                       <button
                         onClick={() => removeFile(file.id)}
                         style={{
@@ -4884,6 +4928,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                       >
                         ✕
                       </button>
+                      )}
                       </div>
                       {file.url && (
                         <audio 
@@ -4921,6 +4966,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
 const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'What is the capital city of Vietnam?';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0
@@ -5047,7 +5093,7 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
             return (
               <div
                 key={idx}
-                onClick={() => setSelectedAnswer(key)}
+                onClick={() => { if (!isViewOnly) setSelectedAnswer(key); }}
                 className={`option-item ${isSelected ? 'selected-answer' : ''}`}
                 style={{
                   display: 'flex',
@@ -5074,7 +5120,7 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
                   fontWeight: '350',
                   position: 'relative',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  cursor: 'pointer',
+                  cursor: isViewOnly ? 'default' : 'pointer',
                   minHeight: '50px',
                   boxSizing: 'border-box'
                 }}
@@ -5083,12 +5129,13 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
                   type="radio" 
                   name="question-1"
                   checked={isSelected}
-                  onChange={() => setSelectedAnswer(key)}
+                  onChange={() => { if (!isViewOnly) setSelectedAnswer(key); }}
+                  disabled={isViewOnly}
                   style={{ 
                     width: '18px',
                     height: '18px',
                     accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    cursor: 'pointer'
+                    cursor: isViewOnly ? 'default' : 'pointer'
                   }} 
                 />
                 <span style={{ 
@@ -5123,6 +5170,7 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
 const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState([]);
   const questionText = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
@@ -5259,10 +5307,10 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
           ).map((opt, idx) => {
             const key = opt.key || String.fromCharCode(65 + idx);
             const isSelected = selectedAnswers.includes(key);
-            return (
+      return (
               <div
                 key={idx}
-                onClick={() => toggleAnswer(key)}
+          onClick={() => { if (!isViewOnly) toggleAnswer(key); }}
                 className={`option-item ${isSelected ? 'selected-answer' : ''}`}
                 style={{
                   display: 'flex',
@@ -5289,7 +5337,7 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
                   fontWeight: '350',
                   position: 'relative',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  cursor: 'pointer',
+            cursor: isViewOnly ? 'default' : 'pointer',
                   minHeight: '50px',
                   boxSizing: 'border-box'
                 }}
@@ -5297,12 +5345,13 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
                 <input 
                   type="checkbox" 
                   checked={isSelected}
-                  onChange={() => toggleAnswer(key)}
+            onChange={() => { if (!isViewOnly) toggleAnswer(key); }}
+            disabled={isViewOnly}
                   style={{ 
                     width: '18px',
                     height: '18px',
                     accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    cursor: 'pointer'
+              cursor: isViewOnly ? 'default' : 'pointer'
                   }} 
                 />
                 <span style={{ 
@@ -5336,6 +5385,7 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
 const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
 
@@ -5461,7 +5511,7 @@ const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
             return (
               <div
                 key={opt.key}
-                onClick={() => setSelectedAnswer(opt.key)}
+                onClick={() => { if (!isViewOnly) setSelectedAnswer(opt.key); }}
                 className={`option-item ${isSelected ? 'selected-answer' : ''}`}
                 style={{
                   display: 'flex',
@@ -5488,7 +5538,7 @@ const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
                   fontWeight: '350',
                   position: 'relative',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  cursor: 'pointer',
+                  cursor: isViewOnly ? 'default' : 'pointer',
                   minHeight: '50px',
                   boxSizing: 'border-box'
                 }}
@@ -5497,12 +5547,13 @@ const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
                   type="radio" 
                   name="question-3"
                   checked={isSelected}
-                  onChange={() => setSelectedAnswer(opt.key)}
+                  onChange={() => { if (!isViewOnly) setSelectedAnswer(opt.key); }}
+                  disabled={isViewOnly}
                   style={{ 
                     width: '18px',
                     height: '18px',
                     accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    cursor: 'pointer'
+                    cursor: isViewOnly ? 'default' : 'pointer'
                   }} 
                 />
                 <span style={{ 
@@ -5535,6 +5586,7 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
   
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
   const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
@@ -5586,6 +5638,7 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
   }, [registerAnswerRestorer, data?.id]);
 
   const handleDropdownChange = (positionId, value) => {
+    if (isViewOnly) return;
     setSelectedAnswers(prev => ({
       ...prev,
       [positionId]: value
@@ -5809,6 +5862,7 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
                   id={`select-${data?.id || 'q'}-${positionId}-${partIndex}`}
                   value={selectedAnswers[positionId] || ''}
                   onChange={(e) => handleDropdownChange(positionId, e.target.value)}
+                  disabled={isViewOnly}
                   style={{
                     display: 'inline-block',
                     minWidth: '120px',
@@ -5887,6 +5941,7 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
 const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const [droppedItems, setDroppedItems] = React.useState({});
   // Use ALL values from API (including duplicates) as draggable options; fallback to a simple list
   const [availableItems, setAvailableItems] = React.useState(() => {
@@ -5931,12 +5986,14 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
   }, [registerAnswerRestorer, data?.id, data?.content?.data]);
 
   const handleDragStart = (e, item, isDropped = false, positionId = null) => {
+    if (isViewOnly) return;
     e.dataTransfer.setData('text/plain', item);
     e.dataTransfer.setData('isDropped', isDropped);
     e.dataTransfer.setData('positionId', positionId || '');
   };
 
   const handleDrop = (e, positionId) => {
+    if (isViewOnly) return;
     e.preventDefault();
     setDragOverPosition(null);
     const item = e.dataTransfer.getData('text/plain');
@@ -5974,6 +6031,7 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
   };
 
   const handleDragStartFromDropped = (e, item, positionId) => {
+    if (isViewOnly) return;
     handleDragStart(e, item, true, positionId);
     setDroppedItems(prev => {
       const newItems = { ...prev };
@@ -6240,6 +6298,7 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
 const ReorderContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const [sourceItems, setSourceItems] = React.useState(() => {
     const words = (data?.content?.data || [])
       .map(it => it.value)
@@ -6312,12 +6371,14 @@ const ReorderContainer = ({ theme, data, globalQuestionNumber }) => {
   }, [data, sourceItems.length, droppedItems]);
 
   const handleDragStartFromSource = (e, item) => {
+    if (isViewOnly) return;
     setDraggedItem(item);
     setIsDraggingFromSource(true);
     e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragStartFromSlot = (e, index) => {
+    if (isViewOnly) return;
     const item = droppedItems[index];
     setDraggedItem(item);
     setIsDraggingFromSource(false);
@@ -6327,6 +6388,7 @@ const ReorderContainer = ({ theme, data, globalQuestionNumber }) => {
   };
 
   const handleDropOnSlot = (e, index) => {
+    if (isViewOnly) return;
     e.preventDefault();
     setWasDropped(true);
     setDragOverIndex(null);
@@ -6668,6 +6730,7 @@ const ReorderContainer = ({ theme, data, globalQuestionNumber }) => {
 const RewriteContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const [answer, setAnswer] = React.useState('');
   // Remove placeholder tokens but keep HTML formatting
   const questionText = (data?.questionText || data?.question || 'Rewrite the following sentence using different words:')
@@ -6780,6 +6843,8 @@ const RewriteContainer = ({ theme, data, globalQuestionNumber }) => {
           <textarea
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
+            readOnly={isViewOnly}
+            disabled={isViewOnly}
             placeholder="Write your rewritten sentence here..."
             rows={4}
             style={{
@@ -6805,6 +6870,7 @@ const RewriteContainer = ({ theme, data, globalQuestionNumber }) => {
 const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
   const [blankAnswers, setBlankAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Fill in the blanks';
   
@@ -6880,6 +6946,7 @@ const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
           className="paragraph-input"
           value={blankAnswers[positionId] || ''}
           onChange={(e) => {
+            if (isViewOnly) return;
             const text = e.target.value || '';
             setBlankAnswers(prev => ({
               ...prev,
@@ -6887,12 +6954,15 @@ const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
             }));
           }}
           onBlur={(e) => {
+            if (isViewOnly) return;
             const text = e.target.value || '';
             setBlankAnswers(prev => ({
               ...prev,
               [positionId]: text
             }));
           }}
+          readOnly={isViewOnly}
+          disabled={isViewOnly}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -7909,7 +7979,7 @@ const StudentDailyChallengeTake = () => {
         // Determine which API to use based on submission status and challenge type
         // For WR and SP types with SUBMITTED status, use result API instead of draft API
         // When viewAnswer flag is set, use draft API (not result API) to view submitted answer
-        const shouldUseResultAPI = (resolvedStatus === 'SUBMITTED' || resolvedStatus === 'GRADED') && (type === 'WR' || type === 'SP');
+        const shouldUseResultAPI = !viewAnswer && (resolvedStatus === 'SUBMITTED' || resolvedStatus === 'GRADED') && (type === 'WR' || type === 'SP');
         if (shouldUseResultAPI && !isViewOnly) setIsViewOnly(true);
         
         // Always use draft API when viewAnswer flag is set (to view submitted answer)
@@ -9664,6 +9734,7 @@ const StudentDailyChallengeTake = () => {
               <AnswerCollectionContext.Provider value={registerAnswerCollector}>
                 <AnswerRestorationContext.Provider value={registerAnswerRestorer}>
                 <AutoSaveTriggerContext.Provider value={markProgressDirty}>
+                <ViewOnlyContext.Provider value={isViewOnly}>
               <div className="questions-list">
                 {/* Render Reading sections when challenge type is RE */}
                 {challengeType === 'RE' && readingSections.length > 0 && (
@@ -9757,6 +9828,7 @@ const StudentDailyChallengeTake = () => {
                   ))
                 )}
               </div>
+                </ViewOnlyContext.Provider>
                 </AutoSaveTriggerContext.Provider>
                 </AnswerRestorationContext.Provider>
               </AnswerCollectionContext.Provider>
