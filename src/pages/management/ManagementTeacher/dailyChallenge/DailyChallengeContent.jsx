@@ -4044,6 +4044,16 @@ const DailyChallengeContent = () => {
 
   const handleExportData = useCallback(async () => {
     if (!id || exportLoading) return;
+    // Validate there is content to export
+    const type = challengeDetails?.challengeType;
+    const hasQuestions =
+      type === 'GV'
+        ? Array.isArray(questions) && questions.some(q => !q?.toBeDeleted)
+        : Array.isArray(passages) && passages.some(p => !p?.toBeDeleted);
+    if (!hasQuestions) {
+      spaceToast.warning('There is no content to export');
+      return;
+    }
     try {
       setExportLoading(true);
       const res = await dailyChallengeApi.exportWorksheet(id);
@@ -4070,7 +4080,7 @@ const DailyChallengeContent = () => {
     } finally {
       setExportLoading(false);
     }
-  }, [id, exportLoading]);
+  }, [id, exportLoading, challengeDetails?.challengeType, questions, passages, t]);
 
   
 

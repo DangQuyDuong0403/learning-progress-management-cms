@@ -105,6 +105,34 @@ const AIGenerateReading = () => {
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [hierarchy, setHierarchy] = useState(null);
 
+  // Helper function to extract backend error messages
+  const getBackendMessage = useCallback((resOrErr) => {
+    try {
+      // Error object (axios error)
+      if (resOrErr?.response?.data) {
+        return (
+          resOrErr.response.data.error ||
+          resOrErr.response.data.message ||
+          resOrErr.response.data.data?.message ||
+          null
+        );
+      }
+      // Axios response (success response)
+      if (resOrErr?.data) {
+        return (
+           resOrErr.message ||
+          resOrErr.data.message ||
+          resOrErr.data.data?.message ||
+          resOrErr.data.error ||
+          null
+        );
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // State for new API fields
   const [levelType, setLevelType] = useState(null); // 'system', 'academic', 'cefr'
   const [selectedLevel, setSelectedLevel] = useState(null); // Selected level value/id
@@ -464,11 +492,12 @@ const AIGenerateReading = () => {
       spaceToast.success('Passage generated');
     } catch (err) {
       console.error('Generate passage error:', err);
-      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate passage');
+      const beErr = getBackendMessage(err);
+      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate passage');
     } finally {
       setGeneratingPassage(false);
     }
-  }, [challengeInfo.challengeId, description, passagePrompt, numParagraphs, selectedLevel, lessonFocus, customLessonFocus, vocabularyList]);
+  }, [challengeInfo.challengeId, description, passagePrompt, numParagraphs, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, getBackendMessage]);
 
   // Quantity change handler
 
@@ -547,11 +576,12 @@ const AIGenerateReading = () => {
       }
     } catch (err) {
       console.error('Generate content-based questions error:', err);
-      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate questions');
+      const beErr = getBackendMessage(err);
+      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate questions');
     } finally {
       setIsGenerating(false);
     }
-  }, [challengeInfo.challengeId, passage, passagePrompt, questionTypeConfigs, t, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, description]);
+  }, [challengeInfo.challengeId, passage, passagePrompt, questionTypeConfigs, t, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, description, getBackendMessage]);
 
   // Save generated questions into a section
   const handleSave = useCallback(async () => {
@@ -666,11 +696,12 @@ const AIGenerateReading = () => {
       });
     } catch (err) {
       console.error('Save AI reading section error:', err);
-      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to save');
+      const beErr = getBackendMessage(err);
+      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to save');
     } finally {
       setSaving(false);
     }
-  }, [id, passage, passagePrompt, passageMode, questions, navigate, user, challengeInfo, t]);
+  }, [id, passage, passagePrompt, passageMode, questions, navigate, user, challengeInfo, t, getBackendMessage]);
 
   // Parse questions from uploaded file using OpenAI service
   const handleGenerateFromFile = useCallback(async () => {
@@ -700,11 +731,12 @@ const AIGenerateReading = () => {
       }
     } catch (err) {
       console.error('Generate from file error:', err);
-      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate from file');
+      const beErr = getBackendMessage(err);
+      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate from file');
     } finally {
       setIsGenerating(false);
     }
-  }, [uploadedFile, passagePrompt, normalizeQuestionsFromAI]);
+  }, [uploadedFile, passagePrompt, normalizeQuestionsFromAI, getBackendMessage]);
 
   const handleBack = useCallback(() => {
     const userRole = user?.role?.toLowerCase();

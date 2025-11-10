@@ -58,6 +58,18 @@ const getRandomAvatar = () => {
   return `/img/student_avatar/avatar${randomNumber}.png`;
 };
 
+// Helper function to get valid class avatar URL
+const getClassAvatarUrl = (avatarUrl) => {
+  if (!avatarUrl || avatarUrl === 'string' || avatarUrl.trim() === '') {
+    return '/img/student_avatar/avatar5.png';
+  }
+  // Check if it's a valid URL (starts with http://, https://, or /)
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/')) {
+    return avatarUrl;
+  }
+  return '/img/student_avatar/avatar5.png';
+};
+
 const ClassList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -171,7 +183,7 @@ const ClassList = () => {
           name: classItem.className,
           studentCount: 0, // API doesn't provide student count, set to 0
           color: getClassColor(classItem.id), // Use predefined color based on ID
-          avatar: getRandomAvatar(), // Random avatar for display
+          avatar: getClassAvatarUrl(classItem.avatarUrl), // Use avatar5.png as default if invalid
           isActive: classItem.status === 'ACTIVE',
           createdAt: classItem.createdAt ? classItem.createdAt.split('T')[0] : '-',
           syllabusName: classItem.syllabus?.syllabusName || '-',
