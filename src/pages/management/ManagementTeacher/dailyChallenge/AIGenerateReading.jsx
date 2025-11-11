@@ -1797,7 +1797,7 @@ const AIGenerateReading = () => {
                       value={vocabularyList}
                       onChange={(e) => setVocabularyList(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
-                      placeholder="newword, new word..."
+                      placeholder="new word..."
                       style={{
                         width: '100%',
                         borderRadius: '8px',
