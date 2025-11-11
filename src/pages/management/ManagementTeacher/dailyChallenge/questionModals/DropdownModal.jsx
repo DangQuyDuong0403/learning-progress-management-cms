@@ -1761,12 +1761,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						return `<img src="${src}" style="${style}" />`;
 					}
 
-					// Special handling for tables
-					if (tagName === 'table') {
-						return node.outerHTML;
-					}
-
-					// Process child nodes
+					// Process child nodes (including tables to capture dropdowns inside)
 					let innerContent = '';
 					node.childNodes.forEach((child) => {
 						innerContent += processNode(child);
@@ -1777,11 +1772,16 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						return innerContent + (tagName === 'br' ? '<br>' : '');
 					}
 
-					// Wrap with appropriate HTML tag
+					// Wrap with appropriate HTML tag (preserve table wrapper so dropdowns inside are included)
 					if (
 						innerContent ||
 						['ul', 'ol', 'li', 'h1', 'h2', 'h3'].includes(tagName)
 					) {
+						if (tagName === 'table') {
+							const styleAttr = node.getAttribute('style');
+							const styleText = styleAttr ? ` style="${styleAttr}"` : '';
+							return `<table${styleText}>${innerContent}</table>`;
+						}
 						return `<${tagName}>${innerContent}</${tagName}>`;
 					}
 
