@@ -2074,7 +2074,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
                   }}>
                     {/* Question Types - mirrored from Reading */}
                     {(() => {
-                      console.log('🟣 ListeningSectionItem - Checking DROPDOWN - q.id:', q.id, 'q.type:', q.type, 'q.questionType:', q.questionType);
+                    //  console.log('🟣 ListeningSectionItem - Checking DROPDOWN - q.id:', q.id, 'q.type:', q.type, 'q.questionType:', q.questionType);
                       return null;
                     })()}
                     {q.type === 'DROPDOWN' ? (
@@ -7488,7 +7488,6 @@ const StudentDailyChallengeTake = () => {
         console.warn('⚠️ [Device Monitoring] Logs is not an array:', logs);
         return;
       }
-
       console.log(`📋 [Device Monitoring] Found ${logs.length} log(s)`);
 
       // Check for DEVICE_MISMATCH events
@@ -7498,9 +7497,11 @@ const StudentDailyChallengeTake = () => {
 
       if (deviceMismatchEvents.length > 0) {
         console.warn(`⚠️ [Device Monitoring] Found ${deviceMismatchEvents.length} DEVICE_MISMATCH event(s)`);
+        console.log('📦 [Device Monitoring] All DEVICE_MISMATCH events data:', deviceMismatchEvents);
         
         // Get the most recent DEVICE_MISMATCH event
         const latestEvent = deviceMismatchEvents[deviceMismatchEvents.length - 1];
+        console.log('📦 [Device Monitoring] Latest DEVICE_MISMATCH event full data:', latestEvent);
         
         // Extract message from content
         const warningMessage = latestEvent.content || latestEvent.message || 
