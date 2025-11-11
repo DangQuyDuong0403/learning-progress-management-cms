@@ -1865,9 +1865,7 @@ const DailyChallengeSubmissionDetail = () => {
   // Scroll to question function
   const scrollToQuestion = (questionId) => {
     const element = questionRefs.current[questionId];
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   // Helper function to render section questions (used in Reading/Listening sections)
@@ -2361,7 +2359,7 @@ const DailyChallengeSubmissionDetail = () => {
       return { received, total };
     })();
     return (
-      <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
+      <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', contentVisibility: 'auto', containIntrinsicSize: '1000px 400px' }}>
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
@@ -2402,7 +2400,7 @@ const DailyChallengeSubmissionDetail = () => {
       return { received, total };
     })();
     return (
-      <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
+      <div key={section.id || index} className={`question-item ${theme}-question-item`} style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', contentVisibility: 'auto', containIntrinsicSize: '1000px 400px' }}>
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
@@ -5538,16 +5536,9 @@ const DailyChallengeSubmissionDetail = () => {
                                 marginBottom: '4px',
                                 cursor: 'pointer',
                                 borderRadius: '4px',
-                                transition: 'all 0.2s ease',
+                                transition: 'none',
+                                transform: 'none',
                                 fontSize: '14px'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = theme === 'sun' 
-                                  ? 'rgba(24, 144, 255, 0.1)' 
-                                  : 'rgba(138, 122, 255, 0.15)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
                               }}
                             >
                               {item.title}
@@ -5580,7 +5571,11 @@ const DailyChallengeSubmissionDetail = () => {
               </div>
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {questions.map((q, idx) => (
-                  <div key={q.id} ref={el => questionRefs.current[`gv-${q.id}`] = el}>
+                  <div
+                    key={q.id}
+                    ref={el => questionRefs.current[`gv-${q.id}`] = el}
+                    style={{ contentVisibility: 'auto', containIntrinsicSize: '800px 200px' }}
+                  >
                     {renderQuestion(q, idx)}
                   </div>
                 ))}

@@ -330,6 +330,31 @@
   border-color: #d9d9d9;
 }
 
+/* ===== Disable hover zoom/animations on question lists ===== */
+.question-sidebar-item {
+  transition: none !important;
+}
+.question-sidebar-item:hover {
+  transform: none !important;
+  background: transparent !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+.question-item {
+  transition: none !important;
+}
+.question-item:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+.sdc-option-item {
+  transition: none !important;
+}
+.sdc-option-item:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 .sdc-question-header {
   display: flex;
   justify-content: space-between;
