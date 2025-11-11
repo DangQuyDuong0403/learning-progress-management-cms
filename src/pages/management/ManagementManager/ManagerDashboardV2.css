@@ -178,4 +178,49 @@
   font-weight: 600;
 }
 
+/* Override TableSpinner size for dashboard - medium size */
+.manager-dashboard-v2 .table-spinner-container {
+  height: 400px !important;
+  min-height: 400px;
+}
+
+.manager-dashboard-v2 .table-spinner-content {
+  width: 280px !important;
+  height: 280px !important;
+}
+
+.manager-dashboard-v2 .table-earth {
+  width: 110px !important;
+  height: 110px !important;
+}
+
+.manager-dashboard-v2 .table-earth img {
+  width: 110px !important;
+  height: 110px !important;
+}
+
+.manager-dashboard-v2 .table-rocket-orbit {
+  width: 180px !important;
+  height: 180px !important;
+}
+
+.manager-dashboard-v2 .table-rocket {
+  width: 65px !important;
+  height: 65px !important;
+}
+
+.manager-dashboard-v2 .table-rocket img {
+  width: 65px !important;
+  height: 65px !important;
+}
+
+.manager-dashboard-v2 .table-loading-message {
+  bottom: -45px;
+  font-size: 16px !important;
+}
+
+.manager-dashboard-v2 .table-loading-message span {
+  font-size: 16px !important;
+}
+
 

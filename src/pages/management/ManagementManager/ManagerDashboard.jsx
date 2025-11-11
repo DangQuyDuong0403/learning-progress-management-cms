@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Row, Col, Empty, Tag } from 'antd';
+import LoadingWithEffect from '../../../component/spinner/LoadingWithEffect';
 import { 
   UserOutlined, 
   TeamOutlined, 
@@ -48,7 +49,7 @@ const ManagerDashboard = () => {
   const [classesReport, setClassesReport] = useState(null);
 
   const [activeTab, setActiveTab] = useState('overview');
-  const [tabLoading, setTabLoading] = useState(false);
+  const [tabLoading, setTabLoading] = useState(true); // Start with true to show spinner on initial load
   const [tabError, setTabError] = useState(null);
   const fetchedTabsRef = useRef({
     overview: false,
@@ -132,8 +133,14 @@ const ManagerDashboard = () => {
   };
 
   useEffect(() => {
+    // Check if we need to fetch data for the active tab
     if (!fetchedTabsRef.current[activeTab]) {
+      // Set loading immediately when switching to a tab that hasn't been fetched
+      setTabLoading(true);
       fetchTabData(activeTab);
+    } else {
+      // If tab data is already fetched, ensure loading is false
+      setTabLoading(false);
     }
   }, [activeTab]);
 
@@ -184,13 +191,14 @@ const ManagerDashboard = () => {
   const funnelData = useMemo(() => {
     if (!processedLevels.length) return [];
     // Use descending constant values to render an inverted pyramid regardless of student counts
+    // Reverse order: highest orderNumber (B1/KET) at top (largest slice), lowest (Litte Exprorers) at bottom
     const n = processedLevels.length;
-    return processedLevels.map((lv, idx) => ({
+    return [...processedLevels].reverse().map((lv, idx) => ({
       name: lv.level,
-      value: (n - idx) * 10, // constant step width
+      value: (n - idx) * 10, // constant step width - highest level gets largest value (top)
       trueValue: lv.students ?? 0,
-      color: FUNNEL_COLORS[idx % FUNNEL_COLORS.length],
-      label: `${lv.level} : ${lv.students ?? 0}`,
+      color: FUNNEL_COLORS[(n - 1 - idx) % FUNNEL_COLORS.length],
+      label: lv.level, // Remove ": number of students"
     }));
   }, [processedLevels]);
 
@@ -268,7 +276,7 @@ const ManagerDashboard = () => {
 
   const renderOverviewTab = () => {
     if (!overview) {
-      return tabLoading ? <div className="mdv2-loading">Loading...</div> : <Empty description="No overview data" />;
+      return <Empty description="No overview data" />;
     }
 
     const summary = overview.summary || {};
@@ -465,20 +473,20 @@ const ManagerDashboard = () => {
                       />
                       <Funnel
                         dataKey="value"
-                        data={(overview.levelFunnel || []).map((lv, idx, arr) => ({
+                        data={[...(overview.levelFunnel || [])].reverse().map((lv, idx, arr) => ({
                           name: lv.level,
                           value: (arr.length - idx) * 10,
                           trueValue: lv.students,
-                          color: FUNNEL_COLORS[idx % FUNNEL_COLORS.length],
-                          label: `${lv.level} : ${lv.students}`,
+                          color: FUNNEL_COLORS[(arr.length - 1 - idx) % FUNNEL_COLORS.length],
+                          label: lv.level, // Remove ": number of students"
                         }))}
                         isAnimationActive
                         stroke="#ffffff"
                         fill="#8884d8"
                         shape={RectFunnelShape}
                       >
-                        {(overview.levelFunnel || []).map((_, index) => (
-                          <Cell key={`overview-funnel-${index}`} fill={FUNNEL_COLORS[index % FUNNEL_COLORS.length]} />
+                        {[...(overview.levelFunnel || [])].reverse().map((_, index, arr) => (
+                          <Cell key={`overview-funnel-${index}`} fill={FUNNEL_COLORS[(arr.length - 1 - index) % FUNNEL_COLORS.length]} />
                         ))}
                         <LabelList
                           dataKey="label"
@@ -581,7 +589,7 @@ const ManagerDashboard = () => {
 
   const renderUsersTab = () => {
     if (!usersReport) {
-      return tabLoading ? <div className="mdv2-loading">Loading...</div> : <Empty description="No user data" />;
+      return <Empty description="No user data" />;
     }
 
     const summary = usersReport.summary || {};
@@ -707,7 +715,7 @@ const ManagerDashboard = () => {
 
   const renderSyllabusTab = () => {
     if (!syllabusReport) {
-      return tabLoading ? <div className="mdv2-loading">Loading...</div> : <Empty description="No syllabus data" />;
+      return <Empty description="No syllabus data" />;
     }
 
     const cards = [
@@ -885,7 +893,7 @@ const ManagerDashboard = () => {
                       </ResponsiveContainer>
                     </div>
                   )}
-                </Card>
+        </Card>
               </Col>
               <Col xs={24} lg={12}>
               <Card 
@@ -982,7 +990,7 @@ const ManagerDashboard = () => {
 
   const renderLevelsTab = () => {
     if (!levelReport || processedLevels.length === 0) {
-      return tabLoading ? <div className="mdv2-loading">Loading...</div> : <Empty description="No level data" />;
+      return <Empty description="No level data" />;
     }
 
     const cards = [
@@ -1036,8 +1044,8 @@ const ManagerDashboard = () => {
       <>
         {renderSummaryCards(cards)}
 
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} lg={16}>
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }} align="stretch">
+          <Col xs={24} lg={12}>
             <Card
               style={{
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
@@ -1045,14 +1053,15 @@ const ManagerDashboard = () => {
                 borderRadius: 16,
                 boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
                 paddingTop: 8,
-                minHeight: 360
+                minHeight: 420,
+                height: '100%'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Students vs classes vs teachers</div>
+                <div className="manager-dashboard-v2__title">Resource Allocation by Level</div>
               </div>
-              <div style={{ width: '100%', height: 300 }}>
+              <div style={{ width: '100%', height: 320 }}>
                 <ResponsiveContainer>
                   <ReBarChart data={levelBarData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -1068,41 +1077,50 @@ const ManagerDashboard = () => {
               </div>
             </Card>
           </Col>
-          <Col xs={24} lg={8}>
-        <Card 
-          style={{ 
-            backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+          <Col xs={24} lg={12}>
+            <Card
+              style={{
+                backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
                 border: 'none',
                 borderRadius: 16,
                 boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
                 paddingTop: 8,
-                minHeight: 360
+                minHeight: 420,
+                height: '100%'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <BarChartOutlined style={{ color: '#a855f7', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Average completion by level</div>
+                <div className="manager-dashboard-v2__title">Average completion</div>
               </div>
-              <div style={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer>
-                  <LineChart data={completionTrend} margin={{ top: 16, right: 24, left: 0, bottom: 16 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                    <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                    <ReTooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Completion']} />
-                    <Line type="monotone" dataKey="completion" stroke="#6366f1" strokeWidth={2.2} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              {completionTrend.length === 0 ? (
+                <Empty description="No completion data" />
+              ) : (
+                <div style={{ width: '100%', height: 320 }}>
+                  <ResponsiveContainer>
+                    <ReBarChart
+                      layout="vertical"
+                      data={completionTrend}
+                      margin={{ left: 40, right: 24, top: 16, bottom: 16 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={140} />
+                      <ReTooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Completion']} />
+                      <Bar dataKey="completion" radius={[0, 6, 6, 0]} fill="#22c55e" />
+                    </ReBarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </Card>
           </Col>
         </Row>
 
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={24} lg={12}>
-                <Card 
-                  style={{ 
-                backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+              <Card 
+                style={{
+                  backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
                 border: 'none',
                 borderRadius: 16,
                 boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
@@ -1111,12 +1129,9 @@ const ManagerDashboard = () => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <PieChart />
-                    </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#22c55e', fontSize: 20 }} />
                 <div className="manager-dashboard-v2__title">Students distribution by level</div>
-                    </div>
+              </div>
               <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
                   <PieChart>
@@ -1139,11 +1154,11 @@ const ManagerDashboard = () => {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-                </Card>
-              </Col>
+              </Card>
+            </Col>
           <Col xs={24} lg={12}>
-            <Card
-              style={{
+                <Card 
+                  style={{ 
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
                 border: 'none',
                 borderRadius: 16,
@@ -1155,7 +1170,7 @@ const ManagerDashboard = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <FunnelPlotOutlined style={{ color: '#a78bfa', fontSize: 20 }} />
                 <div className="manager-dashboard-v2__title">Level funnel</div>
-              </div>
+                    </div>
               <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
                   <FunnelChart>
@@ -1187,13 +1202,13 @@ const ManagerDashboard = () => {
                     </Funnel>
                   </FunnelChart>
                 </ResponsiveContainer>
-              </div>
+                    </div>
             </Card>
           </Col>
-          </Row>
+        </Row>
 
-        <Card
-          style={{
+        <Card 
+          style={{ 
             backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
             border: 'none',
             borderRadius: 16,
@@ -1236,7 +1251,7 @@ const ManagerDashboard = () => {
 
   const renderClassesTab = () => {
     if (!classesReport) {
-      return tabLoading ? <div className="mdv2-loading">Loading...</div> : <Empty description="No class data" />;
+      return <Empty description="No class data" />;
     }
 
     const summary = classesReport.summary || {};
@@ -1296,23 +1311,24 @@ const ManagerDashboard = () => {
       <>
         {renderSummaryCards(cards)}
 
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} lg={16}>
-            <Card
-              style={{
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }} align="stretch">
+          <Col xs={24} lg={12}>
+                <Card 
+                  style={{ 
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
                 border: 'none',
                 borderRadius: 16,
                 boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
                 paddingTop: 8,
-                minHeight: 360
+                minHeight: 420,
+                height: '100%'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <HomeOutlined style={{ color: '#6366f1', fontSize: 20 }} />
                 <div className="manager-dashboard-v2__title">Student count by class</div>
-              </div>
-              <div style={{ width: '100%', height: 320 }}>
+                    </div>
+              <div style={{ width: '100%', height: 360 }}>
                 <ResponsiveContainer>
                   <ReBarChart data={barData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -1322,10 +1338,10 @@ const ManagerDashboard = () => {
                     <Bar dataKey="students" fill="#6366f1" radius={[6, 6, 0, 0]} />
                   </ReBarChart>
                 </ResponsiveContainer>
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} lg={8}>
+                    </div>
+                </Card>
+              </Col>
+          <Col xs={24} lg={12}>
             <Card
               style={{
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
@@ -1333,14 +1349,15 @@ const ManagerDashboard = () => {
                 borderRadius: 16,
                 boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
                 paddingTop: 8,
-                minHeight: 360
+                minHeight: 420,
+                height: '100%'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#22c55e', fontSize: 20 }} />
                 <div className="manager-dashboard-v2__title">Student share by class</div>
               </div>
-              <div style={{ width: '100%', height: 320 }}>
+              <div style={{ width: '100%', height: 360 }}>
                 <ResponsiveContainer>
                   <PieChart>
                     <Pie
@@ -1364,10 +1381,10 @@ const ManagerDashboard = () => {
               </div>
             </Card>
           </Col>
-        </Row>
+          </Row>
 
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} lg={16}>
+          <Col xs={24}>
             <Card
               style={{
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
@@ -1375,14 +1392,14 @@ const ManagerDashboard = () => {
                 borderRadius: 16,
                 boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
                 paddingTop: 8,
-                minHeight: 360
+                minHeight: 400
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <BarChartOutlined style={{ color: '#f97316', fontSize: 20 }} />
                 <div className="manager-dashboard-v2__title">Scale vs quality</div>
               </div>
-              <div style={{ width: '100%', height: 320 }}>
+              <div style={{ width: '100%', height: 360 }}>
                 <ResponsiveContainer>
                   <ComposedChart data={comboData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -1396,7 +1413,7 @@ const ManagerDashboard = () => {
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
-            </Card>
+        </Card>
           </Col>
         </Row>
 
@@ -1479,13 +1496,9 @@ const ManagerDashboard = () => {
             </div>
           )}
 
-          {tabLoading && (
-            <div className="mdv2-loading" style={{ marginBottom: 16 }}>
-              Loading...
-            </div>
-          )}
-
-          {renderTabContent()}
+          <LoadingWithEffect loading={tabLoading} message="Loading...">
+            {renderTabContent()}
+          </LoadingWithEffect>
         </div>
       </div>
     </ThemedLayout>
