@@ -49,6 +49,24 @@ import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import { useSelector } from 'react-redux';
 
+const stripHtmlSimple = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const escapeHtmlSimple = (value) => {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 const DailyChallengeSubmissionDetail = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -2060,38 +2078,103 @@ const DailyChallengeSubmissionDetail = () => {
       const studentAnswerObj = studentAnswers?.[q.id] || {};
       
       const renderDropdownForSection = () => {
-        const parts = [];
         const regex = /\[\[pos_(.*?)\]\]/g;
-        let last = 0;
-        let match;
-        let idx = 0;
-        
-        while ((match = regex.exec(questionText)) !== null) {
-          if (match.index > last) {
-            parts.push(<span key={`text_${idx}`} className="question-text-content" dangerouslySetInnerHTML={{ __html: questionText.slice(last, match.index) }} />);
+        let slotCounter = 0;
+        const baseStyles = [
+          'display:inline-block',
+          'min-width:120px',
+          'max-width:200px',
+          'min-height:32px',
+          'padding:4px 12px',
+          'margin:0 8px',
+          'border-radius:8px',
+          'box-sizing:border-box',
+          'text-align:center',
+          'vertical-align:middle',
+          'line-height:1.4',
+          'font-size:14px',
+          'font-weight:600'
+        ].join(';');
+
+        const hasPositionIds = contentData.some(item => {
+          const pos = String(item?.positionId ?? '');
+          return pos.length > 0;
+        });
+
+        const groupKeyFromId = (id) => {
+          if (!id || typeof id !== 'string') return id;
+          const match = id.match(/^([^_]+?\d+)/);
+          return (match && match[1]) || id.split('_')[0] || id;
+        };
+
+        const extractNumber = (key) => {
+          if (!key) return 0;
+          const match = key.match(/(\d+)$/);
+          return match ? parseInt(match[1], 10) : 0;
+        };
+
+        const groupKeysInOrder = (() => {
+          if (hasPositionIds) return [];
+          const seen = new Set();
+          const order = [];
+          contentData.forEach((item, idx) => {
+            if (!item || !item.id) return;
+            const key = groupKeyFromId(item.id);
+            if (key && !seen.has(key)) {
+              seen.add(key);
+              order.push({ key, idx });
+            }
+          });
+          order.sort((a, b) => {
+            const numA = extractNumber(a.key);
+            const numB = extractNumber(b.key);
+            if (numA !== numB) return numA - numB;
+            return a.idx - b.idx;
+          });
+          return order.map(entry => entry.key);
+        })();
+
+        const getOptionsForSlot = (slotIndex, rawToken) => {
+          if (hasPositionIds) {
+            return contentData.filter(opt => {
+              const optPosId = String(opt.positionId || '');
+              return optPosId === `pos_${rawToken}` || optPosId === rawToken;
+            });
           }
-          const positionId = `pos_${match[1]}`;
-          const rawPositionId = match[1]; // Without "pos_" prefix
-          
-          const optionsForPosition = contentData.filter(opt => {
-            const optPosId = String(opt.positionId || '');
-            return optPosId === positionId || optPosId === rawPositionId;
-          }) || [];
-          
-          const correctItem = optionsForPosition.find(it => it.correct) || 
-                             (optionsForPosition.length > 0 ? optionsForPosition[0] : null);
-          const correctAnswer = correctItem?.value || '';
-          
-          // Get student answer - check multiple possible keys
-          const studentAnswer = studentAnswerObj[positionId] || 
-                              studentAnswerObj[rawPositionId] || 
-                              studentAnswerObj[match[1]] || 
-                              '';
-          
-          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
-          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
-          const displayedValue = isUnanswered ? correctAnswer : studentAnswer;
-          const optionValues = optionsForPosition.map(it => it.value).filter(Boolean);
+          const groupKey = groupKeysInOrder[slotIndex];
+          if (!groupKey) return contentData;
+          return contentData.filter(opt => groupKeyFromId(opt?.id) === groupKey);
+        };
+
+        return String(questionText || '').replace(regex, (_match, rawId) => {
+          const slotIndex = slotCounter++;
+          const positionId = `pos_${rawId}`;
+          const rawPositionId = rawId;
+          const optionsForPosition = getOptionsForSlot(slotIndex, rawId);
+
+          const correctItem =
+            optionsForPosition.find(it => it.correct) ||
+            (optionsForPosition.length > 0 ? optionsForPosition[0] : null);
+          const correctAnswerText = stripHtmlSimple(correctItem?.value || '');
+
+          const optionValues = optionsForPosition
+            .map(it => stripHtmlSimple(it?.value || ''))
+            .filter(Boolean);
+
+          const studentAnswerRaw =
+            studentAnswerObj[positionId] ||
+            studentAnswerObj[rawPositionId] ||
+            studentAnswerObj[rawId] ||
+            '';
+          const studentAnswerText = stripHtmlSimple(studentAnswerRaw);
+
+          const isCorrect =
+            correctAnswerText &&
+            studentAnswerText &&
+            studentAnswerText.toLowerCase() === correctAnswerText.toLowerCase();
+          const isUnanswered = !studentAnswerText;
+          const displayValue = isUnanswered ? (correctAnswerText || '—') : studentAnswerText;
+
           const ddBg = isCorrect
             ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
             : isUnanswered
@@ -2099,31 +2182,42 @@ const DailyChallengeSubmissionDetail = () => {
               : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
           const ddBorder = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
           const ddColor = isUnanswered ? '#faad14' : (isCorrect ? '#52c41a' : '#ff4d4f');
-          
-          parts.push(
-            <select key={`dd_${q.id}_${idx++}`} value={displayedValue || ''} disabled style={{ display: 'inline-block', minWidth: '120px', height: '32px', padding: '4px 12px', margin: '0 8px', background: ddBg, border: `2px solid ${ddBorder}`, borderRadius: '8px', fontSize: '14px', fontWeight: 600, color: ddColor, cursor: 'not-allowed', outline: 'none', verticalAlign: 'middle', textAlign: 'center', textAlignLast: 'center' }}>
-              <option value="" disabled hidden style={{ textAlign: 'center' }}>Select</option>
-              {optionValues.map((opt, optIdx) => (
-                <option key={optIdx} value={opt}>{opt}</option>
-              ))}
-            </select>
-          );
-          
-          // Only show side correct answer when answered wrong. For unanswered, we put it inside the select.
-          if (!isCorrect && correctAnswer && !isUnanswered) {
-            parts.push(
-              <span key={`answer_${idx++}`} style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
-                {correctAnswer}
-              </span>
-            );
+
+          let replacement = `<span style="${baseStyles};background:${ddBg};border:2px solid ${ddBorder};color:${ddColor};">${escapeHtmlSimple(displayValue)}</span>`;
+
+          if (!isCorrect && !isUnanswered && correctAnswerText) {
+            const extraStyle = [
+              'font-size:15px',
+              'color:#52c41a',
+              'font-weight:600',
+              'white-space:nowrap',
+              'margin-left:8px',
+              'margin-right:8px',
+              'display:inline-block'
+            ].join(';');
+            replacement += `<span style="${extraStyle}">${escapeHtmlSimple(correctAnswerText)}</span>`;
           }
-          last = match.index + match[0].length;
-        }
-        if (last < questionText.length) {
-          parts.push(<span key={`text_final_${idx}`} className="question-text-content" dangerouslySetInnerHTML={{ __html: questionText.slice(last) }} />);
-        }
-        return parts;
+
+          if (optionValues.length) {
+            const listStyle = [
+              'display:inline-flex',
+              'gap:4px',
+              'margin-left:8px',
+              'font-size:12px',
+              'color:#999999',
+              'vertical-align:middle'
+            ].join(';');
+            const optionsHtml = optionValues
+              .map(opt => `<span style="padding:2px 6px;border:1px solid rgba(0,0,0,0.15);border-radius:4px;display:inline-block;">${escapeHtmlSimple(opt)}</span>`)
+              .join('');
+            replacement += `<span style="${listStyle}">${optionsHtml}</span>`;
+          }
+
+          return replacement;
+        });
       };
+
+      const dropdownHtml = renderDropdownForSection();
 
       return (
         <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
@@ -2133,7 +2227,10 @@ const DailyChallengeSubmissionDetail = () => {
               {(q.receivedScore || 0)} / {(q.points || 0)} points
             </span>
           </div>
-          <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>{renderDropdownForSection()}</div>
+          <div
+            style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}
+            dangerouslySetInnerHTML={{ __html: dropdownHtml }}
+          />
         </div>
       );
     }
@@ -2142,20 +2239,73 @@ const DailyChallengeSubmissionDetail = () => {
     if (q.type === 'DRAG_AND_DROP') {
       const contentData = q.content?.data || [];
       const studentAnswerObj = studentAnswers?.[q.id] || {};
-      const text = questionText;
-      const parts = [];
       const regex = /\[\[pos_(.*?)\]\]/g;
-      let last = 0;
-      let match;
-      let idx = 0;
-      
-      while ((match = regex.exec(text)) !== null) {
-        if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) });
-        const posId = match[1];
-        parts.push({ type: 'position', positionId: `pos_${posId}`, index: idx++ });
-        last = match.index + match[0].length;
-      }
-      if (last < text.length) parts.push({ type: 'text', content: text.slice(last) });
+      const baseStyles = [
+        'display:inline-block',
+        'min-width:120px',
+        'max-width:200px',
+        'min-height:32px',
+        'padding:4px 12px',
+        'margin:0 8px',
+        'border-radius:8px',
+        'box-sizing:border-box',
+        'text-align:center',
+        'vertical-align:middle',
+        'line-height:1.4',
+        'font-size:15px',
+        'font-weight:350'
+      ].join(';');
+
+      const dragHtml = String(questionText || '').replace(regex, (_match, rawId) => {
+        const positionId = `pos_${rawId}`;
+        const rawPositionId = rawId;
+
+        const correctItem = contentData.find(item => {
+          const itemPosId = String(item.positionId || '');
+          return itemPosId === positionId || itemPosId === rawPositionId;
+        });
+
+        const correctAnswerText = stripHtmlSimple(correctItem?.value || '');
+
+        const studentAnswerRaw =
+          studentAnswerObj[positionId] ||
+          studentAnswerObj[rawPositionId] ||
+          studentAnswerObj[rawId] ||
+          '';
+        const studentAnswerText = stripHtmlSimple(studentAnswerRaw);
+
+        const isCorrect =
+          correctAnswerText &&
+          studentAnswerText &&
+          studentAnswerText.toLowerCase() === correctAnswerText.toLowerCase();
+        const isUnanswered = !studentAnswerText;
+        const displayValue = isUnanswered ? (correctAnswerText || '—') : studentAnswerText;
+
+        const bgColor = isCorrect
+          ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+          : isUnanswered
+            ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+            : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+        const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+        const textColor = isCorrect ? '#52c41a' : (isUnanswered ? '#faad14' : '#ff4d4f');
+
+        let replacement = `<span style="${baseStyles};background:${bgColor};border:2px solid ${borderColor};color:${textColor};">${escapeHtmlSimple(displayValue)}</span>`;
+
+        if (!isCorrect && !isUnanswered && correctAnswerText) {
+          const extraStyle = [
+            'font-size:15px',
+            'color:#52c41a',
+            'font-weight:600',
+            'white-space:nowrap',
+            'margin-left:8px',
+            'margin-right:8px',
+            'display:inline-block'
+          ].join(';');
+          replacement += `<span style="${extraStyle}">${escapeHtmlSimple(correctAnswerText)}</span>`;
+        }
+
+        return replacement;
+      });
 
       return (
         <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
@@ -2167,56 +2317,10 @@ const DailyChallengeSubmissionDetail = () => {
           </div>
           <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
             <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
-              <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                {parts.map((part, pIdx) => {
-                  if (part.type === 'text') {
-                    return <span key={pIdx} dangerouslySetInnerHTML={{ __html: part.content || '' }} />;
-                  }
-                  
-                  // Extract raw positionId from part.positionId (e.g., "pos_dqn1x8" -> "dqn1x8")
-                  const rawPositionId = part.positionId.replace(/^pos_/, '');
-                  
-                  // Get student answer - check multiple possible keys
-                  const studentAnswer = studentAnswerObj[part.positionId] || 
-                                      studentAnswerObj[rawPositionId] || 
-                                      '';
-                  
-                  // Find correct item - check both with and without "pos_" prefix
-                  let correctItem = contentData.find(item => {
-                    const itemPosId = String(item.positionId || '');
-                    return (itemPosId === part.positionId || itemPosId === rawPositionId) && item.correct;
-                  });
-                  
-                  // Fallback: if no correct item found, try to find any item with matching positionId
-                  if (!correctItem) {
-                    correctItem = contentData.find(item => {
-                      const itemPosId = String(item.positionId || '');
-                      return itemPosId === part.positionId || itemPosId === rawPositionId;
-                    });
-                  }
-                  
-                  const correctAnswer = correctItem?.value || '';
-                  const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
-                  
-                  return (
-                    <React.Fragment key={pIdx}>
-                      {studentAnswer ? (
-                        <>
-                          <div style={{ minWidth: '120px', minHeight: '32px', maxWidth: '200px', margin: '0 8px', background: isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'), border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`, borderRadius: '8px', display: 'inline-block', padding: '4px 12px', fontSize: '15px', fontWeight: '350', color: isCorrect ? '#52c41a' : '#ff4d4f', cursor: 'not-allowed', verticalAlign: 'middle', lineHeight: '1.4', boxSizing: 'border-box', textAlign: 'center', wordBreak: 'break-word', wordWrap: 'break-word', overflow: 'hidden', whiteSpace: 'normal' }} dangerouslySetInnerHTML={{ __html: studentAnswer || '' }} />
-                          {/* Show correct answer if wrong (same as Fill in the Blank) */}
-                          {!isCorrect && correctAnswer && (
-                            <span style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
-                              {correctAnswer}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <div style={{ minWidth: '120px', minHeight: '32px', maxWidth: '200px', margin: '0 8px', background: (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)'), border: `2px solid #faad14`, borderRadius: '8px', display: 'inline-block', padding: '4px 12px', fontSize: '15px', fontWeight: '600', color: '#faad14', cursor: 'not-allowed', verticalAlign: 'middle', lineHeight: '1.4', boxSizing: 'border-box', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: correctAnswer || '' }} />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
+              <div
+                style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}
+                dangerouslySetInnerHTML={{ __html: dragHtml }}
+              />
             </div>
             <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
               <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>Available words:</Typography.Text>
@@ -3284,131 +3388,89 @@ const DailyChallengeSubmissionDetail = () => {
       const studentAnswerObj = studentAnswers?.[q.id] || {};
       
       const renderFillBlankInputs = () => {
-        const elements = [];
-        const regex = /(\[\[pos_(.*?)\]\])/g;
-        let lastIndex = 0;
-        let match;
-        let inputIndex = 0;
-        
-        while ((match = regex.exec(questionText)) !== null) {
-          if (match.index > lastIndex) {
-            const textContent = questionText.slice(lastIndex, match.index);
-            elements.push(
-              <span 
-                key={`text_${inputIndex}`}
-                className="question-text-content"
-                dangerouslySetInnerHTML={{ __html: textContent }}
-              />
-            );
-          }
-          inputIndex += 1;
-          
-          const positionId = `pos_${match[2]}`;
-          const rawPositionId = match[2]; // Without "pos_" prefix
-          
-          // Find correct item - check both with and without "pos_" prefix
-          let correctItem = contentData.find(item => 
-            (item.positionId === positionId || item.positionId === rawPositionId) && item.correct
+        const regex = /\[\[pos_(.*?)\]\]/g;
+        const baseStyles = [
+          'display:inline-block',
+          'min-width:120px',
+          'max-width:200px',
+          'min-height:32px',
+          'padding:4px 12px',
+          'margin:0 8px',
+          'border-radius:8px',
+          'box-sizing:border-box',
+          'text-align:center',
+          'vertical-align:middle',
+          'line-height:1.4',
+          'font-size:14px'
+        ].join(';');
+
+        return String(questionText || '').replace(regex, (_match, rawId) => {
+          const positionId = `pos_${rawId}`;
+          const rawPositionId = rawId;
+
+          let correctItem = contentData.find(item =>
+            (String(item.positionId || '') === positionId || String(item.positionId || '') === rawPositionId) && item.correct
           );
-          // Fallback: if no correct item found, try to find any item with matching positionId
           if (!correctItem) {
-            correctItem = contentData.find(item => 
-              item.positionId === positionId || item.positionId === rawPositionId
+            correctItem = contentData.find(item =>
+              String(item.positionId || '') === positionId || String(item.positionId || '') === rawPositionId
             );
           }
-          const correctAnswer = correctItem?.value || '';
-          
-          let studentAnswer = '';
+
+          const correctAnswerText = stripHtmlSimple(correctItem?.value || '');
+
+          let studentAnswerRaw = '';
           if (typeof studentAnswerObj === 'object' && studentAnswerObj !== null) {
-            // Check multiple possible keys
-            studentAnswer = studentAnswerObj[positionId] || 
-                          studentAnswerObj[rawPositionId] || 
-                          studentAnswerObj[match[2]] || 
-                          '';
+            studentAnswerRaw =
+              studentAnswerObj[positionId] ||
+              studentAnswerObj[rawPositionId] ||
+              studentAnswerObj[rawId] ||
+              '';
           } else if (typeof studentAnswerObj === 'string') {
-            studentAnswer = studentAnswerObj;
+            studentAnswerRaw = studentAnswerObj;
           }
-          
-          const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
-          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
-          const displayValue = isUnanswered ? (correctAnswer || '') : studentAnswer;
+          const studentAnswerText = stripHtmlSimple(studentAnswerRaw);
+
+          const isCorrect =
+            correctAnswerText &&
+            studentAnswerText &&
+            studentAnswerText.toLowerCase() === correctAnswerText.toLowerCase();
+          const isUnanswered = !studentAnswerText;
+          const displayValue = isUnanswered ? (correctAnswerText || '—') : studentAnswerText;
+
           const bgColor = isCorrect
             ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
             : isUnanswered
               ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
               : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
           const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
-          const textColor = isCorrect ? (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)') : (isUnanswered ? '#faad14' : (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'));
-          const fontWeight = isUnanswered ? 600 : 400;
+          const textColor = isCorrect
+            ? (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)')
+            : (isUnanswered ? '#faad14' : (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'));
+          const fontWeight = isUnanswered ? '600' : '400';
 
-          elements.push(
-            <input
-              key={`fill_blank_input_${inputIndex}`}
-              type="text"
-              value={displayValue}
-              readOnly
-              disabled
-              style={{
-                display: 'inline-block',
-                minWidth: '120px',
-                maxWidth: '200px',
-                minHeight: '32px',
-                padding: '4px 12px',
-                margin: '0 8px',
-                background: bgColor,
-                border: `2px solid ${borderColor}`,
-                borderRadius: '8px',
-                cursor: 'not-allowed',
-                outline: 'none',
-                lineHeight: '1.4',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                textAlign: 'center',
-                color: textColor,
-                fontWeight,
-                verticalAlign: 'middle'
-              }}
-            />
-          );
-          
-          // Show correct answer only when answered wrong (not for unanswered since we show inside input)
-          if (!isCorrect && correctAnswer && !(isUnanswered)) {
-            const answerColor = '#52c41a';
-            elements.push(
-              <span 
-                key={`answer_${inputIndex}`}
-                style={{ 
-                  fontSize: '15px',
-                  color: answerColor,
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                  marginLeft: '8px',
-                  marginRight: '8px',
-                  display: 'inline-block'
-                }}
-              >
-                {correctAnswer}
-              </span>
-            );
+          let replacement = `<span style="${baseStyles};background:${bgColor};border:2px solid ${borderColor};color:${textColor};font-weight:${fontWeight};">${escapeHtmlSimple(displayValue)}</span>`;
+
+          if (!isCorrect && !isUnanswered && correctAnswerText) {
+            const extraStyle = [
+              'font-size:15px',
+              'color:#52c41a',
+              'font-weight:600',
+              'white-space:nowrap',
+              'margin-left:8px',
+              'margin-right:8px',
+              'display:inline-block'
+            ].join(';');
+            replacement += `<span style="${extraStyle}">${escapeHtmlSimple(correctAnswerText)}</span>`;
           }
-          
-          lastIndex = match.index + match[0].length;
-        }
-        if (lastIndex < questionText.length) {
-          const textContent = questionText.slice(lastIndex);
-          elements.push(
-            <span 
-              key={`text_final`}
-              className="question-text-content"
-              dangerouslySetInnerHTML={{ __html: textContent }}
-            />
-          );
-        }
-        
-        return elements;
+
+          return replacement;
+        });
       };
 
-    return (
+      const fillHtml = renderFillBlankInputs();
+
+      return (
         <div
           key={q.id}
           className={`question-item ${theme}-question-item`}
@@ -3463,9 +3525,10 @@ const DailyChallengeSubmissionDetail = () => {
             </div>
           </div>
           <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-            <div style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {renderFillBlankInputs()}
-            </div>
+            <div
+              style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}
+              dangerouslySetInnerHTML={{ __html: fillHtml }}
+            />
           </div>
         </div>
       );
