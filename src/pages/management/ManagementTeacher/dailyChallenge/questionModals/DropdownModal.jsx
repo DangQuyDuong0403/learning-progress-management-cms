@@ -1415,8 +1415,9 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		setDropdowns((prev) =>
 			prev.map((dropdown) => {
 				if (dropdown.id !== dropdownId) return dropdown;
-				if ((dropdown.incorrectOptions || []).length >= 10) {
-					spaceToast.warning('Maximum 10 incorrect options allowed');
+				const currentOptionsCount = (dropdown.incorrectOptions || []).length;
+				if (currentOptionsCount >= 10) {
+					spaceToast.warning('Maximum 10 incorrect options allowed per dropdown. Please remove an option before adding a new one.');
 					return dropdown;
 				}
 				return {
@@ -1607,6 +1608,16 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
+		// Validate: check if any dropdown has more than 10 incorrect options
+		const dropdownWithTooManyOptions = dropdowns.find((dropdown) => {
+			const incorrectOptionsCount = (dropdown.incorrectOptions || []).length;
+			return incorrectOptionsCount > 10;
+		});
+		if (dropdownWithTooManyOptions) {
+			spaceToast.warning('Maximum 10 incorrect options allowed per dropdown. Please remove excess options before saving.');
+			return;
+		}
+
 		// Validate duplicate answers for each dropdown FIRST (before checking if incorrect options are filled)
 		// This ensures we show duplicate error instead of "must be filled" error when duplicates exist
 		for (const dropdown of dropdowns) {
@@ -1761,12 +1772,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						return `<img src="${src}" style="${style}" />`;
 					}
 
-					// Special handling for tables
-					if (tagName === 'table') {
-						return node.outerHTML;
-					}
-
-					// Process child nodes
+					// Process child nodes (including tables to capture dropdowns inside)
 					let innerContent = '';
 					node.childNodes.forEach((child) => {
 						innerContent += processNode(child);
@@ -1777,11 +1783,16 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						return innerContent + (tagName === 'br' ? '<br>' : '');
 					}
 
-					// Wrap with appropriate HTML tag
+					// Wrap with appropriate HTML tag (preserve table wrapper so dropdowns inside are included)
 					if (
 						innerContent ||
 						['ul', 'ol', 'li', 'h1', 'h2', 'h3'].includes(tagName)
 					) {
+						if (tagName === 'table') {
+							const styleAttr = node.getAttribute('style');
+							const styleText = styleAttr ? ` style="${styleAttr}"` : '';
+							return `<table${styleText}>${innerContent}</table>`;
+						}
 						return `<${tagName}>${innerContent}</${tagName}>`;
 					}
 
@@ -2926,6 +2937,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													type='dashed'
 													icon={<PlusOutlined />}
 													onClick={() => handleAddIncorrectOption(dropdown.id)}
+													disabled={(dropdown.incorrectOptions || []).length >= 10}
 													size='small'
 													style={{
 														borderColor: '#e0e0e0',

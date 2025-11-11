@@ -464,7 +464,7 @@ const CONFIG_ROUTER = [
 	// },
 	// Manager Dashboard
 	{
-		show: false,
+		show: true,
 		component: ManagerDashboard,
 		// icon: <DashboardOutlined />,
 		path: ROUTER_PAGE.MANAGER_DASHBOARD,
@@ -1237,7 +1237,7 @@ const CONFIG_ROUTER = [
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_PREVIEW',
 		private: true,
-		role: ['teacher', 'teaching_assistant'],
+		role: ['teacher'],
 	},
 	{
 		show: false,
@@ -1391,16 +1391,17 @@ const CONFIG_ROUTER = [
 		role: ['teaching_assistant'],
 	},
 
-	{
-		show: false,
-		component: StudentPreview,
-		path: ROUTER_PAGE.TEACHING_ASSISTANT_DAILY_CHALLENGE_PREVIEW,
-		menuName: 'Daily Challenge Preview',
-		exact: true,
-		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_PREVIEW',
-		private: true,
-		role: ['teaching_assistant'],
-	},
+	// TEACHING_ASSISTANT không có quyền truy cập preview page
+	// {
+	// 	show: false,
+	// 	component: StudentPreview,
+	// 	path: ROUTER_PAGE.TEACHING_ASSISTANT_DAILY_CHALLENGE_PREVIEW,
+	// 	menuName: 'Daily Challenge Preview',
+	// 	exact: true,
+	// 	key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_PREVIEW',
+	// 	private: true,
+	// 	role: ['teaching_assistant'],
+	// },
 	{
 		show: false,
 		component: CreateGrammarVocabularyChallenge,

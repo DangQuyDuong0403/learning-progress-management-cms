@@ -1482,7 +1482,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const handleAddIncorrectOption = () => {
 		setIncorrectOptions((prev) => {
 			if (prev.length >= MAX_INCORRECT_OPTIONS) {
-				spaceToast.warning(`You can add up to ${MAX_INCORRECT_OPTIONS} incorrect options`);
+				spaceToast.warning(`Maximum ${MAX_INCORRECT_OPTIONS} incorrect options allowed. Please remove an option before adding a new one.`);
 				return prev;
 			}
 			return [...prev, { id: Date.now(), text: '' }];
@@ -1531,6 +1531,12 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
 		if (duplicates.length > 0) {
 			spaceToast.warning('Cannot create duplicate answers. Please ensure all blank answers are unique.');
+			return;
+		}
+
+		// Validate: check if there are more than 10 incorrect options
+		if (incorrectOptions.length > MAX_INCORRECT_OPTIONS) {
+			spaceToast.warning(`Maximum ${MAX_INCORRECT_OPTIONS} incorrect options allowed. Please remove excess options before saving.`);
 			return;
 		}
 
@@ -1616,12 +1622,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						return `<img src="${src}" style="${style}" />`;
 					}
 
-					// Special handling for tables
-					if (tagName === 'table') {
-						return node.outerHTML;
-					}
-
-					// Process child nodes
+					// Process child nodes (including tables to capture blanks inside)
 					let innerContent = '';
 					node.childNodes.forEach((child) => {
 						innerContent += processNode(child);
@@ -1632,11 +1633,17 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						return innerContent + (tagName === 'br' ? '<br>' : '');
 					}
 
-					// Wrap with appropriate HTML tag
+					// Wrap with appropriate HTML tag (preserve table wrapper so blanks inside are included)
 					if (
 						innerContent ||
 						['ul', 'ol', 'li', 'h1', 'h2', 'h3'].includes(tagName)
 					) {
+						// Preserve basic inline style for table if present
+						if (tagName === 'table') {
+							const styleAttr = node.getAttribute('style');
+							const styleText = styleAttr ? ` style="${styleAttr}"` : '';
+							return `<table${styleText}>${innerContent}</table>`;
+						}
 						return `<${tagName}>${innerContent}</${tagName}>`;
 					}
 

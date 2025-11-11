@@ -9,3 +9,4 @@ export { default as syllabusManagementApi } from './backend/syllabusManagement';
 export { default as dailyChallengeApi } from './backend/dailyChallengeManagement';
 export { default as adminDashboardApi } from './backend/adminDashboard';
 export { default as notificationApi } from './backend/notificationManagement';
+export { default as managerDashboardApi } from './backend/managerDashboard';

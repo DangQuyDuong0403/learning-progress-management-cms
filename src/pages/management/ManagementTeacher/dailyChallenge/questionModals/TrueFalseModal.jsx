@@ -38,6 +38,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
     const [editorData, setEditorData] = useState('');
     const editorRef = useRef(null);
     const editorDataRef = useRef('');
+    const hasLoadedDataRef = useRef(false);
 
 	// Helper to strip HTML and normalize text for comparison
 	const stripHtml = useCallback((html) => {
@@ -115,13 +116,27 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 	// Load question data when editing
 	useEffect(() => {
     if (visible) {
+			// Reset flag when modal opens
+			hasLoadedDataRef.current = false;
 			setTimeout(() => {
 				if (questionData) {
 					// Edit mode - load existing data
 					console.log('TrueFalseModal - Loading question data:', questionData);
-                    const q = questionData.question || '';
+                    // Read from question or questionText field
+                    const q = questionData.question || questionData.questionText || '';
+                    console.log('TrueFalseModal - Question text:', q, 'Length:', q.length);
                     setEditorData(q);
                     editorDataRef.current = q;
+					hasLoadedDataRef.current = true;
+					// Set data into editor if editor is already ready
+					if (editorRef.current) {
+						try {
+							editorRef.current.setData(q);
+							console.log('TrueFalseModal - Set data to editor directly (editor already ready)');
+						} catch (e) {
+							console.error('TrueFalseModal - Error setting data to editor:', e);
+						}
+					}
 					// Determine correct answer from various possible shapes
 					let derivedAnswer = null;
 					const correctAnswerValue = questionData.correctAnswer;
@@ -159,12 +174,39 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 					// Add mode - reset to defaults
                     setEditorData('');
                     editorDataRef.current = '';
+					hasLoadedDataRef.current = false;
 					setCorrectAnswer(null);
                     setWeight(1);
 				}
 			}, 0);
+		} else {
+			// Modal closed, reset flag
+			hasLoadedDataRef.current = false;
 		}
 	}, [questionData, visible, stripHtml]);
+
+	// Sync editorData to editor when editor becomes ready and we have data to load
+	// This only runs once when modal opens and editor is ready
+	useEffect(() => {
+		if (visible && editorRef.current && hasLoadedDataRef.current && editorDataRef.current) {
+			// Small delay to ensure editor is fully ready
+			const timeoutId = setTimeout(() => {
+				if (editorRef.current && hasLoadedDataRef.current && editorDataRef.current) {
+					try {
+						const dataToSet = editorDataRef.current;
+						editorRef.current.setData(dataToSet);
+						console.log('TrueFalseModal - Synced editorData to editor (editor ready, data loaded)');
+						// Mark as loaded so we don't keep setting
+						hasLoadedDataRef.current = false;
+					} catch (e) {
+						console.error('TrueFalseModal - Error syncing data to editor:', e);
+					}
+				}
+			}, 200);
+			
+			return () => clearTimeout(timeoutId);
+		}
+	}, [visible]); // Only depend on visible, not editorData to avoid re-setting when user types
 
 	// Debounced editor change handler for main question
 	const editorChangeTimeoutRef = useRef(null);
@@ -210,8 +252,9 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 			// Modal is closed, clear all data
 			setEditorData('');
 			editorDataRef.current = '';
+			hasLoadedDataRef.current = false;
 			setCorrectAnswer(null);
-			setWeight(1);
+        setWeight(1);
 			// Clear editor content if editor instance exists
 			if (editorRef.current) {
 				try {
@@ -424,14 +467,41 @@ const handleSave = async () => {
 								flexDirection: 'column'
 							}}>
                             <CKEditor
-                                key="main-question-editor"
+                                key={`main-question-editor-${questionData?.id || 'new'}-${visible}`}
                                 editor={ClassicEditor}
                                 /* Do not pass data on each render to avoid caret jumps */
                                 config={questionEditorConfig}
                                 onChange={handleEditorChange}
                                 onReady={(editor) => {
                                     editorRef.current = editor;
-                                    try { editor.setData(editorDataRef.current || ''); } catch (e) {}
+                                    console.log('TrueFalseModal - Editor ready, editorDataRef:', editorDataRef.current ? 'has data' : 'empty', 'hasLoadedDataRef:', hasLoadedDataRef.current);
+                                    
+                                    // Set initial data from ref if available (for edit mode)
+                                    const initialData = editorDataRef.current || editorData || '';
+                                    if (initialData) {
+                                        try { 
+                                            editor.setData(initialData);
+                                            console.log('TrueFalseModal - Editor ready, set initial data (length):', initialData.length);
+                                            hasLoadedDataRef.current = false;
+                                        } catch (e) {
+                                            console.error('TrueFalseModal - Error setting initial data:', e);
+                                        }
+                                    } else if (hasLoadedDataRef.current) {
+                                        // Data might be loading, try again after a short delay
+                                        setTimeout(() => {
+                                            if (editorRef.current && editorDataRef.current) {
+                                                try {
+                                                    editorRef.current.setData(editorDataRef.current);
+                                                    console.log('TrueFalseModal - Editor ready, set data after delay (length):', editorDataRef.current.length);
+                                                    hasLoadedDataRef.current = false;
+                                                } catch (e) {
+                                                    console.error('TrueFalseModal - Error setting data after delay:', e);
+                                                }
+                                            }
+                                        }, 300);
+                                    } else {
+                                        console.log('TrueFalseModal - Editor ready, no data to set (new question)');
+                                    }
                                 }}
                             />
 							{/* Character Counter for Question */}
