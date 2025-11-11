@@ -464,7 +464,7 @@ const CONFIG_ROUTER = [
 	// },
 	// Manager Dashboard
 	{
-		show: false,
+		show: true,
 		component: ManagerDashboard,
 		// icon: <DashboardOutlined />,
 		path: ROUTER_PAGE.MANAGER_DASHBOARD,
