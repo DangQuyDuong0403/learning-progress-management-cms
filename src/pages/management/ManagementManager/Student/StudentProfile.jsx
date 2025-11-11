@@ -564,7 +564,7 @@ const StudentProfile = () => {
 							{t('common.back')}
 				</Button>
 				<div className="header-actions">
-					{(student?.requestResetPasswordByTeacher === true) && !isTeachingAssistant && (
+					{(student?.requestResetPasswordByTeacher === true) && (
 						<Button
 							icon={<KeyOutlined />}
 							onClick={handleResetPassword}

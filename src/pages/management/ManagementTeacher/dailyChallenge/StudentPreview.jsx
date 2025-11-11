@@ -9,6 +9,7 @@ import {
   CloseOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./DailyChallengeContent.css";
@@ -17,6 +18,8 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import { dailyChallengeApi } from "../../../../apis/apis";
 import classManagementApi from "../../../../apis/backend/classManagement";
+import { getRoleFromToken } from "../../../../utils/jwtUtils";
+import { spaceToast } from "../../../../component/SpaceToastify";
 
 // Helper function to replace [[dur_3]] with HTML badge
 const processPassageContent = (content, theme, challengeType) => {
@@ -5494,6 +5497,13 @@ const StudentPreview = () => {
   const { id } = useParams();
   const { theme } = useTheme();
   
+  // Get user role from Redux and token for double verification
+  const userRoleFromRedux = useSelector((state) => state.auth?.user?.role);
+  const accessToken = useSelector((state) => state.auth?.accessToken) || localStorage.getItem('accessToken');
+  const userRoleFromToken = accessToken ? getRoleFromToken(accessToken) : null;
+  const userRole = userRoleFromRedux || userRoleFromToken;
+  const normalizedRole = (userRole || '').toString().toLowerCase();
+  
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [readingSections, setReadingSections] = useState([]);
@@ -5507,8 +5517,37 @@ const StudentPreview = () => {
     challengeName: location.state?.challengeName || location.state?.name || location.state?.title || null,
   });
   const questionRefs = useRef({});
+  const [isAuthorized, setIsAuthorized] = useState(true); // Default to true to allow hooks to run
   
   usePageTitle('Daily Challenge Preview');
+  
+  // Block TEACHING_ASSISTANT from accessing this page - double layer protection
+  useEffect(() => {
+    // Wait for role to be loaded
+    if (!normalizedRole) {
+      setIsAuthorized(true); // Wait for role to load
+      return;
+    }
+    
+    if (normalizedRole === 'teaching_assistant') {
+      setIsAuthorized(false);
+      spaceToast.error('You do not have permission to access this page');
+      // Redirect to teaching assistant daily challenges list
+      navigate('/teaching-assistant/daily-challenges', { replace: true });
+      return;
+    }
+    
+    // Also block if role is explicitly not TEACHER
+    if (normalizedRole !== 'teacher') {
+      setIsAuthorized(false);
+      spaceToast.error('You do not have permission to access this page');
+      navigate('/choose-login', { replace: true });
+      return;
+    }
+    
+    // If role is teacher, allow access
+    setIsAuthorized(true);
+  }, [normalizedRole, navigate]);
   
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -5799,6 +5838,11 @@ const StudentPreview = () => {
   );
 
   const questionNav = getQuestionNavigation();
+
+  // Block rendering if user is not authorized (check after all hooks are called)
+  if (!isAuthorized || (normalizedRole && normalizedRole !== 'teacher')) {
+    return null;
+  }
 
   return (
     <ThemedLayout customHeader={customHeader}>
