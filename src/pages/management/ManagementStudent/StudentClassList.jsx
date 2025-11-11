@@ -47,11 +47,16 @@ const getClassColor = (classId) => {
   return classColors[classId % classColors.length];
 };
 
-// Function to get random avatar from student_avatar folder
-const getRandomAvatar = () => {
-  const avatarNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
-  const randomNumber = avatarNumbers[Math.floor(Math.random() * avatarNumbers.length)];
-  return `/img/student_avatar/avatar${randomNumber}.png`;
+// Helper function to get valid class avatar URL
+const getClassAvatarUrl = (avatarUrl) => {
+  if (!avatarUrl || avatarUrl === 'string' || avatarUrl.trim() === '') {
+    return '/img/student_avatar/avatar5.png';
+  }
+  // Check if it's a valid URL (starts with http://, https://, or /)
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/')) {
+    return avatarUrl;
+  }
+  return '/img/student_avatar/avatar5.png';
 };
 
 
@@ -128,7 +133,7 @@ const StudentClassList = () => {
           id: classItem.id,
           name: classItem.className || classItem.name || 'Unknown Class',
           color: getClassColor(classItem.id),
-          avatar: classItem.avatarUrl || getRandomAvatar(),
+          avatar: getClassAvatarUrl(classItem.avatarUrl), // Use avatar5.png as default if invalid
           isActive: classItem.status === 'ACTIVE',
           syllabusName: classItem.syllabus?.syllabusName || classItem.syllabusInfo?.name || classItem.syllabusName || 'Unknown Syllabus',
           levelName: classItem.syllabus?.level?.levelName || classItem.levelInfo?.name || classItem.levelName || 'Unknown Level',

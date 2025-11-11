@@ -408,7 +408,8 @@ const ChallengeSettingsModal = ({
               >
                 <InputNumber
                   min={1}
-                  max={999}
+                  max={300}
+                  type="number"
                   placeholder={t('dailyChallenge.enterDuration')}
                   style={{ width: '100%' }}
                   addonAfter={t('dailyChallenge.minutes')}

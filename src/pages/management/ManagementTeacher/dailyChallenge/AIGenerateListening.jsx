@@ -83,6 +83,34 @@ const AIGenerateListening = () => {
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
   const MAX_FILE_MB = 10;
 
+  // Helper function to extract backend error messages
+  const getBackendMessage = useCallback((resOrErr) => {
+    try {
+      // Error object (axios error)
+      if (resOrErr?.response?.data) {
+        return (
+          resOrErr.response.data.error ||
+          resOrErr.response.data.message ||
+          resOrErr.response.data.data?.message ||
+          null
+        );
+      }
+      // Axios response (success response)
+      if (resOrErr?.data) {
+        return (
+          resOrErr.message ||
+          resOrErr.data.message ||
+          resOrErr.data.data?.message ||
+          resOrErr.data.error ||
+          null
+        );
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const availableQuestionTypes = useMemo(() => [
     { value: "MULTIPLE_CHOICE", label: t('dailyChallenge.multipleChoice') || 'Multiple Choice', icon: '📝', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "MULTIPLE_SELECT", label: t('dailyChallenge.multipleSelect') || 'Multiple Select', icon: '☑️', color: primaryColor, bgColor: primaryColorWithAlpha },
@@ -382,12 +410,13 @@ const AIGenerateListening = () => {
       spaceToast.success(`Audio file "${file.name}" uploaded successfully!`);
     } catch (e) {
       console.error('Audio upload error:', e);
-      spaceToast.error(e?.response?.data?.error || e?.response?.data?.message || e.message || 'Audio upload failed');
+      const beErr = getBackendMessage(e);
+      spaceToast.error(beErr || e?.message || 'Audio upload failed');
     } finally {
       setIsProcessingAudio(false);
     }
     return false;
-  }, []);
+  }, [getBackendMessage]);
 
   const handleGenerateWithAI = useCallback(async () => {
     if (!prompt.trim()) {
@@ -449,11 +478,12 @@ const AIGenerateListening = () => {
       }
     } catch (err) {
       console.error('Generate listening AI questions error:', err);
-      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate questions');
+      const beErr = getBackendMessage(err);
+      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate questions');
     } finally {
       setIsGenerating(false);
     }
-  }, [prompt, description, challengeInfo.challengeId, questionTypeConfigs, t, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, audioUrl]);
+  }, [prompt, description, challengeInfo.challengeId, questionTypeConfigs, t, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, audioUrl, getBackendMessage]);
 
   const handleGenerateFromFile = useCallback(async () => {
     if (!uploadedFile) {
@@ -478,11 +508,12 @@ const AIGenerateListening = () => {
       }
     } catch (err) {
       console.error('Generate listening from file error:', err);
-      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to generate from file');
+      const beErr = getBackendMessage(err);
+      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate from file');
     } finally {
       setIsGenerating(false);
     }
-  }, [uploadedFile, prompt, normalizeQuestionsFromAI]);
+  }, [uploadedFile, prompt, normalizeQuestionsFromAI, getBackendMessage]);
 
   const handleBack = useCallback(() => {
     const userRole = user?.role?.toLowerCase();
@@ -566,9 +597,10 @@ const AIGenerateListening = () => {
       navigate(contentPath, { state: { challengeId: id, challengeName: challengeInfo.challengeName, classId: challengeInfo.classId, className: challengeInfo.className } });
     } catch (err) {
       console.error('Save AI listening section error:', err);
-      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to save');
+      const beErr = getBackendMessage(err);
+      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to save');
     } finally { setSaving(false); }
-  }, [id, prompt, questions, navigate, user, challengeInfo, t, audioUrl]);
+  }, [id, prompt, questions, navigate, user, challengeInfo, t, audioUrl, getBackendMessage]);
 
   const headerSubtitle = (challengeInfo.className && challengeInfo.challengeName)
     ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
