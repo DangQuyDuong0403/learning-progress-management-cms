@@ -1,0 +1,181 @@
+/* Unique CSS for Manager Dashboard V2 to avoid collision */
+.manager-dashboard-v2__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.manager-dashboard-v2__icon.role { background: #f1eafe; }
+.manager-dashboard-v2__icon.growth { background: #eef2ff; }
+.manager-dashboard-v2__icon.funnel { background: #f0f9ff; }
+.manager-dashboard-v2__icon.syllabus { background: #f6f3ff; }
+.manager-dashboard-v2__icon.teacher { background: #e8fff5; }
+.manager-dashboard-v2__icon.alert { background: #fff1f2; }
+
+.manager-dashboard-v2__title {
+  font-weight: 700;
+  font-size: 20px;
+  color: #111827;
+}
+
+.mdv2-table {
+  width: 100%;
+}
+.mdv2-table__head,
+.mdv2-table__row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+.mdv2-table__head {
+  font-weight: 700;
+  color: #4b5563;
+  background: #f9fafb;
+  border: 1px solid #eef2f7;
+}
+.mdv2-table__row {
+  background: #fbfdff;
+  border: 1px solid #eef2f7;
+  margin-top: 8px;
+  color: #111827;
+  font-weight: 400;
+}
+
+/* Ensure all cells render dark text, not bold */
+.mdv2-table__row > div {
+  color: #111827;
+  font-weight: 400;
+}
+
+/* Adjust columns for specific tables */
+.manager-dashboard-v2 .mdv2-table:nth-of-type(2) .mdv2-table__head,
+.manager-dashboard-v2 .mdv2-table:nth-of-type(2) .mdv2-table__row {
+  grid-template-columns: 2fr 1fr 1fr;
+}
+.manager-dashboard-v2 .mdv2-table:nth-of-type(3) .mdv2-table__head,
+.manager-dashboard-v2 .mdv2-table:nth-of-type(3) .mdv2-table__row {
+  grid-template-columns: 2fr 1fr 1fr;
+}
+
+.mdv2-alert {
+  border: 1px solid #eef2f7;
+  background: #fbfdff;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.mdv2-alert__type {
+  font-weight: 700;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+.mdv2-alert__msg {
+  color: #111827;
+  margin-bottom: 8px;
+}
+.mdv2-alert__action {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* Explicit scrollbars for data tables within cards */
+.mdv2-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;           /* Firefox */
+  scrollbar-color: #a8b3c2 transparent;
+}
+.mdv2-scroll::-webkit-scrollbar {
+  width: 8px;                      /* Chrome/Safari */
+}
+.mdv2-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mdv2-scroll::-webkit-scrollbar-thumb {
+  background: #cfd8e3;
+  border-radius: 8px;
+}
+.mdv2-scroll:hover::-webkit-scrollbar-thumb {
+  background: #a8b3c2;
+}
+
+.mdv2-level-summary {
+  margin-top: 16px;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.mdv2-level-summary__head,
+.mdv2-level-summary__row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 10px 14px;
+  align-items: center;
+}
+.mdv2-level-summary__head {
+  background: #f9fafb;
+  font-weight: 700;
+  color: #4b5563;
+  border-bottom: 1px solid #eef2f7;
+}
+.mdv2-level-summary__row {
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  color: #111827;
+}
+.mdv2-level-summary__row:last-child {
+  border-bottom: none;
+}
+
+.manager-dashboard-tabbar {
+  display: inline-flex;
+  gap: 12px;
+  padding: 8px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+.manager-dashboard-tab {
+  border: none;
+  background: transparent;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.manager-dashboard-tab:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+.manager-dashboard-tab.active {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.16);
+  color: #4c1d95;
+}
+
+.mdv2-loading {
+  font-size: 15px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.mdv2-error {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+
