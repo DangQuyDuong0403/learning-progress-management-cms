@@ -888,7 +888,10 @@ const ClassStudent = () => {
     } else if (userRole === 'teaching_assistant') {
       path = ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROFILE.replace(':id', String(studentId));
     }
-    navigate(path);
+    if (id) {
+      localStorage.setItem('selectedClassId', String(id));
+    }
+    navigate(path, { state: { classId: id } });
   };
 
   const columns = [

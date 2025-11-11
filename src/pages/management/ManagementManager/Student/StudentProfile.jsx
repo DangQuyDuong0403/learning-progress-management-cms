@@ -24,7 +24,7 @@ import {
 	CopyOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import ROUTER_PAGE from '../../../../constants/router';
 import { useTheme } from '../../../../contexts/ThemeContext';
@@ -41,13 +41,20 @@ import EditEmailModal from './EditEmailModal';
 const StudentProfile = () => {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const { id } = useParams();
 	const { theme } = useTheme();
 	const { user } = useSelector((state) => state.auth);
 	const userRole = (user?.role || '').toLowerCase();
-	const isManager = userRole === 'manager';
-	const isTeacher = userRole === 'teacher';
-	const isTeachingAssistant = userRole === 'teaching_assistant';
+	const selectedRole =
+		typeof window !== 'undefined'
+			? (localStorage.getItem('selectedRole') || '').toLowerCase()
+			: '';
+	const isManager = userRole === 'manager' || selectedRole === 'manager';
+	const isTeacher = userRole === 'teacher' || selectedRole === 'teacher';
+	const isTeachingAssistant =
+		userRole === 'teaching_assistant' || selectedRole === 'teaching_assistant';
+	const shouldHideSidebar = isTeacher || isTeachingAssistant;
 	const [editModalVisible, setEditModalVisible] = useState(false);
 	const [editEmailModalVisible, setEditEmailModalVisible] = useState(false);
 	const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
@@ -158,14 +165,43 @@ const StudentProfile = () => {
 		}
 	};
 
-	const handleBack = () => {
-		let path = '/manager/students';
-		if (isTeacher) {
-			path = ROUTER_PAGE.TEACHER_CLASSES;
-		} else if (isTeachingAssistant) {
-			path = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+	const classIdFromState = location.state?.classId;
+	const classIdFromQuery = new URLSearchParams(location.search).get('classId');
+	const classIdFromStorage = typeof window !== 'undefined' ? localStorage.getItem('selectedClassId') : null;
+	const classId = classIdFromState || classIdFromQuery || classIdFromStorage;
+
+	useEffect(() => {
+		if (classId) {
+			localStorage.setItem('selectedClassId', String(classId));
 		}
-		navigate(path);
+	}, [classId]);
+
+	const handleBack = () => {
+		let targetPath = null;
+
+		if (classId) {
+			if (isTeacher) {
+				targetPath = ROUTER_PAGE.TEACHER_CLASS_STUDENTS.replace(':id', String(classId));
+			} else if (isTeachingAssistant) {
+				targetPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_STUDENTS.replace(':id', String(classId));
+			} else if (isManager) {
+				targetPath = ROUTER_PAGE.MANAGER_CLASS_STUDENTS.replace(':id', String(classId));
+			}
+		}
+
+		if (!targetPath) {
+			if (isManager) {
+				targetPath = '/manager/students';
+			} else if (isTeacher) {
+				targetPath = ROUTER_PAGE.TEACHER_CLASSES;
+			} else if (isTeachingAssistant) {
+				targetPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+			} else {
+				targetPath = '/';
+			}
+		}
+
+		navigate(targetPath);
 	};
 
 	const handleEdit = () => {
@@ -405,7 +441,7 @@ const StudentProfile = () => {
 		} else if (isTeachingAssistant) {
 			path = ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROGRESS.replace(':id', String(student.id));
 		}
-		navigate(path, { state: { student } });
+		navigate(path, { state: { student, classId } });
 	};
 
 	// Handle delete for PENDING students (trash button)
@@ -470,7 +506,7 @@ const StudentProfile = () => {
 	// Loading state
 	if (loading) {
 		return (
-			<ThemedLayout>
+			<ThemedLayout hideSidebar={shouldHideSidebar}>
 				<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
 					<Spin size="large" tip="Loading student profile..." />
 				</div>
@@ -516,7 +552,7 @@ const StudentProfile = () => {
 	}
 
 	return (
-		<ThemedLayout>
+		<ThemedLayout hideSidebar={shouldHideSidebar}>
 			<div className={`student-profile ${theme}-student-profile`}>
 				<div className='profile-container'>
 					{/* Header */}
