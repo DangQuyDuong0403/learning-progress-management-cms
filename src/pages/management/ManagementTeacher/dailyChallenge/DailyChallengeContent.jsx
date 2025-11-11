@@ -4570,39 +4570,37 @@ const DailyChallengeContent = () => {
               {t('common.export') || 'Export'}
             </Button>
 
-            {/* Preview Button */}
-            <Button 
-              icon={<EyeOutlined />}
-              className={`create-button ${theme}-create-button`}
-              onClick={() => {
-                const userRole = user?.role?.toLowerCase();
-                const previewPath = userRole === 'teaching_assistant'
-                  ? `/teaching-assistant/daily-challenges/detail/${id}/preview`
-                  : `/teacher/daily-challenges/detail/${id}/preview`;
-                navigate(previewPath, {
-                  state: {
-                    challengeId: id,
-                    challengeName: challengeDetails?.challengeName,
-                    classId: challengeInfo.classId,
-                    className: challengeInfo.className,
-                  }
-                });
-              }}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-                fontSize: '16px',
-                padding: '0 24px',
-                border: '1px solid rgba(0, 0, 0, 0.12)',
-                transition: 'all 0.3s ease',
-                background: '#ffffff',
-                color: '#000000',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
-              }}
-            >
-              {t('dailyChallenge.preview')}
-            </Button>
+            {/* Preview Button - Only visible for TEACHER role */}
+            {user?.role?.toLowerCase() === 'teacher' && (
+              <Button 
+                icon={<EyeOutlined />}
+                className={`create-button ${theme}-create-button`}
+                onClick={() => {
+                  navigate(`/teacher/daily-challenges/detail/${id}/preview`, {
+                    state: {
+                      challengeId: id,
+                      challengeName: challengeDetails?.challengeName,
+                      classId: challengeInfo.classId,
+                      className: challengeInfo.className,
+                    }
+                  });
+                }}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  fontSize: '16px',
+                  padding: '0 24px',
+                  border: '1px solid rgba(0, 0, 0, 0.12)',
+                  transition: 'all 0.3s ease',
+                  background: '#ffffff',
+                  color: '#000000',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+                }}
+              >
+                {t('dailyChallenge.preview')}
+              </Button>
+            )}
 
             {/* Add Question/Passage Button - only visible in draft */}
             {status === 'draft' && (

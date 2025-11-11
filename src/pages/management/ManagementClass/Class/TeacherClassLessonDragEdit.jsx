@@ -819,6 +819,7 @@ const TeacherClassLessonDragEdit = () => {
 					chapter={editingLesson}
 					syllabus={classData?.syllabus}
 					onClose={handleModalClose}
+					isLesson={true}
 				/>
 			</Modal>
 		</ThemedLayout>

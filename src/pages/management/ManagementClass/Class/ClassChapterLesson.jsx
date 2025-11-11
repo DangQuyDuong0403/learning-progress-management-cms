@@ -880,6 +880,7 @@ const ClassChapterLesson = () => {
 						chapter={editingChapter}
 						syllabus={classData?.syllabus}
 						onClose={handleModalClose}
+						isLesson={true}
 					/>
 				</Modal>
 

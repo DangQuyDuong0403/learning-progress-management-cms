@@ -1415,8 +1415,9 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		setDropdowns((prev) =>
 			prev.map((dropdown) => {
 				if (dropdown.id !== dropdownId) return dropdown;
-				if ((dropdown.incorrectOptions || []).length >= 10) {
-					spaceToast.warning('Maximum 10 incorrect options allowed');
+				const currentOptionsCount = (dropdown.incorrectOptions || []).length;
+				if (currentOptionsCount >= 10) {
+					spaceToast.warning('Maximum 10 incorrect options allowed per dropdown. Please remove an option before adding a new one.');
 					return dropdown;
 				}
 				return {
@@ -1604,6 +1605,16 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			spaceToast.warning(
 				'Please fill in all dropdown correct answers. Click on each dropdown chip to enter the correct answer.'
 			);
+			return;
+		}
+
+		// Validate: check if any dropdown has more than 10 incorrect options
+		const dropdownWithTooManyOptions = dropdowns.find((dropdown) => {
+			const incorrectOptionsCount = (dropdown.incorrectOptions || []).length;
+			return incorrectOptionsCount > 10;
+		});
+		if (dropdownWithTooManyOptions) {
+			spaceToast.warning('Maximum 10 incorrect options allowed per dropdown. Please remove excess options before saving.');
 			return;
 		}
 
@@ -2926,6 +2937,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													type='dashed'
 													icon={<PlusOutlined />}
 													onClick={() => handleAddIncorrectOption(dropdown.id)}
+													disabled={(dropdown.incorrectOptions || []).length >= 10}
 													size='small'
 													style={{
 														borderColor: '#e0e0e0',
