@@ -11,6 +11,7 @@ import {
   SaveOutlined,
   ClockCircleOutlined,
   CheckOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -5582,45 +5583,36 @@ const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
 };
 // Dropdown Container Component
 const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
-  console.log('🔵 DropdownContainer RENDERED - Question ID:', data?.id, 'Type:', data?.type);
-  
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const isViewOnly = useContext(ViewOnlyContext);
   const [selectedAnswers, setSelectedAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
   const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
-  
-  console.log('🔵 DropdownContainer - Content Data:', contentData);
-  console.log('🔵 DropdownContainer - Question Text:', questionText);
-  
-  // Register answer collector
+  const contentRef = React.useRef(null);
+
   React.useEffect(() => {
     if (!registerAnswerCollector || !data?.id) return;
-    
     const getAnswer = () => {
-      // Format dropdown answers with positionId keys
       const formattedAnswers = {};
-      Object.keys(selectedAnswers).forEach(posId => {
-        formattedAnswers[`${data.id}_pos_${posId}`] = selectedAnswers[posId];
+      Object.keys(selectedAnswers).forEach((posId) => {
+        const value = selectedAnswers[posId];
+        if (value == null || String(value).trim() === '') return;
+        const normalized = posId.startsWith('pos_') ? posId.slice(4) : posId;
+        formattedAnswers[`${data.id}_pos_${normalized}`] = value;
       });
       return Object.keys(formattedAnswers).length > 0 ? { answer: formattedAnswers, questionType: 'DROPDOWN' } : null;
     };
-    
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, selectedAnswers]);
 
-  // Register answer restorer (for submittedContent)
   React.useEffect(() => {
     if (!registerAnswerRestorer || !data?.id) return;
-
     const unregister = registerAnswerRestorer(data.id, (restored) => {
-      // restored is an object like { `${qId}_pos_${pos}`: value, ... } or { pos: value }
       if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
         const mapped = {};
         Object.keys(restored).forEach((key) => {
-          // Extract position id after '_pos_'
           let pos = key;
           if (key.includes('_pos_')) {
             const parts = key.split('_pos_');
@@ -5637,13 +5629,164 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
     return unregister;
   }, [registerAnswerRestorer, data?.id]);
 
-  const handleDropdownChange = (positionId, value) => {
+  const handleDropdownChange = React.useCallback((positionId, value) => {
     if (isViewOnly) return;
-    setSelectedAnswers(prev => ({
-      ...prev,
-      [positionId]: value
-    }));
-  };
+    setSelectedAnswers((prev) => {
+      const next = { ...prev };
+      if (value == null || String(value).trim() === '') {
+        delete next[positionId];
+      } else {
+        next[positionId] = value;
+      }
+      return next;
+    });
+  }, [isViewOnly]);
+
+  const sanitizeOptionLabel = React.useCallback((raw) => {
+    return String(raw ?? '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }, []);
+
+  const groupKeyFromId = React.useCallback((id) => {
+    if (!id || typeof id !== 'string') return id;
+    const match = id.match(/^([^_]+?\d+)/);
+    return (match && match[1]) || id.split('_')[0] || id;
+  }, []);
+
+  const extractNumber = React.useCallback((key) => {
+    if (!key) return 0;
+    const match = key.match(/(\d+)$/);
+    return match ? parseInt(match[1], 10) : 0;
+  }, []);
+
+  const hasPositionIds = React.useMemo(() => {
+    return contentData.some((item) => item && item.positionId !== undefined && item.positionId !== null && String(item.positionId) !== '');
+  }, [contentData]);
+
+  const groupKeysInOrder = React.useMemo(() => {
+    if (hasPositionIds) return [];
+    const seen = new Set();
+    const order = [];
+    contentData.forEach((item, idx) => {
+      if (!item || !item.id) return;
+      const key = groupKeyFromId(item.id);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      order.push({ key, idx });
+    });
+    order.sort((a, b) => {
+      const numA = extractNumber(a.key);
+      const numB = extractNumber(b.key);
+      if (numA !== numB) return numA - numB;
+      return a.idx - b.idx;
+    });
+    return order.map((entry) => entry.key);
+  }, [contentData, hasPositionIds, groupKeyFromId, extractNumber]);
+
+  const getOptionsForSlot = React.useCallback((slotIndex, posToken) => {
+    let candidates = [];
+    if (hasPositionIds) {
+      const token = String(posToken ?? '');
+      candidates = contentData.filter((item) => String(item?.positionId ?? '') === token);
+    } else {
+      const groupKey = groupKeysInOrder[slotIndex];
+      if (groupKey) {
+        candidates = contentData.filter((item) => groupKeyFromId(item?.id) === groupKey);
+      } else {
+        candidates = contentData;
+      }
+    }
+    return candidates
+      .map((item) => {
+        const rawValue = item?.value ?? item?.text ?? '';
+        const value = String(rawValue);
+        if (!value) return null;
+        return {
+          value,
+          label: sanitizeOptionLabel(rawValue) || value,
+        };
+      })
+      .filter(Boolean);
+  }, [contentData, hasPositionIds, groupKeysInOrder, groupKeyFromId, sanitizeOptionLabel]);
+
+  React.useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+    let slotIndex = 0;
+    const html = String(questionText || '').replace(/\[\[pos_(.*?)\]\]/g, (_match, pos) => `<span class="dropdown-slot" data-pos="${pos}" data-slot-index="${slotIndex++}"></span>`);
+    container.innerHTML = html;
+    const cleanup = [];
+    const slots = Array.from(container.querySelectorAll('span.dropdown-slot'));
+    slots.forEach((slot) => {
+      const posToken = slot.getAttribute('data-pos') || '';
+      const idx = Number(slot.getAttribute('data-slot-index') || '0');
+      const stateKey = posToken.startsWith('pos_') ? posToken : `pos_${posToken}`;
+      const select = document.createElement('select');
+      select.className = 'dropdown-input';
+      select.setAttribute('data-state-key', stateKey);
+      select.style.display = 'inline-block';
+      select.style.minWidth = '120px';
+      select.style.height = '32px';
+      select.style.padding = '4px 12px';
+      select.style.margin = '0 8px';
+      select.style.background = theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)';
+      select.style.border = `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`;
+      select.style.borderRadius = '8px';
+      select.style.fontSize = '14px';
+      select.style.fontWeight = '600';
+      select.style.color = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+      select.style.cursor = isViewOnly ? 'default' : 'pointer';
+      select.style.outline = 'none';
+      select.style.verticalAlign = 'middle';
+      select.style.textAlign = 'center';
+      select.style.textAlignLast = 'center';
+
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.textContent = 'Select';
+      select.appendChild(placeholderOption);
+
+      const options = getOptionsForSlot(idx, posToken);
+      options.forEach(({ value, label }) => {
+        const optionEl = document.createElement('option');
+        optionEl.value = value;
+        optionEl.textContent = label;
+        select.appendChild(optionEl);
+      });
+
+      select.disabled = !!isViewOnly;
+
+      const handleChange = (event) => handleDropdownChange(stateKey, event.target.value);
+      select.addEventListener('change', handleChange);
+      cleanup.push(() => select.removeEventListener('change', handleChange));
+
+      slot.replaceWith(select);
+    });
+
+    return () => {
+      cleanup.forEach((fn) => fn());
+    };
+  }, [questionText, getOptionsForSlot, handleDropdownChange, isViewOnly, theme]);
+
+  React.useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+    const selects = container.querySelectorAll('select.dropdown-input');
+    selects.forEach((select) => {
+      const stateKey = select.getAttribute('data-state-key');
+      if (!stateKey) return;
+      const value = selectedAnswers[stateKey] ?? '';
+      if (value) {
+        select.value = value;
+      } else {
+        select.value = '';
+      }
+      select.disabled = !!isViewOnly;
+    });
+  }, [selectedAnswers, isViewOnly]);
 
   return (
     <div
@@ -5653,40 +5796,39 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
         borderRadius: '16px',
         padding: '24px',
         border: '2px solid',
-        borderColor: theme === 'sun' 
-          ? 'rgba(113, 179, 253, 0.25)' 
+        borderColor: theme === 'sun'
+          ? 'rgba(113, 179, 253, 0.25)'
           : 'rgba(138, 122, 255, 0.2)',
-        background: theme === 'sun' 
+        background: theme === 'sun'
           ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
           : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-        boxShadow: theme === 'sun' 
+        boxShadow: theme === 'sun'
           ? '0 4px 16px rgba(113, 179, 253, 0.1)'
           : '0 4px 16px rgba(138, 122, 255, 0.12)',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         backdropFilter: 'blur(10px)'
       }}
     >
-      {/* Header */}
       <div className="question-header" style={{
         paddingBottom: '14px',
         marginBottom: '16px',
         borderBottom: '2px solid',
-        borderBottomColor: theme === 'sun' 
-          ? 'rgba(113, 179, 253, 0.25)' 
+        borderBottomColor: theme === 'sun'
+          ? 'rgba(113, 179, 253, 0.25)'
           : 'rgba(138, 122, 255, 0.2)',
         position: 'relative',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <Typography.Text strong style={{ 
-          fontSize: '16px', 
-          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+        <Typography.Text strong style={{
+          fontSize: '16px',
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
         }}>
           Question {globalQuestionNumber || data?.orderNumber || '?'}
         </Typography.Text>
-        <Typography.Text style={{ 
-          fontSize: '14px', 
+        <Typography.Text style={{
+          fontSize: '14px',
           color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
           fontStyle: 'italic'
         }}>
@@ -5694,246 +5836,19 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
         </Typography.Text>
       </div>
 
-      {/* Content Area */}
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-        {/* Render question text with dropdowns */}
         <div
+          ref={contentRef}
           className="question-text-content"
           style={{
-          fontSize: '15px', 
-          fontWeight: 350,
-          lineHeight: '1.8',
-          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-          marginBottom: '16px'
+            fontSize: '15px',
+            fontWeight: 350,
+            lineHeight: '1.8',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+            marginBottom: '16px'
           }}
-        >
-          {(() => {
-            console.log('🟢 IIFE STARTED - Question ID:', data?.id);
-            const text = questionText || data?.questionText || data?.question || '';
-            const parts = [];
-            const regex = /\[\[pos_(.*?)\]\]/g;
-            let lastIndex = 0;
-            let match;
-            let partIndex = 0;
-            console.log('🟢 IIFE - Text:', text);
-
-            // Check if options have positionId field
-            const hasPositionIds = contentData.some(it => it.positionId);
-            
-            // Pre-calculate group keys in order if options don't have positionId
-            let groupKeysInOrder = [];
-            if (!hasPositionIds) {
-              const groupKeyFromId = (id) => {
-                if (!id || typeof id !== 'string') return id;
-                // Extract prefix with number (e.g., "opt1" from "opt1_1" or "opt1")
-                const m = id.match(/^([^_]+?\d+)/);
-                return (m && m[1]) || id.split('_')[0] || id;
-              };
-              const extractNumber = (groupKey) => {
-                if (!groupKey) return 0;
-                const match = groupKey.match(/(\d+)$/);
-                return match ? parseInt(match[1], 10) : 0;
-              };
-              
-              const seen = new Set();
-              const groupKeyMap = new Map();
-              
-              // Process contentData in order to preserve group order
-              for (let i = 0; i < contentData.length; i++) {
-                const item = contentData[i];
-                if (!item || !item.id) continue;
-                const gk = groupKeyFromId(item.id);
-                if (gk && !seen.has(gk)) {
-                  seen.add(gk);
-                  groupKeyMap.set(gk, i);
-                  groupKeysInOrder.push(gk);
-                }
-              }
-              
-              // Sort groupKeysInOrder by the number in the key (opt1, opt2, opt3...) to ensure correct order
-              groupKeysInOrder.sort((a, b) => {
-                const numA = extractNumber(a);
-                const numB = extractNumber(b);
-                if (numA !== numB) return numA - numB;
-                return (groupKeyMap.get(a) || 0) - (groupKeyMap.get(b) || 0);
-              });
-            }
-
-            // First, collect all placeholders to know how many we have
-            const allMatches = [];
-            let tempMatch;
-            const tempRegex = /\[\[pos_(.*?)\]\]/g;
-            while ((tempMatch = tempRegex.exec(text)) !== null) {
-              allMatches.push(tempMatch[1]); 
-            }
-            
-            console.log('=== DropdownContainer DEBUG ===');
-            console.log('Question ID:', data?.id);
-            console.log('Question Text:', text);
-            console.log('All placeholders found:', allMatches);
-            console.log('Content Data IDs:', contentData.map(i => i?.id));
-            console.log('Group Keys In Order:', groupKeysInOrder);
-            console.log('Has Position IDs:', hasPositionIds);
-
-            while ((match = regex.exec(text)) !== null) {
-              // Add text before the placeholder
-              if (match.index > lastIndex) {
-                const beforeText = text.slice(lastIndex, match.index);
-                if (beforeText) {
-                  parts.push(
-                    <span key={`text-${partIndex++}`} dangerouslySetInnerHTML={{ __html: beforeText }} />
-                  );
-                }
-              }
-
-              // Add dropdown for this position
-              const positionIdNum = match[1]; 
-              const positionId = `pos_${positionIdNum}`;
-              
-              // Find the index of this placeholder in allMatches
-              const currentPlaceholderIndex = allMatches.indexOf(positionIdNum);
-              
-              console.log(`\n--- Processing Placeholder ${currentPlaceholderIndex} ---`);
-              console.log('Position ID Num:', positionIdNum);
-              console.log('Current Placeholder Index:', currentPlaceholderIndex);
-              console.log('All Matches Array:', allMatches);
-              
-              // Filter options based on positionId or ID pattern
-              let opts = [];
-              if (hasPositionIds) {
-                opts = contentData
-                  .filter(it => {
-                    const itPosId = String(it.positionId || '');
-                    const matchPosId = String(positionIdNum);
-                    return itPosId === matchPosId;
-                  })
-                  .map(it => it.value || it.text || '')
-                  .filter(Boolean);
-              } else {
-                // Map placeholder index with option groups by order
-                const groupKeyFromId = (id) => {
-                  if (!id || typeof id !== 'string') return id;
-                  const m = id.match(/^([^_]+?\d+)/);
-                  return (m && m[1]) || id.split('_')[0] || id;
-                };
-                
-                // Use currentPlaceholderIndex to get the corresponding group key
-                const groupKeyForThisPos = groupKeysInOrder[currentPlaceholderIndex];
-                
-                console.log('Group Key For This Pos:', groupKeyForThisPos);
-                console.log('Group Keys In Order Length:', groupKeysInOrder.length);
-                console.log('Available Group Keys:', groupKeysInOrder);
-                
-                if (groupKeyForThisPos) {
-                  const allItemGroupKeys = contentData.map(item => ({
-                    id: item.id,
-                    groupKey: groupKeyFromId(item.id)
-                  }));
-                  console.log('All Items with Group Keys:', allItemGroupKeys);
-                  
-                  opts = contentData
-                    .filter(item => {
-                      if (!item || !item.id) return false;
-                      const itemGroupKey = groupKeyFromId(item.id);
-                      const matches = itemGroupKey === groupKeyForThisPos;
-                      if (matches) {
-                        console.log(`  ✓ MATCH: ${item.id} -> groupKey: ${itemGroupKey} === ${groupKeyForThisPos}`);
-                      }
-                      return matches;
-                    })
-                    .map(it => it.value || it.text || '')
-                    .filter(Boolean);
-                  
-                  console.log('Filtered Options:', opts);
-                } else {
-                  console.warn('⚠️ NO GROUP KEY FOUND! Using all options');
-                  opts = contentData
-                    .map(it => it.value || it.text || '')
-                    .filter(Boolean);
-                }
-              }
-              
-              console.log('Final Options Count:', opts.length);
-              console.log('--- End Placeholder ---\n');
-
-              parts.push(
-                <select
-                  key={`select-${data?.id || 'q'}-${positionId}-${partIndex}`}
-                  id={`select-${data?.id || 'q'}-${positionId}-${partIndex}`}
-                  value={selectedAnswers[positionId] || ''}
-                  onChange={(e) => handleDropdownChange(positionId, e.target.value)}
-                  disabled={isViewOnly}
-                  style={{
-                    display: 'inline-block',
-                    minWidth: '120px',
-                    height: '32px',
-                    padding: '4px 12px',
-                    margin: '0 8px',
-                    background: theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)',
-                    border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: 'rgb(24, 144, 255)',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    verticalAlign: 'middle',
-                    textAlign: 'center',
-                    textAlignLast: 'center',
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = theme === 'sun' ? '#40a9ff' : '#a78bfa';
-                    e.target.style.boxShadow = `0 0 0 2px ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'}`;
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="" disabled hidden style={{ textAlign: 'center' }}>
-                    Select
-                  </option>
-                  {opts.map((opt, idx) => (
-                    <option key={`opt-${positionId}-${idx}-${opt}`} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              );
-
-              partIndex++;
-              lastIndex = match.index + match[0].length;
-            }
-
-            // Add remaining text after last placeholder
-            if (lastIndex < text.length) {
-              const afterText = text.slice(lastIndex);
-              if (afterText) {
-                parts.push(
-                  <span key={`text-${partIndex++}`} dangerouslySetInnerHTML={{ __html: afterText }} />
-                );
-              }
-            }
-
-            return parts.length > 0 ? parts : <span dangerouslySetInnerHTML={{ __html: text }} />;
-          })()}
-        </div>
-
+        />
       </div>
-      <style>
-        {`
-          .dropdown-select option {
-            text-align: center;
-          }
-          .question-text-content select {
-            text-align: center;
-            text-align-last: center;
-          }
-          .question-text-content select option {
-            text-align: center;
-          }
-        `}
-      </style>
     </div>
   );
 };
@@ -5943,130 +5858,258 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const isViewOnly = useContext(ViewOnlyContext);
   const [droppedItems, setDroppedItems] = React.useState({});
-  // Use ALL values from API (including duplicates) as draggable options; fallback to a simple list
-  const [availableItems, setAvailableItems] = React.useState(() => {
-    const all = (data?.content?.data || []).map(it => it?.value).filter(Boolean);
-    return all.length ? all : ['love', 'like', 'enjoy', 'hate'];
-  });
+  const initialPool = React.useMemo(() => {
+    const values = (data?.content?.data || []).map(it => it?.value).filter(Boolean);
+    return values.length ? values : ['love', 'like', 'enjoy', 'hate'];
+  }, [data?.content?.data]);
+  const [availableItems, setAvailableItems] = React.useState(initialPool);
   const [dragOverPosition, setDragOverPosition] = React.useState(null);
 
-  // Register answer collector
+  const buildRemainingPool = React.useCallback((pool, usedValues) => {
+    const remaining = [];
+    const counts = new Map();
+    usedValues.forEach((value) => {
+      counts.set(value, (counts.get(value) || 0) + 1);
+    });
+    pool.forEach((value) => {
+      const current = counts.get(value) || 0;
+      if (current > 0) {
+        counts.set(value, current - 1);
+      } else {
+        remaining.push(value);
+      }
+    });
+    return remaining;
+  }, []);
+
   React.useEffect(() => {
     if (!registerAnswerCollector || !data?.id) return;
-    
     const getAnswer = () => {
-      return Object.keys(droppedItems).length > 0 ? { answer: droppedItems, questionType: 'DRAG_AND_DROP' } : null;
+      const keys = Object.keys(droppedItems);
+      return keys.length > 0 ? { answer: droppedItems, questionType: 'DRAG_AND_DROP' } : null;
     };
-    
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
   }, [registerAnswerCollector, data?.id, droppedItems]);
 
-  // Register answer restorer (for submittedContent)
   React.useEffect(() => {
     if (!registerAnswerRestorer || !data?.id) return;
-
     const unregister = registerAnswerRestorer(data.id, (restored) => {
-      // restored is an object mapping position -> value; normalize keys to 'pos_*'
       if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
         const normalized = {};
-        Object.keys(restored).forEach((k) => {
-          const key = String(k).startsWith('pos_') ? String(k) : `pos_${k}`;
-          normalized[key] = restored[k];
+        Object.keys(restored).forEach((key) => {
+          const normalizedKey = String(key).startsWith('pos_') ? String(key) : `pos_${key}`;
+          normalized[normalizedKey] = restored[key];
         });
         setDroppedItems(normalized);
-        // Rebuild available items by removing dropped ones from the pool
-        const all = (data?.content?.data || []).map(it => it?.value).filter(Boolean);
-        const pool = all.length ? all : ['love', 'like', 'enjoy', 'hate'];
-        const remaining = pool.filter(v => !Object.values(normalized).includes(v));
-        setAvailableItems(remaining);
+        setAvailableItems(buildRemainingPool(initialPool, Object.values(normalized)));
       }
     });
     return unregister;
-  }, [registerAnswerRestorer, data?.id, data?.content?.data]);
+  }, [registerAnswerRestorer, data?.id, initialPool, buildRemainingPool]);
 
-  const handleDragStart = (e, item, isDropped = false, positionId = null) => {
+  React.useEffect(() => {
+    setDroppedItems({});
+    setAvailableItems(initialPool);
+  }, [data?.id, initialPool]);
+
+  const handleDragStart = React.useCallback((e, item, isDropped = false, positionId = null) => {
     if (isViewOnly) return;
+    e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', item);
-    e.dataTransfer.setData('isDropped', isDropped);
+    e.dataTransfer.setData('isDropped', String(isDropped));
     e.dataTransfer.setData('positionId', positionId || '');
-  };
+  }, [isViewOnly]);
 
-  const handleDrop = (e, positionId) => {
+  const handleDrop = React.useCallback((e, positionId) => {
     if (isViewOnly) return;
     e.preventDefault();
     setDragOverPosition(null);
     const item = e.dataTransfer.getData('text/plain');
+    if (!item) return;
     const isDropped = e.dataTransfer.getData('isDropped') === 'true';
     const fromPositionId = e.dataTransfer.getData('positionId');
-    
-    setDroppedItems(prev => {
-      const newItems = { ...prev };
-      const currentItem = newItems[positionId];
-      
+
+    setDroppedItems((prev) => {
+      const next = { ...prev };
+      const currentItem = next[positionId];
+
       if (fromPositionId && fromPositionId !== positionId) {
-        newItems[positionId] = item;
-        if (fromPositionId in newItems) {
-          delete newItems[fromPositionId];
+        next[positionId] = item;
+        if (fromPositionId in next) {
+          delete next[fromPositionId];
         }
         if (currentItem) {
-          setAvailableItems(prev => [...prev, currentItem]);
+          setAvailableItems((prevPool) => [...prevPool, currentItem]);
         }
-        return newItems;
+        return next;
       }
-      
+
       if (!isDropped) {
-        newItems[positionId] = item;
-        setAvailableItems(prev => {
-          const idx = prev.indexOf(item);
-          if (idx === -1) return prev; // safety
-          const copy = [...prev];
-          copy.splice(idx, 1);
-          return copy;
+        next[positionId] = item;
+        setAvailableItems((prevPool) => {
+          const idx = prevPool.indexOf(item);
+          if (idx === -1) return prevPool;
+          const updated = [...prevPool];
+          updated.splice(idx, 1);
+          return updated;
         });
       }
-      
-      return newItems;
-    });
-  };
 
-  const handleDragStartFromDropped = (e, item, positionId) => {
+      return next;
+    });
+  }, [isViewOnly]);
+
+  const handleDragStartFromDropped = React.useCallback((e, item, positionId) => {
     if (isViewOnly) return;
     handleDragStart(e, item, true, positionId);
-    setDroppedItems(prev => {
-      const newItems = { ...prev };
-      delete newItems[positionId];
-      return newItems;
+    setDroppedItems((prev) => {
+      const next = { ...prev };
+      delete next[positionId];
+      return next;
     });
-    setAvailableItems(prev => [...prev, item]);
-  };
+    setAvailableItems((prev) => [...prev, item]);
+  }, [handleDragStart, isViewOnly]);
 
-  const handleDragOver = (e, positionId) => {
+  const handleDragOver = React.useCallback((e, positionId) => {
     e.preventDefault();
     setDragOverPosition(positionId);
-  };
+  }, []);
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = React.useCallback((e) => {
     if (!e.currentTarget.contains(e.relatedTarget)) {
       setDragOverPosition(null);
     }
-  };
+  }, []);
 
-  // Parse questionText from API to create dynamic sentence with placeholders
   const questionText = data?.questionText || data?.question || '';
-  const parts = React.useMemo(() => {
-    const result = [];
-    const regex = /\[\[pos_(.*?)\]\]/g;
-    let last = 0; let match; let idx = 0;
-    while ((match = regex.exec(questionText)) !== null) {
-      if (match.index > last) result.push({ type: 'text', content: questionText.slice(last, match.index) });
-      const posId = match[1];
-      result.push({ type: 'position', positionId: `pos_${posId}`, index: idx++ });
-      last = match.index + match[0].length;
-    }
-    if (last < questionText.length) result.push({ type: 'text', content: questionText.slice(last) });
-    return result;
-  }, [questionText]);
+  const questionContentRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const container = questionContentRef.current;
+    if (!container) return;
+    let slotIndex = 0;
+    const html = String(questionText || '').replace(/\[\[pos_(.*?)\]\]/g, (_match, pos) => `<span class="drag-slot" data-pos="${pos}" data-slot-index="${slotIndex++}"></span>`);
+    container.innerHTML = html;
+    const slots = Array.from(container.querySelectorAll('span.drag-slot'));
+    const cleanup = [];
+    slots.forEach((slot) => {
+      const posToken = slot.getAttribute('data-pos') || '';
+      const stateKey = posToken.startsWith('pos_') ? posToken : `pos_${posToken}`;
+      const wrapper = document.createElement('span');
+      wrapper.className = 'drag-slot-wrapper';
+      wrapper.setAttribute('data-state-key', stateKey);
+      wrapper.style.display = 'inline-flex';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.justifyContent = 'center';
+      wrapper.style.minWidth = '120px';
+      wrapper.style.height = '32px';
+      wrapper.style.margin = '0 8px';
+      wrapper.style.borderRadius = '8px';
+      wrapper.style.padding = '4px 12px';
+      wrapper.style.boxSizing = 'border-box';
+      wrapper.style.verticalAlign = 'top';
+      wrapper.style.transition = 'all 0.2s ease';
+      wrapper.style.cursor = isViewOnly ? 'default' : 'pointer';
+
+      const onDrop = (event) => handleDrop(event, stateKey);
+      const onDragOver = (event) => handleDragOver(event, stateKey);
+      const onDragLeaveHandler = (event) => handleDragLeave(event);
+
+      wrapper.addEventListener('drop', onDrop);
+      wrapper.addEventListener('dragover', onDragOver);
+      wrapper.addEventListener('dragleave', onDragLeaveHandler);
+      cleanup.push(() => {
+        wrapper.removeEventListener('drop', onDrop);
+        wrapper.removeEventListener('dragover', onDragOver);
+        wrapper.removeEventListener('dragleave', onDragLeaveHandler);
+      });
+
+      slot.replaceWith(wrapper);
+    });
+
+    return () => {
+      cleanup.forEach((fn) => fn());
+    };
+  }, [questionText, handleDrop, handleDragOver, handleDragLeave, isViewOnly]);
+
+  React.useEffect(() => {
+    const container = questionContentRef.current;
+    if (!container) return;
+    const wrappers = Array.from(container.querySelectorAll('span.drag-slot-wrapper[data-state-key]'));
+    wrappers.forEach((wrapper) => {
+      const stateKey = wrapper.getAttribute('data-state-key');
+      if (!stateKey) return;
+      const value = droppedItems[stateKey];
+      wrapper.innerHTML = '';
+      if (value) {
+        wrapper.style.background = theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)';
+        wrapper.style.border = `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`;
+        wrapper.style.color = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+        wrapper.style.cursor = isViewOnly ? 'default' : 'grab';
+        const chip = document.createElement('span');
+        chip.style.display = 'inline-flex';
+        chip.style.alignItems = 'center';
+        chip.style.justifyContent = 'center';
+        chip.style.width = '100%';
+        chip.style.height = '100%';
+        chip.style.fontSize = '15px';
+        chip.style.fontWeight = '350';
+        chip.style.lineHeight = '1.4';
+        chip.style.boxSizing = 'border-box';
+        chip.style.textAlign = 'center';
+        chip.style.cursor = isViewOnly ? 'default' : 'grab';
+        chip.draggable = !isViewOnly;
+        chip.innerHTML = value;
+        if (!isViewOnly) {
+          chip.addEventListener('dragstart', (event) => handleDragStartFromDropped(event, value, stateKey));
+        }
+        wrapper.appendChild(chip);
+      } else {
+        wrapper.style.background = '#ffffff';
+        wrapper.style.border = '2px dashed rgba(0, 0, 0, 0.5)';
+        wrapper.style.color = 'rgba(0, 0, 0, 0.5)';
+        wrapper.style.cursor = isViewOnly ? 'default' : 'pointer';
+        const placeholder = document.createElement('span');
+        placeholder.textContent = 'Drop here';
+        placeholder.style.width = '100%';
+        placeholder.style.textAlign = 'center';
+        placeholder.style.fontSize = '14px';
+        placeholder.style.fontWeight = '350';
+        placeholder.style.lineHeight = '1.4';
+        wrapper.appendChild(placeholder);
+      }
+    });
+  }, [droppedItems, theme, isViewOnly, handleDragStartFromDropped]);
+
+  React.useEffect(() => {
+    const container = questionContentRef.current;
+    if (!container) return;
+    const wrappers = Array.from(container.querySelectorAll('span.drag-slot-wrapper[data-state-key]'));
+    wrappers.forEach((wrapper) => {
+      const stateKey = wrapper.getAttribute('data-state-key');
+      if (!stateKey) return;
+      if (stateKey === dragOverPosition) {
+        wrapper.style.transform = 'scale(1.05)';
+        wrapper.style.boxShadow = theme === 'sun'
+          ? '0 4px 12px rgba(24, 144, 255, 0.3)'
+          : '0 4px 12px rgba(138, 122, 255, 0.3)';
+        if (!droppedItems[stateKey]) {
+          wrapper.style.border = `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`;
+          wrapper.style.background = theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)';
+          wrapper.style.color = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+        }
+      } else {
+        wrapper.style.transform = 'scale(1)';
+        wrapper.style.boxShadow = 'none';
+        if (!droppedItems[stateKey]) {
+          wrapper.style.border = '2px dashed rgba(0, 0, 0, 0.5)';
+          wrapper.style.background = '#ffffff';
+          wrapper.style.color = 'rgba(0, 0, 0, 0.5)';
+        }
+      }
+    });
+  }, [dragOverPosition, theme, droppedItems]);
 
   return (
     <div
@@ -6140,86 +6183,17 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
             borderRadius: '12px',
             border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
           }}>
-            <div 
+            <div
+              ref={questionContentRef}
               className="question-text-content"
-              style={{ 
-                fontSize: '15px', 
+              style={{
+                fontSize: '15px',
                 fontWeight: 350,
                 lineHeight: '1.8',
                 color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                 marginBottom: '16px'
               }}
-            >
-              {parts.length > 0 ? (
-                parts.map((part, pIdx) => (
-                  <React.Fragment key={pIdx}>
-                    {part.type === 'text' ? (
-                      <span dangerouslySetInnerHTML={{ __html: part.content || '' }} />
-                    ) : (
-                      droppedItems[part.positionId] ? (
-                        <div
-                          draggable
-                          onDragStart={(e) => handleDragStartFromDropped(e, droppedItems[part.positionId], part.positionId)}
-                          style={{
-                            minWidth: '120px',
-                            height: '32px',
-                            margin: '0 8px',
-                            background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
-                            border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                            borderRadius: '8px',
-                            display: 'inline-block',
-                            padding: '4px 12px',
-                            fontSize: '15px',
-                            fontWeight: '350',
-                            color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                            cursor: 'grab',
-                            transition: 'all 0.2s ease',
-                            verticalAlign: 'top',
-                            lineHeight: '1.4',
-                            boxSizing: 'border-box',
-                            textAlign: 'center'
-                          }}
-                          dangerouslySetInnerHTML={{ __html: droppedItems[part.positionId] || '' }}
-                        />
-                      ) : (
-                        <div
-                          onDrop={(e) => handleDrop(e, part.positionId)}
-                          onDragOver={(e) => handleDragOver(e, part.positionId)}
-                          onDragLeave={handleDragLeave}
-                          style={{
-                            minWidth: '120px',
-                            height: '32px',
-                            margin: '0 8px',
-                            background: dragOverPosition === part.positionId 
-                              ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)')
-                              : '#ffffff',
-                            border: `2px ${dragOverPosition === part.positionId ? 'solid' : 'dashed'} ${dragOverPosition === part.positionId ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)'}`,
-                            borderRadius: '8px',
-                            display: 'inline-block',
-                            padding: '4px 12px',
-                            fontSize: '15px',
-                            fontWeight: '350',
-                            color: dragOverPosition === part.positionId ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                            verticalAlign: 'top',
-                            lineHeight: '1.4',
-                            boxSizing: 'border-box',
-                            textAlign: 'center',
-                            transform: dragOverPosition === part.positionId ? 'scale(1.05)' : 'scale(1)',
-                            boxShadow: dragOverPosition === part.positionId 
-                              ? (theme === 'sun' ? '0 4px 12px rgba(24, 144, 255, 0.3)' : '0 4px 12px rgba(138, 122, 255, 0.3)')
-                              : 'none'
-                          }}
-                        >
-                          {dragOverPosition === part.positionId ? 'Drop here!' : 'Drop here'}
-                        </div>
-                      )
-                    )}
-                  </React.Fragment>
-                ))
-              ) : null}
-            </div>
+            />
           </div>
 
           {/* Right Column - Available words for dragging */}
@@ -6873,6 +6847,7 @@ const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
   const isViewOnly = useContext(ViewOnlyContext);
   const [blankAnswers, setBlankAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Fill in the blanks';
+  const contentRef = React.useRef(null);
   
   // Register answer collector
   React.useEffect(() => {
@@ -6920,84 +6895,93 @@ const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
     return unregister;
   }, [registerAnswerRestorer, data?.id]);
   
-  // Parse questionText and render editable spans where [[pos_x]] appears
-  const renderWithInputs = () => {
-    const elements = [];
-    const regex = /(\[\[pos_(.*?)\]\])/g;
-    let lastIndex = 0;
-    let match;
-    let inputIndex = 0;
-    while ((match = regex.exec(questionText)) !== null) {
-      if (match.index > lastIndex) {
-        const textContent = questionText.slice(lastIndex, match.index);
-        elements.push(
-          <span 
-            key={`text_${inputIndex}`}
-            className="question-text-content"
-            dangerouslySetInnerHTML={{ __html: textContent }}
-          />
-        );
+  // Render question HTML with placeholders inside tables preserved,
+  // then hydrate placeholders into real inputs to keep them inside table cells.
+  React.useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+    // Build HTML with placeholder spans
+    const htmlWithSlots = String(questionText || '').replace(/\[\[pos_(.*?)\]\]/g, (_m, posId) => {
+      return `<span class="fib-slot" data-pos="${posId}"></span>`;
+    });
+    // Set innerHTML only when question text changes
+    container.innerHTML = htmlWithSlots;
+    // Mount inputs into slots
+    const slots = container.querySelectorAll('span.fib-slot[data-pos]');
+    slots.forEach((slot) => {
+      const positionId = slot.getAttribute('data-pos');
+      const input = document.createElement('input');
+      input.className = 'paragraph-input';
+      input.value = blankAnswers[positionId] || '';
+      input.readOnly = !!isViewOnly;
+      input.disabled = !!isViewOnly;
+      // Styles to match existing input appearance
+      input.style.display = 'inline-flex';
+      input.style.alignItems = 'center';
+      input.style.justifyContent = 'center';
+      input.style.minWidth = '120px';
+      input.style.maxWidth = '200px';
+      input.style.height = '32px';
+      input.style.padding = '4px 12px';
+      input.style.margin = '0 8px';
+      input.style.background = '#E9EEFF94';
+      input.style.border = `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`;
+      input.style.borderRadius = '8px';
+      input.style.outline = 'none';
+      input.style.verticalAlign = 'middle';
+      input.style.lineHeight = '1.4';
+      input.style.fontSize = '14px';
+      input.style.boxSizing = 'border-box';
+      input.style.textAlign = 'center';
+      const onInput = (e) => {
+        if (isViewOnly) return;
+        const text = e.target.value || '';
+        setBlankAnswers((prev) => ({ ...prev, [positionId]: text }));
+      };
+      const onBlur = (e) => {
+        if (isViewOnly) return;
+        const text = e.target.value || '';
+        setBlankAnswers((prev) => ({ ...prev, [positionId]: text }));
+      };
+      input.addEventListener('input', onInput);
+      input.addEventListener('blur', onBlur);
+      // Replace slot with input
+      slot.replaceWith(input);
+    });
+    // Cleanup listeners if component unmounts or question changes
+    return () => {
+      // No-op: container will be cleared next render
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionText, theme, isViewOnly]);
+  
+  // Keep DOM inputs in sync when blankAnswers updates programmatically (restore)
+  React.useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+    const inputs = container.querySelectorAll('input.paragraph-input');
+    inputs.forEach((input) => {
+      const slot = input.getAttribute('data-pos') || input.getAttribute('name');
+      // We set no data-pos on input; derive from nearest previous comment not reliable.
+      // Instead, map by matching current value if key exists; fallback by order.
+    });
+    // Simple sync by data attributes we control:
+    container.querySelectorAll('span.fib-slot[data-pos]'); // none after hydration
+    // Sync by iterating placeholders defined in text:
+    const posIds = Array.from(String(questionText || '').matchAll(/\[\[pos_(.*?)\]\]/g)).map(m => m[1]);
+    let index = 0;
+    inputs.forEach((input) => {
+      const posId = posIds[index++];
+      if (!posId) return;
+      // Attach a name attribute for later lookups
+      input.setAttribute('name', `pos_${posId}`);
+      if ((blankAnswers[posId] || '') !== input.value) {
+        input.value = blankAnswers[posId] || '';
       }
-      inputIndex += 1;
-      const positionId = match[2];
-      elements.push(
-        <input
-          key={`fill_blank_input_${data.id}_${positionId}`}
-          className="paragraph-input"
-          value={blankAnswers[positionId] || ''}
-          onChange={(e) => {
-            if (isViewOnly) return;
-            const text = e.target.value || '';
-            setBlankAnswers(prev => ({
-              ...prev,
-              [positionId]: text
-            }));
-          }}
-          onBlur={(e) => {
-            if (isViewOnly) return;
-            const text = e.target.value || '';
-            setBlankAnswers(prev => ({
-              ...prev,
-              [positionId]: text
-            }));
-          }}
-          readOnly={isViewOnly}
-          disabled={isViewOnly}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: '120px',
-            maxWidth: '200px',
-            height: '32px',
-            padding: '4px 12px',
-            margin: '0 8px',
-            background: '#E9EEFF94',
-            border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-            borderRadius: '8px',
-            outline: 'none',
-            verticalAlign: 'middle',
-            lineHeight: '1.4',
-            fontSize: '14px',
-            boxSizing: 'border-box',
-            textAlign: 'center'
-          }}
-        />
-      );
-      lastIndex = match.index + match[0].length;
-    }
-    if (lastIndex < questionText.length) {
-      const textContent = questionText.slice(lastIndex);
-      elements.push(
-        <span 
-          key={`text_final`}
-          className="question-text-content"
-          dangerouslySetInnerHTML={{ __html: textContent }}
-        />
-      );
-    }
-    return elements;
-  };
+      input.readOnly = !!isViewOnly;
+      input.disabled = !!isViewOnly;
+    });
+  }, [blankAnswers, questionText, isViewOnly]);
 
   return (
     <div
@@ -7050,10 +7034,11 @@ const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
 
       {/* Content Area - Fill in the blank question */}
       <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-        {/* Question Content - render blanks for [[pos_]] tokens */}
-        <div style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-          {renderWithInputs()}
-        </div>
+        {/* Question Content - render blanks for [[pos_]] tokens (preserving table cells) */}
+        <div
+          ref={contentRef}
+          style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}
+        />
       </div>
     </div>
   );
@@ -7270,6 +7255,7 @@ const StudentDailyChallengeTake = () => {
   // Anti-cheat security state
   const [violationWarningModalVisible, setViolationWarningModalVisible] = useState(false);
   const [violationWarningData, setViolationWarningData] = useState(null);
+  const [latestCheatEvent, setLatestCheatEvent] = useState(null);
   const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
   const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
   const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
@@ -7598,6 +7584,7 @@ const StudentDailyChallengeTake = () => {
             deviceFingerprint: latestEvent.deviceFingerprint,
             ipAddress: latestEvent.ipAddress,
           });
+          setLatestCheatEvent('Cảnh báo: Thiết bị khác');
           setViolationWarningModalVisible(true);
           console.log('✅ [Device Monitoring] Modal visibility set to true from logs');
         } else {
@@ -7727,6 +7714,13 @@ const StudentDailyChallengeTake = () => {
     const violationType = logEntry.type;
     const currentCount = violationCountRef.current.get(violationType) || 0;
     const newCount = currentCount + 1;
+    const typeText =
+      violationType === 'tab_switch' ? 'Chuyển tab' :
+      violationType === 'copy' ? 'Copy' :
+      violationType === 'paste' ? 'Paste' :
+      violationType === 'device_mismatch' ? 'Thiết bị khác' :
+      violationType;
+    setLatestCheatEvent(`Cảnh báo: ${typeText}`);
 
     // Capture additional data for copy/paste
     let selectedText = '';
@@ -7942,13 +7936,36 @@ const StudentDailyChallengeTake = () => {
         }
 
         // Fetch timing info and initialize countdown if applicable
+        // Support challengeDuration as seconds (number/string) or ISO8601 duration (e.g., PT30M, PT1H30M)
+        const parseDurationToSeconds = (value) => {
+          if (value == null) return 0;
+          if (typeof value === 'number') {
+            return isFinite(value) && value > 0 ? value : 0;
+          }
+          if (typeof value === 'string') {
+            const numeric = Number(value);
+            if (!Number.isNaN(numeric) && numeric > 0) return numeric;
+            // ISO8601 duration: PnDTnHnMnS (time part optional, but we'll support H/M/S)
+            const match = value.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/i);
+            if (match) {
+              const days = match[1] ? Number(match[1]) : 0;
+              const hours = match[2] ? Number(match[2]) : 0;
+              const minutes = match[3] ? Number(match[3]) : 0;
+              const seconds = match[4] ? Number(match[4]) : 0;
+              const totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
+              return totalSeconds > 0 ? totalSeconds : 0;
+            }
+          }
+          return 0;
+        };
         if (finalSubmissionId && !effectiveViewOnly) {
           dailyChallengeApi.getSubmissionChallengeInfo(finalSubmissionId)
             .then((infoResp) => {
               const info = infoResp?.data || infoResp?.data?.data || infoResp?.data; // support different wrappers
               const payload = infoResp?.data?.data ? infoResp.data.data : info;
-              const challengeDurationSec = payload?.challengeDuration;
-              if (challengeDurationSec && Number(challengeDurationSec) > 0) {
+              const rawDuration = payload?.challengeDuration;
+              const challengeDurationSec = parseDurationToSeconds(rawDuration);
+              if (challengeDurationSec > 0) {
                 // Determine start time: use actualStartAt if present; otherwise mark start now
                 let startTs = payload?.actualStartAt ? Date.parse(payload.actualStartAt) : null;
                 const ensureStart = () => {
@@ -7960,7 +7977,7 @@ const StudentDailyChallengeTake = () => {
                   return Promise.resolve();
                 };
                 return ensureStart().then(() => {
-                  const deadlineTs = startTs + Number(challengeDurationSec) * 1000;
+                  const deadlineTs = startTs + challengeDurationSec * 1000;
                   deadlineTsRef.current = deadlineTs;
                   setIsTimedChallenge(true);
                   setTimeRemaining(Math.max(0, Math.floor((deadlineTs - Date.now()) / 1000)));
@@ -8276,6 +8293,7 @@ const StudentDailyChallengeTake = () => {
                 ipAddress: warningData.ipAddress,
               });
               setViolationWarningModalVisible(true);
+              setLatestCheatEvent('Cảnh báo: Thiết bị khác');
               console.log('✅ [Device Monitoring] Modal visibility set to true');
             } else {
               console.log(`ℹ️ [Device Monitoring] Mismatch count (${newCount}) not increased from last (${lastCount}); skipping modal.`);
@@ -9518,6 +9536,22 @@ const StudentDailyChallengeTake = () => {
               }}>
                 {autoSaveStatus === 'saving' ? 'Saving…' : 'Saved'}
               </span>
+              {latestCheatEvent && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  color: '#d46b08',
+                  maxWidth: '280px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+                  <span title={latestCheatEvent}>{latestCheatEvent}</span>
+                </span>
+              )}
               <ClockCircleOutlined style={{
                 fontSize: '24px',
                 color: '#000000',
