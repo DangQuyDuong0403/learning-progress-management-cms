@@ -5929,34 +5929,35 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
     setDragOverPosition(null);
     const item = e.dataTransfer.getData('text/plain');
     if (!item) return;
-    const isDropped = e.dataTransfer.getData('isDropped') === 'true';
     const fromPositionId = e.dataTransfer.getData('positionId');
 
     setDroppedItems((prev) => {
       const next = { ...prev };
-      const currentItem = next[positionId];
+      const previousValue = prev[positionId];
 
-      if (fromPositionId && fromPositionId !== positionId) {
-        next[positionId] = item;
-        if (fromPositionId in next) {
-          delete next[fromPositionId];
-        }
-        if (currentItem) {
-          setAvailableItems((prevPool) => [...prevPool, currentItem]);
-        }
-        return next;
+      if (fromPositionId && fromPositionId !== positionId && fromPositionId in next) {
+        delete next[fromPositionId];
       }
 
-      if (!isDropped) {
-        next[positionId] = item;
-        setAvailableItems((prevPool) => {
-          const idx = prevPool.indexOf(item);
-          if (idx === -1) return prevPool;
-          const updated = [...prevPool];
-          updated.splice(idx, 1);
-          return updated;
-        });
-      }
+      next[positionId] = item;
+
+      setAvailableItems((prevPool) => {
+        const updated = [...prevPool];
+        const removeFromPool = (value) => {
+          const idx = updated.indexOf(value);
+          if (idx !== -1) {
+            updated.splice(idx, 1);
+          }
+        };
+
+        if (previousValue && previousValue !== item) {
+          updated.push(previousValue);
+        }
+
+        removeFromPool(item);
+
+        return updated;
+      });
 
       return next;
     });
