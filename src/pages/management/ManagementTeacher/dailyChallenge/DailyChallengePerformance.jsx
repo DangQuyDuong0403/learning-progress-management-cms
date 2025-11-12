@@ -1,11 +1,22 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Card, Row, Col, Statistic, Button, List } from "antd";
-import { TrophyOutlined } from "@ant-design/icons";
+import { Card, Row, Col, Button, Avatar, Empty } from "antd";
+import { TrophyOutlined, BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, UserOutlined, TeamOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import "./DailyChallengePerformance.css";
+import { 
+  ComposedChart, 
+  Bar, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend
+} from 'recharts';
+import "./DailyChallengePerformanceReport.css";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
@@ -77,22 +88,16 @@ const DailyChallengePerformance = () => {
     average: 0,
     highest: 0,
     lowest: 0,
-    scoreDistribution: []
+    attemptDistribution: [],
+    submissionStats: {
+      completedCount: 0,
+      lateCount: 0,
+      notStartedCount: 0,
+      totalStudents: 0
+    }
   });
   const [studentScores, setStudentScores] = useState([]);
-
-  const mockStudentScores = [
-    { id: 1, name: 'Nguyễn Văn A', email: 'nguyenvana@example.com', score: 9.5, avatar: null, completionTime: 15 },
-    { id: 2, name: 'Trần Thị B', email: 'tranthib@example.com', score: 9.0, avatar: null, completionTime: 18 },
-    { id: 3, name: 'Lê Văn C', email: 'levanc@example.com', score: 8.5, avatar: null, completionTime: 20 },
-    { id: 4, name: 'Phạm Thị D', email: 'phamthid@example.com', score: 8.2, avatar: null, completionTime: 22 },
-    { id: 5, name: 'Hoàng Văn E', email: 'hoangvane@example.com', score: 8.0, avatar: null, completionTime: 25 },
-    { id: 6, name: 'Đỗ Thị F', email: 'dothif@example.com', score: 7.5, avatar: null, completionTime: 28 },
-    { id: 7, name: 'Vũ Văn G', email: 'vuvang@example.com', score: 7.2, avatar: null, completionTime: 30 },
-    { id: 8, name: 'Bùi Thị H', email: 'buithih@example.com', score: 7.0, avatar: null, completionTime: 32 },
-    { id: 9, name: 'Đặng Văn I', email: 'dangvani@example.com', score: 6.5, avatar: null, completionTime: 35 },
-    { id: 10, name: 'Ngô Thị K', email: 'ngothik@example.com', score: 5.0, avatar: null, completionTime: 40 },
-  ];
+  const [chartData, setChartData] = useState([]);
 
   // Fetch challenge info from API if not available in state
   const fetchChallengeInfo = useCallback(async () => {
@@ -120,77 +125,245 @@ const DailyChallengePerformance = () => {
     }
   }, [id, challengeInfo.challengeName, challengeInfo.className]);
 
-  // Calculate score distribution by range (0-1, 1-2, 2-3, ..., 9-10)
-  const calculateScoreDistribution = (scores) => {
-    // Create distribution for score ranges
-    const ranges = [
-      { range: '0-1', min: 0, max: 1, studentCount: 0 },
-      { range: '1-2', min: 1, max: 2, studentCount: 0 },
-      { range: '2-3', min: 2, max: 3, studentCount: 0 },
-      { range: '3-4', min: 3, max: 4, studentCount: 0 },
-      { range: '4-5', min: 4, max: 5, studentCount: 0 },
-      { range: '5-6', min: 5, max: 6, studentCount: 0 },
-      { range: '6-7', min: 6, max: 7, studentCount: 0 },
-      { range: '7-8', min: 7, max: 8, studentCount: 0 },
-      { range: '8-9', min: 8, max: 9, studentCount: 0 },
-      { range: '9-10', min: 9, max: 10, studentCount: 0 },
-    ];
+  // Calculate distribution by submission status (not started, completed, late, etc.)
+  const calculateAttemptDistribution = (scores, submissionStats) => {
+    // Group students by submission status
+    const groups = {
+      hsin: { label: 'Chưa làm', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
+      hs1: { label: 'Hoàn thành', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
+      hs2: { label: 'Nộp muộn', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
+      hs3plus: { label: 'Khác', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
+    };
 
-    // Count students for each range
     scores.forEach(student => {
-      const score = student.score;
-      for (let i = 0; i < ranges.length; i++) {
-        // For the last range (9-10), include 10
-        if (i === ranges.length - 1) {
-          if (score >= ranges[i].min && score <= ranges[i].max) {
-            ranges[i].studentCount++;
-            break;
-          }
-        } else {
-          // For other ranges, include min but exclude max
-          if (score >= ranges[i].min && score < ranges[i].max) {
-            ranges[i].studentCount++;
-            break;
-          }
-        }
+      const status = student.submissionStatus;
+      const isLate = student.isLate;
+      
+      if (status === 'NOT_STARTED' || !status) {
+        groups.hsin.count++;
+        groups.hsin.totalScore += student.score || 0;
+        groups.hsin.totalTime += student.completionTime || 0;
+      } else if (status === 'SUBMITTED' && !isLate) {
+        groups.hs1.count++;
+        groups.hs1.totalScore += student.score || 0;
+        groups.hs1.totalTime += student.completionTime || 0;
+      } else if (status === 'SUBMITTED' && isLate) {
+        groups.hs2.count++;
+        groups.hs2.totalScore += student.score || 0;
+        groups.hs2.totalTime += student.completionTime || 0;
+      } else {
+        groups.hs3plus.count++;
+        groups.hs3plus.totalScore += student.score || 0;
+        groups.hs3plus.totalTime += student.completionTime || 0;
       }
     });
 
-    return ranges;
+    // Calculate averages
+    Object.keys(groups).forEach(key => {
+      const group = groups[key];
+      if (group.count > 0) {
+        group.avgScore = parseFloat((group.totalScore / group.count).toFixed(1));
+        group.avgTime = parseFloat((group.totalTime / group.count).toFixed(1));
+      }
+    });
+
+    return [
+      groups.hsin,
+      groups.hs1,
+      groups.hs2,
+      groups.hs3plus,
+    ];
   };
 
   const fetchPerformanceData = async () => {
+    // Get challengeId from multiple sources (priority: challengeInfo.challengeId > id from URL params)
+    const challengeId = challengeInfo.challengeId || id;
+    
+    if (!challengeId) {
+      console.error('Challenge ID is missing. challengeInfo:', challengeInfo, 'id:', id);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setStudentScores(mockStudentScores);
+      console.log('Fetching performance data for challengeId:', challengeId);
+      console.log('Current challengeInfo:', challengeInfo);
+      
+      // Call all APIs in parallel
+      const [overviewResponse, studentsResponse, chartResponse] = await Promise.all([
+        dailyChallengeApi.getChallengeOverview(challengeId),
+        dailyChallengeApi.getChallengeStudentPerformance(challengeId),
+        dailyChallengeApi.getChallengeChartData(challengeId)
+      ]);
 
-        // Calculate statistics
-        const scores = mockStudentScores.map(s => s.score);
-        const average = scores.reduce((a, b) => a + b, 0) / scores.length;
-        const highest = Math.max(...scores);
-        const lowest = Math.min(...scores);
-        const scoreDistribution = calculateScoreDistribution(mockStudentScores);
+      console.log('Overview API Response:', overviewResponse);
+      console.log('Overview API Response.data:', overviewResponse?.data);
+      console.log('Overview API Response.data.data:', overviewResponse?.data?.data);
+      console.log('Students API Response:', studentsResponse);
+      console.log('Students API Response.data:', studentsResponse?.data);
+      console.log('Students API Response.data.data:', studentsResponse?.data?.data);
+      console.log('Chart API Response:', chartResponse);
+      console.log('Chart API Response.data:', chartResponse?.data);
+      console.log('Chart API Response.data.data:', chartResponse?.data?.data);
 
-        setPerformanceData({
-          average: parseFloat(average.toFixed(1)),
-          highest,
-          lowest,
-          scoreDistribution
-        });
-
+      // Check if responses are successful
+      // Note: axios interceptor returns response.data, so overviewResponse is already { traceId, success, message, data }
+      if (overviewResponse?.success === false) {
+        console.error('Overview API returned unsuccessful response:', overviewResponse);
         setLoading(false);
-      }, 1000);
+        return;
+      }
+      if (studentsResponse?.success === false) {
+        console.error('Students API returned unsuccessful response:', studentsResponse);
+        setLoading(false);
+        return;
+      }
+      if (chartResponse?.success === false) {
+        console.error('Chart API returned unsuccessful response:', chartResponse);
+        // Don't return, just log error - chart is optional
+      }
+
+      // Process overview data
+      // Note: axios interceptor returns response.data, so overviewResponse is already the server response
+      // Structure: { traceId, success, message, data: { averageScore, ... } }
+      let overviewData = overviewResponse?.data;
+      
+      // If data is nested (shouldn't be, but handle both cases)
+      if (!overviewData || (overviewData.success !== undefined && !overviewData.averageScore)) {
+        overviewData = overviewResponse?.data?.data || overviewResponse?.data;
+      }
+      
+      // Remove non-data fields if present (traceId, success, message, timestamp)
+      if (overviewData && (overviewData.success !== undefined || overviewData.traceId !== undefined)) {
+        const { traceId, success, message, timestamp, ...dataFields } = overviewData;
+        overviewData = dataFields;
+      }
+      
+      console.log('Processed overviewData:', overviewData);
+      console.log('OverviewData keys:', Object.keys(overviewData || {}));
+      
+      // Validate that we have data
+      if (!overviewData || Object.keys(overviewData).length === 0) {
+        console.error('Overview data is empty or invalid:', overviewData);
+        console.error('Full overviewResponse structure:', JSON.stringify(overviewResponse, null, 2));
+        setLoading(false);
+        return;
+      }
+      
+      const submissionStats = overviewData.submissionStats || {
+        completedCount: 0,
+        lateCount: 0,
+        notStartedCount: 0,
+        totalStudents: 0
+      };
+
+      // Process student data
+      // Note: axios interceptor returns response.data, so studentsResponse is already the server response
+      // Structure: { traceId, success, message, data: { students: [...] } }
+      let students = studentsResponse?.data?.students;
+      
+      // If data is nested
+      if (!students || !Array.isArray(students)) {
+        students = studentsResponse?.data?.data?.students || studentsResponse?.students || [];
+      }
+      
+      students = students || [];
+      console.log('Processed students:', students);
+      console.log('Number of students:', students.length);
+      
+      // Normalize score helper
+      const normalizeStudentScore = (score) => {
+        if (score > 10 && score <= 100) {
+          return score / 10;
+        }
+        return score;
+      };
+      
+      const mappedStudents = students.map(student => ({
+        id: student.userId,
+        name: student.fullName,
+        email: student.email,
+        score: normalizeStudentScore(student.score || 0),
+        avatar: student.avatarUrl,
+        completionTime: student.completionTimeMinutes || 0,
+        submissionStatus: student.submissionStatus,
+        isLate: student.isLate || false,
+        submittedAt: student.submittedAt || null
+      }));
+
+      setStudentScores(mappedStudents);
+
+      // Calculate statistics from API data
+      // Normalize scores from 100 scale to 10 scale if needed
+      const normalizeScore = (score) => {
+        if (score > 10 && score <= 100) {
+          // If score is on 100 scale, convert to 10 scale
+          return score / 10;
+        }
+        return score;
+      };
+
+      const average = normalizeScore(overviewData.averageScore || 0);
+      const highest = normalizeScore(overviewData.highestScore || 0);
+      const lowest = normalizeScore(overviewData.lowestScore || 0);
+      const attemptDistribution = calculateAttemptDistribution(mappedStudents, submissionStats);
+
+      // Process chart data
+      let chartDataPoints = chartResponse?.data?.dataPoints || [];
+      if (!chartDataPoints || !Array.isArray(chartDataPoints)) {
+        chartDataPoints = chartResponse?.data?.data?.dataPoints || [];
+      }
+      
+      // Normalize scores and prepare chart data
+      const processedChartData = (chartDataPoints || []).map((point, index) => ({
+        name: point.fullName || `Student ${index + 1}`,
+        score: normalizeScore(point.score || 0),
+        time: point.completionTimeMinutes || 0
+      }));
+      
+      console.log('Processed chart data:', processedChartData);
+      setChartData(processedChartData);
+
+      const finalPerformanceData = {
+        average: parseFloat(average.toFixed(1)),
+        highest: parseFloat(highest.toFixed(1)),
+        lowest: parseFloat(lowest.toFixed(1)),
+        attemptDistribution,
+        submissionStats
+      };
+
+      console.log('Setting performance data:', {
+        ...finalPerformanceData,
+        rawAverage: overviewData.averageScore,
+        rawHighest: overviewData.highestScore,
+        rawLowest: overviewData.lowestScore,
+        normalizedAverage: average,
+        normalizedHighest: highest,
+        normalizedLowest: lowest
+      });
+
+      setPerformanceData(finalPerformanceData);
+      console.log('Performance data set. State should update now.');
+
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching performance data:', error);
+      console.error('Error details:', error.response || error.message);
       setLoading(false);
     }
   };
 
-  // Sort students by score (highest to lowest)
+  // Sort students by score (highest to lowest), then by completion time (lowest to highest)
   const getSortedStudents = () => {
-    return [...studentScores].sort((a, b) => b.score - a.score);
+    return [...studentScores].sort((a, b) => {
+      // First sort by score (descending)
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      // If scores are equal, sort by completion time (ascending - fastest first)
+      return a.completionTime - b.completionTime;
+    });
   };
 
   // Fetch challenge info if needed
@@ -260,36 +433,42 @@ const DailyChallengePerformance = () => {
   }, [enterDailyChallengeMenu, exitDailyChallengeMenu, challengeInfo, user, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName]);
 
   useEffect(() => {
-    fetchPerformanceData();
+    if (challengeInfo.challengeId || id) {
+      fetchPerformanceData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, challengeInfo.challengeId]);
 
-  // Custom Tooltip for Recharts
-  const CustomTooltip = ({ active, payload }) => {
+  // Debug: Log when performanceData changes
+  useEffect(() => {
+    console.log('Performance data state updated:', performanceData);
+  }, [performanceData]);
+
+  // Debug: Log when studentScores changes
+  useEffect(() => {
+    console.log('Student scores state updated:', studentScores);
+    console.log('Number of students in state:', studentScores.length);
+  }, [studentScores]);
+
+  // Custom Tooltip for Chart (new chart data)
+  const CustomChartTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div style={{
-          backgroundColor: theme === 'sun' ? '#fff' : '#2d1b69',
-          border: `1px solid ${theme === 'sun' ? '#d9d9d9' : '#4dd0ff'}`,
-          borderRadius: '8px',
-          padding: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-        }}>
-          <p style={{ 
-            margin: 0, 
-            fontWeight: 600, 
-            marginBottom: '4px',
-            color: theme === 'sun' ? '#000' : '#fff'
-          }}>
-            {t('dailyChallenge.scoreRange')}: {data.range}
+        <div className={`dcpr-tooltip ${theme}-dcpr-tooltip`}>
+          <p className="dcpr-tooltip__title">
+            {data.name}
           </p>
-          <p style={{ 
-            margin: 0, 
-            color: theme === 'sun' ? '#666' : '#d2cbf2'
-          }}>
-            {t('class.studentCount')}: {data.studentCount}
-          </p>
+          {payload.find(p => p.dataKey === 'score') && (
+            <p className="dcpr-tooltip__item">
+              {t('dailyChallenge.score', 'Điểm số')}: {data.score.toFixed(2)}/10
+            </p>
+          )}
+          {payload.find(p => p.dataKey === 'time') && (
+            <p className="dcpr-tooltip__item">
+              {t('dailyChallenge.completionTime', 'Thời gian hoàn thành')}: {data.time} {t('dailyChallenge.minutes', 'phút')}
+            </p>
+          )}
         </div>
       );
     }
@@ -298,12 +477,12 @@ const DailyChallengePerformance = () => {
 
   return (
     <ThemedLayout>
-      <div className="daily-challenge-performance-wrapper">
+      <div className={`dcpr-wrapper ${theme}-dcpr-wrapper`}>
         {/* Action Section */}
-        <div className="search-action-section" style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '24px', padding: '24px 24px 0 24px' }}>
+        <div className="dcpr-action-section">
           {userRole !== 'teaching_assistant' && (
             <Button
-              className={`tab-button ${theme}-tab-button`}
+              className={`dcpr-tab-button ${theme}-dcpr-tab-button`}
               onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/content`, {
                 state: challengeInfo
               })}
@@ -312,7 +491,7 @@ const DailyChallengePerformance = () => {
             </Button>
           )}
           <Button
-            className={`tab-button ${theme}-tab-button`}
+            className={`dcpr-tab-button ${theme}-dcpr-tab-button`}
             onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/submissions`, {
               state: challengeInfo
             })}
@@ -322,210 +501,442 @@ const DailyChallengePerformance = () => {
         </div>
 
         {/* Performance Content */}
-        <div className="performance-content" style={{ padding: '0 24px 24px 24px' }}>
+        <div className="dcpr-content">
           <LoadingWithEffect loading={loading} message={t('dailyChallenge.loadingPerformance')}>
-            <Row gutter={24} style={{ alignItems: 'stretch' }}>
-              {/* Left Section - Student List (1/3) */}
-              <Col xs={24} lg={8} style={{ display: 'flex' }}>
-                <Card 
-                  className={`student-list-card ${theme}-student-list-card`}
-                  style={{ 
-                    marginBottom: '24px',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    flex: 1
+            {/* Overview Section - Statistics Cards */}
+            <Row gutter={[12, 16]} style={{ marginBottom: 24 }}>
+              <Col xs={24} sm={12} md={8} lg={8} flex="1 1 220px" style={{ display: 'flex' }}>
+                <Card
+                  hoverable
+                  style={{
+                    backgroundColor: '#d6e6fb',
+                    border: 'none',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 8px 20px rgba(0,0,0,0.08)' : undefined,
+                    minHeight: 170,
+                    width: '100%'
                   }}
                 >
-                  <h2 style={{ 
-                    margin: 0, 
-                    marginBottom: '16px', 
-                    fontSize: '20px', 
-                    fontWeight: 600, 
-                    color: theme === 'sun' ? '#000' : '#000',
-                    textAlign: 'center'
-                  }}>
-                    {t('dailyChallenge.topRank')}
-                  </h2>
-                  
-                  <div style={{ 
-                    flex: 1, 
-                    overflow: 'auto',
-                    maxHeight: '480px' // Chiều cao cho khoảng 6 học sinh (mỗi item ~80px)
-                  }}>
-                    <List
-                      dataSource={getSortedStudents()}
-                      renderItem={(student, index) => {
-                        const isTopScore = index === 0;
-                        
-                        return (
-                          <List.Item
-                            style={{
-                              padding: '12px 16px',
-                              borderBottom: theme === 'sun' ? '1px solid #f0f0f0' : '1px solid rgba(58, 52, 88, 0.3)',
-                              background: isTopScore 
-                                ? (theme === 'sun' ? 'linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)' : 'linear-gradient(135deg, #5a4a8f 0%, #6b5aa0 100%)')
-                                : 'transparent',
-                              transition: 'all 0.3s ease',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              border: isTopScore ? (theme === 'sun' ? '2px solid #1890ff' : '2px solid #8b7dd8') : 'none',
-                              borderRadius: isTopScore ? '8px' : '0',
-                              boxShadow: isTopScore ? (theme === 'sun' ? '0 4px 12px rgba(24, 144, 255, 0.3)' : '0 4px 12px rgba(139, 125, 216, 0.3)') : 'none'
-                            }}
-                            className={`student-list-item ${theme}-student-list-item`}
-                          >
-                            <div style={{ 
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px',
-                              flex: 1
-                            }}>
-                              {isTopScore && (
-                                <TrophyOutlined 
-                                  style={{ 
-                                    color: theme === 'sun' ? '#1890ff' : '#ffc53d',
-                                    fontSize: '20px',
-                                    animation: 'pulse 2s infinite'
-                                  }} 
-                                />
-                              )}
-                              <span style={{ 
-                                fontWeight: isTopScore ? 700 : 600,
-                                fontSize: isTopScore ? '17px' : '16px',
-                                color: isTopScore 
-                                  ? (theme === 'sun' ? '#1890ff' : '#ffc53d')
-                                  : (theme === 'sun' ? '#000' : '#000')
-                              }}>
-                                {student.name}
-                              </span>
-                              <span style={{ 
-                                fontSize: '15px',
-                                color: theme === 'sun' ? '#666' : '#999',
-                                fontWeight: 500,
-                                marginLeft: 'auto',
-                                marginRight: '16px'
-                              }}>
-                                {student.completionTime} {t('dailyChallenge.minutes')}
-                              </span>
-                            </div>
-                            <span style={{ 
-                              fontWeight: isTopScore ? 800 : 700,
-                              fontSize: isTopScore ? '20px' : '18px',
-                              color: isTopScore
-                                ? (theme === 'sun' ? '#1890ff' : '#ffc53d')
-                                : student.score >= 8 
-                                ? '#52c41a' 
-                                : student.score >= 6 
-                                ? '#faad14' 
-                                : '#ff4d4f'
-                            }}>
-                              {student.score}/10
-                            </span>
-                          </List.Item>
-                        );
-                      }}
-                    />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'rgba(255,255,255,0.9)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <BarChartOutlined style={{ color: '#2b6cb0' }} />
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: 18, color: '#5b6b83', lineHeight: 1.1 }}>
+                      {t('dailyChallenge.averageScore')}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+                    {performanceData.average}/10
+                  </div>
+                  <div style={{ color: '#6b7280', fontSize: 14 }}>
+                    Average score
                   </div>
                 </Card>
               </Col>
-
-              {/* Right Section - Performance Stats & Chart (2/3) */}
-              <Col xs={24} lg={16} style={{ display: 'flex', flexDirection: 'column' }}>
-                {/* Performance Statistics */}
-                <Card className={`performance-card ${theme}-performance-card`} style={{ marginBottom: '24px', flexShrink: 0 }}>
-                  <h2 style={{ 
-                    margin: 0, 
-                    marginBottom: '24px', 
-                    fontSize: '20px', 
-                    fontWeight: 600, 
-                    color: '#000',
-                    textAlign: 'center'
-                  }}>
-                    {t('dailyChallenge.performance')}
-                  </h2>
-
-                  <Row gutter={[24, 24]}>
-                    <Col xs={24} sm={8}>
-                      <Card 
-                        className={`stat-card ${theme}-stat-card`}
-                        style={{ background: theme === 'sun' ? '#e6f5ff' : '#4b4177' }}
-                      >
-                        <Statistic
-                          title={<span style={{ color: theme === 'sun' ? '#000' : '#fff' }}>{t('dailyChallenge.averageScore')}</span>}
-                          value={performanceData.average}
-                          suffix={<span style={{ color: theme === 'sun' ? '#000' : '#fff' }}>/10</span>}
-                          valueStyle={{ color: theme === 'sun' ? '#000' : '#fff', fontSize: '24px', fontWeight: 600 }}
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={8}>
-                      <Card 
-                        className={`stat-card ${theme}-stat-card`}
-                        style={{ background: theme === 'sun' ? '#e6f5ff' : '#4b4177' }}
-                      >
-                        <Statistic
-                          title={<span style={{ color: theme === 'sun' ? '#000' : '#fff' }}>{t('dailyChallenge.highestScore')}</span>}
-                          value={performanceData.highest}
-                          suffix={<span style={{ color: theme === 'sun' ? '#000' : '#fff' }}>/10</span>}
-                          valueStyle={{ color: theme === 'sun' ? '#000' : '#fff', fontSize: '24px', fontWeight: 600 }}
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={8}>
-                      <Card 
-                        className={`stat-card ${theme}-stat-card`}
-                        style={{ background: theme === 'sun' ? '#e6f5ff' : '#4b4177' }}
-                      >
-                        <Statistic
-                          title={<span style={{ color: theme === 'sun' ? '#000' : '#fff' }}>{t('dailyChallenge.lowestScore')}</span>}
-                          value={performanceData.lowest}
-                          suffix={<span style={{ color: theme === 'sun' ? '#000' : '#fff' }}>/10</span>}
-                          valueStyle={{ color: theme === 'sun' ? '#000' : '#fff', fontSize: '24px', fontWeight: 600 }}
-                        />
-                      </Card>
-                    </Col>
-                  </Row>
+              <Col xs={24} sm={12} md={8} lg={8} flex="1 1 220px" style={{ display: 'flex' }}>
+                <Card
+                  hoverable
+                  style={{
+                    backgroundColor: '#dff7e8',
+                    border: 'none',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 8px 20px rgba(0,0,0,0.08)' : undefined,
+                    minHeight: 170,
+                    width: '100%'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'rgba(255,255,255,0.9)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <BarChartOutlined style={{ color: '#1f7a3e' }} />
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: 18, color: '#5b6b83', lineHeight: 1.1 }}>
+                      {t('dailyChallenge.highestScore')}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+                    {performanceData.highest}/10
+                  </div>
+                  <div style={{ color: '#6b7280', fontSize: 14 }}>
+                    Highest score
+                  </div>
                 </Card>
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} flex="1 1 220px" style={{ display: 'flex' }}>
+                <Card
+                  hoverable
+                  style={{
+                    backgroundColor: '#fee2e2',
+                    border: 'none',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 8px 20px rgba(0,0,0,0.08)' : undefined,
+                    minHeight: 170,
+                    width: '100%'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'rgba(255,255,255,0.9)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <BarChartOutlined style={{ color: '#ef4444' }} />
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: 18, color: '#5b6b83', lineHeight: 1.1 }}>
+                      {t('dailyChallenge.lowestScore')}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+                    {performanceData.lowest}/10
+                  </div>
+                  <div style={{ color: '#6b7280', fontSize: 14 }}>
+                    Lowest score
+                  </div>
+                </Card>
+              </Col>
+            </Row>
 
-                {/* Score Distribution Chart */}
-                <Card className={`chart-card ${theme}-chart-card`} style={{ flex: 1, marginBottom: '24px' }}>
-                  <h2 style={{ 
-                    margin: 0, 
-                    marginBottom: '24px', 
-                    fontSize: '20px', 
-                    fontWeight: 600, 
-                    color: theme === 'sun' ? '#000' : '#000',
-                    textAlign: 'center'
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+              {/* Top Rank Section */}
+              <Col xs={24} lg={16}>
+                <Card
+                  style={{
+                    backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                    border: 'none',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                    paddingTop: 8,
+                    minHeight: 420,
+                    height: '100%'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <TrophyOutlined style={{ color: '#f59e0b', fontSize: 20 }} />
+                    <div className="manager-dashboard-v2__title">Top hành điểm cao nhất</div>
+                  </div>
+                  {getSortedStudents().length === 0 ? (
+                    <Empty description="No student data" style={{ padding: '40px 20px' }} />
+                  ) : (
+                    <div className="dcpr-table-scroll">
+                      <div className="dcpr-table">
+                        <div className="dcpr-table__head" style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1.2fr' }}>
+                          <div>Rank</div>
+                          <div>Student</div>
+                          <div>Score</div>
+                          <div>Time</div>
+                          <div>Status</div>
+                          <div>Late</div>
+                          <div>Submitted At</div>
+                        </div>
+                        {getSortedStudents().map((student, index) => {
+                          const isTopScore = index === 0;
+                          const rank = index + 1;
+                          
+                          // Format submission status
+                          const getStatusLabel = (status) => {
+                            switch (status) {
+                              case 'GRADED': return 'Graded';
+                              case 'SUBMITTED': return 'Submitted';
+                              case 'NOT_STARTED': return 'Not Started';
+                              case 'IN_PROGRESS': return 'In Progress';
+                              default: return status || 'N/A';
+                            }
+                          };
+                          
+                          const getStatusColor = (status) => {
+                            switch (status) {
+                              case 'GRADED': return '#22c55e';
+                              case 'SUBMITTED': return '#3b82f6';
+                              case 'NOT_STARTED': return '#ef4444';
+                              case 'IN_PROGRESS': return '#f59e0b';
+                              default: return '#6b7280';
+                            }
+                          };
+                          
+                          // Format datetime as DD/MM/YYYY HH:mm
+                          const formatDateTime = (dateString) => {
+                            if (!dateString) return 'N/A';
+                            try {
+                              return dayjs(dateString).format('DD/MM/YYYY HH:mm');
+                            } catch (error) {
+                              return 'N/A';
+                            }
+                          };
+                          
+                          return (
+                            <div 
+                              key={student.id || student.userId || index}
+                              className={`dcpr-table__row ${isTopScore ? 'dcpr-table__row--top' : ''}`}
+                              style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1.2fr' }}
+                            >
+                              <div style={{ 
+                                fontWeight: 700, 
+                                color: isTopScore ? '#1890ff' : '#6366f1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}>
+                                {isTopScore && <TrophyOutlined style={{ color: '#f59e0b' }} />}
+                                #{rank}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Avatar 
+                                  size={32} 
+                                  src={student.avatar} 
+                                  icon={<UserOutlined />} 
+                                  style={{ backgroundColor: '#6366f1' }} 
+                                />
+                                <div>
+                                  <div style={{ fontWeight: 600 }}>{student.name || student.email}</div>
+                                  <div style={{ fontSize: 12, color: '#6b7280' }}>{student.email}</div>
+                                </div>
+                              </div>
+                              <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                                {Number(student.score || 0).toFixed(2)}/10
+                              </div>
+                              <div style={{ color: '#1f2937' }}>
+                                {student.completionTime || 0} {t('dailyChallenge.minutes', 'min')}
+                              </div>
+                              <div style={{ color: getStatusColor(student.submissionStatus), fontWeight: 500 }}>
+                                {getStatusLabel(student.submissionStatus)}
+                              </div>
+                              <div style={{ 
+                                color: student.isLate ? '#ef4444' : '#22c55e', 
+                                fontWeight: 500 
+                              }}>
+                                {student.isLate ? 'Yes' : 'No'}
+                              </div>
+                              <div style={{ 
+                                color: '#1f2937',
+                                fontSize: 13
+                              }}>
+                                {formatDateTime(student.submittedAt)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </Col>
+
+              {/* Submission Stats Section */}
+              <Col xs={24} lg={8}>
+                <Card
+                  style={{
+                    backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                    border: 'none',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                    paddingTop: 8,
+                    minHeight: 420,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <TeamOutlined style={{ color: '#6366f1', fontSize: 20 }} />
+                    <div className="manager-dashboard-v2__title">Thống kê nộp bài</div>
+                  </div>
+                  <div style={{ 
+                    flex: 1, 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    justifyContent: 'space-around',
+                    padding: '4px 0'
                   }}>
-                    {t('dailyChallenge.scoreDistribution')}
-                  </h2>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart 
-                      data={performanceData.scoreDistribution}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
-                      <XAxis 
-                        dataKey="range" 
-                        stroke={theme === 'sun' ? '#000' : '#000'}
-                        style={{ fontSize: '14px' }}
-                      />
-                      <YAxis 
-                        stroke={theme === 'sun' ? '#000' : '#000'}
-                        style={{ fontSize: '14px' }}
-                        allowDecimals={false}
-                        domain={[0, 'auto']}
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey="studentCount" 
-                        fill={theme === 'sun' ? '#1890ff' : '#8b7dd8'}
-                        radius={[8, 8, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                    {[
+                      {
+                        label: t('dailyChallenge.completed', 'Hoàn thành'),
+                        count: performanceData.submissionStats?.completedCount || 0,
+                        icon: <CheckCircleOutlined />,
+                        color: '#1f7a3e',
+                        bgColor: '#dff7e8'
+                      },
+                      {
+                        label: t('dailyChallenge.late', 'Nộp muộn'),
+                        count: performanceData.submissionStats?.lateCount || 0,
+                        icon: <ClockCircleOutlined />,
+                        color: '#f59e0b',
+                        bgColor: '#fef3c7'
+                      },
+                      {
+                        label: t('dailyChallenge.notStarted', 'Chưa làm'),
+                        count: performanceData.submissionStats?.notStartedCount || 0,
+                        icon: <UserOutlined />,
+                        color: '#ef4444',
+                        bgColor: '#fee2e2'
+                      },
+                      {
+                        label: t('dailyChallenge.totalStudents', 'Tổng số'),
+                        count: performanceData.submissionStats?.totalStudents || 0,
+                        icon: <TeamOutlined />,
+                        color: '#6366f1',
+                        bgColor: '#e0e7ff'
+                      }
+                    ].map((item, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px 16px',
+                          marginBottom: index < 3 ? 10 : 0,
+                          backgroundColor: item.bgColor,
+                          borderRadius: 10,
+                          border: `2px solid ${item.color}20`,
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = `0 4px 12px ${item.color}30`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                          <div style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 10,
+                            background: 'rgba(255,255,255,0.9)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `2px solid ${item.color}40`
+                          }}>
+                            <span style={{ fontSize: 20, color: item.color }}>
+                              {item.icon}
+                            </span>
+                          </div>
+                          <span style={{ 
+                            fontSize: 16, 
+                            fontWeight: 600, 
+                            color: item.color,
+                            flex: 1
+                          }}>
+                            {item.label}
+                          </span>
+                        </div>
+                        <div style={{
+                          fontSize: 28,
+                          fontWeight: 700,
+                          color: item.color,
+                          minWidth: 50,
+                          textAlign: 'right'
+                        }}>
+                          {item.count}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Chart Section - Full Width */}
+            <Row gutter={[16, 16]}>
+              <Col xs={24}>
+                <Card
+                  style={{
+                    backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                    border: 'none',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                    paddingTop: 8,
+                    minHeight: 420,
+                    height: '100%'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
+                    <div className="manager-dashboard-v2__title">Biểu đồ</div>
+                  </div>
+                  <div style={{ width: '100%', height: 360 }}>
+                    {chartData.length === 0 ? (
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        height: '100%',
+                        color: '#999'
+                      }}>
+                        No chart data available
+                      </div>
+                    ) : (
+                      <ResponsiveContainer>
+                        <ComposedChart 
+                          data={chartData}
+                          margin={{ top: 20, right: 30, left: 0, bottom: 60 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis 
+                            dataKey="name" 
+                            tick={{ fontSize: 11 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            interval={0}
+                          />
+                          <YAxis 
+                            yAxisId="left"
+                            label={{ value: 'Điểm', angle: -90, position: 'insideLeft', style: { fontSize: '14px' } }}
+                            tick={{ fontSize: 12 }}
+                            domain={[0, 10]}
+                          />
+                          <YAxis 
+                            yAxisId="right"
+                            orientation="right"
+                            label={{ value: 'Thời gian (phút)', angle: 90, position: 'insideRight', style: { fontSize: '14px' } }}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <Tooltip content={<CustomChartTooltip />} />
+                          <Legend wrapperStyle={{ paddingTop: '8px' }} />
+                          <Bar 
+                            yAxisId="left"
+                            dataKey="score" 
+                            fill="#6366f1"
+                            radius={[6, 6, 0, 0]}
+                            name="Điểm số"
+                          />
+                          <Line 
+                            yAxisId="right"
+                            type="monotone" 
+                            dataKey="time" 
+                            stroke="#f59e0b"
+                            strokeWidth={2.2}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                            name="Thời gian hoàn thành"
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
                 </Card>
               </Col>
             </Row>

@@ -1,0 +1,137 @@
+/* Unique CSS for Class Report V2 to avoid collision */
+.class-report-v2-container {
+  padding: 24px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.crv2-title {
+  font-weight: 700;
+  font-size: 20px;
+  color: #111827;
+}
+
+.crv2-table {
+  width: 100%;
+}
+
+.crv2-table__head,
+.crv2-table__row {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.crv2-table__head {
+  font-weight: 700;
+  color: #4b5563;
+  background: #f9fafb;
+  border: 1px solid #eef2f7;
+}
+
+.crv2-table__row {
+  background: #fbfdff;
+  border: 1px solid #eef2f7;
+  margin-top: 8px;
+  color: #111827;
+  font-weight: 400;
+}
+
+/* Ensure all cells render dark text, not bold */
+.crv2-table__row > div {
+  color: #111827;
+  font-weight: 400;
+}
+
+/* Explicit scrollbars for data tables within cards */
+.crv2-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;           /* Firefox */
+  scrollbar-color: #a8b3c2 transparent;
+}
+
+.crv2-scroll::-webkit-scrollbar {
+  width: 8px;                      /* Chrome/Safari */
+}
+
+.crv2-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.crv2-scroll::-webkit-scrollbar-thumb {
+  background: #cfd8e3;
+  border-radius: 8px;
+}
+
+.crv2-scroll:hover::-webkit-scrollbar-thumb {
+  background: #a8b3c2;
+}
+
+.crv2-error {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* Override TableSpinner size for class report - medium size */
+.class-report-v2-container .table-spinner-container {
+  height: 400px !important;
+  min-height: 400px;
+}
+
+.class-report-v2-container .table-spinner-content {
+  width: 280px !important;
+  height: 280px !important;
+}
+
+.class-report-v2-container .table-earth {
+  width: 110px !important;
+  height: 110px !important;
+}
+
+.class-report-v2-container .table-earth img {
+  width: 110px !important;
+  height: 110px !important;
+}
+
+.class-report-v2-container .table-rocket-orbit {
+  width: 180px !important;
+  height: 180px !important;
+}
+
+.class-report-v2-container .table-rocket {
+  width: 65px !important;
+  height: 65px !important;
+}
+
+.class-report-v2-container .table-rocket img {
+  width: 65px !important;
+  height: 65px !important;
+}
+
+.class-report-v2-container .table-loading-message {
+  bottom: -45px;
+  font-size: 16px !important;
+}
+
+.class-report-v2-container .table-loading-message span {
+  font-size: 16px !important;
+}
+
+/* Theme-specific styles */
+.sun-theme .class-report-v2-container {
+  background: transparent;
+}
+
+.space-theme .class-report-v2-container {
+  background: transparent;
+}
+
