@@ -631,6 +631,45 @@ const dailyChallengeApi = {
 				'accept': '*/*',
 			}
 		});
+	},
+
+	// Extend submission deadline(s)
+	// Endpoint: POST /challenge-submissions/extend-deadline
+	extendSubmissionDeadline: (submissionIds, newExpiredAt) => {
+		const url = `/challenge-submissions/extend-deadline`;
+		const payload = {
+			submissionIds: Array.isArray(submissionIds) ? submissionIds : [submissionIds],
+			newExpiredAt,
+		};
+		console.log('ExtendSubmissionDeadline API - URL:', url);
+		console.log('ExtendSubmissionDeadline API - Payload:', payload);
+
+		return axiosClient.post(url, payload, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Reset submissions (re-assign new attempt window)
+	// Endpoint: POST /challenge-submissions/reset
+	resetSubmissions: (submissionIds, newStartDate, newEndDate) => {
+		const url = `/challenge-submissions/reset`;
+		const payload = {
+			submissionIds: Array.isArray(submissionIds) ? submissionIds : [submissionIds],
+			newStartDate,
+			newEndDate,
+		};
+		console.log('ResetSubmissions API - URL:', url);
+		console.log('ResetSubmissions API - Payload:', payload);
+
+		return axiosClient.post(url, payload, {
+			headers: {
+				'Content-Type': 'application/json',
+				'accept': '*/*',
+			}
+		});
 	}
 };
 
