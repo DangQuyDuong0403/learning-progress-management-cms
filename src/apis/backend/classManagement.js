@@ -478,7 +478,7 @@ const classManagementApi = {
 		});
 	},
 
-	// Lấy lịch sử lớp học
+	// Lấy lịch sử lớp học (bao gồm filter, phân trang, sort)
 	getClassHistory: (classId, params = {}) => {
 		const queryParams = new URLSearchParams();
 		
@@ -491,7 +491,7 @@ const classManagementApi = {
 		if (params.endDate) queryParams.append('endDate', params.endDate);
 		if (params.actionBy) queryParams.append('actionBy', params.actionBy);
 
-		const url = `/class-history/history${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		const url = `/class/history/${classId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 		console.log('GetClassHistory API - URL:', url);
 		console.log('GetClassHistory API - ClassId:', classId);
 		console.log('GetClassHistory API - Params:', params);

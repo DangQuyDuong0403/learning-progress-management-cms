@@ -1,17 +1,15 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Button,
-  Space,
   Typography,
   Input,
-  Select,
   Pagination,
   DatePicker,
+  Button,
 } from "antd";
 import {
   SearchOutlined,
+  FilterOutlined,
 } from "@ant-design/icons";
-import dayjs from 'dayjs';
 import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
 import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -95,19 +93,19 @@ const ClassActivities = () => {
     pageSize: 10,
     total: 0,
   });
+  const { current: paginationCurrent, pageSize: paginationPageSize } = pagination;
   
-  // Sort state
-  const [sortConfig, setSortConfig] = useState({
-    sortBy: 'actionAt',
-    sortDir: 'desc',
-  });
-
   // Filter state
   const [filters, setFilters] = useState({
     startDate: null,
     endDate: null,
-    actionBy: null,
   });
+  const [filterDropdown, setFilterDropdown] = useState({
+    visible: false,
+    startDate: null,
+    endDate: null,
+  });
+  const filterContainerRef = useRef(null);
 
   const fetchClassData = useCallback(async () => {
     try {
@@ -138,54 +136,49 @@ const ClassActivities = () => {
     }
   }, [id, t]);
 
-  const fetchActivities = useCallback(async (params = {}) => {
+  const fetchActivities = useCallback(async () => {
     setLoading(true);
     try {
       const apiParams = {
-        page: params.page !== undefined ? params.page : pagination.current - 1,
-        size: params.size !== undefined ? params.size : pagination.pageSize,
-        sortBy: params.sortBy !== undefined ? params.sortBy : sortConfig.sortBy,
-        sortDir: params.sortDir !== undefined ? params.sortDir : sortConfig.sortDir,
-        startDate: filters.startDate ? filters.startDate.format('YYYY-MM-DDTHH:mm:ss[Z]') : undefined,
-        endDate: filters.endDate ? filters.endDate.format('YYYY-MM-DDTHH:mm:ss[Z]') : undefined,
-        actionBy: filters.actionBy || undefined
+        page: paginationCurrent - 1,
+        size: paginationPageSize,
+        sortBy: 'actionAt',
+        sortDir: 'desc',
+        startDate: filters.startDate ? filters.startDate.startOf('day').toISOString() : undefined,
+        endDate: filters.endDate ? filters.endDate.endOf('day').toISOString() : undefined,
       };
-      
+
       const response = await classManagementApi.getClassHistory(id, apiParams);
       console.log('🔍 Class History API Response:', response);
-      console.log('🔍 Response data:', response?.data);
-      
-      // Handle different response structures
+
+      const payload = response?.data ?? response;
       let activitiesData = [];
-      let totalElements = 0;
-      
-      if (response && response.data) {
-        // Check if response has pagination structure
-        if (response.data.content && Array.isArray(response.data.content)) {
-          activitiesData = response.data.content;
-          totalElements = response.data.totalElements || response.data.total || 0;
-        } 
-        // Check if response is direct array
-        else if (Array.isArray(response.data)) {
-          activitiesData = response.data;
-          totalElements = response.data.length;
-        }
-        // Check if response has data property
-        else if (response.data.data && Array.isArray(response.data.data)) {
-          activitiesData = response.data.data;
-          totalElements = response.data.totalElements || response.data.total || response.data.data.length;
+      let totalElementsFromPayload = 0;
+
+      if (payload) {
+        if (Array.isArray(payload?.data)) {
+          activitiesData = payload.data;
+          totalElementsFromPayload = payload.totalElements ?? payload.total ?? payload.data.length;
+        } else if (payload?.data && Array.isArray(payload.data?.content)) {
+          activitiesData = payload.data.content;
+          totalElementsFromPayload = payload.data.totalElements ?? payload.data.total ?? activitiesData.length;
+        } else if (Array.isArray(payload?.content)) {
+          activitiesData = payload.content;
+          totalElementsFromPayload = payload.totalElements ?? payload.total ?? activitiesData.length;
+        } else if (Array.isArray(payload)) {
+          activitiesData = payload;
+          totalElementsFromPayload = payload.length;
         }
       }
-      
-      console.log('🔍 Activities data:', activitiesData);
-      console.log('🔍 Total elements:', totalElements);
-      
+
+      const totalElements = totalElementsFromPayload || payload?.totalElements || payload?.total || activitiesData.length;
+
       setActivities(activitiesData);
-      setPagination(prev => ({
-        ...prev,
-        total: totalElements
-      }));
-      
+      // Only update total to avoid triggering another fetch loop
+      setPagination(prev => {
+        if (prev.total === totalElements) return prev;
+        return { ...prev, total: totalElements };
+      });
     } catch (error) {
       console.error('Error fetching class history:', error);
       spaceToast.error(t('classActivities.loadingActivities'));
@@ -197,13 +190,23 @@ const ClassActivities = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, t, pagination.current, pagination.pageSize, sortConfig.sortBy, sortConfig.sortDir, filters]);
+  }, [
+    id,
+    t,
+    paginationCurrent,
+    paginationPageSize,
+    filters.startDate,
+    filters.endDate,
+  ]);
 
   // Initial data loading
   useEffect(() => {
     fetchClassData();
+  }, [fetchClassData]);
+
+  useEffect(() => {
     fetchActivities();
-  }, [id]);
+  }, [fetchActivities]);
 
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
@@ -213,6 +216,7 @@ const ClassActivities = () => {
     return () => {
       exitClassMenu();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Enter class menu mode when component mounts
@@ -229,19 +233,8 @@ const ClassActivities = () => {
     return () => {
       exitClassMenu();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classData?.id, classData?.name]);
-
-  // Handle pagination and sort changes
-  useEffect(() => {
-    if (pagination.current > 1 || sortConfig.sortBy !== 'actionAt' || sortConfig.sortDir !== 'desc') {
-      fetchActivities({
-        page: pagination.current - 1,
-        size: pagination.pageSize,
-        sortBy: sortConfig.sortBy,
-        sortDir: sortConfig.sortDir
-      });
-    }
-  }, [pagination.current, pagination.pageSize, sortConfig.sortBy, sortConfig.sortDir]);
 
   // Handle pagination change
   const handlePaginationChange = (page, pageSize) => {
@@ -252,48 +245,72 @@ const ClassActivities = () => {
     }));
   };
 
-  // Handle sort change
-  const handleSortChange = (sortBy, sortDir) => {
-    setSortConfig({
-      sortBy,
-      sortDir,
-    });
-    // Reset to first page when sorting changes
-    setPagination(prev => ({
-      ...prev,
-      current: 1,
-    }));
-  };
-
   // Handle filter changes
-  const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
+  const handleFilterToggle = () => {
+    setFilterDropdown(prev => ({
       ...prev,
-      [filterType]: value
-    }));
-    // Reset to first page when filters change
-    setPagination(prev => ({
-      ...prev,
-      current: 1,
+      visible: !prev.visible,
+      startDate: !prev.visible ? filters.startDate : prev.startDate,
+      endDate: !prev.visible ? filters.endDate : prev.endDate,
     }));
   };
 
-  // Clear all filters
-  const handleClearFilters = () => {
-    setFilters({
+  const handleFilterDraftChange = (key, value) => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const handleFilterReset = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
       startDate: null,
       endDate: null,
-      actionBy: null,
-    });
+    }));
+  };
+
+  const handleFilterSubmit = () => {
+    setFilters(prev => ({
+      ...prev,
+      startDate: filterDropdown.startDate,
+      endDate: filterDropdown.endDate,
+    }));
     setPagination(prev => ({
       ...prev,
       current: 1,
     }));
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: false,
+    }));
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdown.visible && filterContainerRef.current && !filterContainerRef.current.contains(event.target)) {
+        setFilterDropdown(prev => ({
+          ...prev,
+          visible: false,
+        }));
+      }
+    };
+
+    if (filterDropdown.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterDropdown.visible]);
+
+  // Clear all filters
   // Filter activities based on search text
   const filteredActivities = activities.filter(activity => 
     (activity.actionByFullName && activity.actionByFullName.toLowerCase().includes(searchText.toLowerCase())) ||
+    (activity.actionByUsername && String(activity.actionByUsername).toLowerCase().includes(searchText.toLowerCase())) ||
+    (activity.actionByEmailPrefix && String(activity.actionByEmailPrefix).toLowerCase().includes(searchText.toLowerCase())) ||
     (activity.actionDetails && activity.actionDetails.toLowerCase().includes(searchText.toLowerCase())) ||
     (activity.actionType && activity.actionType.toLowerCase().includes(searchText.toLowerCase()))
   );
@@ -334,71 +351,113 @@ const ClassActivities = () => {
             allowClear
             placeholder={t('classActivities.searchPlaceholder')}
           />
-          
-          {/* Date Range Filters */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span className="filter-text">
-              {t('classActivities.startDate')}:
-            </span>
-            <DatePicker
-              value={filters.startDate}
-              onChange={(date) => handleFilterChange('startDate', date)}
-              placeholder={t('classActivities.selectStartDate')}
-              style={{ height: '40px' }}
-              format="YYYY-MM-DD"
-            />
+          <div ref={filterContainerRef} style={{ position: 'relative' }}>
+            <Button
+              icon={<FilterOutlined />}
+              onClick={handleFilterToggle}
+              className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''}`}
+              style={{
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              {t('classActivities.filter', { defaultValue: 'Filter' })}
+            </Button>
+
+            {filterDropdown.visible && (
+              <div
+                className={`filter-dropdown-panel ${theme}-filter-dropdown`}
+                style={{
+                  position: 'absolute',
+                  top: '48px',
+                  left: 0,
+                  zIndex: 100,
+                  background: theme === 'dark' ? '#1f2937' : '#ffffff',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.15)',
+                  minWidth: '320px',
+                  padding: '20px',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span className="filter-text" style={{ fontWeight: 600 }}>
+                      {t('classActivities.startDate', { defaultValue: 'Start date' })}
+                    </span>
+                    <DatePicker
+                      value={filterDropdown.startDate}
+                      onChange={(date) => handleFilterDraftChange('startDate', date)}
+                      placeholder={t('classActivities.selectStartDate', { defaultValue: 'Select start date' })}
+                      format="YYYY-MM-DD"
+                      allowClear
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span className="filter-text" style={{ fontWeight: 600 }}>
+                      {t('classActivities.endDate', { defaultValue: 'End date' })}
+                    </span>
+                    <DatePicker
+                      value={filterDropdown.endDate}
+                      onChange={(date) => handleFilterDraftChange('endDate', date)}
+                      placeholder={t('classActivities.selectEndDate', { defaultValue: 'Select end date' })}
+                      format="YYYY-MM-DD"
+                      allowClear
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '24px',
+                    borderTop: '1px solid #f0f0f0',
+                    paddingTop: '16px',
+                  }}
+                >
+                  <Button
+                    onClick={handleFilterReset}
+                    className={`filter-reset-button ${theme}-filter-reset-button`}
+                    style={{
+                      height: '32px',
+                      fontWeight: '500',
+                      fontSize: '16px',
+                      padding: '4px 15px',
+                      width: '100px',
+                    }}
+                  >
+                    {t('classActivities.reset', { defaultValue: 'Reset' })}
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={handleFilterSubmit}
+                    className={`filter-submit-button ${theme}-filter-submit-button`}
+                    style={{
+                      background:
+                        theme === 'sun'
+                          ? 'rgb(113, 179, 253)'
+                          : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+                      borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                      color: theme === 'sun' ? '#000' : '#fff',
+                      borderRadius: '6px',
+                      height: '32px',
+                      fontWeight: '500',
+                      fontSize: '16px',
+                      padding: '4px 15px',
+                      width: '120px',
+                      transition: 'all 0.3s ease',
+                      boxShadow: 'none',
+                    }}
+                  >
+                    {t('classActivities.apply', { defaultValue: 'Apply' })}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span className="filter-text">
-              {t('classActivities.endDate')}:
-            </span>
-            <DatePicker
-              value={filters.endDate}
-              onChange={(date) => handleFilterChange('endDate', date)}
-              placeholder={t('classActivities.selectEndDate')}
-              style={{ height: '40px' }}
-              format="YYYY-MM-DD"
-            />
-          </div>
-
-          {/* Action By Filter */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span className="filter-text">
-              {t('classActivities.actionBy')}:
-            </span>
-            <Input
-              value={filters.actionBy}
-              onChange={(e) => handleFilterChange('actionBy', e.target.value)}
-              placeholder={t('classActivities.actionByPlaceholder')}
-              style={{ width: '120px', height: '40px' }}
-              allowClear
-            />
-          </div>
-
-          {/* Sort Controls */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span className="sort-by-text">
-              {t('classActivities.sortBy')}:
-            </span>
-            <Select
-              value={sortConfig.sortBy}
-              onChange={(value) => handleSortChange(value, sortConfig.sortDir)}
-              style={{ width: '140px', height: '40px' }}
-              options={[
-                { value: 'actionAt', label: t('classActivities.actionAt') },
-                { value: 'actionType', label: t('classActivities.actionType') },
-              ]}
-            />
-          </div>
-
-          {/* Clear Filters Button */}
-          <Button
-            onClick={handleClearFilters}
-            style={{ height: '40px' }}
-          >
-            {t('classActivities.clearFilters')}
-          </Button>
         </div>
 
         {/* Activities Timeline Section */}
@@ -472,7 +531,7 @@ const ClassActivities = () => {
                         fontWeight: '600',
                         color: '#24292e'
                       }}>
-                        {activity.actionByFullName || 'Unknown User'}
+                        {activity.actionByFullName || activity.actionByUsername || activity.actionByEmailPrefix || 'Unknown User'}
                       </span>
                       <span style={{ 
                         fontSize: '14px', 
@@ -481,6 +540,42 @@ const ClassActivities = () => {
                         {activity.actionDetails || 'No details available'}
                       </span>
                     </div>
+                    
+                    {(activity.actionByUsername || activity.actionByEmailPrefix) && (
+                      <div
+                        title={`${activity.actionByUsername || ''}${activity.actionByUsername && activity.actionByEmailPrefix ? ' • ' : ''}${activity.actionByEmailPrefix || ''}`}
+                        style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          marginBottom: '4px'
+                        }}
+                      >
+                        {activity.actionByUsername && (
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: '#eef2ff',
+                            color: '#3730a3',
+                            fontWeight: 500
+                          }}>
+                            {activity.actionByUsername}
+                          </span>
+                        )}
+                        {activity.actionByEmailPrefix && (
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: '#f1f5f9',
+                            color: '#334155'
+                          }}>
+                            {activity.actionByEmailPrefix}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     
                     <div style={{ 
                       fontSize: '12px', 
@@ -535,7 +630,7 @@ const ClassActivities = () => {
           <Pagination
             current={pagination.current}
             pageSize={pagination.pageSize}
-            total={pagination.total || activities.length}
+            total={pagination.total}
             onChange={handlePaginationChange}
             onShowSizeChange={handlePaginationChange}
             showSizeChanger={true}
