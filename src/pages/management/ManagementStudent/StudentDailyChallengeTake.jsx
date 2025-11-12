@@ -14,7 +14,7 @@ import {
   ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../component/spinner/LoadingWithEffect";
 import "../ManagementTeacher/dailyChallenge/DailyChallengeContent.css";
@@ -31,8 +31,6 @@ import {
   getIPAddress
 } from '../../../utils/fingerprintUtils';
 import { notificationApi } from '../../../apis/apis';
-import { logout } from '../../../redux/auth';
-import ROUTER_PAGE from "../../../constants/router";
 
 // Context for collecting answers from child components
 const AnswerCollectionContext = createContext(null);
@@ -7208,11 +7206,11 @@ const StudentDailyChallengeTake = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
-  const dispatch = useDispatch();
   const { theme } = useTheme();
   const userRole = useSelector((state) => state.auth?.user?.role);
   const isTestTaker = userRole === 'test_taker' || userRole === 'TEST_TAKER';
   const routePrefix = isTestTaker ? '/test-taker' : '/student';
+  const classIdForRedirect = location.state?.classId;
   
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
@@ -7259,6 +7257,7 @@ const StudentDailyChallengeTake = () => {
   const [violationWarningModalVisible, setViolationWarningModalVisible] = useState(false);
   const [violationWarningData, setViolationWarningData] = useState(null);
   const [latestCheatEvent, setLatestCheatEvent] = useState(null);
+  const [deviceMismatchRedirectPath, setDeviceMismatchRedirectPath] = useState(null);
   const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
   const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
   const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
@@ -7273,7 +7272,7 @@ const StudentDailyChallengeTake = () => {
   const sseConnectionRef = useRef(null);
   const sessionStartSentRef = useRef(false); // Track if session start has been sent
   const lastMismatchCountRef = useRef(0);
-  const forcedLogoutRef = useRef(false);
+  const mismatchRedirectTriggeredRef = useRef(false);
   const sseSessionStartTsRef = useRef(0);
 
   const parseMismatchCount = useCallback((message) => {
@@ -7565,8 +7564,8 @@ const StudentDailyChallengeTake = () => {
     }
   }, []);
 
-  const verifyDeviceAndForceLogout = useCallback(async (targetFingerprint, targetIp, warningCount) => {
-    if (!targetFingerprint || forcedLogoutRef.current) {
+  const redirectOnDeviceMismatch = useCallback(async (targetFingerprint, warningCount) => {
+    if (!targetFingerprint || mismatchRedirectTriggeredRef.current) {
       return;
     }
 
@@ -7584,15 +7583,15 @@ const StudentDailyChallengeTake = () => {
     }
 
     if (currentFingerprint && currentFingerprint === targetFingerprint) {
-      forcedLogoutRef.current = true;
+      mismatchRedirectTriggeredRef.current = true;
       const warningNumberText = warningCount != null ? ` (lần cảnh báo ${warningCount})` : '';
       spaceToast.error(`Hệ thống phát hiện bạn sử dụng thiết bị khác${warningNumberText}. Phiên làm bài sẽ kết thúc.`);
-      dispatch(logout());
-      setTimeout(() => {
-        navigate(ROUTER_PAGE.LOGIN_STUDENT, { replace: true });
-      }, 100);
+      const targetPath = classIdForRedirect
+        ? `${routePrefix}/classes/daily-challenges/${classIdForRedirect}`
+        : `${routePrefix}/daily-challenges`;
+      setDeviceMismatchRedirectPath(targetPath);
     }
-  }, [dispatch, navigate]);
+  }, [classIdForRedirect, navigate, routePrefix]);
 
   // Helper function to get clipboard content (for paste) - async
   const getClipboardContent = useCallback(async () => {
@@ -7715,6 +7714,17 @@ const StudentDailyChallengeTake = () => {
       }
     }
   }, [getSelectedText, getClipboardContent, convertLogToApiFormat]);
+
+  const handleViolationModalAcknowledge = useCallback(() => {
+    setViolationWarningModalVisible(false);
+    if (deviceMismatchRedirectPath) {
+      const targetPath = deviceMismatchRedirectPath;
+      setDeviceMismatchRedirectPath(null);
+      setTimeout(() => {
+        navigate(targetPath, { replace: true });
+      }, 100);
+    }
+  }, [deviceMismatchRedirectPath, navigate]);
 
   // Initialize useTestSecurity hook
   useTestSecurity(
@@ -8014,8 +8024,9 @@ const StudentDailyChallengeTake = () => {
     // Reset session start sent flag khi submissionId thay đổi
     sessionStartSentRef.current = false;
     lastMismatchCountRef.current = 0;
-    forcedLogoutRef.current = false;
+    mismatchRedirectTriggeredRef.current = false;
     sseSessionStartTsRef.current = 0;
+    setDeviceMismatchRedirectPath(null);
 
     if (!submissionId || isViewOnly) return;
 
@@ -8040,7 +8051,6 @@ const StudentDailyChallengeTake = () => {
               : parseMismatchCount(warningMessage);
             const newCount = parsedCount > 0 ? parsedCount : lastCount + 1;
             const targetFingerprint = warningData?.targetDevice?.deviceFingerprint || warningData?.deviceFingerprint;
-            const targetIp = warningData?.targetDevice?.ipAddress || warningData?.ipAddress;
             const shouldShow = newCount > lastCount;
             
             if (shouldShow) {
@@ -8055,7 +8065,7 @@ const StudentDailyChallengeTake = () => {
               setViolationWarningModalVisible(true);
               setLatestCheatEvent('Cảnh báo: Thiết bị khác');
             }
-            verifyDeviceAndForceLogout(targetFingerprint, targetIp, newCount);
+            redirectOnDeviceMismatch(targetFingerprint, newCount);
           }
         },
         // onError
@@ -8084,7 +8094,7 @@ const StudentDailyChallengeTake = () => {
         sseConnectionRef.current = null;
       }
     };
-  }, [submissionId, isViewOnly, parseMismatchCount, verifyDeviceAndForceLogout]);
+  }, [submissionId, isViewOnly, parseMismatchCount, redirectOnDeviceMismatch]);
 
   // Start or update countdown based on absolute deadline
   useEffect(() => {
@@ -9587,7 +9597,7 @@ const StudentDailyChallengeTake = () => {
           <Button
             key="ok"
             type="primary"
-            onClick={() => setViolationWarningModalVisible(false)}
+            onClick={handleViolationModalAcknowledge}
             style={{
               background: theme === 'sun' 
                 ? 'rgb(113, 179, 253)' 
@@ -9627,9 +9637,6 @@ const StudentDailyChallengeTake = () => {
               <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
                 Hệ thống đã phát hiện bạn đang sử dụng thiết bị khác với thiết bị đã đăng ký. 
                 Đây là hành vi gian lận và có thể dẫn đến việc bài thi của bạn bị hủy.
-              </p>
-              <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6', fontWeight: '600' }}>
-                Vui lòng sử dụng đúng thiết bị đã đăng ký để tiếp tục làm bài.
               </p>
             </>
           ) : (
@@ -9695,18 +9702,6 @@ const StudentDailyChallengeTake = () => {
               )}
             </>
           )}
-          <div style={{ 
-            marginTop: '16px', 
-            padding: '12px', 
-            backgroundColor: '#fff3cd', 
-            borderRadius: '8px',
-            border: '1px solid #ffc107'
-          }}>
-            <p style={{ margin: 0, fontSize: '14px', color: '#856404' }}>
-              <strong>⚠️ Lưu ý:</strong> Đây là lần cảnh báo đầu tiên. Nếu vi phạm tiếp tục xảy ra, 
-              hệ thống sẽ ghi lại và báo cáo lên giáo viên.
-            </p>
-          </div>
         </div>
       </Modal>
 
