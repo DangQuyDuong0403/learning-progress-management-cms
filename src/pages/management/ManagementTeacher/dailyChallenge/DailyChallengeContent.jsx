@@ -5200,11 +5200,18 @@ const DailyChallengeContent = () => {
                 onClick={handleGvAiGenerateFromSettings}
               >
                 <div className="question-type-icon-wrapper featured-icon">
-                  <img 
-                    src="/img/ai-icon.png" 
-                    alt="AI" 
-                    style={{ width: '44px', height: '44px', filter: theme === 'sun' ? 'none' : 'brightness(0.9)' }} 
-                  />
+                  <span
+                    style={{
+                      fontSize: '36px',
+                      lineHeight: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transform: 'translateY(-3px) translateX(1px)',
+                    }}
+                  >
+                    ✨
+                  </span>
                 </div>
                 <div className="question-type-name">
                   {t('dailyChallenge.aiGenerateFromSettings') || 'AI Generate Question from Settings'}
@@ -5287,11 +5294,18 @@ const DailyChallengeContent = () => {
                 onClick={handleReLiAiGenerateFromSettings}
               >
                 <div className="question-type-icon-wrapper featured-icon">
-                  <img 
-                    src="/img/ai-icon.png" 
-                    alt="AI" 
-                    style={{ width: '44px', height: '44px', filter: theme === 'sun' ? 'none' : 'brightness(0.9)' }} 
-                  />
+                  <span
+                    style={{
+                      fontSize: '36px',
+                      lineHeight: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transform: 'translateY(-3px)',
+                    }}
+                  >
+                    ✨
+                  </span>
                 </div>
                 <div className="question-type-name">
                   {t('dailyChallenge.aiGenerateFromSettings') || 'AI Generate Question from Settings'}
