@@ -1,5 +1,4 @@
 import axiosClient from '../secureAxiosClient';
-import axios from 'axios';
 
 const notificationApi = {
 	// Lấy danh sách notifications
@@ -54,6 +53,8 @@ const notificationApi = {
 		const abortController = new AbortController();
 
 		let isConnected = false;
+
+		let lastDeviceMismatchSignature = null;
 
 		const connect = async () => {
 			try {
@@ -188,12 +189,22 @@ const notificationApi = {
 			}
 
 			if (eventName === 'device_mismatch' || eventName === 'DEVICE_MISMATCH') {
-				// Device mismatch event từ backend (hỗ trợ cả lowercase và uppercase)
-				// Format SSE data: {"content": "...", "timestamp": "...", "deviceFingerprint": "...", "ipAddress": "..."}
-				console.log(`✅ [SSE] DEVICE_MISMATCH detected! eventName: "${eventName}"`);
-				console.log(`✅ [SSE] dataStr:`, dataStr);
 				try {
 					const data = JSON.parse(dataStr);
+					const signatureParts = [
+						data?.eventId,
+						data?.submissionId ?? data?.submissionID,
+						data?.userId ?? data?.userID,
+						data?.timestamp,
+						data?.warningCount,
+						data?.targetDevice?.deviceFingerprint ?? data?.deviceFingerprint
+					].filter(Boolean);
+					const signature = signatureParts.length > 0 ? signatureParts.join('|') : dataStr;
+					if (signature && signature === lastDeviceMismatchSignature) {
+						return;
+					}
+					lastDeviceMismatchSignature = signature;
+					console.log(`✅ [SSE] DEVICE_MISMATCH detected! eventName: "${eventName}"`);
 					console.log(`✅ [SSE] Parsed device_mismatch data:`, data);
 					if (onMessage) {
 						onMessage({

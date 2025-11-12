@@ -231,7 +231,7 @@ const AIGenerateReading = () => {
 
   // Lesson Focus options constants
   const lessonFocusOptions = [
-    // Grammar Tenses
+    // GRAMMAR TENSES - Detailed
     { value: 'PRESENT_SIMPLE', label: 'Present Simple' },
     { value: 'PRESENT_CONTINUOUS', label: 'Present Continuous' },
     { value: 'PRESENT_PERFECT', label: 'Present Perfect' },
@@ -245,7 +245,7 @@ const AIGenerateReading = () => {
     { value: 'FUTURE_CONTINUOUS', label: 'Future Continuous' },
     { value: 'FUTURE_PERFECT', label: 'Future Perfect' },
     { value: 'MIXED_TENSES', label: 'Mixed Tenses' },
-    // Grammar Structures
+    // GRAMMAR STRUCTURES
     { value: 'CONDITIONALS_ZERO_FIRST', label: 'Conditionals: Zero & First' },
     { value: 'CONDITIONALS_SECOND', label: 'Conditionals: Second' },
     { value: 'CONDITIONALS_THIRD', label: 'Conditionals: Third' },
@@ -261,25 +261,43 @@ const AIGenerateReading = () => {
     { value: 'RELATIVE_CLAUSES_NON_DEFINING', label: 'Relative Clauses: Non-defining' },
     { value: 'QUESTIONS_FORMATION', label: 'Question Formation' },
     { value: 'QUESTIONS_SUBJECT_OBJECT', label: 'Subject vs Object Questions' },
-    { value: 'MODAL_VERBS_ABILITY', label: 'Modal Verbs: Ability' },
-    { value: 'MODAL_VERBS_POSSIBILITY', label: 'Modal Verbs: Possibility' },
-    { value: 'MODAL_VERBS_OBLIGATION', label: 'Modal Verbs: Obligation' },
-    { value: 'MODAL_VERBS_ADVICE', label: 'Modal Verbs: Advice' },
-    { value: 'GERUNDS_INFINITIVES', label: 'Gerunds and Infinitives' },
-    { value: 'ARTICLES_A_AN_THE', label: 'Articles: A, An, The' },
+    { value: 'QUESTION_TAGS', label: 'Question Tags' },
+    // MODAL VERBS
+    { value: 'MODALS_ABILITY', label: 'Modals: Ability' },
+    { value: 'MODALS_PERMISSION', label: 'Modals: Permission' },
+    { value: 'MODALS_OBLIGATION', label: 'Modals: Obligation' },
+    { value: 'MODALS_PROHIBITION', label: 'Modals: Prohibition' },
+    { value: 'MODALS_ADVICE', label: 'Modals: Advice' },
+    { value: 'MODALS_DEDUCTION', label: 'Modals: Deduction' },
+    { value: 'MODALS_PAST', label: 'Modal Perfects' },
+    // WORD FORMS & PATTERNS
+    { value: 'COMPARATIVES_SUPERLATIVES', label: 'Comparatives & Superlatives' },
+    { value: 'ADJECTIVES_ORDER', label: 'Adjective Order' },
+    { value: 'ADJECTIVES_WITH_PREPOSITIONS', label: 'Adjectives + Prepositions' },
+    { value: 'VERB_PATTERNS_GERUND', label: 'Verb Patterns: Gerund' },
+    { value: 'VERB_PATTERNS_INFINITIVE', label: 'Verb Patterns: Infinitive' },
+    { value: 'VERB_PATTERNS_BOTH', label: 'Verb Patterns: Both' },
+    { value: 'PHRASAL_VERBS', label: 'Phrasal Verbs' },
     { value: 'PREPOSITIONS_TIME', label: 'Prepositions: Time' },
     { value: 'PREPOSITIONS_PLACE', label: 'Prepositions: Place' },
     { value: 'PREPOSITIONS_MOVEMENT', label: 'Prepositions: Movement' },
-    { value: 'COUNTABLE_UNCOUNTABLE', label: 'Countable and Uncountable Nouns' },
+    // ARTICLES & DETERMINERS
+    { value: 'ARTICLES_A_AN_THE', label: 'Articles: a/an/the' },
     { value: 'QUANTIFIERS', label: 'Quantifiers' },
-    { value: 'COMPARATIVES_SUPERLATIVES', label: 'Comparatives and Superlatives' },
-    { value: 'ADVERBS_FREQUENCY', label: 'Adverbs of Frequency' },
-    { value: 'ADVERBS_MANNER', label: 'Adverbs of Manner' },
-    { value: 'PHRASAL_VERBS', label: 'Phrasal Verbs' },
-    { value: 'IDIOMS', label: 'Idioms' },
-    { value: 'COLLOCATIONS', label: 'Collocations' },
-    { value: 'WORD_FORMATION', label: 'Word Formation' },
-    { value: 'SYNONYMS_ANTONYMS', label: 'Synonyms and Antonyms' },
+    { value: 'COUNTABLE_UNCOUNTABLE', label: 'Countable vs Uncountable' },
+    // READING COMPREHENSION
+    { value: 'READING_MAIN_IDEA', label: 'Reading: Main Idea' },
+    { value: 'READING_DETAILS', label: 'Reading: Specific Details' },
+    { value: 'READING_INFERENCE', label: 'Reading: Inference' },
+    { value: 'READING_VOCABULARY_CONTEXT', label: 'Reading: Vocabulary in Context' },
+    { value: 'READING_TEXT_ORGANIZATION', label: 'Reading: Text Organization' },
+    { value: 'READING_AUTHOR_OPINION', label: "Reading: Author's Opinion" },
+    // EXAM-SPECIFIC
+    { value: 'ERROR_CORRECTION', label: 'Error Correction' },
+    { value: 'SENTENCE_TRANSFORMATION', label: 'Sentence Transformation' },
+    { value: 'WORD_CHOICE', label: 'Word Choice' },
+    { value: 'GAP_FILLING', label: 'Gap Filling' },
+    // CUSTOM
     { value: 'CUSTOM', label: 'Custom Focus' },
   ];
 
