@@ -38,7 +38,7 @@ import ClassList from '../pages/management/ManagementClass/Class/ClassList.jsx';
 import ClassListTable from '../pages/management/ManagementClass/Class/ClassListTable.jsx';
 import ClassMenu from '../pages/management/ManagementClass/Class/ClassMenu.jsx';
 import ClassStudent from '../pages/management/ManagementClass/Class/ClassStudent.jsx';
-import ClassDashboard from '../pages/management/ManagementClass/Class/ClassDashboard.jsx';
+import ClassReport from '../pages/management/ManagementClass/Class/ClassReport.jsx';
 import ClassOverview from '../pages/management/ManagementClass/Class/ClassOverview.jsx';
 import ClassTeachers from '../pages/management/ManagementClass/Class/ClassTeachers.jsx';
 import ClassActivities from '../pages/management/ManagementClass/Class/ClassActivities.jsx';
@@ -47,7 +47,7 @@ import ClassChapterLesson from '../pages/management/ManagementClass/Class/ClassC
 import TeacherClassList from '../pages/management/ManagementClass/Class/ClassList.jsx';
 import TeacherClassMenu from '../pages/management/ManagementClass/Class/ClassMenu.jsx';
 import TeacherClassStudent from '../pages/management/ManagementClass/Class/ClassStudent.jsx';
-import TeacherClassDashboard from '../pages/management/ManagementClass/Class/ClassDashboard.jsx';
+import TeacherClassReport from '../pages/management/ManagementClass/Class/ClassReport.jsx';
 import TeacherClassTeachers from '../pages/management/ManagementClass/Class/ClassTeachers.jsx';
 import TeacherClassActivities from '../pages/management/ManagementClass/Class/ClassActivities.jsx';
 import TeacherClassChapterLesson from '../pages/management/ManagementClass/Class/ClassChapterLesson.jsx';
@@ -543,10 +543,10 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: ClassDashboard,
+		component: ClassReport,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_CLASS_DASHBOARD,
-		menuName: 'class dashboard',
+		menuName: 'class report',
 		exact: true,
 		key: 'MANAGER_CLASS_DASHBOARD',
 		private: true,
@@ -708,10 +708,10 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: ClassDashboard,
+		component: ClassReport,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_DASHBOARD,
-		menuName: 'class dashboard',
+		menuName: 'class report',
 		exact: true,
 		key: 'TEACHING_ASSISTANT_CLASS_DASHBOARD',
 		private: true,
@@ -1027,10 +1027,10 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassDashboard,
+		component: TeacherClassReport,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHER_CLASS_DASHBOARD,
-		menuName: 'class dashboard',
+		menuName: 'class report',
 		exact: true,
 		key: 'TEACHER_CLASS_DASHBOARD',
 		private: true,

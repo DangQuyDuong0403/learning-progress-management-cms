@@ -1168,6 +1168,23 @@
     "lastTestScore": "Last Test Score",
     "improvement": "Improvement"
   },
+  "classReport": {
+    "report": "Report",
+    "loadingClassInfo": "Loading class information...",
+    "totalStudents": "Total Students",
+    "averageScore": "Average Score",
+    "testsCompleted": "Tests Completed",
+    "topPerformers": "Top Performers",
+    "testPerformance": "Test Performance",
+    "gradeDistribution": "Grade Distribution",
+    "monthlyProgress": "Monthly Progress",
+    "studentPerformance": "Student Performance",
+    "students": "Students",
+    "student": "Student",
+    "grade": "Grade",
+    "lastTestScore": "Last Test Score",
+    "improvement": "Improvement"
+  },
   "classChapterLesson": {
     "title": "Class Chapters and Lessons",
     "chaptersLessons": "Chapters/Lessons",

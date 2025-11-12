@@ -27,7 +27,7 @@ import { spaceToast } from "../../../../component/SpaceToastify";
 import { useClassMenu } from "../../../../contexts/ClassMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 
-// Mock data for class dashboard
+// Mock data for class report
 const mockClassData = {
   id: 1,
   name: "Rising star 1",
@@ -138,7 +138,7 @@ const mockMonthlyProgress = [
   { month: "Jun", averageScore: 87, students: 15 },
 ];
 
-const ClassDashboard = () => {
+const ClassReport = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const { user } = useSelector((state) => state.auth);
@@ -151,7 +151,7 @@ const ClassDashboard = () => {
     : ThemedLayoutWithSidebar;
   
   // Set page title
-  usePageTitle('Class Dashboard');
+  usePageTitle('Class Report');
   
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
@@ -167,7 +167,7 @@ const ClassDashboard = () => {
         setLoading(false);
       }, 1000);
     } catch (error) {
-      spaceToast.error(t('classDashboard.loadingClassInfo'));
+      spaceToast.error(t('classReport.loadingClassInfo'));
       setLoading(false);
     }
   }, [t]);
@@ -182,7 +182,7 @@ const ClassDashboard = () => {
       enterClassMenu({
         id: classData.id,
         name: classData.name,
-        description: `${classData.name} - ${t('classDashboard.dashboard')}`
+        description: `${classData.name} - ${t('classReport.report')}`
       });
     }
     
@@ -226,7 +226,7 @@ const ClassDashboard = () => {
 
   const studentColumns = [
     {
-      title: t('classDashboard.student'),
+      title: t('classReport.student'),
       dataIndex: "name",
       key: "name",
       render: (text, record) => (
@@ -246,7 +246,7 @@ const ClassDashboard = () => {
       ),
     },
     {
-      title: t('classDashboard.averageScore'),
+      title: t('classReport.averageScore'),
       dataIndex: "averageScore",
       key: "averageScore",
       sorter: (a, b) => a.averageScore - b.averageScore,
@@ -258,7 +258,7 @@ const ClassDashboard = () => {
       ),
     },
     {
-      title: t('classDashboard.grade'),
+      title: t('classReport.grade'),
       dataIndex: "grade",
       key: "grade",
       render: (grade) => (
@@ -268,7 +268,7 @@ const ClassDashboard = () => {
       ),
     },
     {
-      title: t('classDashboard.lastTestScore'),
+      title: t('classReport.lastTestScore'),
       dataIndex: "lastTestScore",
       key: "lastTestScore",
       render: (score) => (
@@ -279,7 +279,7 @@ const ClassDashboard = () => {
       ),
     },
     {
-      title: t('classDashboard.testsCompleted'),
+      title: t('classReport.testsCompleted'),
       key: "testsCompleted",
       render: (_, record) => (
         <div>
@@ -296,7 +296,7 @@ const ClassDashboard = () => {
       ),
     },
     {
-      title: t('classDashboard.improvement'),
+      title: t('classReport.improvement'),
       dataIndex: "improvement",
       key: "improvement",
       render: (improvement) => (
@@ -311,7 +311,7 @@ const ClassDashboard = () => {
     return (
       <ThemedLayout>
         <div className="class-detail-container">
-          <LoadingWithEffect loading={true} message={t('classDashboard.loadingClassInfo')} />
+          <LoadingWithEffect loading={true} message={t('classReport.loadingClassInfo')} />
         </div>
       </ThemedLayout>
     );
@@ -328,7 +328,7 @@ const ClassDashboard = () => {
              <Col xs={24} sm={12} md={6}>
                <Card style={{ padding: '20px', textAlign: 'center' }}>
                  <Statistic
-                   title={t('classDashboard.totalStudents')}
+                   title={t('classReport.totalStudents')}
                    value={totalStudents}
                    prefix={<UserOutlined />}
                    valueStyle={{ color: classData?.color || "#00d4ff" }}
@@ -338,7 +338,7 @@ const ClassDashboard = () => {
              <Col xs={24} sm={12} md={6}>
                <Card style={{ padding: '20px', textAlign: 'center' }}>
                  <Statistic
-                   title={t('classDashboard.averageScore')}
+                   title={t('classReport.averageScore')}
                    value={averageClassScore}
                    suffix="/100"
                    prefix={<TrophyOutlined />}
@@ -349,7 +349,7 @@ const ClassDashboard = () => {
              <Col xs={24} sm={12} md={6}>
                <Card style={{ padding: '20px', textAlign: 'center' }}>
                  <Statistic
-                   title={t('classDashboard.testsCompleted')}
+                   title={t('classReport.testsCompleted')}
                    value={completionRate}
                    suffix="%"
                    prefix={<BookOutlined />}
@@ -360,7 +360,7 @@ const ClassDashboard = () => {
              <Col xs={24} sm={12} md={6}>
                <Card style={{ padding: '20px', textAlign: 'center' }}>
                  <Statistic
-                   title={t('classDashboard.topPerformers')}
+                   title={t('classReport.topPerformers')}
                    value={studentPerformance.filter(s => s.grade.startsWith('A')).length}
                    prefix={<BarChartOutlined />}
                    valueStyle={{ color: "#722ed1" }}
@@ -373,7 +373,7 @@ const ClassDashboard = () => {
           <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
             {/* Test Performance Chart */}
             <Col xs={24} lg={12}>
-              <Card title={t('classDashboard.testPerformance')} style={{ height: '400px' }}>
+              <Card title={t('classReport.testPerformance')} style={{ height: '400px' }}>
                 <div style={{ padding: '20px 0' }}>
                   {mockTestData.map((test, index) => (
                     <div key={index} style={{ marginBottom: '20px' }}>
@@ -400,7 +400,7 @@ const ClassDashboard = () => {
 
              {/* Grade Distribution Chart */}
              <Col xs={24} lg={12}>
-               <Card title={t('classDashboard.gradeDistribution')} style={{ height: '400px' }}>
+               <Card title={t('classReport.gradeDistribution')} style={{ height: '400px' }}>
                  <div style={{ padding: '20px 24px' }}>
                    {mockGradeDistribution.map((grade, index) => (
                      <div key={index} style={{ marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
@@ -423,7 +423,7 @@ const ClassDashboard = () => {
           {/* Monthly Progress Chart */}
           <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
             <Col span={24}>
-              <Card title={t('classDashboard.monthlyProgress')} style={{ height: '300px' }}>
+              <Card title={t('classReport.monthlyProgress')} style={{ height: '300px' }}>
                 <div style={{ padding: '20px 0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', height: '200px' }}>
                     {mockMonthlyProgress.map((month, index) => (
@@ -442,7 +442,7 @@ const ClassDashboard = () => {
                     ))}
                   </div>
                   <div style={{ marginTop: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
-                    {t('classDashboard.averageScore')} over time
+                    {t('classReport.averageScore')} over time
                   </div>
                 </div>
               </Card>
@@ -450,7 +450,7 @@ const ClassDashboard = () => {
           </Row>
 
             {/* Student Performance Table */}
-            <Card title={t('classDashboard.studentPerformance')}>
+            <Card title={t('classReport.studentPerformance')}>
               <Table
                 columns={studentColumns}
                 dataSource={studentPerformance}
@@ -460,7 +460,7 @@ const ClassDashboard = () => {
                   showSizeChanger: true,
                   showQuickJumper: true,
                   showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} ${t('classDashboard.students')}`,
+                    `${range[0]}-${range[1]} of ${total} ${t('classReport.students')}`,
                 }}
                 scroll={{ x: 800 }}
               />
@@ -472,4 +472,5 @@ const ClassDashboard = () => {
   );
 };
 
-export default ClassDashboard;
+export default ClassReport;
+
