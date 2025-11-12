@@ -883,7 +883,7 @@ const DailyChallengeSubmissionDetail = () => {
     return parts;
   };
 
-  // Hide floating toolbar when clicking outside
+  // Hide  toolbar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (textSelection.visible) {
