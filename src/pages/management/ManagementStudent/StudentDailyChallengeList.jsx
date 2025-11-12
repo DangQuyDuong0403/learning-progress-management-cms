@@ -5,7 +5,6 @@ import {
   Space,
   Table,
   Typography,
-  Tooltip,
 } from "antd";
 import {
   SearchOutlined,
@@ -530,25 +529,20 @@ const StudentDailyChallengeList = () => {
       key: 'title',
       width: 300,
       align: 'left',
-      ellipsis: {
-        showTitle: false,
-      },
       render: (text, record) => {
         if (record.isEmptyLesson) {
           return <span style={{ color: '#999' }}></span>;
         }
         return (
-          <Tooltip placement="topLeft" title={text}>
-            <span style={{ 
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              textAlign: 'left',
-            }}>
-              {text}
-            </span>
-          </Tooltip>
+          <span style={{ 
+            display: 'block',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            textAlign: 'left',
+            lineHeight: '1.5',
+          }}>
+            {text}
+          </span>
         );
       },
     },
@@ -643,6 +637,22 @@ const StudentDailyChallengeList = () => {
         // Show empty state for lessons without challenges
         if (record.isEmptyLesson) {
           return <span></span>;
+        }
+
+        // Check if status is MISSED - show 0/10
+        const effectiveStatus = (record.submissionStatus || 'PENDING').toUpperCase();
+        if (effectiveStatus === 'MISSED') {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
+              <span style={{
+                fontSize: '18px',
+                color: 'rgb(255, 77, 79)', // Red color for missed
+                fontWeight: 600,
+              }}>
+                0.0/10
+              </span>
+            </div>
+          );
         }
 
         // Check if endDate has passed - only show score after endDate
@@ -835,6 +845,18 @@ const StudentDailyChallengeList = () => {
             )}
           </div>
         );
+
+        const renderMissedStatus = () => (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{
+              fontSize: '16px',
+              color: 'rgb(255, 77, 79)',
+              fontWeight: 600,
+            }}>
+              {t('dailyChallenge.missed', 'Missed')}
+            </span>
+          </div>
+        );
         
         const effectiveStatus = (record.submissionStatus || 'PENDING').toUpperCase();
 
@@ -844,6 +866,7 @@ const StudentDailyChallengeList = () => {
             {effectiveStatus === 'DRAFT' && renderStartLikeButton('Edit answer', <EditOutlined />)}
             {effectiveStatus === 'SUBMITTED' && renderViewAnswerButton('View answer')}
             {effectiveStatus === 'GRADED' && renderViewResultButton('View result')}
+            {effectiveStatus === 'MISSED' && renderMissedStatus()}
           </Space>
         );
       },

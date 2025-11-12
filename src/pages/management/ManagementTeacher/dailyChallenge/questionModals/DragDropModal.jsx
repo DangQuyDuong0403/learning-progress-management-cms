@@ -164,47 +164,83 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 					return result;
 				} else if (node.nodeType === Node.ELEMENT_NODE) {
-					// Check if this element contains blank patterns
+					// Regular HTML element, preserve it
+					const tagName = node.tagName.toLowerCase();
+					const innerHTML = node.innerHTML;
+
+					// Special handling for image wrapper - always preserve
+					if (
+						node.hasAttribute('data-image-wrapper') ||
+						node.classList.contains('image-wrapper')
+					) {
+						return {
+							type: 'html',
+							content: node.outerHTML,
+							id: `html-${Date.now()}`,
+						};
+					}
+
+					// Special handling for images - always preserve
+					if (tagName === 'img') {
+						return {
+							type: 'html',
+							content: node.outerHTML,
+							id: `html-${Date.now()}`,
+						};
+					}
+
+					// Special handling for tables - ALWAYS preserve structure, extract blank data from patterns
+					// This must be checked BEFORE checking if element contains patterns
+					if (tagName === 'table') {
+						// Extract blank data from table cells that contain patterns
+						const textContent = node.textContent;
+						if (textContent && /\[\[pos_([a-z0-9]+)\]\]/.test(textContent)) {
+							// Extract all positionIds from table
+							const positionIdRegex = /\[\[pos_([a-z0-9]+)\]\]/g;
+							let match;
+							while ((match = positionIdRegex.exec(textContent)) !== null) {
+								const positionId = match[1];
+								const blankData = contentData.find(
+									(item) => item.positionId === positionId
+								);
+								
+								if (blanksData.length < MAX_BLANKS) {
+									const blankId = `blank-${positionId}`;
+									blanksData.push({
+										id: blankId,
+										positionId: positionId,
+										answer: blankData?.value || '',
+										color: blankColors[blanksData.length % blankColors.length],
+									});
+								}
+							}
+						}
+						
+						// Always preserve table as HTML (patterns will be converted during render)
+						return {
+							type: 'html',
+							content: node.outerHTML,
+							id: `html-${Date.now()}`,
+						};
+					}
+
+					// For other elements, check if they contain blank patterns
 					const textContent = node.textContent;
 					if (textContent && /\[\[pos_([a-z0-9]+)\]\]/.test(textContent)) {
-						// This element contains blanks, process its text content
-						return processNode(document.createTextNode(textContent));
+						// This element contains blanks, but it's not a table/image
+						// Process its child nodes recursively to preserve structure while parsing blanks
+						const childResults = [];
+						for (let i = 0; i < node.childNodes.length; i++) {
+							const childResult = processNode(node.childNodes[i]);
+							if (Array.isArray(childResult)) {
+								childResults.push(...childResult);
+							} else if (childResult) {
+								childResults.push(childResult);
+							}
+						}
+						return childResults.length > 0 ? childResults : [];
 					} else {
-						// Regular HTML element, preserve it
-						const tagName = node.tagName.toLowerCase();
-						const innerHTML = node.innerHTML;
-
-						// Special handling for image wrapper
-						if (
-							node.hasAttribute('data-image-wrapper') ||
-							node.classList.contains('image-wrapper')
-						) {
-							return {
-								type: 'html',
-								content: node.outerHTML,
-								id: `html-${Date.now()}`,
-							};
-						}
-
-						// Special handling for images
-						if (tagName === 'img') {
-							return {
-								type: 'html',
-								content: node.outerHTML,
-								id: `html-${Date.now()}`,
-							};
-						}
-
-						// Special handling for tables
-						if (tagName === 'table') {
-							return {
-								type: 'html',
-								content: node.outerHTML,
-								id: `html-${Date.now()}`,
-							};
-						}
-
-						// For other elements, preserve the HTML
+						// No blank patterns, preserve the HTML
 						if (innerHTML) {
 							return {
 								type: 'html',
@@ -212,7 +248,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								id: `html-${Date.now()}`,
 							};
 						}
-
 						return { type: 'text', content: '', id: `text-${Date.now()}` };
 					}
 				}
@@ -1799,13 +1834,77 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					console.warn('DragDropModal - No blank data found for item:', item);
 				}
 			} else if (item.type === 'html') {
-				// Create a temporary div to parse HTML
-				const tempDiv = document.createElement('div');
-				tempDiv.innerHTML = item.content;
-
-				// Move all child nodes to editor
-				while (tempDiv.firstChild) {
-					editorRef.current.appendChild(tempDiv.firstChild);
+				// Parse HTML content and insert it, handling blank patterns inside
+				if (item.content) {
+					const tempDiv = document.createElement('div');
+					tempDiv.innerHTML = item.content;
+					
+					// Process the HTML to convert blank patterns to blank elements
+					const processHtmlNode = (node, parentElement) => {
+						if (node.nodeType === Node.TEXT_NODE) {
+							const text = node.textContent;
+							const regex = /\[\[pos_([a-z0-9]+)\]\]/g;
+							let lastIndex = 0;
+							let match;
+							let hasPatterns = false;
+							
+							while ((match = regex.exec(text)) !== null) {
+								hasPatterns = true;
+								// Add text before blank
+								if (match.index > lastIndex) {
+									const textContent = text.substring(lastIndex, match.index);
+									if (textContent) {
+										parentElement.appendChild(document.createTextNode(textContent));
+									}
+								}
+								
+								// Find blank data for this positionId
+								const positionId = match[1];
+								const blankData = blanks.find((b) => b.positionId === positionId);
+								if (blankData) {
+									const blankElement = createBlankElement(blankData, blankCounter);
+									parentElement.appendChild(blankElement);
+									blankCounter++;
+								} else {
+									// Keep the pattern as text if blank not found
+									parentElement.appendChild(document.createTextNode(match[0]));
+								}
+								
+								lastIndex = regex.lastIndex;
+							}
+							
+							// Add remaining text or entire text if no patterns
+							if (hasPatterns) {
+								if (lastIndex < text.length) {
+									const remainingText = text.substring(lastIndex);
+									if (remainingText) {
+										parentElement.appendChild(document.createTextNode(remainingText));
+									}
+								}
+							} else {
+								// No patterns found, append entire text
+								if (text) {
+									parentElement.appendChild(document.createTextNode(text));
+								}
+							}
+						} else if (node.nodeType === Node.ELEMENT_NODE) {
+							// Clone the node
+							const clonedNode = node.cloneNode(false);
+							
+							// Process children recursively
+							for (let i = 0; i < node.childNodes.length; i++) {
+								processHtmlNode(node.childNodes[i], clonedNode);
+							}
+							
+							// Append the cloned node to parent
+							parentElement.appendChild(clonedNode);
+						}
+					};
+					
+					// Process all nodes in the HTML and append to editor
+					for (let i = 0; i < tempDiv.childNodes.length; i++) {
+						processHtmlNode(tempDiv.childNodes[i], editorRef.current);
+					}
 				}
 			}
 		});

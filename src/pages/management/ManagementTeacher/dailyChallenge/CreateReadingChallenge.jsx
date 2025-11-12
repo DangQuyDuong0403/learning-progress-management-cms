@@ -789,6 +789,57 @@ const CreateReadingChallenge = () => {
       };
     }
 
+    // Special handling for DRAG_AND_DROP to guarantee modal pre-populates
+    if (normalizedType === 'drag-drop' || normalizedType === 'DRAG_AND_DROP') {
+      transformedQuestion = {
+        ...transformedQuestion,
+        // Modal requires questionText with full HTML (including tables) to parse placeholders
+        questionText: transformedQuestion.questionText || transformedQuestion.question || '',
+        // Ensure content shape is present for modal parsing
+        content: (question.content && Array.isArray(question.content.data))
+          ? { data: question.content.data.map(d => ({ ...d })) }
+          : { data: [] },
+        // Extract incorrect options from content.data if not already present
+        incorrectOptions: question.incorrectOptions || (question.content?.data 
+          ? question.content.data
+              .filter(item => item.correct === false || !item.correct)
+              .map(item => ({
+                id: item.id || Date.now(),
+                text: item.value || item.text || ''
+              }))
+          : []),
+        // Ensure options are available for backward compatibility
+        options: question.options || (question.content?.data 
+          ? question.content.data.map((item, index) => ({
+              key: item.id || `option_${index}`,
+              text: item.value || item.text || '',
+              isCorrect: item.correct || false
+            }))
+          : []),
+      };
+    }
+
+    // Special handling for DROPDOWN to guarantee modal pre-populates
+    if (normalizedType === 'dropdown' || normalizedType === 'DROPDOWN') {
+      transformedQuestion = {
+        ...transformedQuestion,
+        // Modal requires questionText with full HTML (including tables) to parse placeholders
+        questionText: transformedQuestion.questionText || transformedQuestion.question || '',
+        // Ensure content shape is present for modal parsing
+        content: (question.content && Array.isArray(question.content.data))
+          ? { data: question.content.data.map(d => ({ ...d })) }
+          : { data: [] },
+        // Ensure options are available - dropdown modal uses both content.data and options
+        options: question.options || (question.content?.data 
+          ? question.content.data.map((item, index) => ({
+              key: item.id || `option_${index}`,
+              text: item.value || item.text || '',
+              isCorrect: item.correct || false
+            }))
+          : []),
+      };
+    }
+
     // Special handling for REARRANGE to guarantee modal pre-populates
     if (normalizedType === 'reorder') {
       transformedQuestion = {
