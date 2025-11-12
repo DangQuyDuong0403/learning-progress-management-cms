@@ -7825,107 +7825,11 @@ const StudentDailyChallengeTake = () => {
         }
         
         if (!finalSubmissionId) {
-          // If no submission exists yet, load questions from public API
-          // Submission will be created automatically when user saves draft for the first time
-          // (Backend will create submission when submitDailyChallenge is called with challengeId)
-          return dailyChallengeApi.getPublicSectionsByChallenge(challengeId, { page: 0, size: 100 })
-            .then((sectionsResponse) => {
-              if (sectionsResponse && sectionsResponse.success) {
-                const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
-                // Shuffle question order if allowed and not view-only
-                const shuffle = (arr) => {
-                  const a = Array.isArray(arr) ? [...arr] : [];
-                  for (let i = a.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [a[i], a[j]] = [a[j], a[i]];
-                  }
-                  return a;
-                };
-                // Renumber questions sequentially after shuffling
-                const renumberQuestions = (questions) => {
-                  return questions.map((q, index) => ({
-                    ...q,
-                    orderNumber: index + 1
-                  }));
-                };
-                // Shuffle options for a question (exclude FILL_IN_THE_BLANK, DROPDOWN, REWRITE)
-                const shuffleQuestionOptions = (question) => {
-                  const excludedTypes = ['FILL_IN_THE_BLANK', 'FILL_BLANK', 'DROPDOWN', 'REWRITE'];
-                  const questionType = question.type || question.questionType || '';
-                  
-                  // Skip shuffling for excluded types
-                  if (excludedTypes.includes(questionType)) {
-                    return question;
-                  }
-                  
-                  const shuffledQuestion = { ...question };
-                  
-                  // Shuffle options array if it exists and reassign keys A, B, C, D...
-                  if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
-                    const shuffled = shuffle([...shuffledQuestion.options]);
-                    // Reassign keys A, B, C, D... to maintain alphabetical order
-                    shuffledQuestion.options = shuffled.map((opt, idx) => ({
-                      ...opt,
-                      key: String.fromCharCode(65 + idx) // A, B, C, D...
-                    }));
-                  }
-                  
-                  // Shuffle content.data array if it exists (used for options in some question types)
-                  // Note: content.data will be mapped to options with A, B, C, D keys during rendering
-                  if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
-                    shuffledQuestion.content = {
-                      ...shuffledQuestion.content,
-                      data: shuffle([...shuffledQuestion.content.data])
-                    };
-                  }
-                  
-                  return shuffledQuestion;
-                };
-                const applyShuffle = (data) => {
-                  if (!allowShuffleQuestions || effectiveViewOnly) return data;
-                  const newData = { ...data };
-                  // Shuffle and renumber individual questions, then shuffle their options
-                  newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
-                  // Shuffle and renumber questions within reading sections, then shuffle their options
-                  newData.readingSections = (data.readingSections || []).map(sec => ({
-                    ...sec,
-                    questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
-                  }));
-                  // Shuffle and renumber questions within listening sections, then shuffle their options
-                  newData.listeningSections = (data.listeningSections || []).map(sec => ({
-                    ...sec,
-                    questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
-                  }));
-                  return newData;
-                };
-                const maybeShuffled = applyShuffle(transformedData);
-                setQuestions(maybeShuffled.questions);
-                setReadingSections(maybeShuffled.readingSections);
-                setListeningSections(maybeShuffled.listeningSections);
-                setWritingSections(maybeShuffled.writingSections);
-                setSpeakingSections(maybeShuffled.speakingSections);
-                
-                // Build content lookup maps
-                const map = new Map();
-                const posMap = new Map();
-                const collect = (q) => {
-                  map.set(q.id, q.content?.data || []);
-                  const txt = q.questionText || q.question || '';
-                  const ids = [];
-                  const re = /\[\[pos_(.*?)\]\]/g; let m;
-                  while ((m = re.exec(txt)) !== null) ids.push(m[1]);
-                  if (ids.length > 0) posMap.set(q.id, ids);
-                };
-                (maybeShuffled.readingSections || []).forEach(sec => (sec.questions || []).forEach(collect));
-                (maybeShuffled.listeningSections || []).forEach(sec => (sec.questions || []).forEach(collect));
-                (maybeShuffled.questions || []).forEach(collect);
-                (maybeShuffled.writingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
-                (maybeShuffled.speakingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
-                contentDataByQuestionIdRef.current = map;
-                positionIdsByQuestionIdRef.current = posMap;
-              }
-              setLoading(false);
-            });
+          const submissionError = new Error('SUBMISSION_NOT_FOUND');
+          submissionError.code = 'SUBMISSION_NOT_FOUND';
+          submissionError.userMessage = 'There is no submission found for this challenge. Please refresh the page or contact the teacher.';
+          submissionError.details = { challengeId };
+          throw submissionError;
         }
 
         // Update submissionId state
@@ -8134,110 +8038,15 @@ const StudentDailyChallengeTake = () => {
                 });
               }
             }
-          })
-          .catch((error) => {
-            console.error('Error loading submission:', error);
-            // Fall back to public sections API if API fails
-            return dailyChallengeApi.getPublicSectionsByChallenge(challengeId, { page: 0, size: 100 })
-              .then((sectionsResponse) => {
-                if (sectionsResponse && sectionsResponse.success) {
-                  const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
-                  const shuffle = (arr) => {
-                    const a = Array.isArray(arr) ? [...arr] : [];
-                    for (let i = a.length - 1; i > 0; i--) {
-                      const j = Math.floor(Math.random() * (i + 1));
-                      [a[i], a[j]] = [a[j], a[i]];
-                    }
-                    return a;
-                  };
-                  // Renumber questions sequentially after shuffling
-                  const renumberQuestions = (questions) => {
-                    return questions.map((q, index) => ({
-                      ...q,
-                      orderNumber: index + 1
-                    }));
-                  };
-                  // Shuffle options for a question (exclude FILL_IN_THE_BLANK, DROPDOWN, REWRITE)
-                  const shuffleQuestionOptions = (question) => {
-                    const excludedTypes = ['FILL_IN_THE_BLANK', 'FILL_BLANK', 'DROPDOWN', 'REWRITE'];
-                    const questionType = question.type || question.questionType || '';
-                    
-                    // Skip shuffling for excluded types
-                    if (excludedTypes.includes(questionType)) {
-                      return question;
-                    }
-                    
-                    const shuffledQuestion = { ...question };
-                    
-                    // Shuffle options array if it exists and reassign keys A, B, C, D...
-                    if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
-                      const shuffled = shuffle([...shuffledQuestion.options]);
-                      // Reassign keys A, B, C, D... to maintain alphabetical order
-                      shuffledQuestion.options = shuffled.map((opt, idx) => ({
-                        ...opt,
-                        key: String.fromCharCode(65 + idx) // A, B, C, D...
-                      }));
-                    }
-                    
-                    // Shuffle content.data array if it exists (used for options in some question types)
-                    // Note: content.data will be mapped to options with A, B, C, D keys during rendering
-                    if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
-                      shuffledQuestion.content = {
-                        ...shuffledQuestion.content,
-                        data: shuffle([...shuffledQuestion.content.data])
-                      };
-                    }
-                    
-                    return shuffledQuestion;
-                  };
-                  const applyShuffle = (data) => {
-                    if (!allowShuffleQuestions || effectiveViewOnly) return data;
-                    const newData = { ...data };
-                    // Shuffle and renumber individual questions, then shuffle their options
-                    newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
-                    // Shuffle and renumber questions within reading sections, then shuffle their options
-                    newData.readingSections = (data.readingSections || []).map(sec => ({
-                      ...sec,
-                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
-                    }));
-                    // Shuffle and renumber questions within listening sections, then shuffle their options
-                    newData.listeningSections = (data.listeningSections || []).map(sec => ({
-                      ...sec,
-                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
-                    }));
-                    return newData;
-                  };
-                  const maybeShuffled = applyShuffle(transformedData);
-                  setQuestions(maybeShuffled.questions);
-                  setReadingSections(maybeShuffled.readingSections);
-                  setListeningSections(maybeShuffled.listeningSections);
-                  setWritingSections(maybeShuffled.writingSections);
-                  setSpeakingSections(maybeShuffled.speakingSections);
-                  // Build content lookup map + position ids map
-                  const map = new Map();
-                  const posMap = new Map();
-                  const collect = (q) => {
-                    map.set(q.id, q.content?.data || []);
-                    const txt = q.questionText || q.question || '';
-                    const ids = [];
-                    const re = /\[\[pos_(.*?)\]\]/g; let m;
-                    while ((m = re.exec(txt)) !== null) ids.push(m[1]);
-                    if (ids.length > 0) posMap.set(q.id, ids);
-                  };
-                  (maybeShuffled.readingSections || []).forEach(sec => (sec.questions || []).forEach(collect));
-                  (maybeShuffled.listeningSections || []).forEach(sec => (sec.questions || []).forEach(collect));
-                  (maybeShuffled.questions || []).forEach(collect);
-                  (maybeShuffled.writingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
-                  (maybeShuffled.speakingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
-                  contentDataByQuestionIdRef.current = map;
-                  positionIdsByQuestionIdRef.current = posMap;
-                }
-              });
           });
       })
       .catch((error) => {
         console.error('Error loading challenge data:', error);
-        const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to load challenge data';
+        const errorMessage =
+          error?.userMessage ||
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          'Failed to load challenge data';
         spaceToast.error(errorMessage);
       })
       .finally(() => {
