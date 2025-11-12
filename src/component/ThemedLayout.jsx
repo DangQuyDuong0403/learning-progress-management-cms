@@ -11,7 +11,7 @@ import './ThemedLayout.css';
 
 const { Sider, Content } = AntLayout;
 
-const ThemedLayout = ({ children }) => {
+const ThemedLayout = ({ children, hideSidebar = false }) => {
   // Load collapsed state from localStorage, default to false
   const [collapsed, setCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -76,12 +76,16 @@ const ThemedLayout = ({ children }) => {
 
   // Force sidebar state to prevent auto-expansion
   React.useEffect(() => {
+    if (hideSidebar) return;
     const sider = document.querySelector('.themed-sider');
     if (sider) {
       sider.style.transition = 'none';
       sider.style.width = collapsed ? '80px' : '300px';
     }
-  }, [collapsed]);
+  }, [collapsed, hideSidebar]);
+
+  const sidebarWidth = hideSidebar ? 0 : (collapsed ? 64 : 240);
+  const mainWidth = hideSidebar ? '100vw' : `calc(100vw - ${sidebarWidth}px)`;
 
   return (
     <AntLayout 
@@ -100,99 +104,101 @@ const ThemedLayout = ({ children }) => {
       }}
     >
       {/* Themed Sidebar */}
-      <Sider
-        width={240}
-        collapsedWidth={64}
-        collapsed={collapsed}
-        theme="dark"
-        trigger={null}
-        collapsible={false}
-        className={`themed-sider ${theme}-sider`}
-        style={{
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          width: collapsed ? 64 : 240,
-          maxWidth: collapsed ? 64 : 240,
-          minWidth: collapsed ? 64 : 240,
-        }}
-      >
-        <div className="themed-sidebar-header">
-          <div 
-            className="themed-logo"
-            onClick={handleLogoClick}
-            style={{ 
-              cursor: 'pointer',
-              transition: 'transform 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}
-            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-          >
-            {theme === 'space' ? (
-              <img 
-                src="/img/logo-dark.png" 
-                alt="CAMKEY Logo" 
-                className="themed-logo-img"
-                style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
-                }}
-              />
-            ) : (
-              <img 
-                src="/img/logo-blue.png" 
-                alt="CAMKEY Logo" 
-                className="themed-logo-img"
-                style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                }}
-              />
-            )}
-            {!collapsed && (
-              <span 
-                className={`themed-logo-text ${theme}-logo-text`}
-                style={{ 
-                  fontSize: '32px', 
-                  fontWeight: 700, 
-                  color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
-                  textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
-                }}
-              >
-                CAMKEY
-              </span>
-            )}
+      {!hideSidebar && (
+        <Sider
+          width={240}
+          collapsedWidth={64}
+          collapsed={collapsed}
+          theme="dark"
+          trigger={null}
+          collapsible={false}
+          className={`themed-sider ${theme}-sider`}
+          style={{
+            overflow: 'auto',
+            height: '100vh',
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            width: collapsed ? 64 : 240,
+            maxWidth: collapsed ? 64 : 240,
+            minWidth: collapsed ? 64 : 240,
+          }}
+        >
+          <div className="themed-sidebar-header">
+            <div 
+              className="themed-logo"
+              onClick={handleLogoClick}
+              style={{ 
+                cursor: 'pointer',
+                transition: 'transform 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}
+              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+            >
+              {theme === 'space' ? (
+                <img 
+                  src="/img/logo-dark.png" 
+                  alt="CAMKEY Logo" 
+                  className="themed-logo-img"
+                  style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
+                  }}
+                />
+              ) : (
+                <img 
+                  src="/img/logo-blue.png" 
+                  alt="CAMKEY Logo" 
+                  className="themed-logo-img"
+                  style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                  }}
+                />
+              )}
+              {!collapsed && (
+                <span 
+                  className={`themed-logo-text ${theme}-logo-text`}
+                  style={{ 
+                    fontSize: '32px', 
+                    fontWeight: 700, 
+                    color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
+                    textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
+                  }}
+                >
+                  CAMKEY
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-        <ThemedSidebar collapsed={collapsed} />
-        
-        {/* Toggle Button */}
-        <div className="themed-sidebar-toggle">
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={toggleCollapsed}
-            className={`themed-toggle-button ${theme}-toggle-button`}
-          />
-        </div>
-      </Sider>
+          <ThemedSidebar collapsed={collapsed} />
+          
+          {/* Toggle Button */}
+          <div className="themed-sidebar-toggle">
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={toggleCollapsed}
+              className={`themed-toggle-button ${theme}-toggle-button`}
+            />
+          </div>
+        </Sider>
+      )}
 
       {/* Main Content Area */}
       <AntLayout 
         className={`themed-main-layout ${theme}-main-layout`}
         style={{ 
-          marginLeft: collapsed ? 64 : 240,
-          width: collapsed ? 'calc(100vw - 64px)' : 'calc(100vw - 240px)',
-          maxWidth: collapsed ? 'calc(100vw - 64px)' : 'calc(100vw - 240px)',
+          marginLeft: sidebarWidth,
+          width: mainWidth,
+          maxWidth: mainWidth,
           boxSizing: 'border-box',
           minWidth: 0,
           height: '100vh',

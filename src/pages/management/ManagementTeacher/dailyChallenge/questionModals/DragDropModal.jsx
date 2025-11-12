@@ -1482,7 +1482,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const handleAddIncorrectOption = () => {
 		setIncorrectOptions((prev) => {
 			if (prev.length >= MAX_INCORRECT_OPTIONS) {
-				spaceToast.warning(`You can add up to ${MAX_INCORRECT_OPTIONS} incorrect options`);
+				spaceToast.warning(`Maximum ${MAX_INCORRECT_OPTIONS} incorrect options allowed. Please remove an option before adding a new one.`);
 				return prev;
 			}
 			return [...prev, { id: Date.now(), text: '' }];
@@ -1531,6 +1531,12 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
 		if (duplicates.length > 0) {
 			spaceToast.warning('Cannot create duplicate answers. Please ensure all blank answers are unique.');
+			return;
+		}
+
+		// Validate: check if there are more than 10 incorrect options
+		if (incorrectOptions.length > MAX_INCORRECT_OPTIONS) {
+			spaceToast.warning(`Maximum ${MAX_INCORRECT_OPTIONS} incorrect options allowed. Please remove excess options before saving.`);
 			return;
 		}
 

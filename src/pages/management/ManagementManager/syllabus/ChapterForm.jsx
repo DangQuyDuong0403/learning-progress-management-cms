@@ -9,7 +9,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../../contexts/ThemeContext';
 
-const ChapterForm = ({ chapter, syllabus, onClose }) => {
+const ChapterForm = ({ chapter, syllabus, onClose, isLesson = false }) => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 
@@ -66,24 +66,32 @@ const ChapterForm = ({ chapter, syllabus, onClose }) => {
 		>
 			<Form.Item
 				name="name"
-				label={t('chapterManagement.chapterName')}
+				label={isLesson ? t('lessonManagement.lessonName') : t('chapterManagement.chapterName')}
 				rules={[
 					{
 						required: true,
-						message: t('chapterManagement.chapterNameRequired'),
+						message: isLesson 
+							? t('lessonManagement.lessonNameRequired') 
+							: t('chapterManagement.chapterNameRequired'),
 					},
 					{
 						min: 2,
-						message: t('chapterManagement.chapterNameMinLength'),
+						message: isLesson 
+							? t('lessonManagement.lessonNameMinLength') 
+							: t('chapterManagement.chapterNameMinLength'),
 					},
 					{
 						max: 100,
-						message: t('chapterManagement.chapterNameTooLong'),
+						message: isLesson 
+							? t('lessonManagement.lessonNameTooLong') 
+							: t('chapterManagement.chapterNameTooLong'),
 					},
 				]}
 			>
 				<Input
-					placeholder={t('chapterManagement.chapterNamePlaceholder')}
+					placeholder={isLesson 
+						? t('lessonManagement.lessonNamePlaceholder') 
+						: t('chapterManagement.chapterNamePlaceholder')}
 					size="large"
 					maxLength={100}
 					showCount

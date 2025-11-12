@@ -14,6 +14,7 @@ import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
+import TableSpinner from '../../../../component/spinner/TableSpinner';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
 import { useSelector } from 'react-redux';
@@ -203,6 +204,7 @@ const TeacherClassChapterDragEdit = () => {
 	const [editingChapter, setEditingChapter] = useState(null);
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
 	const [classInfo, setClassInfo] = useState(null);
+	const [isInitialLoading, setIsInitialLoading] = useState(true);
 
 	// Determine route prefix based on user role
 	const getRoutePrefix = () => {
@@ -252,7 +254,7 @@ const TeacherClassChapterDragEdit = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching class info:', error);
-			spaceToast.error(error.response?.data?.error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching class info');
 		}
 	}, [classId]);
 
@@ -292,14 +294,16 @@ const TeacherClassChapterDragEdit = () => {
 	}, [classId, t]);
 
 	useEffect(() => {
-		fetchClassInfo();
-	}, [fetchClassInfo]);
-
-	useEffect(() => {
-		if (classId) {
-			fetchAllChapters();
-		}
-	}, [fetchAllChapters, classId]);
+		const fetchData = async () => {
+			setIsInitialLoading(true);
+			await Promise.all([
+				fetchClassInfo(),
+				fetchAllChapters()
+			]);
+			setIsInitialLoading(false);
+		};
+		fetchData();
+	}, [fetchClassInfo, fetchAllChapters]);
 
 	// Handle class menu updates - separate effects to avoid infinite loops
 	useEffect(() => {
@@ -569,11 +573,12 @@ const TeacherClassChapterDragEdit = () => {
 		}
 	}, [chapters, classId, t, navigate, routePrefix]);
 
-	if (!classInfo) {
+	if (!classInfo || isInitialLoading) {
 		return (
 			<ThemedLayout>
-				<div style={{ textAlign: 'center', padding: '50px' }}>
-					<Text>{t('chapterManagement.classNotFound')}</Text>
+				{/* Main Content Panel */}
+				<div className={`main-content-panel ${theme}-main-panel`}>
+					<TableSpinner />
 				</div>
 			</ThemedLayout>
 		);
