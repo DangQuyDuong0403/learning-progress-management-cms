@@ -2970,7 +2970,14 @@ const DailyChallengeSubmissionDetail = () => {
     })();
     const qIdForScore = (section.questions && (section.questions[0]?.submissionQuestionId || section.questions[0]?.id)) || section.id;
     const studentAnswer = studentAnswers?.[section.id] || {};
-    const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio || null;
+    // Try to get audioUrl from section-level answer first, then from first question if available
+    let audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio || null;
+    // Fallback: check if any question in this section has audioUrl
+    if (!audioUrl && section.questions && section.questions.length > 0) {
+      const firstQuestion = section.questions[0];
+      const questionAnswer = studentAnswers?.[firstQuestion.id] || {};
+      audioUrl = questionAnswer?.audioUrl || questionAnswer?.audio || null;
+    }
     const sectionId = section.id || `speaking-${index}`;
     const audioState = audioStates[sectionId] || { isPlaying: false, currentTime: 0, duration: 0, volume: 1 };
     
@@ -3300,7 +3307,7 @@ const DailyChallengeSubmissionDetail = () => {
                 )}
               </>
             ) : (
-              <div className="passage-text-content" style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', textAlign: 'justify' }} dangerouslySetInnerHTML={{ __html: section.prompt || '' }} />
+              <div className="passage-text-content" style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', textAlign: 'justify' }} dangerouslySetInnerHTML={{ __html: extractDurationMarker(section.transcript || section.prompt || '').cleanedContent }} />
             )}
           </div>
           
@@ -3311,12 +3318,30 @@ const DailyChallengeSubmissionDetail = () => {
             </Typography.Text>
             {audioUrl ? (
               <div>
-                <audio controls style={{ width: '100%', height: hasAudio ? '40px' : 'auto' }}>
-                  <source src={audioUrl} type="audio/mpeg" />
-                  <source src={audioUrl} type="audio/wav" />
-                  <source src={audioUrl} type="audio/mp3" />
-                  Your browser does not support the audio element.
-                </audio>
+                {(() => {
+                  // Check if URL is a video format
+                  const isVideo = /\.(webm|mp4|ogg|mov)$/i.test(audioUrl) || audioUrl.includes('.webm') || audioUrl.includes('.mp4');
+                  if (isVideo) {
+                    return (
+                      <video controls style={{ width: '100%', maxHeight: '400px', borderRadius: '8px' }}>
+                        <source src={audioUrl} type="video/webm" />
+                        <source src={audioUrl} type="video/mp4" />
+                        <source src={audioUrl} type="video/ogg" />
+                        Your browser does not support the video element.
+                      </video>
+                    );
+                  } else {
+                    return (
+                      <audio controls style={{ width: '100%', height: hasAudio ? '40px' : 'auto' }}>
+                        <source src={audioUrl} type="audio/webm" />
+                        <source src={audioUrl} type="audio/mpeg" />
+                        <source src={audioUrl} type="audio/wav" />
+                        <source src={audioUrl} type="audio/mp3" />
+                        Your browser does not support the audio element.
+                      </audio>
+                    );
+                  }
+                })()}
               </div>
             ) : (
               <Typography.Text type="secondary" style={{ fontSize: '14px', fontStyle: 'italic' }}>
