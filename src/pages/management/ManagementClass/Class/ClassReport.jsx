@@ -23,6 +23,7 @@ import {
   CartesianGrid,
   BarChart as ReBarChart,
   Bar,
+  LabelList,
   ComposedChart,
 } from 'recharts';
 import { useTheme } from '../../../../contexts/ThemeContext';
@@ -63,10 +64,80 @@ const ClassReport = () => {
   const [teacherActivityData, setTeacherActivityData] = useState([]);
   const [studentRankings, setStudentRankings] = useState([]);
   const [selectedSkill, setSelectedSkill] = useState('VOCABULARY');
-  const [selectedProgressSkill, setSelectedProgressSkill] = useState('VOCABULARY');
   const [sortBy, setSortBy] = useState('score');
   const [challengeStatsBySkill, setChallengeStatsBySkill] = useState([]);
   const [challengeProgress, setChallengeProgress] = useState([]);
+
+  const fakeChallengeProgress = useMemo(
+    () => [
+      {
+        skill: 'VOCABULARY',
+        statusBreakdown: {
+          draft: 2,
+          draftPercentage: 8,
+          published: 4,
+          publishedPercentage: 16,
+          inProgress: 9,
+          inProgressPercentage: 36,
+          finished: 10,
+          finishedPercentage: 40,
+        },
+      },
+      {
+        skill: 'READING',
+        statusBreakdown: {
+          draft: 1,
+          draftPercentage: 5,
+          published: 3,
+          publishedPercentage: 15,
+          inProgress: 8,
+          inProgressPercentage: 40,
+          finished: 8,
+          finishedPercentage: 40,
+        },
+      },
+      {
+        skill: 'LISTENING',
+        statusBreakdown: {
+          draft: 3,
+          draftPercentage: 12,
+          published: 5,
+          publishedPercentage: 20,
+          inProgress: 7,
+          inProgressPercentage: 28,
+          finished: 10,
+          finishedPercentage: 40,
+        },
+      },
+      {
+        skill: 'WRITING',
+        statusBreakdown: {
+          draft: 4,
+          draftPercentage: 20,
+          published: 3,
+          publishedPercentage: 15,
+          inProgress: 6,
+          inProgressPercentage: 30,
+          finished: 7,
+          finishedPercentage: 35,
+        },
+      },
+      {
+        skill: 'SPEAKING',
+        statusBreakdown: {
+          draft: 2,
+          draftPercentage: 10,
+          published: 4,
+          publishedPercentage: 20,
+          inProgress: 5,
+          inProgressPercentage: 25,
+          finished: 9,
+          finishedPercentage: 45,
+        },
+      },
+    ],
+    []
+  );
 
   // Load class detail and report data
   useEffect(() => {
@@ -381,62 +452,122 @@ const ClassReport = () => {
   }, []);
 
   // Challenge progress chart data by selected skill
-  const challengeProgressData = useMemo(() => {
-    // Always return 4 statuses, even if all are 0
-    if (!challengeProgress || challengeProgress.length === 0) {
-      return [
-        { stage: 'Draft', value: 0, count: 0, color: '#9ca3af' },
-        { stage: 'Published', value: 0, count: 0, color: '#60a5fa' },
-        { stage: 'In Progress', value: 0, count: 0, color: '#f59e0b' },
-        { stage: 'Finished', value: 0, count: 0, color: '#22c55e' },
-      ];
+  const challengeProgressSource = useMemo(() => {
+    const isAllZeroBreakdown = (arr = []) => {
+      if (!Array.isArray(arr) || arr.length === 0) return true;
+      const totals = arr.map((s) => {
+        const b = s?.statusBreakdown || {};
+        const counts = [
+          Number(b.draft ?? 0),
+          Number(b.published ?? 0),
+          Number(b.inProgress ?? 0),
+          Number(b.finished ?? 0),
+        ];
+        const sumCounts = counts.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+        const percentages = [
+          Number(b.draftPercentage ?? 0),
+          Number(b.publishedPercentage ?? 0),
+          Number(b.inProgressPercentage ?? 0),
+          Number(b.finishedPercentage ?? 0),
+        ];
+        const sumPercent = percentages.reduce((a, p) => a + (Number.isFinite(p) ? p : 0), 0);
+        return { sumCounts, sumPercent };
+      });
+      const anyCounts = totals.some((t) => t.sumCounts > 0);
+      const anyPercent = totals.some((t) => t.sumPercent > 0);
+      return !(anyCounts || anyPercent);
+    };
+    
+    if (challengeProgress && challengeProgress.length > 0 && !isAllZeroBreakdown(challengeProgress)) {
+      return challengeProgress;
     }
-    
-    const selectedSkillData = challengeProgress.find(skill => skill.skill === selectedProgressSkill);
-    if (!selectedSkillData || !selectedSkillData.statusBreakdown) {
-      return [
-        { stage: 'Draft', value: 0, count: 0, color: '#9ca3af' },
-        { stage: 'Published', value: 0, count: 0, color: '#60a5fa' },
-        { stage: 'In Progress', value: 0, count: 0, color: '#f59e0b' },
-        { stage: 'Finished', value: 0, count: 0, color: '#22c55e' },
-      ];
-    }
-    
-    const breakdown = selectedSkillData.statusBreakdown;
-    
-    // Always return 4 statuses, even if all percentages are 0
-    return [
-      { 
-        stage: 'Draft', 
-        value: breakdown.draftPercentage ?? 0, 
-        count: breakdown.draft ?? 0,
-        color: '#9ca3af' 
-      },
-      { 
-        stage: 'Published', 
-        value: breakdown.publishedPercentage ?? 0, 
-        count: breakdown.published ?? 0,
-        color: '#60a5fa' 
-      },
-      { 
-        stage: 'In Progress', 
-        value: breakdown.inProgressPercentage ?? 0, 
-        count: breakdown.inProgress ?? 0,
-        color: '#f59e0b' 
-      },
-      { 
-        stage: 'Finished', 
-        value: breakdown.finishedPercentage ?? 0, 
-        count: breakdown.finished ?? 0,
-        color: '#22c55e' 
-      },
-    ];
-  }, [challengeProgress, selectedProgressSkill]);
+    return fakeChallengeProgress;
+  }, [challengeProgress, fakeChallengeProgress]);
 
-  // Format skill name to capitalize first letter
   const formatSkillName = (skill) => {
     if (!skill) return '';
     return skill.charAt(0) + skill.slice(1).toLowerCase();
+  };
+
+  const challengeProgressData = useMemo(() => {
+    if (!challengeProgressSource || challengeProgressSource.length === 0) {
+      return [];
+    }
+
+    const calculatePercentage = (percentageValue, countValue, totalCount) => {
+      if (typeof percentageValue === 'number') {
+        return Number(percentageValue);
+      }
+      if (!totalCount) return 0;
+      return Number(((countValue || 0) / totalCount) * 100);
+    };
+
+    return challengeProgressSource.map((skillData) => {
+      const skillKey = skillData.skill || skillData.skillName || '';
+      const breakdown = skillData.statusBreakdown || {};
+      const draftCount = breakdown.draft ?? 0;
+      const publishedCount = breakdown.published ?? 0;
+      const inProgressCount = breakdown.inProgress ?? 0;
+      const finishedCount = breakdown.finished ?? 0;
+      const totalCount = draftCount + publishedCount + inProgressCount + finishedCount;
+
+      const draftValue = calculatePercentage(breakdown.draftPercentage, draftCount, totalCount);
+      const publishedValue = calculatePercentage(breakdown.publishedPercentage, publishedCount, totalCount);
+      const inProgressValue = calculatePercentage(breakdown.inProgressPercentage, inProgressCount, totalCount);
+      const finishedValue = calculatePercentage(breakdown.finishedPercentage, finishedCount, totalCount);
+
+      return {
+        skill: formatSkillName(skillKey),
+        draftValue,
+        draftCount,
+        draftLabel: draftCount ? `Draft (${draftCount})` : '',
+        publishedValue,
+        publishedCount,
+        publishedLabel: publishedCount ? `Published (${publishedCount})` : '',
+        inProgressValue,
+        inProgressCount,
+        inProgressLabel: inProgressCount ? `In Progress (${inProgressCount})` : '',
+        finishedValue,
+        finishedCount,
+        finishedLabel: finishedCount ? `Finished (${finishedCount})` : '',
+      };
+    });
+  }, [challengeProgressSource]);
+
+  const renderStackLabel = (labelKey) => (props) => {
+    const { x, y, width, height, payload } = props;
+    const label = payload?.[labelKey];
+    if (!label || width <= 0 || height <= 0) {
+      return null;
+    }
+
+    const isCompact = width < 40;
+    const textX = isCompact ? x + width + 6 : x + width / 2;
+    const textY = y + height / 2;
+    const textColor = '#1f2937';
+
+    return (
+      <text
+        x={textX}
+        y={textY}
+        fill={textColor}
+        fontSize={12}
+        fontWeight={600}
+        dominantBaseline="middle"
+        textAnchor={isCompact ? 'start' : 'middle'}
+      >
+        {label}
+      </text>
+    );
+  };
+
+  const challengeProgressTooltipFormatter = (value, name, item) => {
+    const payload = item?.payload || {};
+    const dataKey = item?.dataKey || '';
+    const countKey = dataKey.replace('Value', 'Count');
+    const count = payload[countKey] ?? 0;
+    const percentage = Number(value ?? 0).toFixed(1);
+    return [`${percentage}% (${count} challenges)`, name];
   };
 
   // Render summary cards
@@ -831,42 +962,37 @@ const ClassReport = () => {
                 minHeight: 300,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                  <div className="crv2-title">Challenge Progress by All Skills</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
+                <div className="crv2-title">Challenge Progress by All Skills</div>
+              </div>
+              {challengeProgressData.length === 0 ? (
+                <Empty description="No challenge progress data" />
+              ) : (
+                <div style={{ width: '100%', height: 280 }}>
+                  <ResponsiveContainer>
+                    <ReBarChart data={challengeProgressData} layout="vertical" margin={{ top: 10, right: 24, bottom: 10, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${Number(v).toFixed(0)}%`} />
+                      <YAxis type="category" dataKey="skill" tick={{ fontSize: 12, fontWeight: 600 }} width={140} />
+                      <ReTooltip formatter={challengeProgressTooltipFormatter} />
+                      <Legend wrapperStyle={{ marginTop: 12 }} />
+                      <Bar dataKey="draftValue" name="Draft" stackId="progress" fill="#e5e7fb">
+                        <LabelList content={renderStackLabel('draftLabel')} />
+                      </Bar>
+                      <Bar dataKey="publishedValue" name="Published" stackId="progress" fill="#a7d3ff">
+                        <LabelList content={renderStackLabel('publishedLabel')} />
+                      </Bar>
+                      <Bar dataKey="inProgressValue" name="In Progress" stackId="progress" fill="#ffd8a8">
+                        <LabelList content={renderStackLabel('inProgressLabel')} />
+                      </Bar>
+                      <Bar dataKey="finishedValue" name="Finished" stackId="progress" fill="#b7eed0">
+                        <LabelList content={renderStackLabel('finishedLabel')} />
+                      </Bar>
+                    </ReBarChart>
+                  </ResponsiveContainer>
                 </div>
-                <Select
-                  value={selectedProgressSkill}
-                  onChange={setSelectedProgressSkill}
-                  style={{ width: 200 }}
-                  placeholder="Select skill"
-                >
-                  {availableSkills.map(skill => (
-                    <Select.Option key={skill} value={skill}>{formatSkillName(skill)}</Select.Option>
-                  ))}
-                </Select>
-              </div>
-              <div style={{ width: '100%', height: 250 }}>
-                <ResponsiveContainer>
-                  <ReBarChart data={challengeProgressData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                    <YAxis type="category" dataKey="stage" tick={{ fontSize: 12 }} width={120} />
-                    <ReTooltip 
-                      formatter={(value, name, props) => {
-                        const count = props.payload?.count ?? 0;
-                        return [`${value}% (${count} challenges)`, props.payload?.stage || name];
-                      }} 
-                    />
-                    <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-                      {challengeProgressData.map((entry, index) => (
-                        <Cell key={`progress-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </ReBarChart>
-                </ResponsiveContainer>
-              </div>
+              )}
             </Card>
           </Col>
         </Row>

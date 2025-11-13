@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, Row, Col, Button, Avatar, Empty } from "antd";
 import { TrophyOutlined, BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, UserOutlined, TeamOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import { 
@@ -129,10 +128,10 @@ const DailyChallengePerformance = () => {
   const calculateAttemptDistribution = (scores, submissionStats) => {
     // Group students by submission status
     const groups = {
-      hsin: { label: 'Chưa làm', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
-      hs1: { label: 'Hoàn thành', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
-      hs2: { label: 'Nộp muộn', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
-      hs3plus: { label: 'Khác', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
+      hsin: { label: 'Not Started', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
+      hs1: { label: 'Completed', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
+      hs2: { label: 'Late Submissions', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
+      hs3plus: { label: 'Other', count: 0, avgScore: 0, avgTime: 0, totalScore: 0, totalTime: 0 },
     };
 
     scores.forEach(student => {
@@ -461,12 +460,12 @@ const DailyChallengePerformance = () => {
           </p>
           {payload.find(p => p.dataKey === 'score') && (
             <p className="dcpr-tooltip__item">
-              {t('dailyChallenge.score', 'Điểm số')}: {data.score.toFixed(2)}/10
+              {t('dailyChallenge.score', 'Score')}: {data.score.toFixed(2)}/10
             </p>
           )}
           {payload.find(p => p.dataKey === 'time') && (
             <p className="dcpr-tooltip__item">
-              {t('dailyChallenge.completionTime', 'Thời gian hoàn thành')}: {data.time} {t('dailyChallenge.minutes', 'phút')}
+              {t('dailyChallenge.completionTime', 'Completion Time')}: {data.time} {t('dailyChallenge.minutes', 'minutes')}
             </p>
           )}
         </div>
@@ -631,62 +630,27 @@ const DailyChallengePerformance = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                     <TrophyOutlined style={{ color: '#f59e0b', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Top hành điểm cao nhất</div>
+                    <div className="manager-dashboard-v2__title">Top Scoring Students</div>
                   </div>
                   {getSortedStudents().length === 0 ? (
                     <Empty description="No student data" style={{ padding: '40px 20px' }} />
                   ) : (
                     <div className="dcpr-table-scroll">
                       <div className="dcpr-table">
-                        <div className="dcpr-table__head" style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1.2fr' }}>
+                        <div className="dcpr-table__head" style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}>
                           <div>Rank</div>
                           <div>Student</div>
                           <div>Score</div>
-                          <div>Time</div>
-                          <div>Status</div>
-                          <div>Late</div>
-                          <div>Submitted At</div>
                         </div>
-                        {getSortedStudents().map((student, index) => {
+                        {getSortedStudents().slice(0, 5).map((student, index) => {
                           const isTopScore = index === 0;
                           const rank = index + 1;
-                          
-                          // Format submission status
-                          const getStatusLabel = (status) => {
-                            switch (status) {
-                              case 'GRADED': return 'Graded';
-                              case 'SUBMITTED': return 'Submitted';
-                              case 'NOT_STARTED': return 'Not Started';
-                              case 'IN_PROGRESS': return 'In Progress';
-                              default: return status || 'N/A';
-                            }
-                          };
-                          
-                          const getStatusColor = (status) => {
-                            switch (status) {
-                              case 'GRADED': return '#22c55e';
-                              case 'SUBMITTED': return '#3b82f6';
-                              case 'NOT_STARTED': return '#ef4444';
-                              case 'IN_PROGRESS': return '#f59e0b';
-                              default: return '#6b7280';
-                            }
-                          };
-                          
-                          // Format datetime as DD/MM/YYYY HH:mm
-                          const formatDateTime = (dateString) => {
-                            if (!dateString) return 'N/A';
-                            try {
-                              return dayjs(dateString).format('DD/MM/YYYY HH:mm');
-                            } catch (error) {
-                              return 'N/A';
-                            }
-                          };
                           
                           return (
                             <div 
                               key={student.id || student.userId || index}
                               className={`dcpr-table__row ${isTopScore ? 'dcpr-table__row--top' : ''}`}
-                              style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1.2fr' }}
+                              style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}
                             >
                               <div style={{ 
                                 fontWeight: 700, 
@@ -698,38 +662,20 @@ const DailyChallengePerformance = () => {
                                 {isTopScore && <TrophyOutlined style={{ color: '#f59e0b' }} />}
                                 #{rank}
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <Avatar 
-                                  size={32} 
+                                  size={36} 
                                   src={student.avatar} 
                                   icon={<UserOutlined />} 
                                   style={{ backgroundColor: '#6366f1' }} 
                                 />
                                 <div>
-                                  <div style={{ fontWeight: 600 }}>{student.name || student.email}</div>
+                                  <div style={{ fontWeight: 600, color: '#1f2937' }}>{student.name || student.email}</div>
                                   <div style={{ fontSize: 12, color: '#6b7280' }}>{student.email}</div>
                                 </div>
                               </div>
-                              <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                              <div style={{ fontWeight: 700, color: '#1f2937', fontSize: 16 }}>
                                 {Number(student.score || 0).toFixed(2)}/10
-                              </div>
-                              <div style={{ color: '#1f2937' }}>
-                                {student.completionTime || 0} {t('dailyChallenge.minutes', 'min')}
-                              </div>
-                              <div style={{ color: getStatusColor(student.submissionStatus), fontWeight: 500 }}>
-                                {getStatusLabel(student.submissionStatus)}
-                              </div>
-                              <div style={{ 
-                                color: student.isLate ? '#ef4444' : '#22c55e', 
-                                fontWeight: 500 
-                              }}>
-                                {student.isLate ? 'Yes' : 'No'}
-                              </div>
-                              <div style={{ 
-                                color: '#1f2937',
-                                fontSize: 13
-                              }}>
-                                {formatDateTime(student.submittedAt)}
                               </div>
                             </div>
                           );
@@ -757,7 +703,7 @@ const DailyChallengePerformance = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                     <TeamOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Thống kê nộp bài</div>
+                    <div className="manager-dashboard-v2__title">Submission Statistics</div>
                   </div>
                   <div style={{ 
                     flex: 1, 
@@ -768,28 +714,28 @@ const DailyChallengePerformance = () => {
                   }}>
                     {[
                       {
-                        label: t('dailyChallenge.completed', 'Hoàn thành'),
+                        label: t('dailyChallenge.completed', 'Completed'),
                         count: performanceData.submissionStats?.completedCount || 0,
                         icon: <CheckCircleOutlined />,
                         color: '#1f7a3e',
                         bgColor: '#dff7e8'
                       },
                       {
-                        label: t('dailyChallenge.late', 'Nộp muộn'),
+                        label: t('dailyChallenge.late', 'Late'),
                         count: performanceData.submissionStats?.lateCount || 0,
                         icon: <ClockCircleOutlined />,
                         color: '#f59e0b',
                         bgColor: '#fef3c7'
                       },
                       {
-                        label: t('dailyChallenge.notStarted', 'Chưa làm'),
+                        label: t('dailyChallenge.notStarted', 'Not Started'),
                         count: performanceData.submissionStats?.notStartedCount || 0,
                         icon: <UserOutlined />,
                         color: '#ef4444',
                         bgColor: '#fee2e2'
                       },
                       {
-                        label: t('dailyChallenge.totalStudents', 'Tổng số'),
+                        label: t('dailyChallenge.totalStudents', 'Total Students'),
                         count: performanceData.submissionStats?.totalStudents || 0,
                         icon: <TeamOutlined />,
                         color: '#6366f1',
@@ -874,7 +820,7 @@ const DailyChallengePerformance = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                     <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Biểu đồ</div>
+                    <div className="manager-dashboard-v2__title">Performance Chart</div>
                   </div>
                   <div style={{ width: '100%', height: 360 }}>
                     {chartData.length === 0 ? (
@@ -904,14 +850,14 @@ const DailyChallengePerformance = () => {
                           />
                           <YAxis 
                             yAxisId="left"
-                            label={{ value: 'Điểm', angle: -90, position: 'insideLeft', style: { fontSize: '14px' } }}
+                            label={{ value: 'Score', angle: -90, position: 'insideLeft', style: { fontSize: '14px' } }}
                             tick={{ fontSize: 12 }}
                             domain={[0, 10]}
                           />
                           <YAxis 
                             yAxisId="right"
                             orientation="right"
-                            label={{ value: 'Thời gian (phút)', angle: 90, position: 'insideRight', style: { fontSize: '14px' } }}
+                            label={{ value: 'Time (minutes)', angle: 90, position: 'insideRight', style: { fontSize: '14px' } }}
                             tick={{ fontSize: 12 }}
                           />
                           <Tooltip content={<CustomChartTooltip />} />
@@ -921,7 +867,7 @@ const DailyChallengePerformance = () => {
                             dataKey="score" 
                             fill="#6366f1"
                             radius={[6, 6, 0, 0]}
-                            name="Điểm số"
+                            name="Score"
                           />
                           <Line 
                             yAxisId="right"
@@ -931,7 +877,7 @@ const DailyChallengePerformance = () => {
                             strokeWidth={2.2}
                             dot={{ r: 4 }}
                             activeDot={{ r: 6 }}
-                            name="Thời gian hoàn thành"
+                            name="Completion Time"
                           />
                         </ComposedChart>
                       </ResponsiveContainer>
