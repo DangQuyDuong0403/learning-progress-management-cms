@@ -12,6 +12,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import classManagementApi from '../../../../apis/backend/classManagement';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
 import TableSpinner from '../../../../component/spinner/TableSpinner';
@@ -255,10 +256,18 @@ const TeacherClassChapterDragEdit = () => {
 
 		try {
 			console.log('Fetching class info for classId:', classId);
-			const response = await teacherManagementApi.getClassById(classId);
+			let response;
+			if (userRole === 'manager') {
+				response = await teacherManagementApi.getClassById(classId);
+			} else {
+				response = await classManagementApi.getClassDetail(classId);
+			}
 			console.log('Class info response:', response);
 			
-			const data = response?.data ?? response;
+			const data = response?.data?.data ?? response?.data ?? null;
+			if (!data) {
+				throw new Error('Class not found');
+			}
 			setClassInfo({
 				id: classId,
 				name: data?.name ?? data?.className ?? data?.title ?? 'Unknown Class',
@@ -269,9 +278,10 @@ const TeacherClassChapterDragEdit = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching class info:', error);
-			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching class info');
+			spaceToast.error(t('classDetail.accessDenied') || 'Bạn không có quyền truy cập lớp học này / You do not have permission to access this class');
+			navigate('/choose-login', { replace: true });
 		}
-	}, [classId]);
+	}, [classId, userRole, navigate, t]);
 
 	const fetchAllChapters = useCallback(async () => {
 		if (!classId) return;
@@ -284,8 +294,12 @@ const TeacherClassChapterDragEdit = () => {
 			};
 
 			const response = await teacherManagementApi.getClassChapters(classId, params);
+			const data = response?.data ?? [];
+			if (!data || data.length === 0) {
+				throw new Error('No chapters found for this class');
+			}
 
-			const mappedChapters = response.data.map((chapter, index) => ({
+			const mappedChapters = data.map((chapter, index) => ({
 				id: chapter.id,
 				name: chapter.classChapterName,
 				description: chapter.description || '',
@@ -302,11 +316,12 @@ const TeacherClassChapterDragEdit = () => {
 			setChapters(mappedChapters);
 		} catch (error) {
 			console.error('Error fetching chapters:', error);
-			spaceToast.error(t('chapterManagement.loadChaptersError'));
+			spaceToast.error(t('chapterManagement.permission') || 'Bạn không có quyền truy cập chương này / You do not have permission to access these chapters');
+			navigate('/choose-login', { replace: true });
 		} finally {
 			setLoading(false);
 		}
-	}, [classId, t]);
+	}, [classId, t, navigate]);
 
 	useEffect(() => {
 		const fetchData = async () => {

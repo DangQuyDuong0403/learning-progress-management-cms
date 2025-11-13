@@ -165,6 +165,7 @@ const StudentProfile = () => {
 		}
 	};
 
+	const returnTo = location.state?.returnTo;
 	const classIdFromState = location.state?.classId;
 	const classIdFromQuery = new URLSearchParams(location.search).get('classId');
 	const classIdFromStorage = typeof window !== 'undefined' ? localStorage.getItem('selectedClassId') : null;
@@ -177,6 +178,11 @@ const StudentProfile = () => {
 	}, [classId]);
 
 	const handleBack = () => {
+		if (returnTo) {
+			navigate(returnTo);
+			return;
+		}
+
 		let targetPath = null;
 
 		if (classId) {
@@ -441,7 +447,7 @@ const StudentProfile = () => {
 		} else if (isTeachingAssistant) {
 			path = ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROGRESS.replace(':id', String(student.id));
 		}
-		navigate(path, { state: { student, classId } });
+		navigate(path, { state: { student, classId, returnTo } });
 	};
 
 	// Handle delete for PENDING students (trash button)
@@ -467,7 +473,7 @@ const StudentProfile = () => {
 					spaceToast.success(successMessage);
 					
 					// Navigate back to student list after successful deletion
-					navigate('/manager/students');
+					navigate(returnTo || '/manager/students');
 				} catch (error) {
 					console.error('Error deleting PENDING student:', error);
 					setConfirmModal({ visible: false, title: '', content: '', onConfirm: null });
