@@ -3830,43 +3830,60 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     if (isViewOnly) return;
     const files = Array.from(event.target.files);
     
-    // Upload each file to server and get server URLs
-    const uploadedFilesData = await Promise.all(
-      files.map(async (file) => {
-        try {
-          // Upload file to backend
-          const uploadRes = await dailyChallengeApi.uploadFile(file);
-          
-          // Extract URL from response using helper function
-          const serverUrl = extractUrlFromResponse(uploadRes);
-          
-          if (serverUrl && typeof serverUrl === 'string') {
-            return {
-              id: Date.now() + Math.random(),
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              url: serverUrl // Use server URL from backend
-            };
-          } else {
-            console.error('❌ [Speaking] Server did not return valid URL. Response:', uploadRes);
-            throw new Error('Server did not return valid URL');
-          }
-        } catch (error) {
-          console.error('❌ [Speaking] Failed to upload file:', file.name, error);
-          // Fallback to blob URL if upload fails (but this won't persist)
-          return {
-            id: Date.now() + Math.random(),
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            url: URL.createObjectURL(file)
-          };
-        }
-      })
-    );
+    // Validate only MP3 audio and max size 3MB
+    const maxSizeBytes = 3 * 1024 * 1024;
+    const isMp3 = (file) => {
+      const name = (file?.name || '').toLowerCase();
+      const ext = '.' + name.split('.').pop();
+      const type = (file?.type || '').toLowerCase();
+      return type === 'audio/mpeg' || ext === '.mp3';
+    };
+    const oversizeFiles = files.filter(f => f.size > maxSizeBytes);
+    const invalidTypeFiles = files.filter(f => !isMp3(f));
+    if (invalidTypeFiles.length > 0) {
+      const names = invalidTypeFiles.map(f => f.name).join(', ');
+      spaceToast.error(`Only MP3 audio files are allowed. Invalid file(s): ${names}`);
+      event.target.value = '';
+      return;
+    }
+    if (oversizeFiles.length > 0) {
+      const names = oversizeFiles.map(f => f.name).join(', ');
+      spaceToast.error(`Size limit is 3MB per file. Exceeded limit: ${names}`);
+      event.target.value = '';
+      return;
+    }
     
-    setUploadedFiles(prev => [...prev, ...uploadedFilesData]);
+    // Upload each valid file to server and get server URLs
+    try {
+      const uploadedFilesData = await Promise.all(
+        files.map(async (file) => {
+          try {
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            const serverUrl = extractUrlFromResponse(uploadRes);
+            if (serverUrl && typeof serverUrl === 'string') {
+              return {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                url: serverUrl
+              };
+            } 
+          } catch (error) {
+            console.error('❌ [Speaking] Failed to upload file:', file.name, error);
+            spaceToast.error(`Tải lên thất bại: ${file.name}`);
+            return null;
+          }
+        })
+      );
+      const successful = uploadedFilesData.filter(Boolean);
+      if (successful.length > 0) {
+        setUploadedFiles(prev => [...prev, ...successful]);
+      }
+    } finally {
+      // Reset input
+      event.target.value = '';
+    }
   };
 
   const removeFile = (fileId) => {
@@ -4283,7 +4300,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                     fontSize: '13px',
                     color: theme === 'sun' ? '#666' : '#999'
                   }}>
-                    Upload MP3 audio file (Max 5MB)
+                    Upload MP3 audio file (Max 3MB)
                   </div>
                 </label>
               </div>
@@ -4509,43 +4526,63 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
     if (isViewOnly) return;
     const files = Array.from(event.target.files);
     
-    // Upload each file to server and get server URLs
-    const uploadedFilesData = await Promise.all(
-      files.map(async (file) => {
-        try {
-          // Upload file to backend
-          const uploadRes = await dailyChallengeApi.uploadFile(file);
-          
-          // Extract URL from response using helper function
-          const serverUrl = extractUrlFromResponse(uploadRes);
-          
-          if (serverUrl && typeof serverUrl === 'string') {
-            return {
-              id: Date.now() + Math.random(),
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              url: serverUrl // Use server URL from backend
-            };
-          } else {
-            console.error('❌ [Speaking] Server did not return valid URL. Response:', uploadRes);
-            throw new Error('Server did not return valid URL');
-          }
-        } catch (error) {
-          console.error('❌ [Speaking] Failed to upload file:', file.name, error);
-          // Fallback to blob URL if upload fails (but this won't persist)
-          return {
-            id: Date.now() + Math.random(),
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            url: URL.createObjectURL(file)
-          };
-        }
-      })
-    );
+    // Validate only MP3 audio and max size 3MB
+    const maxSizeBytes = 3 * 1024 * 1024;
+    const isMp3 = (file) => {
+      const name = (file?.name || '').toLowerCase();
+      const ext = '.' + name.split('.').pop();
+      const type = (file?.type || '').toLowerCase();
+      return type === 'audio/mpeg' || ext === '.mp3';
+    };
+    const oversizeFiles = files.filter(f => f.size > maxSizeBytes);
+    const invalidTypeFiles = files.filter(f => !isMp3(f));
+    if (invalidTypeFiles.length > 0) {
+      const names = invalidTypeFiles.map(f => f.name).join(', ');
+      spaceToast.error(`Chỉ chấp nhận tệp âm thanh MP3. Không hợp lệ: ${names}`);
+      event.target.value = '';
+      return;
+    }
+    if (oversizeFiles.length > 0) {
+      const names = oversizeFiles.map(f => f.name).join(', ');
+      spaceToast.error(`Kích thước tối đa 3MB cho mỗi tệp. Quá giới hạn: ${names}`);
+      event.target.value = '';
+      return;
+    }
     
-    setUploadedFiles(prev => [...prev, ...uploadedFilesData]);
+    // Upload each valid file to server and get server URLs
+    try {
+      const uploadedFilesData = await Promise.all(
+        files.map(async (file) => {
+          try {
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            const serverUrl = extractUrlFromResponse(uploadRes);
+            if (serverUrl && typeof serverUrl === 'string') {
+              return {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                url: serverUrl
+              };
+            } else {
+              console.error('❌ [Speaking] Server did not return valid URL. Response:', uploadRes);
+              throw new Error('Server did not return valid URL');
+            }
+          } catch (error) {
+            console.error('❌ [Speaking] Failed to upload file:', file.name, error);
+            spaceToast.error(`Tải lên thất bại: ${file.name}`);
+            return null;
+          }
+        })
+      );
+      const successful = uploadedFilesData.filter(Boolean);
+      if (successful.length > 0) {
+        setUploadedFiles(prev => [...prev, ...successful]);
+      }
+    } finally {
+      // Reset input
+      event.target.value = '';
+    }
   };
 
   const removeFile = (fileId) => {
