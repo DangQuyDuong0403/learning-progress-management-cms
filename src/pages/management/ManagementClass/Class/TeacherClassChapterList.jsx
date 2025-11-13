@@ -30,6 +30,7 @@ import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import { useSelector } from 'react-redux';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import classManagementApi from '../../../../apis/backend/classManagement';
 
 const TeacherClassChapterList = () => {
 	const { t } = useTranslation();
@@ -117,8 +118,18 @@ const TeacherClassChapterList = () => {
 		if (!classId) return;
 		
 		try {
-			const response = await teacherManagementApi.getClassById(classId);
-			const data = response?.data ?? response;
+			let response;
+			if (isManager) {
+				response = await teacherManagementApi.getClassById(classId);
+			} else {
+				response = await classManagementApi.getClassDetail(classId);
+			}
+			
+			const data = response?.data?.data ?? response?.data ?? null;
+			if (!data) {
+				throw new Error('Class data not found');
+			}
+			
 			setClassInfo({
 				id: classId,
 				name: data?.name ?? data?.className ?? data?.title ?? '',
@@ -129,8 +140,10 @@ const TeacherClassChapterList = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching class info:', error);
+			spaceToast.error(t('classDetail.accessDenied') || 'Bạn không có quyền truy cập lớp học này / You do not have permission to access this class');
+			navigate('/choose-login', { replace: true });
 		}
-	}, [classId]);
+	}, [classId, isManager, navigate, t]);
 
 	// Fetch chapters from API
 	const fetchChapters = useCallback(async (page = 1, size = 10, search = '') => {
@@ -148,10 +161,22 @@ const TeacherClassChapterList = () => {
 				params.searchText = search.trim();
 			}
 
-			const response = await teacherManagementApi.getClassChapters(classId, params);
+			let response;
+			if (isManager) {
+				response = await teacherManagementApi.getClassChapters(classId, params);
+			} else {
+				response = await teacherManagementApi.getClassChapters(classId, params);
+			}
+
+			const data = response?.data ?? [];
+
+			// Unauthorized access handling
+			if (!data || data.length === 0) {
+				throw new Error('No chapters returned');
+			}
 
 			// Map API response to component format
-			const mappedChapters = response.data.map((chapter) => ({
+			const mappedChapters = data.map((chapter) => ({
 				id: chapter.id,
 				name: chapter.classChapterName,
 				code: chapter.classChapterCode,
@@ -165,15 +190,16 @@ const TeacherClassChapterList = () => {
 				...prev,
 				current: page,
 				pageSize: size,
-				total: response.totalElements || response.data.length,
+				total: response.totalElements || data.length,
 			}));
 			setLoading(false);
 		} catch (error) {
 			console.error('Error fetching chapters:', error);
-			message.error(t('chapterManagement.loadChaptersError'));
+			message.error(t('common.permissionDenied') || 'Bạn không có quyền truy cập danh sách chương này / You do not have permission to access these chapters');
+			navigate('/choose-login', { replace: true });
 			setLoading(false);
 		}
-	}, [classId, t]);
+	}, [classId, t, isManager, navigate]);
 
 	useEffect(() => {
 		fetchClassInfo();
@@ -224,8 +250,17 @@ const TeacherClassChapterList = () => {
 	const handleEditOrder = () => {
 		setNavigating(true);
 		// Add slight delay for smooth transition
-		setTimeout(() => {
-			navigate(`${routePrefix}/chapters/${classId}/edit-order`);
+		setTimeout(async () => {
+			try {
+				if (!isManager) {
+					await teacherManagementApi.getClassById(classId);
+				}
+				navigate(`${routePrefix}/chapters/${classId}/edit-order`);
+			} catch (error) {
+				console.error('Unauthorized access to edit order:', error);
+				spaceToast.error(t('common.permissionDenied') || 'Bạn không có quyền chỉnh sửa lớp học này / You do not have permission to edit this class');
+				setNavigating(false);
+			}
 		}, 300);
 	};
 

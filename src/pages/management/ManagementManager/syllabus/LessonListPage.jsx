@@ -36,6 +36,7 @@ import { useSyllabusMenu } from '../../../../contexts/SyllabusMenuContext';
 import LessonForm from './LessonForm';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import BottomActionBar from '../../../../component/BottomActionBar';
+import ROUTER_PAGE from '../../../../constants/router';
 
 const LessonListPage = () => {
 	const { t } = useTranslation();
@@ -151,6 +152,7 @@ const LessonListPage = () => {
 						name: syllabus.syllabusName,
 						description: syllabus.description,
 						chapterName: chapterInfo.name,
+						backUrl: ROUTER_PAGE.MANAGER_SYLLABUS_CHAPTERS.replace(':syllabusId', String(syllabusId)),
 					});
 				}
 			} catch (error) {

@@ -17,6 +17,7 @@ import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import ChapterForm from './ChapterForm';
+import ROUTER_PAGE from '../../../../constants/router';
 import {
 	DndContext,
 	closestCenter,
@@ -307,7 +308,8 @@ const ChapterDragEdit = () => {
 			enterSyllabusMenu({
 				id: syllabusInfo.id,
 				name: syllabusInfo.name,
-				description: syllabusInfo.description
+				description: syllabusInfo.description,
+				backUrl: ROUTER_PAGE.MANAGER_SYLLABUS_CHAPTERS.replace(':syllabusId', String(syllabusId)),
 			});
 		}
 		

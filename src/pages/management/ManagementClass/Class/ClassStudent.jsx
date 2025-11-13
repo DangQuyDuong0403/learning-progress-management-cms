@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Button,
   Table,
@@ -22,7 +22,7 @@ import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
 import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import "./ClassStudent.css";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -41,6 +41,7 @@ const { Option } = Select;
 const ClassStudent = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   // State for available students from API
   const [availableStudents, setAvailableStudents] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -56,9 +57,23 @@ const ClassStudent = () => {
   const { theme } = useTheme();
   const { user } = useSelector((state) => state.auth);
   const { enterClassMenu, exitClassMenu } = useClassMenu();
+  const currentPath = useMemo(() => `${location.pathname}${location.search}`, [location.pathname, location.search]);
+  const userRole = user?.role?.toLowerCase();
+  const classMenuBackUrl = useMemo(() => {
+    if (!id) return null;
+    if (userRole === 'manager') {
+      return ROUTER_PAGE.MANAGER_CLASS_MENU.replace(':id', String(id));
+    }
+    if (userRole === 'teacher') {
+      return ROUTER_PAGE.TEACHER_CLASS_MENU.replace(':id', String(id));
+    }
+    if (userRole === 'teaching_assistant') {
+      return ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_MENU.replace(':id', String(id));
+    }
+    return null;
+  }, [userRole, id]);
   
   // Determine which layout to use based on user role
-  const userRole = user?.role?.toLowerCase();
   const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
     ? ThemedLayoutNoSidebar 
     : ThemedLayoutWithSidebar;
@@ -77,7 +92,7 @@ const ClassStudent = () => {
   const isClassFinished = classData?.status === 'FINISHED';
   const [searchText, setSearchText] = useState("");
   const [studentSearchText, setStudentSearchText] = useState(""); // Search text for student modal
-  const [statusFilter, setStatusFilter] = useState([]); // Changed to array to support multiple statuses
+  const [statusFilter, setStatusFilter] = useState(['ACTIVE','INACTIVE']); // Changed to array to support multiple statuses
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const searchTimeoutRef = useRef(null);
@@ -429,13 +444,13 @@ const ClassStudent = () => {
   // Ensure header back button appears immediately while class info loads
   useEffect(() => {
     if (id) {
-      enterClassMenu({ id });
+      enterClassMenu({ id, backUrl: classMenuBackUrl });
     }
     return () => {
       exitClassMenu();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]); // Only run when id changes
+  }, [id, classMenuBackUrl]); // Only run when id changes
 
   // Enter class menu mode when component mounts
   useEffect(() => {
@@ -443,7 +458,8 @@ const ClassStudent = () => {
       enterClassMenu({
         id: classData.id,
         name: classData.name,
-        description: classData.name
+        description: classData.name,
+        backUrl: classMenuBackUrl,
       });
     }
     
@@ -452,7 +468,7 @@ const ClassStudent = () => {
       exitClassMenu();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classData?.id, classData?.name]); // Only run when these specific values change
+  }, [classData?.id, classData?.name, classMenuBackUrl]); // Only run when these specific values change
 
   const handleAddStudent = () => {
     setButtonLoading(prev => ({ ...prev, add: true }));
@@ -1188,7 +1204,7 @@ const ClassStudent = () => {
     if (id) {
       localStorage.setItem('selectedClassId', String(id));
     }
-    navigate(path, { state: { classId: id } });
+    navigate(path, { state: { classId: id, returnTo: currentPath } });
   };
 
   const columns = [

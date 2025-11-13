@@ -36,6 +36,7 @@ import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import { useSelector } from 'react-redux';
 import BottomActionBar from '../../../../component/BottomActionBar';
+import classManagementApi from '../../../../apis/backend/classManagement';
 import './ClassChapterLesson.css';
 
 
@@ -136,8 +137,16 @@ const ClassChapterLesson = () => {
 		
 		setLoading(true);
 		try {
-			const response = await teacherManagementApi.getClassById(classId);
-			const data = response?.data ?? response;
+			let response;
+			if (isManager) {
+				response = await teacherManagementApi.getClassById(classId);
+			} else {
+				response = await classManagementApi.getClassDetail(classId);
+			}
+			const data = response?.data?.data ?? response?.data ?? null;
+			if (!data) {
+				throw new Error('Class not found');
+			}
 			setClassData({
 				id: classId,
 				name: data?.name ?? data?.className ?? data?.title ?? '',
@@ -148,11 +157,12 @@ const ClassChapterLesson = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching class info:', error);
-			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching class info');
+			spaceToast.error(t('classDetail.accessDenied') || 'Bạn không có quyền truy cập lớp học này / You do not have permission to access this class');
+			navigate('/choose-login', { replace: true });
 		} finally {
 			setLoading(false);
 		}
-	}, [classId, t]);
+	}, [classId, t, isManager, navigate]);
 
 	const fetchChapterData = useCallback(async () => {
 		if (!chapterId) return;
@@ -160,6 +170,9 @@ const ClassChapterLesson = () => {
 		try {
 			const response = await teacherManagementApi.getClassChapterById(chapterId);
 			const data = response?.data ?? response;
+			if (!data || data.classId !== classId) {
+				throw new Error('Chapter not found in this class');
+			}
 			setChapterData({
 				id: chapterId,
 				name: data?.classChapterName,
@@ -170,9 +183,10 @@ const ClassChapterLesson = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching chapter info:', error);
-			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching chapter info');
+			spaceToast.error(t('chapterManagement.permission') || 'Bạn không có quyền truy cập chương này / You do not have permission to access this chapter');
+			navigate('/choose-login', { replace: true });
 		}
-	}, [chapterId, t]);
+	}, [chapterId, classId, t, navigate]);
 
 	const fetchLessonsData = useCallback(async (page = 1, size = 10, search = '') => {
 		if (!chapterId) return;
@@ -195,22 +209,19 @@ const ClassChapterLesson = () => {
 			// Handle different response structures
 			let lessonsData = [];
 			if (response.data) {
-				// Check if response.data is an array
 				if (Array.isArray(response.data)) {
 					lessonsData = response.data;
-				} 
-				// Check if response.data has a data property (nested structure)
-				else if (response.data.data && Array.isArray(response.data.data)) {
+				} else if (response.data.data && Array.isArray(response.data.data)) {
 					lessonsData = response.data.data;
-				}
-				// Check if response.data has content property (Spring Boot pagination)
-				else if (response.data.content && Array.isArray(response.data.content)) {
+				} else if (response.data.content && Array.isArray(response.data.content)) {
 					lessonsData = response.data.content;
-				}
-				// If it's a single object, wrap it in array
-				else if (response.data.id) {
+				} else if (response.data.id) {
 					lessonsData = [response.data];
 				}
+			}
+
+			if (!lessonsData.some(lesson => lesson.classId === classId)) {
+				throw new Error('Unauthorized to view lessons of another class');
 			}
 			
 			// Map API response to component format
@@ -234,10 +245,11 @@ const ClassChapterLesson = () => {
 			setLoading(false);
 		} catch (error) {
 			console.error('Error fetching lessons:', error);
-			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Error fetching lessons');
+			spaceToast.error(t('lessonManagement.accessDenied') || 'Bạn không có quyền truy cập bài học này / You do not have permission to access these lessons');
+			navigate('/choose-login', { replace: true });
 			setLoading(false);
 		}
-	}, [chapterId, t]);
+	}, [chapterId, classId, t, navigate]);
 
 	useEffect(() => {
 		fetchClassData();
@@ -322,8 +334,16 @@ const ClassChapterLesson = () => {
 		setViewingLesson(null);
 	};
 
-	const handleEditOrder = () => {
-		navigate(`${routePrefix}/chapters/${classId}/lessons/${chapterId}/edit-order`);
+	const handleEditOrder = async () => {
+		try {
+			if (!isManager) {
+				await teacherManagementApi.getClassById(classId);
+			}
+			navigate(`${routePrefix}/chapters/${classId}/lessons/${chapterId}/edit-order`);
+		} catch (error) {
+			console.error('Unauthorized access to edit lesson order:', error);
+			spaceToast.error(t('common.permissionDenied') || 'Bạn không có quyền chỉnh sửa lớp học này / You do not have permission to edit this class');
+		}
 	};
 
 	// Checkbox logic
@@ -1337,3 +1357,4 @@ const ClassChapterLesson = () => {
 };
 
 export default ClassChapterLesson;
+

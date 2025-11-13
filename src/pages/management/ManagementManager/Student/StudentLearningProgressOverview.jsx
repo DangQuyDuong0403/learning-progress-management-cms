@@ -199,6 +199,7 @@ const StudentLearningProgressOverview = () => {
   const isTeacher = userRole === 'teacher';
   const isTeachingAssistant = userRole === 'teaching_assistant';
   const classId = location.state?.classId || (typeof window !== 'undefined' ? localStorage.getItem('selectedClassId') : null);
+  const returnTo = location.state?.returnTo;
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [student, setStudent] = useState(null);
@@ -291,7 +292,7 @@ const StudentLearningProgressOverview = () => {
     } else if (isTeachingAssistant) {
       path = ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROFILE.replace(':id', String(id));
     }
-    navigate(path, { state: { student, classId } });
+    navigate(path, { state: { student, classId, returnTo } });
   };
 
   const getStatusIcon = (status) => {
