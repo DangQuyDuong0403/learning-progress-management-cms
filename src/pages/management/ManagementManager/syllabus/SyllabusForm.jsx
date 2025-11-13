@@ -112,6 +112,9 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 			if (isEdit) {
 				response = await syllabusManagementApi.updateSyllabus(syllabus.id, requestBody);
 				
+				// Show success message from backend
+				spaceToast.success(response.message);
+				
 				// Call onSuccess callback to refresh the list
 				if (onSuccess) {
 					onSuccess();

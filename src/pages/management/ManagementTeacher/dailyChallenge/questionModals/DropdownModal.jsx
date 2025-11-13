@@ -99,102 +99,231 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			const parsed = [];
 			const dropsData = [];
 
-			// Remove <br> tags and split by dropdown pattern
-			const cleanText = questionText.replace(/<br\s*\/?>/gi, '\n');
-			const regex = /\[\[pos_([a-z0-9]+)\]\]/g;
-			let lastIndex = 0;
-			let match;
+			// Create a temporary DOM element to parse HTML (similar to DragDropModal and FillBlankModal)
+			const tempDiv = document.createElement('div');
+			tempDiv.innerHTML = questionText;
 
-			while ((match = regex.exec(cleanText)) !== null) {
-				// Add text before dropdown
-				if (match.index > lastIndex) {
-					const textContent = cleanText.substring(lastIndex, match.index);
-					if (textContent) {
-						parsed.push({
-							type: 'text',
-							content: textContent,
-							id: `text-${Date.now()}-${lastIndex}`,
+			// Process each child node
+			const processNode = (node) => {
+				if (node.nodeType === Node.TEXT_NODE) {
+					const text = node.textContent;
+					const regex = /\[\[pos_([a-z0-9]+)\]\]/g;
+					let lastIndex = 0;
+					let match;
+					const result = [];
+
+					while ((match = regex.exec(text)) !== null) {
+						// Add text before dropdown
+						if (match.index > lastIndex) {
+							const textContent = text.substring(lastIndex, match.index);
+							if (textContent) {
+								result.push({
+									type: 'text',
+									content: textContent,
+									id: `text-${Date.now()}-${lastIndex}`,
+								});
+							}
+						}
+
+						// Add dropdown
+						const positionId = match[1];
+
+						// Try to get options from contentData first, then fallback to optionsData
+						let dropdownOptions = [];
+						let correctOption = null;
+						let incorrectOptions = [];
+
+						if (contentData && contentData.length > 0) {
+							// Use contentData (newer format)
+							dropdownOptions = contentData.filter(
+								(item) => item.positionId === positionId
+							);
+							correctOption = dropdownOptions.find((opt) => opt.correct === true);
+							incorrectOptions = dropdownOptions.filter(
+								(opt) => opt.correct === false
+							);
+						} else if (optionsData && optionsData.length > 0) {
+							// Fallback to optionsData (older format)
+							correctOption = optionsData.find((opt) => opt.isCorrect === true);
+							incorrectOptions = optionsData.filter(
+								(opt) => opt.isCorrect === false
+							);
+						}
+
+						const dropdownId = `dropdown-${Date.now()}-${positionId}`;
+
+						// Ensure there's at least one incorrect option for editing
+						const processedIncorrectOptions = incorrectOptions.map((opt) => ({
+							id: opt.id || Date.now(),
+							text: opt.value || opt.text || '',
+						}));
+
+						// If no incorrect options exist, add an empty one for editing
+						if (processedIncorrectOptions.length === 0) {
+							processedIncorrectOptions.push({
+								id: Date.now(),
+								text: '',
+							});
+						}
+
+						result.push({
+							type: 'dropdown',
+							id: dropdownId,
+							positionId: positionId,
+							correctAnswer: correctOption?.value || correctOption?.text || '',
+							incorrectOptions: processedIncorrectOptions,
 						});
+
+						dropsData.push({
+							id: dropdownId,
+							positionId: positionId,
+							correctAnswer: correctOption?.value || correctOption?.text || '',
+							incorrectOptions: processedIncorrectOptions,
+							color: dropdownColors[dropsData.length % dropdownColors.length],
+						});
+
+						lastIndex = regex.lastIndex;
+					}
+
+					// Add remaining text
+					if (lastIndex < text.length) {
+						const remainingText = text.substring(lastIndex);
+						if (remainingText) {
+							result.push({
+								type: 'text',
+								content: remainingText,
+								id: `text-${Date.now()}-${lastIndex}`,
+							});
+						}
+					}
+
+					return result;
+				} else if (node.nodeType === Node.ELEMENT_NODE) {
+					// Regular HTML element, preserve it
+					const tagName = node.tagName.toLowerCase();
+					const innerHTML = node.innerHTML;
+
+					// Special handling for image wrapper - always preserve
+					if (
+						node.hasAttribute('data-image-wrapper') ||
+						node.classList.contains('image-wrapper')
+					) {
+						return {
+							type: 'html',
+							content: node.outerHTML,
+							id: `html-${Date.now()}`,
+						};
+					}
+
+					// Special handling for images - always preserve
+					if (tagName === 'img') {
+						return {
+							type: 'html',
+							content: node.outerHTML,
+							id: `html-${Date.now()}`,
+						};
+					}
+
+					// Special handling for tables - ALWAYS preserve structure, extract dropdown data from patterns
+					// This must be checked BEFORE checking if element contains patterns
+					if (tagName === 'table') {
+						// Extract dropdown data from table cells that contain patterns
+						const textContent = node.textContent;
+						if (textContent && /\[\[pos_([a-z0-9]+)\]\]/.test(textContent)) {
+							// Extract all positionIds from table
+							const positionIdRegex = /\[\[pos_([a-z0-9]+)\]\]/g;
+							let match;
+							while ((match = positionIdRegex.exec(textContent)) !== null) {
+								const positionId = match[1];
+								// Try to get options from contentData first, then fallback to optionsData
+								let dropdownOptions = [];
+								let correctOption = null;
+								let incorrectOptions = [];
+
+								if (contentData && contentData.length > 0) {
+									dropdownOptions = contentData.filter(
+										(item) => item.positionId === positionId
+									);
+									correctOption = dropdownOptions.find((opt) => opt.correct === true);
+									incorrectOptions = dropdownOptions.filter(
+										(opt) => opt.correct === false
+									);
+								} else if (optionsData && optionsData.length > 0) {
+									correctOption = optionsData.find((opt) => opt.isCorrect === true);
+									incorrectOptions = optionsData.filter(
+										(opt) => opt.isCorrect === false
+									);
+								}
+
+								const dropdownId = `dropdown-${Date.now()}-${positionId}`;
+								const processedIncorrectOptions = incorrectOptions.map((opt) => ({
+									id: opt.id || Date.now(),
+									text: opt.value || opt.text || '',
+								}));
+
+								if (processedIncorrectOptions.length === 0) {
+									processedIncorrectOptions.push({
+										id: Date.now(),
+										text: '',
+									});
+								}
+
+								dropsData.push({
+									id: dropdownId,
+									positionId: positionId,
+									correctAnswer: correctOption?.value || correctOption?.text || '',
+									incorrectOptions: processedIncorrectOptions,
+									color: dropdownColors[dropsData.length % dropdownColors.length],
+								});
+							}
+						}
+						
+						// Always preserve table as HTML (patterns will be converted during render)
+						return {
+							type: 'html',
+							content: node.outerHTML,
+							id: `html-${Date.now()}`,
+						};
+					}
+
+					// For other elements, check if they contain dropdown patterns
+					const textContent = node.textContent;
+					if (textContent && /\[\[pos_([a-z0-9]+)\]\]/.test(textContent)) {
+						// This element contains dropdowns, but it's not a table/image
+						// Process its child nodes recursively to preserve structure while parsing dropdowns
+						const childResults = [];
+						for (let i = 0; i < node.childNodes.length; i++) {
+							const childResult = processNode(node.childNodes[i]);
+							if (Array.isArray(childResult)) {
+								childResults.push(...childResult);
+							} else if (childResult) {
+								childResults.push(childResult);
+							}
+						}
+						return childResults.length > 0 ? childResults : [];
+					} else {
+						// No dropdown patterns, preserve the HTML
+						if (innerHTML) {
+							return {
+								type: 'html',
+								content: node.outerHTML,
+								id: `html-${Date.now()}`,
+							};
+						}
+						return { type: 'text', content: '', id: `text-${Date.now()}` };
 					}
 				}
+				return [];
+			};
 
-				// Add dropdown
-				const positionId = match[1];
-
-				// Try to get options from contentData first, then fallback to optionsData
-				let dropdownOptions = [];
-				let correctOption = null;
-				let incorrectOptions = [];
-
-				if (contentData && contentData.length > 0) {
-					// Use contentData (newer format)
-					dropdownOptions = contentData.filter(
-						(item) => item.positionId === positionId
-					);
-					correctOption = dropdownOptions.find((opt) => opt.correct === true);
-					incorrectOptions = dropdownOptions.filter(
-						(opt) => opt.correct === false
-					);
-				} else if (optionsData && optionsData.length > 0) {
-					// Fallback to optionsData (older format)
-					correctOption = optionsData.find((opt) => opt.isCorrect === true);
-					incorrectOptions = optionsData.filter(
-						(opt) => opt.isCorrect === false
-					);
-				}
-
-				console.log('DropdownModal - Processing dropdown:', {
-					positionId,
-					correctOption,
-					incorrectOptions,
-					contentDataLength: contentData?.length || 0,
-					optionsDataLength: optionsData?.length || 0,
-				});
-
-				const dropdownId = `dropdown-${Date.now()}-${positionId}`;
-
-				// Ensure there's at least one incorrect option for editing
-				const processedIncorrectOptions = incorrectOptions.map((opt) => ({
-					id: opt.id || Date.now(),
-					text: opt.value || opt.text || '',
-				}));
-
-				// If no incorrect options exist, add an empty one for editing
-				if (processedIncorrectOptions.length === 0) {
-					processedIncorrectOptions.push({
-						id: Date.now(),
-						text: '',
-					});
-				}
-
-				parsed.push({
-					type: 'dropdown',
-					id: dropdownId,
-					positionId: positionId,
-					correctAnswer: correctOption?.value || correctOption?.text || '',
-					incorrectOptions: processedIncorrectOptions,
-				});
-
-				dropsData.push({
-					id: dropdownId,
-					positionId: positionId,
-					correctAnswer: correctOption?.value || correctOption?.text || '',
-					incorrectOptions: processedIncorrectOptions,
-					color: dropdownColors[dropsData.length % dropdownColors.length],
-				});
-
-				lastIndex = regex.lastIndex;
-			}
-
-			// Add remaining text
-			if (lastIndex < cleanText.length) {
-				const remainingText = cleanText.substring(lastIndex);
-				if (remainingText) {
-					parsed.push({
-						type: 'text',
-						content: remainingText,
-						id: `text-${Date.now()}-${lastIndex}`,
-					});
+			// Process all child nodes
+			for (let i = 0; i < tempDiv.childNodes.length; i++) {
+				const node = tempDiv.childNodes[i];
+				const result = processNode(node);
+				if (Array.isArray(result)) {
+					parsed.push(...result);
+				} else if (result) {
+					parsed.push(result);
 				}
 			}
 
@@ -206,24 +335,45 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Cap to maximum 10 dropdowns
 			const MAX_DROPDOWNS = 10;
 			const limitedParsed = [];
+			const limitedDropsData = [];
 			let dropdownCount = 0;
+			
+			// First, collect all dropdowns from parsed items
 			for (const item of parsed) {
 				if (item.type === 'dropdown') {
 					if (dropdownCount < MAX_DROPDOWNS) {
 						limitedParsed.push(item);
+						// Find corresponding drop data
+						const dropData = dropsData.find(d => d.id === item.id);
+						if (dropData) {
+							limitedDropsData.push(dropData);
+						}
 						dropdownCount++;
 					}
 				} else {
 					limitedParsed.push(item);
 				}
 			}
+			
+			// Then, add any remaining dropdowns from dropsData (e.g., from tables)
+			// that weren't already added from parsed items
+			for (const dropData of dropsData) {
+				if (dropdownCount >= MAX_DROPDOWNS) break;
+				// Check if this dropdown is already in limitedDropsData
+				const alreadyAdded = limitedDropsData.some(d => d.positionId === dropData.positionId);
+				if (!alreadyAdded) {
+					limitedDropsData.push(dropData);
+					dropdownCount++;
+				}
+			}
+			
 			setEditorContent(limitedParsed);
-			setDropdowns(dropsData.slice(0, MAX_DROPDOWNS));
+			setDropdowns(limitedDropsData.slice(0, MAX_DROPDOWNS));
 			console.log(
 				'DropdownModal - State updated with parsed data, editorContent length:',
-				parsed.length,
+				limitedParsed.length,
 				'dropsData length:',
-				dropsData.length
+				limitedDropsData.length
 			);
 		},
 		[dropdownColors]
@@ -1982,6 +2132,79 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			if (item.type === 'text') {
 				if (item.content) {
 					editorRef.current.appendChild(document.createTextNode(item.content));
+				}
+			} else if (item.type === 'html') {
+				// Parse HTML content and insert it, handling dropdown patterns inside
+				if (item.content) {
+					const tempDiv = document.createElement('div');
+					tempDiv.innerHTML = item.content;
+					
+					// Process the HTML to convert dropdown patterns to dropdown elements
+					const processHtmlNode = (node, parentElement) => {
+						if (node.nodeType === Node.TEXT_NODE) {
+							const text = node.textContent;
+							const regex = /\[\[pos_([a-z0-9]+)\]\]/g;
+							let lastIndex = 0;
+							let match;
+							let hasPatterns = false;
+							
+							while ((match = regex.exec(text)) !== null) {
+								hasPatterns = true;
+								// Add text before dropdown
+								if (match.index > lastIndex) {
+									const textContent = text.substring(lastIndex, match.index);
+									if (textContent) {
+										parentElement.appendChild(document.createTextNode(textContent));
+									}
+								}
+								
+								// Find dropdown data for this positionId
+								const positionId = match[1];
+								const dropdownData = dropdowns.find((d) => d.positionId === positionId);
+								if (dropdownData) {
+									const dropdownElement = createDropdownElement(dropdownData, dropdownCounter);
+									parentElement.appendChild(dropdownElement);
+									dropdownCounter++;
+								} else {
+									// Keep the pattern as text if dropdown not found
+									parentElement.appendChild(document.createTextNode(match[0]));
+								}
+								
+								lastIndex = regex.lastIndex;
+							}
+							
+							// Add remaining text or entire text if no patterns
+							if (hasPatterns) {
+								if (lastIndex < text.length) {
+									const remainingText = text.substring(lastIndex);
+									if (remainingText) {
+										parentElement.appendChild(document.createTextNode(remainingText));
+									}
+								}
+							} else {
+								// No patterns found, append entire text
+								if (text) {
+									parentElement.appendChild(document.createTextNode(text));
+								}
+							}
+						} else if (node.nodeType === Node.ELEMENT_NODE) {
+							// Clone the node
+							const clonedNode = node.cloneNode(false);
+							
+							// Process children recursively
+							for (let i = 0; i < node.childNodes.length; i++) {
+								processHtmlNode(node.childNodes[i], clonedNode);
+							}
+							
+							// Append the cloned node to parent
+							parentElement.appendChild(clonedNode);
+						}
+					};
+					
+					// Process all nodes in the HTML and append to editor
+					for (let i = 0; i < tempDiv.childNodes.length; i++) {
+						processHtmlNode(tempDiv.childNodes[i], editorRef.current);
+					}
 				}
 			} else if (item.type === 'dropdown') {
 				// Find the corresponding dropdown data

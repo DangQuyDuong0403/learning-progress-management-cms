@@ -1165,8 +1165,8 @@ const renderDragDropQuestionInline = (question, theme) => {
     displayText = displayText.replace(
       pattern,
       `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${chipBg};border:2px solid ${chipBorder};border-radius:8px;color:#000000;margin:0 6px 6px 6px;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${chipBorder};color:#ffffff;font-size:11px;">${number}</span>
-        <span style="white-space:normal;word-break:break-word;">${value}</span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;min-width:18px;min-height:18px;flex-shrink:0;border-radius:50%;background:${chipBorder};color:#ffffff;font-size:11px;font-weight:700;">${number}</span>
+        <span style="white-space:normal;word-break:break-word;flex:1;">${value}</span>
       </span>`
     );
   });
@@ -1200,8 +1200,8 @@ const renderRearrangeQuestionInline = (question, theme) => {
     displayText = displayText.replace(
       pattern,
       `<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;margin:0 6px;background:${chipBg};border:2px solid ${chipBorder};border-radius:8px;color:#000000;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${chipBorder};color:#ffffff;font-size:11px;">${number}</span>
-        <span style="white-space:normal;word-break:break-word;">${value}</span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;min-width:18px;min-height:18px;flex-shrink:0;border-radius:50%;background:${chipBorder};color:#ffffff;font-size:11px;font-weight:700;">${number}</span>
+        <span style="white-space:normal;word-break:break-word;flex:1;">${value}</span>
       </span>`
     );
   });
@@ -1587,7 +1587,7 @@ const SortableQuestionItem = memo(
           displayText = displayText.replace(
             pattern,
               `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${blankBgColor}, ${blankBgColor.replace('0.08', '0.15').replace('0.15', '0.25')}); border: 2px solid ${blankBorderColor}; border-radius: 8px; color: ${blankColor}; margin: 0 4px;">
-              <span style="width: 18px; height: 18px; border-radius: 50%; background: ${blankColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+              <span style="width: 18px; height: 18px; min-width: 18px; min-height: 18px; flex-shrink: 0; border-radius: 50%; background: ${blankColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">${number}</span>
               <span style="text-decoration: underline; padding: 0 2px;">____</span>
             </span>`
           );
@@ -1756,7 +1756,7 @@ const SortableQuestionItem = memo(
           displayText = displayText.replace(
             pattern,
             `<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: linear-gradient(135deg, ${wordBgStart}, ${wordBgEnd}); border: 2px solid ${wordBorderColor}; border-radius: 8px; color: ${wordBorderColor}; margin: 0 4px;">
-              <span style="width: 18px; height: 18px; border-radius: 50%; background: ${wordBorderColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">${number}</span>
+              <span style="width: 18px; height: 18px; min-width: 18px; min-height: 18px; flex-shrink: 0; border-radius: 50%; background: ${wordBorderColor}; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">${number}</span>
               <span style="text-decoration: underline; padding: 0 2px;">____</span>
             </span>`
           );
@@ -2275,8 +2275,8 @@ const SortableQuestionItem = memo(
                   displayText = displayText.replace(
                     pattern,
                     `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:${correctBgColor};border:2px solid ${correctBorderColor};border-radius:8px;color:${correctTextColor};margin:0 6px 6px 6px;">
-                      <span style=\"display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${correctBorderColor};color:#ffffff;font-size:11px;\">${correctItem.index}</span>
-                      <span style=\"white-space:normal;word-break:break-word;\">${value}</span>
+                      <span style=\"display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;min-width:18px;min-height:18px;flex-shrink:0;border-radius:50%;background:${correctBorderColor};color:#ffffff;font-size:11px;font-weight:700;\">${correctItem.index}</span>
+                      <span style=\"white-space:normal;word-break:break-word;flex:1;\">${value}</span>
                     </span>`
                   );
                 });
@@ -2330,6 +2330,8 @@ const SortableQuestionItem = memo(
                           <div
                             key={idx}
                             style={{
+                              display: 'flex',
+                              alignItems: 'center',
                               padding: '10px 16px',
                               borderRadius: '10px',
                               border: `2px solid ${chip.isCorrect ? correctBorderColor : wrongBorderColor}`,
@@ -2347,6 +2349,9 @@ const SortableQuestionItem = memo(
                                 justifyContent: 'center',
                                 width: '20px',
                                 height: '20px',
+                                minWidth: '20px',
+                                minHeight: '20px',
+                                flexShrink: 0,
                                 borderRadius: '50%',
                                 background: correctBorderColor,
                                 color: '#ffffff',
@@ -2355,7 +2360,7 @@ const SortableQuestionItem = memo(
                                 marginRight: '8px'
                               }}>{orderNumber}</span>
                             )}
-                            {chip.value}
+                            <span style={{ flex: 1, wordBreak: 'break-word' }}>{chip.value}</span>
                           </div>
                           );
                         }); })()}
@@ -2415,6 +2420,9 @@ const SortableQuestionItem = memo(
                             justifyContent: 'center',
                             width: '20px',
                             height: '20px',
+                            minWidth: '20px',
+                            minHeight: '20px',
+                            flexShrink: 0,
                             borderRadius: '50%',
                             background: correctBorderColor,
                             color: '#ffffff',
@@ -2422,7 +2430,7 @@ const SortableQuestionItem = memo(
                             fontWeight: 700,
                             marginRight: '8px'
                           }}>{idx + 1}</span>
-                          {val}
+                          <span style={{ flex: 1, wordBreak: 'break-word', textAlign: 'center' }}>{val}</span>
                         </div>
                       ))}
                     </div>
@@ -2446,6 +2454,8 @@ const SortableQuestionItem = memo(
                         <div
                           key={idx}
                           style={{
+                            display: 'flex',
+                            alignItems: 'center',
                             padding: '10px 16px',
                             borderRadius: '10px',
                             border: '2px solid rgba(82, 196, 26, 0.5)',
@@ -2462,6 +2472,9 @@ const SortableQuestionItem = memo(
                             justifyContent: 'center',
                             width: '20px',
                             height: '20px',
+                            minWidth: '20px',
+                            minHeight: '20px',
+                            flexShrink: 0,
                             borderRadius: '50%',
                             background: correctBorderColor,
                             color: '#ffffff',
@@ -2469,7 +2482,7 @@ const SortableQuestionItem = memo(
                             fontWeight: 700,
                             marginRight: '8px'
                           }}>{idx + 1}</span>
-                          {val}
+                          <span style={{ flex: 1, wordBreak: 'break-word' }}>{val}</span>
                         </div>
                       ))}
                     </div>

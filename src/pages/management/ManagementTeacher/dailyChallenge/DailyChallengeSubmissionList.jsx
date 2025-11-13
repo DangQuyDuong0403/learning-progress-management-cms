@@ -518,7 +518,15 @@ const DailyChallengeSubmissionList = () => {
       key: 'finalScore',
       width: 130,
       align: 'center',
-      render: (v) => (v === null || v === undefined ? '-' : v),
+      render: (v, record) => {
+        // If status is MISSED, show 0
+        const status = (record?.submissionStatus || '').toString().toUpperCase();
+        if (status === 'MISSED') {
+          return '0';
+        }
+        // Otherwise, show the score or '-' if null/undefined
+        return (v === null || v === undefined ? '-' : v);
+      },
     },
     {
       title: 'Actual Duration',
@@ -572,7 +580,6 @@ const DailyChallengeSubmissionList = () => {
             element: (
               <Button
                 type="primary"
-                icon={<EyeOutlined />}
                 onClick={() => handleViewClick(record)}
                 className="action-btn-grade"
                 style={{
@@ -603,7 +610,6 @@ const DailyChallengeSubmissionList = () => {
             element: (
               <Button
                 type="primary"
-                icon={<EyeOutlined />}
                 onClick={() => handleViewClick(record)}
                 className="action-btn-view-result"
                 style={{

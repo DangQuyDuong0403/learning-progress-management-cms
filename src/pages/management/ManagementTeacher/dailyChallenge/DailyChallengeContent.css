@@ -628,58 +628,89 @@
   text-decoration: line-through;
 }
 
-/* Tables */
+/* Tables - Global styles for all tables */
 .question-content table,
 .passage-content table,
-.question-options table {
+.question-options table,
+.question-text-wrapper table,
+.passage-text-content table,
+.question-text-content table,
+.speaking-prompt-scrollbar table,
+.transcript-content table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
+  border-spacing: 0;
   margin: 16px 0;
-  border-radius: 8px;
+  border-radius: 0 !important;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #000000 !important;
+}
+
+.question-content table th,
+.question-content table td,
+.passage-content table th,
+.passage-content table td,
+.question-options table th,
+.question-options table td,
+.question-text-wrapper table th,
+.question-text-wrapper table td,
+.passage-text-content table th,
+.passage-text-content table td,
+.question-text-content table th,
+.question-text-content table td,
+.speaking-prompt-scrollbar table th,
+.speaking-prompt-scrollbar table td,
+.transcript-content table th,
+.transcript-content table td {
+  border: 1px solid #000000 !important;
+  font-weight: normal;
 }
 
 .sun-question-item .question-content table,
 .sun-passage-item .passage-content table {
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(113, 179, 253, 0.2);
+  border: 1px solid #000000;
 }
 
 .space-question-item .question-content table,
 .space-passage-item .passage-content table {
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(138, 122, 255, 0.2);
+  border: 1px solid #000000;
 }
 
 .question-content th,
 .passage-content th,
 .question-options th {
   background: rgba(24, 144, 255, 0.1);
-  font-weight: 600;
   padding: 12px;
   text-align: left;
-  border-bottom: 2px solid rgba(24, 144, 255, 0.3);
+  border: 1px solid #000000 !important;
   color: inherit;
+  font-weight: normal;
 }
 
 .sun-question-item .question-content th,
 .sun-passage-item .passage-content th {
   background: rgba(113, 179, 253, 0.15);
-  border-bottom-color: rgba(113, 179, 253, 0.3);
+  border: 1px solid #000000 !important;
+  font-weight: normal;
 }
 
 .space-question-item .question-content th,
 .space-passage-item .passage-content th {
   background: rgba(138, 122, 255, 0.15);
-  border-bottom-color: rgba(138, 122, 255, 0.3);
+  border: 1px solid #000000 !important;
+  border-radius: 0;
+  font-weight: normal;
 }
 
 .question-content td,
 .passage-content td,
 .question-options td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid #000000 !important;
   color: inherit;
 }
 
@@ -1011,10 +1042,19 @@
 .passage-text-content table {
   width: 100%;
   border-collapse: collapse;
+  border-spacing: 0;
   margin: 16px 0;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #000000;
+}
+
+.passage-text-content table th,
+.passage-text-content table td {
+  border: 1px solid #000000 !important;
+  padding: 8px;
+  font-weight: normal;
 }
 
 .passage-text-content img {
@@ -1078,10 +1118,19 @@
 .question-text-content table {
   width: 100%;
   border-collapse: collapse;
+  border-spacing: 0;
   margin: 16px 0;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #000000;
+}
+
+.question-text-content table th,
+.question-text-content table td {
+  border: 1px solid #000000 !important;
+  padding: 8px;
+  font-weight: normal;
 }
 
 .question-text-content img {
