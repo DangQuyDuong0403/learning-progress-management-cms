@@ -12,6 +12,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import classManagementApi from '../../../../apis/backend/classManagement';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
 import TableSpinner from '../../../../component/spinner/TableSpinner';
@@ -265,10 +266,18 @@ const TeacherClassLessonDragEdit = () => {
 		
 		try {
 			console.log('Fetching class data for classId:', classId);
-			const response = await teacherManagementApi.getClassById(classId);
+			let response;
+			if (userRole === 'manager') {
+				response = await teacherManagementApi.getClassById(classId);
+			} else {
+				response = await classManagementApi.getClassDetail(classId);
+			}
 			console.log('Class data response:', response);
 			
-			const data = response?.data ?? response;
+			const data = response?.data?.data ?? response?.data ?? null;
+			if (!data) {
+				throw new Error('Class not found');
+			}
 			setClassData({
 				id: classId,
 				name: data?.name ?? data?.className ?? data?.title ?? 'Unknown Class',
@@ -279,9 +288,10 @@ const TeacherClassLessonDragEdit = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching class info:', error);
-			spaceToast.error(t('lessonManagement.loadingClassInfo'));
+			spaceToast.error(t('lessonManagement.accessDenied') || 'Bạn không có quyền truy cập lớp học này / You do not have permission to access this class');
+			navigate('/choose-login', { replace: true });
 		}
-	}, [classId, t]);
+	}, [classId, t, userRole, navigate]);
 
 	const fetchChapterData = useCallback(async () => {
 		if (!chapterId) return;
@@ -292,6 +302,9 @@ const TeacherClassLessonDragEdit = () => {
 			console.log('Chapter data response:', response);
 			
 			const data = response?.data ?? response;
+			if (!data || data.classId !== classId) {
+				throw new Error('Chapter not found for this class');
+			}
 			setChapterData({
 				id: chapterId,
 				name: data?.classChapterName,
@@ -302,9 +315,10 @@ const TeacherClassLessonDragEdit = () => {
 			});
 		} catch (error) {
 			console.error('Error fetching chapter info:', error);
-			spaceToast.error(t('lessonManagement.loadingChapterInfo'));
+			spaceToast.error(t('lessonManagement.accessDenied') || 'Bạn không có quyền truy cập chương này / You do not have permission to access this chapter');
+			navigate('/choose-login', { replace: true });
 		}
-	}, [chapterId, t]);
+	}, [chapterId, classId, t, navigate]);
 
 	const fetchAllLessons = useCallback(async () => {
 		if (!chapterId) return;
@@ -318,52 +332,50 @@ const TeacherClassLessonDragEdit = () => {
 				size: 100,
 			};
 
-		const response = await teacherManagementApi.getClassLessons(params);
-		console.log('Lessons response:', response);
-		
-		// Handle different response structures
-		let lessonsData = [];
-		if (response.data) {
-			// Check if response.data is an array
-			if (Array.isArray(response.data)) {
-				lessonsData = response.data;
-			} 
-			// Check if response.data has a data property (nested structure)
-			else if (response.data.data && Array.isArray(response.data.data)) {
-				lessonsData = response.data.data;
+			const response = await teacherManagementApi.getClassLessons(params);
+			console.log('Lessons response:', response);
+			
+			// Handle different response structures
+			let lessonsData = [];
+			if (response.data) {
+				if (Array.isArray(response.data)) {
+					lessonsData = response.data;
+				} else if (response.data.data && Array.isArray(response.data.data)) {
+					lessonsData = response.data.data;
+				} else if (response.data.content && Array.isArray(response.data.content)) {
+					lessonsData = response.data.content;
+				} else if (response.data.id) {
+					lessonsData = [response.data];
+				}
 			}
-			// Check if response.data has content property (Spring Boot pagination)
-			else if (response.data.content && Array.isArray(response.data.content)) {
-				lessonsData = response.data.content;
+			
+			console.log('Extracted lessons data:', lessonsData);
+			
+			if (!lessonsData.some(lesson => lesson.classId === classId)) {
+				throw new Error('Lessons do not belong to this class');
 			}
-			// If it's a single object, wrap it in array
-			else if (response.data.id) {
-				lessonsData = [response.data];
-			}
-		}
-		
-		console.log('Extracted lessons data:', lessonsData);
-		
-		// Map API response to component format
-		const mappedLessons = lessonsData.map((lesson, index) => ({
-			id: lesson.id,
-			name: lesson.classLessonName,
-			content: lesson.classLessonContent,
-			order: lesson.orderNumber,
-			createdBy: lesson.createdBy,
-			createdAt: lesson.createdAt,
-			position: index + 1,
-		}));
+
+			// Map API response to component format
+			const mappedLessons = lessonsData.map((lesson, index) => ({
+				id: lesson.id,
+				name: lesson.classLessonName,
+				content: lesson.classLessonContent,
+				order: lesson.orderNumber,
+				createdBy: lesson.createdBy,
+				createdAt: lesson.createdAt,
+				position: index + 1,
+			}));
 
 			console.log('Mapped lessons:', mappedLessons);
 			setLessons(mappedLessons);
 		} catch (error) {
 			console.error('Error fetching lessons:', error);
-			spaceToast.error(t('lessonManagement.loadingLessons'));
+			spaceToast.error(t('lessonManagement.accessDenied') || 'Bạn không có quyền truy cập bài học này / You do not have permission to access these lessons');
+			navigate('/choose-login', { replace: true });
 		} finally {
 			setLoading(false);
 		}
-	}, [chapterId, t]);
+	}, [chapterId, classId, t, navigate]);
 
 	useEffect(() => {
 		console.log('TeacherClassLessonDragEdit - useEffect triggered');
