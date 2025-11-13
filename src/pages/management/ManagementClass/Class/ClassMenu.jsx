@@ -227,14 +227,6 @@ const ClassMenu = () => {
       path: `${routePrefix}/performance/${id}`,
       color: "#00bcd4",
     },
-    {
-      id: "gradebook",
-      title: t('classMenu.myGradebook', 'My Gradebook'),
-      description: t('classMenu.myGradebookDescription', 'See your grades across activities'),
-      icon: <ReadOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
-      path: `${routePrefix}/gradebook/${id}`,
-      color: "#1890ff",
-    },
   ] : [];
 
   // Filter menu items based on user role
@@ -290,7 +282,7 @@ const ClassMenu = () => {
 
         {/* Menu Cards */}
         <div className="menu-cards-section">
-          <Row gutter={[24, 24]} justify="start">
+          <Row gutter={[24, 24]} justify="center">
             {menuItems.map((item) => (
               <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
                 <Card

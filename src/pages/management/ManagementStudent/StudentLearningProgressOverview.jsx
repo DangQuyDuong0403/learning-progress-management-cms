@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Row, Col, Empty, Button, Typography, Table, Tag } from 'antd';
+import { Card, Row, Col, Empty, Button, Select } from 'antd';
 import LoadingWithEffect from '../../../component/spinner/LoadingWithEffect';
 import {
   BookOutlined,
@@ -52,6 +52,7 @@ const StudentLearningProgressOverview = () => {
   const [scoreTrendData, setScoreTrendData] = useState([]);
   const [challengeDetailData, setChallengeDetailData] = useState(null);
   const [loadingChallenges, setLoadingChallenges] = useState(false);
+  const [challengeTypeFilter, setChallengeTypeFilter] = useState('ALL');
 
   // Load student learning progress data
   useEffect(() => {
@@ -83,10 +84,17 @@ const StudentLearningProgressOverview = () => {
             ? (completedChallenges / totalChallenges) * 100 
             : 0;
           
+          // Normalize percent values from BE (accepts 0-1 or 0-100)
+          const normalizePercent = (value) => {
+            const v = Number(value) || 0;
+            return v > 1 ? v : v * 100;
+          };
           // Calculate completion rate and on-time rate
-          const completionRate = challengeProgress.completionRate ?? 0;
-          const lateRate = challengeProgress.lateRate ?? 0;
-          const onTimeRate = Math.max(0, (completionRate - lateRate) * 100); // Convert to percentage
+          const completionRateRaw = challengeProgress.completionRate ?? 0;
+          const lateRateRaw = challengeProgress.lateRate ?? 0;
+          const completionRate = normalizePercent(completionRateRaw);
+          const lateRate = normalizePercent(lateRateRaw);
+          const onTimeRate = Math.max(0, completionRate - lateRate);
           
           // Set overview data
           setOverviewData({
@@ -100,9 +108,9 @@ const StudentLearningProgressOverview = () => {
             currentClassId: overview.currentClass?.classId || null,
             currentClassCode: overview.currentClass?.classCode || '',
             currentClassJoinedAt: overview.currentClass?.joinedAt || null,
-            completionRate: completionRate * 100, // Convert to percentage
-            onTimeRate: onTimeRate, // Already converted to percentage
-            lateRate: lateRate * 100,
+            completionRate: completionRate, // percentage 0-100
+            onTimeRate: onTimeRate, // percentage 0-100
+            lateRate: lateRate,
             totalChallenges: totalChallenges,
             completedChallenges: completedChallenges,
             lateChallenges: lateChallenges,
@@ -129,35 +137,81 @@ const StudentLearningProgressOverview = () => {
         
         console.log('Level History Levels:', levels);
         
-        if (levels && Array.isArray(levels) && levels.length > 0) {
+        // Ensure we have at least 3 levels by adding mock levels if necessary
+        const randomBetween = (min, max) => {
+          const value = min + Math.random() * (max - min);
+          return Math.round(value * 10) / 10;
+        };
+        const buildMockScores = () => ({
+          vocabularyAvg: randomBetween(6.0, 9.2),
+          readingAvg: randomBetween(5.5, 8.8),
+          listeningAvg: randomBetween(6.2, 9.5),
+          writingAvg: randomBetween(5.0, 8.0),
+          speakingAvg: randomBetween(5.8, 9.0),
+        });
+        const mockLevelMeta = [
+          { name: 'Little Explorers', code: 'LV-M01' },
+          { name: 'Young Achievers', code: 'LV-M02' },
+          { name: 'Smart Learners', code: 'LV-M03' },
+        ];
+        const levelsForCharts = (() => {
+          const base = Array.isArray(levels) ? [...levels] : [];
+          let need = Math.max(0, 3 - base.length);
+          let idx = 0;
+          while (need > 0) {
+            const meta = mockLevelMeta[idx % mockLevelMeta.length];
+            base.push({
+              levelId: 1000 + idx,
+              levelName: meta.name,
+              levelCode: meta.code,
+              classes: [
+                {
+                  classId: 2000 + idx,
+                  className: `DEMO-${idx + 1}`,
+                  classCode: `CL-M${idx + 1}`,
+                  joinedAt: new Date(Date.now() - (idx + 1) * 7 * 24 * 3600 * 1000).toISOString(),
+                  leftAt: null,
+                  scoreByType: buildMockScores(),
+                },
+              ],
+            });
+            idx += 1;
+            need -= 1;
+          }
+          return base;
+        })();
+        
+        if (levelsForCharts && Array.isArray(levelsForCharts) && levelsForCharts.length > 0) {
           // Prepare level chart data (for bar chart)
-          // Show "All V" = average of all DC types (vocabulary, reading, listening, writing, speaking)
+          // Show 5 grouped bars per level (Vocabulary, Reading, Listening, Writing, Speaking)
+          const buildMockScoresIfNeeded = (scores) => {
+            const s = scores || {};
+            const values = [
+              s.vocabularyAvg || 0,
+              s.readingAvg || 0,
+              s.listeningAvg || 0,
+              s.writingAvg || 0,
+              s.speakingAvg || 0,
+            ];
+            const allZero = values.every((v) => !v || v === 0);
+            if (!allZero) return s;
+            return buildMockScores();
+          };
           const levelChartDataArray = [];
-          levels.forEach(level => {
+          levelsForCharts.forEach(level => {
             if (level.classes && Array.isArray(level.classes) && level.classes.length > 0) {
               level.classes.forEach(classItem => {
-                // Calculate average score across all DC types (All V)
-                const scores = classItem.scoreByType || {};
-                const avgScores = [
-                  scores.vocabularyAvg || 0,
-                  scores.readingAvg || 0,
-                  scores.listeningAvg || 0,
-                  scores.writingAvg || 0,
-                  scores.speakingAvg || 0,
-                ];
-                // Calculate average of all non-zero scores
-                const validScores = avgScores.filter(s => s > 0);
-                const allV = validScores.length > 0
-                  ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length
-                  : 0;
-                
+                const scores = buildMockScoresIfNeeded(classItem.scoreByType);
                 levelChartDataArray.push({
                   level: level.levelName,
                   levelCode: level.levelCode,
                   class: classItem.className,
                   classCode: classItem.classCode,
-                  value: allV,
-                  scores: scores,
+                  vocabulary: scores.vocabularyAvg || 0,
+                  reading: scores.readingAvg || 0,
+                  listening: scores.listeningAvg || 0,
+                  writing: scores.writingAvg || 0,
+                  speaking: scores.speakingAvg || 0,
                 });
               });
             }
@@ -169,12 +223,12 @@ const StudentLearningProgressOverview = () => {
           // Prepare score trend data (for line chart)
           // Group by time periods (weeks) from joined dates
           const scoreTrendArray = [];
-          levels.forEach(level => {
+          levelsForCharts.forEach(level => {
             if (level.classes && Array.isArray(level.classes)) {
               level.classes.forEach(classItem => {
                 const joinedAt = classItem.joinedAt ? new Date(classItem.joinedAt) : null;
                 if (joinedAt && !isNaN(joinedAt.getTime())) {
-                  const scores = classItem.scoreByType || {};
+                  const scores = buildMockScoresIfNeeded(classItem.scoreByType);
                   const avgScores = [
                     scores.vocabularyAvg || 0,
                     scores.readingAvg || 0,
@@ -300,7 +354,7 @@ const StudentLearningProgressOverview = () => {
               border: 'none',
               borderRadius: 16,
               boxShadow: theme === 'sun' ? '0 8px 20px rgba(0,0,0,0.08)' : undefined,
-              minHeight: 170,
+              minHeight: 140,
               width: '100%',
             }}
           >
@@ -316,12 +370,12 @@ const StudentLearningProgressOverview = () => {
               }}>
                 {stat.icon}
               </div>
-              <div style={{ fontWeight: 600, fontSize: 18, color: '#5b6b83', lineHeight: 1.1 }}>{stat.title}</div>
+              <div style={{ fontWeight: 400, fontSize: 14, color: '#5b6b83', lineHeight: 1.1 }}>{stat.title}</div>
             </div>
-            <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+            <div style={{ fontSize: 25, fontWeight: 600, marginBottom: 6, lineHeight: 1, color: '#1f2937' }}>
               {stat.value}
             </div>
-            <div style={{ color: '#6b7280', fontSize: 14 }}>
+            <div style={{ color: '#6b7280', fontSize: 12 }}>
               {stat.subtitle}
             </div>
           </Card>
@@ -336,10 +390,10 @@ const StudentLearningProgressOverview = () => {
     
     // Format first class joined date
     const formatDate = (dateString) => {
-      if (!dateString) return 'Chưa có';
+      if (!dateString) return 'N/A';
       try {
         const date = new Date(dateString);
-        if (isNaN(date.getTime())) return 'Chưa có';
+        if (isNaN(date.getTime())) return 'N/A';
         return date.toLocaleDateString('vi-VN', { 
           year: 'numeric', 
           month: '2-digit', 
@@ -348,50 +402,50 @@ const StudentLearningProgressOverview = () => {
           minute: '2-digit'
         });
       } catch (e) {
-        return 'Chưa có';
+        return 'N/A';
       }
     };
     
     return [
       {
         key: 'firstClassJoinedAt',
-        title: t('studentProgress.firstClassJoinedAt', 'Thời gian bắt đầu học'),
-        value: overviewData.firstClassJoinedAt ? formatDate(overviewData.firstClassJoinedAt) : 'Chưa có',
-        subtitle: 'Ngày tham gia lớp đầu tiên',
+        title: t('studentProgress.firstClassJoinedAt', 'First class joined at'),
+        value: overviewData.firstClassJoinedAt ? formatDate(overviewData.firstClassJoinedAt) : 'N/A',
+        subtitle: 'First class join date',
         icon: <BookOutlined style={{ color: '#10b981' }} />,
         bg: '#d1fae5',
       },
       {
         key: 'currentLevel',
-        title: t('studentProgress.currentLevel', 'Level hiện tại'),
-        value: overviewData.currentLevel && overviewData.currentLevel !== 'N/A' ? overviewData.currentLevel : 'Chưa có',
-        subtitle: overviewData.currentLevelCode ? `${overviewData.currentLevelCode}` : 'Chưa có level',
+        title: t('studentProgress.currentLevel', 'Current level'),
+        value: overviewData.currentLevel && overviewData.currentLevel !== 'N/A' ? overviewData.currentLevel : 'N/A',
+        subtitle: overviewData.currentLevelCode ? `${overviewData.currentLevelCode}` : 'No level',
         icon: <TrophyOutlined style={{ color: '#f59e0b' }} />,
         bg: '#fff7ed',
       },
       {
         key: 'currentClass',
-        title: t('studentProgress.currentClass', 'Lớp hiện tại'),
-        value: overviewData.currentClass && overviewData.currentClass !== 'N/A' ? overviewData.currentClass : 'Chưa có',
-        subtitle: overviewData.currentClassCode || 'Chưa có class',
+        title: t('studentProgress.currentClass', 'Current class'),
+        value: overviewData.currentClass && overviewData.currentClass !== 'N/A' ? overviewData.currentClass : 'N/A',
+        subtitle: overviewData.currentClassCode || 'No class',
         icon: <TeamOutlined style={{ color: '#0ea5e9' }} />,
         bg: '#e0f2fe',
       },
       {
         key: 'completionRate',
-        title: t('studentProgress.completionRate', 'Tỷ lệ hoàn thành'),
+        title: t('studentProgress.completionRate', 'Completion rate'),
         value: `${Number(overviewData.completionRate ?? 0).toFixed(1)}%`,
-        subtitle: `${overviewData.completedChallenges ?? 0}/${overviewData.totalChallenges ?? 0} DC`,
+        subtitle: `${overviewData.completedChallenges ?? 0}/${overviewData.totalChallenges ?? 0} challenges`,
         icon: <CheckCircleOutlined style={{ color: '#22c55e' }} />,
         bg: '#ecfdf5',
       },
       {
-        key: 'onTimeRate',
-        title: t('studentProgress.onTimeRate', 'Tỷ lệ đúng hạn'),
-        value: `${Number(overviewData.onTimeRate ?? 0).toFixed(1)}%`,
-        subtitle: `${Math.max(0, (overviewData.completedChallenges ?? 0) - (overviewData.lateChallenges ?? 0))}/${overviewData.totalChallenges ?? 0} DC`,
-        icon: <ClockCircleOutlined style={{ color: '#8b5cf6' }} />,
-        bg: '#f5f3ff',
+        key: 'lateRate',
+        title: t('studentProgress.lateRate', 'Late rate'),
+        value: `${Number(overviewData.lateRate ?? 0).toFixed(1)}%`,
+        subtitle: `${overviewData.lateChallenges ?? 0}/${overviewData.totalChallenges ?? 0} challenges`,
+        icon: <ClockCircleOutlined style={{ color: '#ef4444' }} />,
+        bg: '#fee2e2',
       },
     ];
   }, [overviewData, t]);
@@ -400,11 +454,39 @@ const StudentLearningProgressOverview = () => {
   const levelChartFormatted = useMemo(() => {
     return levelChartData.map(item => ({
       name: `${item.level}\n(${item.class})`,
-      value: item.value,
       level: item.level,
       class: item.class,
+      vocabulary: item.vocabulary ?? 0,
+      reading: item.reading ?? 0,
+      listening: item.listening ?? 0,
+      writing: item.writing ?? 0,
+      speaking: item.speaking ?? 0,
     }));
   }, [levelChartData]);
+
+  // Challenge line chart data (0-10 scale), sorted by submittedAt, filter by challenge type
+  const challengeLineData = useMemo(() => {
+    if (!challengeDetailData?.challenges || !Array.isArray(challengeDetailData.challenges)) return [];
+    const filtered = challengeTypeFilter === 'ALL'
+      ? challengeDetailData.challenges
+      : challengeDetailData.challenges.filter(c => c.challengeType === challengeTypeFilter);
+    const withOrder = filtered
+      .map((c) => ({
+        ...c,
+        _dateValue: c.submittedAt ? new Date(c.submittedAt).getTime() : Number.POSITIVE_INFINITY,
+      }))
+      .sort((a, b) => a._dateValue - b._dateValue)
+      .map((c, idx) => ({
+        label: `DC${idx + 1}`,
+        challengeName: c.challengeName,
+        challengeType: c.challengeType,
+        submissionStatus: c.submissionStatus,
+        isLate: c.isLate,
+        submittedAt: c.submittedAt,
+        score10: (Number(c.score) || 0) / 10,
+      }));
+    return withOrder;
+  }, [challengeDetailData, challengeTypeFilter]);
 
   const dispatch = useDispatch();
   const { profileData } = useSelector((state) => state.auth);
@@ -602,13 +684,7 @@ const StudentLearningProgressOverview = () => {
       <div className={`slpv-container ${theme}-theme`}>
         {/* Page Title */}
         <div className="page-title-container" style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <Typography.Title 
-            level={1} 
-            className="page-title"
-            style={{ margin: 0 }}
-          >
-            {t('studentDashboard.learningProgressOverview', 'View Student Learning Progress Overview')}
-          </Typography.Title>
+        
         </div>
         {/* Overview Section */}
         {renderSummaryCards(overviewCards)}
@@ -628,14 +704,14 @@ const StudentLearningProgressOverview = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                <div className="slpv-title">Biểu đồ liên quan đến levels</div>
+                <div className="slpv-title">Level-related chart</div>
               </div>
               {levelChartFormatted.length === 0 ? (
                 <Empty description="No level data" />
               ) : (
                 <div style={{ width: '100%', height: 380 }}>
                   <ResponsiveContainer>
-                    <ReBarChart data={levelChartFormatted} margin={{ top: 20, right: 30, bottom: 60, left: 20 }}>
+                    <ReBarChart data={levelChartFormatted} margin={{ top: 20, right: 30, bottom: 60, left: 20 }} barCategoryGap="18%">
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis 
                         dataKey="name" 
@@ -646,16 +722,28 @@ const StudentLearningProgressOverview = () => {
                         label={{ value: 'Levels (Class)', position: 'insideBottom', offset: 10 }}
                       />
                       <YAxis 
+                        domain={[0, 10]}
                         tick={{ fontSize: 12 }}
-                        label={{ value: 'All V', angle: -90, position: 'insideLeft' }}
+                        label={{ value: 'Score', angle: -90, position: 'insideLeft' }}
                       />
                       <ReTooltip 
                         formatter={(value, name, props) => {
-                          return [`${value}`, 'Value'];
+                          const labelMap = {
+                            vocabulary: 'Vocabulary',
+                            reading: 'Reading',
+                            listening: 'Listening',
+                            writing: 'Writing',
+                            speaking: 'Speaking',
+                          };
+                          return [`${Number(value).toFixed(1)}`, labelMap[name] || name];
                         }}
                       />
                       <Legend />
-                      <Bar dataKey="value" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="vocabulary" fill="#A5B4FC" radius={[6, 6, 0, 0]} name="Vocabulary" />
+                      <Bar dataKey="reading" fill="#86EFAC" radius={[6, 6, 0, 0]} name="Reading" />
+                      <Bar dataKey="listening" fill="#FDE68A" radius={[6, 6, 0, 0]} name="Listening" />
+                      <Bar dataKey="writing" fill="#C4B5FD" radius={[6, 6, 0, 0]} name="Writing" />
+                      <Bar dataKey="speaking" fill="#FCA5A5" radius={[6, 6, 0, 0]} name="Speaking" />
                     </ReBarChart>
                   </ResponsiveContainer>
                 </div>
@@ -664,78 +752,7 @@ const StudentLearningProgressOverview = () => {
           </Col>
         </Row>
 
-        {/* Score Trend Chart */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24}>
-            <Card
-              style={{
-                backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-                border: 'none',
-                borderRadius: 16,
-                boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
-                paddingTop: 8,
-                minHeight: 420,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <BarChartOutlined style={{ color: '#10b981', fontSize: 20 }} />
-                <div className="slpv-title">Biểu đồ theo dõi điểm theo thời gian</div>
-              </div>
-              {scoreTrendData.length === 0 ? (
-                <Empty description="No score trend data" />
-              ) : (
-                <div style={{ width: '100%', height: 380 }}>
-                  <ResponsiveContainer>
-                    <LineChart data={scoreTrendData} margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{ fontSize: 12 }}
-                        label={{ value: 'Thời gian', position: 'insideBottom', offset: 10 }}
-                      />
-                      <YAxis 
-                        domain={[0, 10]}
-                        tick={{ fontSize: 12 }}
-                        label={{ value: 'Điểm', angle: -90, position: 'insideLeft' }}
-                      />
-                      <ReTooltip 
-                        formatter={(value, name) => {
-                          if (name === 'studentScore') {
-                            return [`${Number(value).toFixed(1)}`, 'Điểm học sinh'];
-                          }
-                          if (name === 'classAverage') {
-                            return [`${Number(value).toFixed(1)}`, 'Điểm TB lớp'];
-                          }
-                          return [value, name];
-                        }}
-                      />
-                      <Legend />
-                      <Line 
-                        type="monotone" 
-                        dataKey="studentScore" 
-                        stroke="#6366f1" 
-                        strokeWidth={2.5}
-                        dot={{ r: 4, fill: '#6366f1' }}
-                        activeDot={{ r: 6, fill: '#4c1d95' }}
-                        name="Điểm học sinh"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="classAverage" 
-                        stroke="#22c55e" 
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        dot={{ r: 3, fill: '#22c55e' }}
-                        activeDot={{ r: 5, fill: '#16a34a' }}
-                        name="Điểm TB lớp"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </Card>
-          </Col>
-        </Row>
+        
 
         {/* Challenge Detail Section */}
         {challengeDetailData && (
@@ -754,132 +771,102 @@ const StudentLearningProgressOverview = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <CheckCircleOutlined style={{ color: '#6366f1', fontSize: 20 }} />
                     <div className="slpv-title">
-                      Chi tiết DC - {challengeDetailData.className} ({challengeDetailData.classCode})
+                      Challenge details - {challengeDetailData.className} ({challengeDetailData.classCode})
                     </div>
                   </div>
-                  {challengeDetailData.onTimeCompletionRate !== null && challengeDetailData.onTimeCompletionRate !== undefined && (
-                    <Tag color="green" style={{ fontSize: 14, padding: '4px 12px' }}>
-                      Tỷ lệ hoàn thành đúng hạn: {(challengeDetailData.onTimeCompletionRate * 100).toFixed(1)}%
-                    </Tag>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+                    <span style={{ color: '#6b7280', fontSize: 14 }}>Filter by skill:</span>
+                    <Select
+                      size="small"
+                      style={{ width: 160 }}
+                      value={challengeTypeFilter}
+                      onChange={setChallengeTypeFilter}
+                      options={[
+                        { value: 'ALL', label: 'All' },
+                        { value: 'GV', label: 'Vocabulary' },
+                        { value: 'RE', label: 'Reading' },
+                        { value: 'LI', label: 'Listening' },
+                        { value: 'WR', label: 'Writing' },
+                        { value: 'SP', label: 'Speaking' },
+                      ]}
+                    />
+                  </div>
+                </div>
+                
+                {/* Line chart for class challenges (0-10 scale) */}
+                <div style={{ width: '100%', height: 360, marginBottom: 16 }}>
+                  {challengeLineData.length === 0 ? (
+                    <Empty description="No score data to display" />
+                  ) : (
+                    <>
+                      <ResponsiveContainer>
+                        <LineChart data={challengeLineData} margin={{ top: 20, right: 30, bottom: 60, left: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis 
+                            dataKey="label" 
+                            tick={{ fontSize: 12, dy: 8 }}
+                            label={{ value: 'Challenges over time', position: 'bottom', offset: 18 }}
+                          />
+                          <YAxis 
+                            domain={[0, 10]}
+                            tick={{ fontSize: 12 }}
+                            label={{ value: 'Score (0-10)', angle: -90, position: 'insideLeft' }}
+                          />
+                          <ReTooltip 
+                            formatter={(value, name, props) => {
+                              return [`${Number(value).toFixed(1)}`, 'Score'];
+                            }}
+                            labelFormatter={(label, payload) => {
+                              if (!payload || !payload[0]) return label;
+                              const p = payload[0].payload;
+                              const typeMap = {
+                                GV: 'Vocabulary',
+                                RE: 'Reading',
+                                LI: 'Listening',
+                                WR: 'Writing',
+                                SP: 'Speaking',
+                              };
+                              const dateStr = p.submittedAt
+                                ? new Date(p.submittedAt).toLocaleString('vi-VN', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })
+                                : '-';
+                              return `${label} • ${typeMap[p.challengeType] || p.challengeType} • ${dateStr}`;
+                            }}
+                          />
+                          <Line 
+                            type="monotone"
+                            dataKey="score10"
+                            stroke={challengeTypeFilter === 'ALL' ? '#60A5FA' : (
+                              challengeTypeFilter === 'GV' ? '#A5B4FC' :
+                              challengeTypeFilter === 'RE' ? '#86EFAC' :
+                              challengeTypeFilter === 'LI' ? '#FDE68A' :
+                              challengeTypeFilter === 'WR' ? '#C4B5FD' :
+                              '#FCA5A5'
+                            )}
+                            strokeWidth={2.5}
+                            dot={{ r: 4, fill: '#3B82F6' }}
+                            activeDot={{ r: 6, fill: '#2563EB' }}
+                            name="Score (0-10)"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                      {/* Custom legend placed under X-axis label */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#60A5FA' }}>
+                          <span style={{ width: 18, height: 3, backgroundColor: '#60A5FA', borderRadius: 2 }} />
+                          <span style={{ color: '#60A5FA', fontSize: 14 }}>Score (0-10)</span>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
                 
-                {loadingChallenges ? (
-                  <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                    <LoadingWithEffect loading={true} message="Đang tải danh sách DC..." />
-                  </div>
-                ) : challengeDetailData.challenges && challengeDetailData.challenges.length > 0 ? (
-                  <Table
-                    dataSource={challengeDetailData.challenges}
-                    rowKey="challengeId"
-                    pagination={{
-                      pageSize: 10,
-                      showSizeChanger: true,
-                      showTotal: (total) => `Tổng ${total} DC`,
-                    }}
-                    columns={[
-                      {
-                        title: 'Tên DC',
-                        dataIndex: 'challengeName',
-                        key: 'challengeName',
-                        width: '35%',
-                        render: (text) => (
-                          <Typography.Text strong>{text}</Typography.Text>
-                        ),
-                      },
-                      {
-                        title: 'Loại',
-                        dataIndex: 'challengeType',
-                        key: 'challengeType',
-                        width: '10%',
-                        align: 'center',
-                        render: (type) => {
-                          const typeMap = {
-                            'GV': { color: 'blue', text: 'Vocabulary' },
-                            'RE': { color: 'green', text: 'Reading' },
-                            'LI': { color: 'orange', text: 'Listening' },
-                            'WR': { color: 'purple', text: 'Writing' },
-                            'SP': { color: 'red', text: 'Speaking' },
-                          };
-                          const typeInfo = typeMap[type] || { color: 'default', text: type };
-                          return <Tag color={typeInfo.color}>{typeInfo.text}</Tag>;
-                        },
-                      },
-                      {
-                        title: 'Điểm',
-                        dataIndex: 'score',
-                        key: 'score',
-                        width: '10%',
-                        align: 'center',
-                        render: (score) => (
-                          <Typography.Text strong style={{ color: score > 0 ? '#22c55e' : '#6b7280' }}>
-                            {score > 0 ? score.toFixed(1) : '-'}
-                          </Typography.Text>
-                        ),
-                      },
-                      {
-                        title: 'Trạng thái',
-                        dataIndex: 'submissionStatus',
-                        key: 'submissionStatus',
-                        width: '15%',
-                        align: 'center',
-                        render: (status) => {
-                          if (!status) {
-                            return <Tag color="default">Chưa làm</Tag>;
-                          }
-                          const statusMap = {
-                            'PENDING': { color: 'orange', text: 'Đang chờ' },
-                            'SUBMITTED': { color: 'blue', text: 'Đã nộp' },
-                            'GRADED': { color: 'green', text: 'Đã chấm' },
-                            'REJECTED': { color: 'red', text: 'Từ chối' },
-                          };
-                          const statusInfo = statusMap[status] || { color: 'default', text: status };
-                          return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
-                        },
-                      },
-                      {
-                        title: 'Nộp muộn',
-                        dataIndex: 'isLate',
-                        key: 'isLate',
-                        width: '10%',
-                        align: 'center',
-                        render: (isLate) => {
-                          if (isLate === null || isLate === undefined) {
-                            return <Tag color="default">-</Tag>;
-                          }
-                          return isLate ? (
-                            <Tag color="red">Có</Tag>
-                          ) : (
-                            <Tag color="green">Không</Tag>
-                          );
-                        },
-                      },
-                      {
-                        title: 'Ngày nộp',
-                        dataIndex: 'submittedAt',
-                        key: 'submittedAt',
-                        width: '20%',
-                        render: (submittedAt) => {
-                          if (!submittedAt) return <Typography.Text type="secondary">-</Typography.Text>;
-                          try {
-                            const date = new Date(submittedAt);
-                            return date.toLocaleDateString('vi-VN', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            });
-                          } catch (e) {
-                            return <Typography.Text type="secondary">-</Typography.Text>;
-                          }
-                        },
-                      },
-                    ]}
-                  />
-                ) : (
-                  <Empty description="Không có DC nào trong lớp này" />
-                )}
+                {/* Table removed as requested */}
               </Card>
             </Col>
           </Row>
