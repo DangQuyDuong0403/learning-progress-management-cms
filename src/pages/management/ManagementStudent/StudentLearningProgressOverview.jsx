@@ -24,12 +24,12 @@ import {
 } from 'recharts';
 import { useTheme } from '../../../contexts/ThemeContext';
 import ThemedLayoutNoSidebar from '../../../component/teacherlayout/ThemedLayout';
+import ThemedHeader from '../../../component/ThemedHeader';
 import { useTranslation } from 'react-i18next';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../../../hooks/usePageTitle';
 import { spaceToast } from '../../../component/SpaceToastify';
-import { getUserProfile } from '../../../redux/auth';
 import { studentManagementApi } from '../../../apis/apis';
 import './StudentLearningProgressView.css';
 
@@ -49,9 +49,7 @@ const StudentLearningProgressOverview = () => {
   const [loading, setLoading] = useState(true);
   const [overviewData, setOverviewData] = useState(null);
   const [levelChartData, setLevelChartData] = useState([]);
-  const [scoreTrendData, setScoreTrendData] = useState([]);
   const [challengeDetailData, setChallengeDetailData] = useState(null);
-  const [loadingChallenges, setLoadingChallenges] = useState(false);
   const [challengeTypeFilter, setChallengeTypeFilter] = useState('ALL');
 
   // Load student learning progress data
@@ -220,72 +218,9 @@ const StudentLearningProgressOverview = () => {
           console.log('Level Chart Data Array:', levelChartDataArray);
           setLevelChartData(levelChartDataArray);
           
-          // Prepare score trend data (for line chart)
-          // Group by time periods (weeks) from joined dates
-          const scoreTrendArray = [];
-          levelsForCharts.forEach(level => {
-            if (level.classes && Array.isArray(level.classes)) {
-              level.classes.forEach(classItem => {
-                const joinedAt = classItem.joinedAt ? new Date(classItem.joinedAt) : null;
-                if (joinedAt && !isNaN(joinedAt.getTime())) {
-                  const scores = buildMockScoresIfNeeded(classItem.scoreByType);
-                  const avgScores = [
-                    scores.vocabularyAvg || 0,
-                    scores.readingAvg || 0,
-                    scores.listeningAvg || 0,
-                    scores.writingAvg || 0,
-                    scores.speakingAvg || 0,
-                  ];
-                  const validScores = avgScores.filter(s => s > 0);
-                  const studentAvg = validScores.length > 0
-                    ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length
-                    : 0;
-                  
-                  if (studentAvg > 0) {
-                    // Calculate week number from joined date
-                    const weekNumber = Math.max(1, Math.floor((new Date() - joinedAt) / (1000 * 60 * 60 * 24 * 7)) + 1);
-                    
-                    scoreTrendArray.push({
-                      date: `Tuần ${weekNumber}`,
-                      weekNumber: weekNumber,
-                      studentScore: studentAvg,
-                      classAverage: studentAvg * 0.9, // Mock class average (90% of student score)
-                      level: level.levelName,
-                      class: classItem.className,
-                    });
-                  }
-                }
-              });
-            }
-          });
-          
-          // Sort by week number and group by week
-          scoreTrendArray.sort((a, b) => a.weekNumber - b.weekNumber);
-          const groupedByWeek = {};
-          scoreTrendArray.forEach(item => {
-            if (!groupedByWeek[item.date]) {
-              groupedByWeek[item.date] = {
-                date: item.date,
-                weekNumber: item.weekNumber,
-                scores: [],
-              };
-            }
-            groupedByWeek[item.date].scores.push(item.studentScore);
-          });
-          
-          // Calculate average for each week
-          const finalScoreTrend = Object.values(groupedByWeek).map(week => ({
-            date: week.date,
-            studentScore: week.scores.reduce((sum, s) => sum + s, 0) / week.scores.length,
-            classAverage: (week.scores.reduce((sum, s) => sum + s, 0) / week.scores.length) * 0.9,
-          }));
-          
-          console.log('Score Trend Data:', finalScoreTrend);
-          setScoreTrendData(finalScoreTrend);
         } else {
           console.warn('No levels data found in response');
           setLevelChartData([]);
-          setScoreTrendData([]);
         }
         
         setLoading(false);
@@ -308,7 +243,6 @@ const StudentLearningProgressOverview = () => {
         return;
       }
 
-      setLoadingChallenges(true);
       try {
         const response = await studentManagementApi.getStudentClassChallengeDetail(classId);
         console.log('Student Class Challenge Detail Response:', response);
@@ -320,12 +254,10 @@ const StudentLearningProgressOverview = () => {
           console.warn('No valid challenge detail data found in response');
           setChallengeDetailData(null);
         }
-        setLoadingChallenges(false);
       } catch (err) {
         console.error('Error loading challenge detail:', err);
         spaceToast.error(err.response?.data?.message || 'Failed to load challenge detail');
         setChallengeDetailData(null);
-        setLoadingChallenges(false);
       }
     };
 
@@ -488,186 +420,59 @@ const StudentLearningProgressOverview = () => {
     return withOrder;
   }, [challengeDetailData, challengeTypeFilter]);
 
-  const dispatch = useDispatch();
-  const { profileData } = useSelector((state) => state.auth);
-
-  // Fetch user profile data on component mount
-  useEffect(() => {
-    dispatch(getUserProfile());
-  }, [dispatch]);
-
   // Handle back navigation
   const handleBack = () => {
     navigate(`${routePrefix}/dashboard`);
   };
 
-  // Get role display name
-  const getRoleDisplayName = () => {
-    switch (user?.role) {
-      case 'ADMIN':
-        return 'Admin';
-      case 'MANAGER':
-        return 'Manager';
-      case 'TEACHER':
-        return 'Teacher';
-      case 'TEACHING_ASSISTANT':
-        return 'Teaching Assistant';
-      case 'STUDENT':
-        return 'Student';
-      case 'TEST_TAKER':
-        return 'Test Taker';
-      default:
-        return 'User';
-    }
-  };
-
-  // Get avatar URL
-  const getAvatarUrl = (avatarUrl) => {
-    if (!avatarUrl || avatarUrl === 'string' || avatarUrl.trim() === '') {
-      return '/img/avatar_1.png';
-    }
-    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/')) {
-      return avatarUrl;
-    }
-    return '/img/avatar_1.png';
-  };
-
-  // Custom header with logo, back button, page title, and right side elements
-  const customHeader = (
-    <header className={`themed-header ${theme}-header`}>
-      <nav className="themed-navbar">
-        <div className="themed-navbar-content">
-          <div className="themed-navbar-brand" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px'
-          }}>
-            {/* Logo and CAMKEY Text */}
-            <div onClick={() => navigate(`${routePrefix}/dashboard`)} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '0 20px',
-              cursor: 'pointer'
-            }}>
-              {theme === 'space' ? (
-                <img 
-                  src="/img/logo-dark.png"
-                  alt="CAMKEY Logo"
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    filter: 'drop-shadow(0 0 15px rgba(125, 211, 252, 0.8))'
-                  }}
-                />
-              ) : (
-                <img 
-                  src="/img/logo-blue.png"
-                  alt="CAMKEY Logo"
-                  style={{
-                    width: '40px',
-                    height: '40px'
-                  }}
-                />
-              )}
-              <span style={{
-                fontSize: '32px',
-                fontWeight: 700,
-                color: theme === 'sun' ? '#1E40AF' : '#FFFFFF',
-                textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
-              }}>
-                CAMKEY
-              </span>
-            </div>
-
-            {/* Back Button */}
-            <Button 
-              icon={<ArrowLeftOutlined />}
-              onClick={handleBack}
-              className={`class-menu-back-button ${theme}-class-menu-back-button`}
-              style={{
-                height: '32px',
-                borderRadius: '8px',
-                fontWeight: '500',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                border: '1px solid rgba(0, 0, 0, 0.1)',
-                background: '#ffffff',
-                color: '#000000',
-                backdropFilter: 'blur(10px)',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              {t('common.back')}
-            </Button>
-
-            {/* Page Title */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              padding: '0 20px'
-            }}>
-              <div style={{
-                height: '24px',
-                width: '1px',
-                backgroundColor: theme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)'
-              }} />
-              <h2 style={{
-                margin: 0,
-                fontSize: '20px',
-                fontWeight: '600',
-                color: theme === 'sun' ? '#1e40af' : '#fff',
-                textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
-              }}>
-                {t('studentDashboard.learningProgressOverview', 'View Student Learning Progress Overview')}
-              </h2>
-            </div>
-          </div>
-          
-          {/* Right side: Notification, Role, Profile */}
-          <div className="themed-navbar-actions">
-            <ul className="themed-navbar-nav">
-              {/* Notifications - Simplified version */}
-              <li className="themed-nav-item">
-                <button
-                  className="themed-nav-link notification-button"
-                  type="button"
-                  onClick={() => {/* Handle notification click */}}
-                >
-                  <img 
-                    src="/img/notification_icon.png" 
-                    alt="Notifications" 
-                    className={`notification-icon ${theme}-notification-icon`}
-                  />
-                </button>
-              </li>
-
-              {/* User Role Display */}
-              <li className="themed-nav-item">
-                <span className={`user-role ${theme}-user-role`}>
-                  {getRoleDisplayName()}
-                </span>
-              </li>
-
-              {/* User Avatar */}
-              <li className="themed-nav-item">
-                <div className={`user-avatar ${theme}-user-avatar`}>
-                  <img 
-                    src={getAvatarUrl(profileData?.avatarUrl || user?.avatarUrl)} 
-                    alt="Profile" 
-                    className="avatar-image"
-                  />
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </nav>
-    </header>
+  const headerExtraLeft = ({ theme: headerTheme, t: headerT }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <Button
+        icon={<ArrowLeftOutlined />}
+        onClick={handleBack}
+        className={`class-menu-back-button ${headerTheme}-class-menu-back-button`}
+        style={{
+          height: 36,
+          borderRadius: 10,
+          fontWeight: 500,
+          fontSize: 14,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          border: '1px solid rgba(0, 0, 0, 0.1)',
+          background: '#ffffff',
+          color: '#000000',
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        {headerT('common.back')}
+      </Button>
+      <div
+        style={{
+          height: 24,
+          width: 1,
+          backgroundColor:
+            headerTheme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)',
+        }}
+      />
+      <h2
+        style={{
+          margin: 0,
+          fontSize: 22,
+          fontWeight: 600,
+          color: headerTheme === 'sun' ? '#1e40af' : '#fff',
+          textShadow:
+            headerTheme === 'sun'
+              ? '0 0 5px rgba(30, 64, 175, 0.3)'
+              : '0 0 15px rgba(134, 134, 134, 0.8)',
+        }}
+      >
+        {headerT('studentDashboard.learningProgressOverview', 'View Student Learning Progress Overview')}
+      </h2>
+    </div>
   );
+
+  const customHeader = <ThemedHeader extraLeftContent={headerExtraLeft} />;
 
   if (loading) {
     return (
@@ -682,10 +487,6 @@ const StudentLearningProgressOverview = () => {
   return (
     <ThemedLayoutNoSidebar customHeader={customHeader}>
       <div className={`slpv-container ${theme}-theme`}>
-        {/* Page Title */}
-        <div className="page-title-container" style={{ textAlign: 'center', marginBottom: '24px' }}>
-        
-        </div>
         {/* Overview Section */}
         {renderSummaryCards(overviewCards)}
 
@@ -716,8 +517,6 @@ const StudentLearningProgressOverview = () => {
                       <XAxis 
                         dataKey="name" 
                         tick={{ fontSize: 12 }} 
-                        angle={-20} 
-                        textAnchor="end" 
                         height={80}
                         label={{ value: 'Levels (Class)', position: 'insideBottom', offset: 10 }}
                       />

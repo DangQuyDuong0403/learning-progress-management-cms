@@ -14,7 +14,12 @@ import { spaceToast } from './SpaceToastify';
 import { notificationApi } from '../apis/apis';
 import './ThemedHeader.css';
 
-export default function ThemedHeader({ hideThemeToggle = false, hideLanguageToggle = false }) {
+export default function ThemedHeader({
+  hideThemeToggle = false,
+  hideLanguageToggle = false,
+  extraLeftContent = null,
+  extraRightContent = null,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -924,6 +929,22 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
                 </h2>
               </div>
             )}
+
+            {extraLeftContent && (
+              <div
+                className="themed-extra-left"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '0 20px',
+                }}
+              >
+                {typeof extraLeftContent === 'function'
+                  ? extraLeftContent({ theme, user, t })
+                  : extraLeftContent}
+              </div>
+            )}
           </div>
           
           <div className="themed-navbar-actions">
@@ -1463,6 +1484,13 @@ export default function ThemedHeader({ hideThemeToggle = false, hideLanguageTogg
               </li>
 
            
+              {extraRightContent && (
+                <li className="themed-nav-item themed-extra-right">
+                  {typeof extraRightContent === 'function'
+                    ? extraRightContent({ theme, user })
+                    : extraRightContent}
+                </li>
+              )}
             </ul>
           </div>
         </div>
