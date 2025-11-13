@@ -670,6 +670,48 @@ const dailyChallengeApi = {
 				'accept': '*/*',
 			}
 		});
+	},
+
+	// Lấy tổng quan challenge: điểm TB, điểm cao nhất/thấp nhất, số HS hoàn thành/nộp muộn/chưa làm (reports API)
+	// Endpoint: GET /reports/challenge/{challengeId}/overview
+	getChallengeOverview: (challengeId) => {
+		const url = `/reports/challenge/${challengeId}/overview`;
+		console.log('GetChallengeOverview API - URL:', url);
+		console.log('GetChallengeOverview API - Params:', { challengeId });
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy danh sách học sinh với điểm và thời gian làm bài (reports API)
+	// Endpoint: GET /reports/challenge/{challengeId}/students
+	getChallengeStudentPerformance: (challengeId) => {
+		const url = `/reports/challenge/${challengeId}/students`;
+		console.log('GetChallengeStudentPerformance API - URL:', url);
+		console.log('GetChallengeStudentPerformance API - Params:', { challengeId });
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy dữ liệu biểu đồ cột + đường: điểm và thời gian hoàn thành của từng học sinh (reports API)
+	// Endpoint: GET /reports/challenge/{challengeId}/chart
+	getChallengeChartData: (challengeId) => {
+		const url = `/reports/challenge/${challengeId}/chart`;
+		console.log('GetChallengeChartData API - URL:', url);
+		console.log('GetChallengeChartData API - Params:', { challengeId });
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
 	}
 };
 

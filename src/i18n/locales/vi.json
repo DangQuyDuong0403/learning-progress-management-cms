@@ -1169,6 +1169,28 @@
     "lastTestScore": "Điểm bài thi cuối",
     "improvement": "Cải thiện"
   },
+  "classReport": {
+    "report": "Báo cáo",
+    "loadingClassInfo": "Đang tải thông tin lớp học...",
+    "totalStudents": "Tổng số học sinh",
+    "averageScore": "Điểm trung bình",
+    "completionPercentage": "Tỷ lệ hoàn thành",
+    "lessons": "Bài học",
+    "activeTeachers": "Giáo viên hoạt động",
+    "activeStudents": "Học sinh hoạt động",
+    "totalDailyChallenges": "Tổng số Daily Challenges",
+    "testsCompleted": "Bài thi hoàn thành",
+    "topPerformers": "Học sinh xuất sắc",
+    "testPerformance": "Kết quả bài thi",
+    "gradeDistribution": "Phân bố điểm số",
+    "monthlyProgress": "Tiến độ hàng tháng",
+    "studentPerformance": "Kết quả học sinh",
+    "students": "Học sinh",
+    "student": "Học sinh",
+    "grade": "Điểm",
+    "lastTestScore": "Điểm bài thi cuối",
+    "improvement": "Cải thiện"
+  },
   "classChapterLesson": {
     "title": "Chương và Bài học của Lớp",
     "chaptersLessons": "Chương/Bài học",
