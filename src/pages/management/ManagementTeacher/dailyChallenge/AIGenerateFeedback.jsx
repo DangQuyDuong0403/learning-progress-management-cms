@@ -277,7 +277,6 @@ const AIGenerateFeedback = () => {
     if (typeof prefill.score === 'number') return prefill.score;
     return '';
   });
-  const [suggestedScore, setSuggestedScore] = useState(null);
   const [feedback, setFeedback] = useState(prefill.feedback || '');
   const [questionWeight, setQuestionWeight] = useState(() => {
     // Priority: prefill.questionWeight > default 10
@@ -343,7 +342,6 @@ const AIGenerateFeedback = () => {
       setScore('');
       setScoreError(null);
       setFeedback('');
-      setSuggestedScore(null);
       setHasClearedData(true); // Mark that user has cleared data
 
       // Get submissionQuestionId to clear sessionStorage
@@ -413,7 +411,6 @@ const AIGenerateFeedback = () => {
   const [isEditMode, setIsEditMode] = useState(false); // Track if this is edit mode (has existing data) or add mode
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editFeedback, setEditFeedback] = useState('');
-  const [editSuggestedScore, setEditSuggestedScore] = useState(null);
   const [editWritingCriteria, setEditWritingCriteria] = useState(null);
   // Edit modal state for speaking
   const [editSpeakingFeedback, setEditSpeakingFeedback] = useState('');
@@ -448,10 +445,6 @@ const AIGenerateFeedback = () => {
         setFeedback(savedData.feedback);
       }
       
-      // Restore suggested score
-      if (savedData.suggestedScore !== null && savedData.suggestedScore !== undefined) {
-        setSuggestedScore(savedData.suggestedScore);
-      }
 
       // Restore writing criteria and section feedbacks
       if (savedData.sectionType === 'writing') {
@@ -500,16 +493,6 @@ const AIGenerateFeedback = () => {
       setScore(clamped);
     }
   }, [questionWeight]);
-  const handleSuggestedScoreChange = useCallback((e) => {
-    const rawValue = e?.target?.value;
-    if (rawValue === '' || rawValue === null || rawValue === undefined) {
-      setSuggestedScore(null);
-      return;
-    }
-    const normalized = clampSuggestedScoreValue(rawValue);
-    if (normalized === null) return;
-    setSuggestedScore(normalized);
-  }, [setSuggestedScore]);
   useEffect(() => {
     if (sectionType !== 'writing' || rightMode !== 'manual') return;
     setWritingCriteria((prev) => {
@@ -518,12 +501,9 @@ const AIGenerateFeedback = () => {
       const next = { ...prevSafe };
       WRITING_CRITERIA_KEYS.forEach(({ key }) => {
         const existing = prevSafe[key] || {};
-        const normalizedScore = existing.score === null || existing.score === undefined || existing.score === ''
-          ? null
-          : clampSuggestedScoreValue(existing.score);
         const feedback = typeof existing.feedback === 'string' ? existing.feedback : '';
-        if (!prevSafe[key] || prevSafe[key].score !== normalizedScore || prevSafe[key].feedback !== feedback) {
-          next[key] = { score: normalizedScore, feedback };
+        if (!prevSafe[key] || prevSafe[key].feedback !== feedback) {
+          next[key] = { feedback };
           modified = true;
         }
       });
@@ -534,35 +514,17 @@ const AIGenerateFeedback = () => {
       return next;
     });
   }, [sectionType, rightMode]);
-  const handleWritingCriteriaScoreChange = useCallback((criteriaKey, rawValue) => {
-    setWritingCriteria((prev) => {
-      const prevSafe = prev || {};
-      const existing = prevSafe[criteriaKey] || {};
-      const cleanedValue = rawValue === '' || rawValue === null || rawValue === undefined
-        ? null
-        : clampSuggestedScoreValue(rawValue);
-      const feedback = typeof existing.feedback === 'string' ? existing.feedback : '';
-      if (existing.score === cleanedValue && existing.feedback === feedback) {
-        return prevSafe;
-      }
-      return {
-        ...prevSafe,
-        [criteriaKey]: { score: cleanedValue, feedback },
-      };
-    });
-  }, []);
   const handleWritingCriteriaFeedbackChange = useCallback((criteriaKey, newFeedback) => {
     setWritingCriteria((prev) => {
       const prevSafe = prev || {};
       const existing = prevSafe[criteriaKey] || {};
       const sanitizedFeedback = typeof newFeedback === 'string' ? newFeedback : '';
-      const score = existing.score === undefined ? null : existing.score;
       if (existing.feedback === sanitizedFeedback) {
         return prevSafe;
       }
       return {
         ...prevSafe,
-        [criteriaKey]: { score, feedback: sanitizedFeedback },
+        [criteriaKey]: { feedback: sanitizedFeedback },
       };
     });
   }, []);
@@ -595,10 +557,8 @@ const AIGenerateFeedback = () => {
       const criteriaKeys = ['taskResponse', 'cohesionCoherence', 'lexicalResource', 'grammaticalRangeAccuracy'];
       const normalizedCriteria = criteriaKeys.reduce((acc, key) => {
         const entry = writingCriteria?.[key] || {};
-        const numericScore = Number.isFinite(Number(entry?.score)) ? Number(entry.score) : null;
         const entryFeedback = typeof entry?.feedback === 'string' ? entry.feedback : '';
         acc[key] = {
-          score: numericScore,
           feedback: entryFeedback,
         };
         return acc;
@@ -606,7 +566,6 @@ const AIGenerateFeedback = () => {
 
       return {
         overallFeedback: baseHtml,
-        suggestedScore: Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null,
         criteriaFeedback: normalizedCriteria,
       };
     }
@@ -636,14 +595,13 @@ const AIGenerateFeedback = () => {
       
       return {
         overallFeedback: overallFeedbackJson,
-        suggestedScore: Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null,
         criteriaFeedback: null,
         metrics: null, // Don't include metrics separately, everything is in overallFeedback
       };
     }
 
     return baseHtml;
-  }, [feedback, sectionType, writingCriteria, suggestedScore, speakingResult, manualSpeakingScores, speakingReferenceText]);
+  }, [feedback, sectionType, writingCriteria, speakingResult, manualSpeakingScores, speakingReferenceText]);
 
   // Parse combined feedback html (legacy) or object to rebuild writing criteria for display
   const parseCriteriaFromFeedback = useCallback((data) => {
@@ -657,7 +615,6 @@ const AIGenerateFeedback = () => {
           const item = criteria?.[key];
           if (!item) return acc;
           acc[key] = {
-            score: Number.isFinite(Number(item?.score)) ? Number(item.score) : (typeof item?.score === 'number' ? item.score : null),
             feedback: typeof item?.feedback === 'string' ? item.feedback : '',
           };
           return acc;
@@ -686,8 +643,7 @@ const AIGenerateFeedback = () => {
           if (mm && mm.index < end) end = mm.index;
         }
         const chunk = after.substring(0, end).trim();
-        const scoreNum = Number(m?.[2]);
-        return { score: Number.isFinite(scoreNum) ? scoreNum : undefined, feedback: chunk };
+        return { feedback: chunk };
       };
       const result = {
         taskResponse: grab('Task Response'),
@@ -695,7 +651,7 @@ const AIGenerateFeedback = () => {
         lexicalResource: grab('Lexical Resource'),
         grammaticalRangeAccuracy: grab('Grammatical Range & Accuracy'),
       };
-      const hasAny = Object.values(result).some((v) => v && (v.feedback || v.score != null));
+      const hasAny = Object.values(result).some((v) => v && v.feedback);
       return hasAny ? result : null;
     } catch {
       return null;
@@ -1360,9 +1316,6 @@ const AIGenerateFeedback = () => {
           if (!prev || typeof prev !== 'string' || prev === '[object Object]') return overall;
           return prev !== overall ? prev : overall;
         });
-        const suggested = fb?.suggestedScore;
-        const normalizedSuggested = clampSuggestedScoreValue(suggested);
-        setSuggestedScore(normalizedSuggested);
       } else if (typeof fb === 'string') {
         const parsed = parseCriteriaFromFeedback(fb);
         if (parsed) {
@@ -1739,13 +1692,6 @@ const AIGenerateFeedback = () => {
               if (typeof overall === 'string') {
                 setFeedback(overall);
               }
-              if (typeof fb === 'object') {
-                const suggested = fb?.suggestedScore;
-                const normalizedSuggested = clampSuggestedScoreValue(suggested);
-                setSuggestedScore(normalizedSuggested);
-              } else {
-                setSuggestedScore(null);
-              }
             }
           }
           if (sectionType === 'writing') {
@@ -1869,9 +1815,6 @@ const AIGenerateFeedback = () => {
           if (savedData.feedback) {
             setFeedback(savedData.feedback);
           }
-          if (savedData.suggestedScore !== null && savedData.suggestedScore !== undefined) {
-            setSuggestedScore(savedData.suggestedScore);
-          }
           if (savedData.writingCriteria) {
             setWritingCriteria(savedData.writingCriteria);
           }
@@ -1991,18 +1934,12 @@ const AIGenerateFeedback = () => {
         const res = await dailyChallengeApi.generateAIFeedback(payload);
         const raw = res?.data?.data || res?.data || {};
         const overallFeedback = raw?.overallFeedback || raw?.feedback || '';
-        const suggestedScoreValue = (() => {
-          const val = raw?.suggestedScore ?? raw?.score;
-          return Number.isFinite(Number(val)) ? Number(val) : null;
-        })();
         const aiComments = Array.isArray(raw?.comments) ? raw.comments : [];
         // criteria feedback for writing - format and combine with overall feedback
         const criteriaFeedback = raw?.criteriaFeedback || null;
         // Store criteria separately for UI rendering
         setWritingCriteria(criteriaFeedback || null);
         if (overallFeedback) setFeedback(overallFeedback);
-        const normalizedSuggested = clampSuggestedScoreValue(suggestedScoreValue);
-        setSuggestedScore(normalizedSuggested);
         // Check if answer is image-only - don't save highlights for images
         const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
         let mappedComments = [];
@@ -2024,7 +1961,6 @@ const AIGenerateFeedback = () => {
         // Save generated data to sessionStorage for persistence
         saveAIGeneratedData(writingSubmissionQuestionId, {
           feedback: overallFeedback,
-          suggestedScore: normalizedSuggested,
           writingCriteria: criteriaFeedback,
           writingSectionFeedbacks: section?.id ? { [section.id]: mappedComments } : {},
           hasAIGenerated: true,
@@ -2734,7 +2670,6 @@ const AIGenerateFeedback = () => {
                         // Clear any existing data when switching to AI mode from mode chooser
                         // This ensures fresh generation without stale data
                         setFeedback('');
-                        setSuggestedScore(null);
                         setWritingCriteria(null);
                         setHasAIGenerated(false);
                         setIsEditMode(false); // Reset to add mode when selecting from mode chooser
@@ -2767,7 +2702,6 @@ const AIGenerateFeedback = () => {
                         // Clear data when going back to mode chooser from manual mode
                         // This ensures fresh start when user selects AI mode
                         setFeedback('');
-                        setSuggestedScore(null);
                         setWritingCriteria(null);
                         setHasAIGenerated(false);
                         setIsEditMode(false); // Reset to add mode when going back to mode chooser
@@ -2967,24 +2901,6 @@ const AIGenerateFeedback = () => {
                           : '0 6px 18px rgba(46, 70, 110, 0.3)'
                       }}
                     >
-                      {sectionType === 'writing' && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Text type="secondary" style={{ fontWeight: 600, color: theme === 'sun' ? '#0f172a' : '#E0E7FF' }}>Suggested Score</Text>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={10}
-                              step={0.1}
-                              value={suggestedScore === null || suggestedScore === undefined ? '' : suggestedScore}
-                              onChange={handleSuggestedScoreChange}
-                              placeholder="0"
-                              style={{ width: 120, borderRadius: 8, border: `2px solid ${primaryColor}40`, background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.15)' }}
-                            />
-                            <span style={{ fontSize: '14px', color: theme === 'sun' ? '#1f2937' : '#E0E7FF', fontWeight: 500 }}>/ 10</span>
-                          </div>
-                        </div>
-                      )}
                     <div
                       className="feedback-editor-wrap"
                       style={{
@@ -3025,7 +2941,6 @@ const AIGenerateFeedback = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {WRITING_CRITERIA_KEYS.map((item) => {
                           const data = writingCriteria?.[item.key] || {};
-                          const scoreValue = data?.score === null || data?.score === undefined || data?.score === '' ? '' : data.score;
                           const cs = criteriaStyles[item.key] || { bg: theme === 'sun' ? 'rgba(113,179,253,0.08)' : 'rgba(167,139,250,0.10)', border: `${primaryColor}40` };
                           return (
                             <div
@@ -3042,20 +2957,6 @@ const AIGenerateFeedback = () => {
                             >
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                                 <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#C7D2FE' }}>{item.label}</Typography.Text>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <Text type="secondary" style={{ fontWeight: 500 }}>Score</Text>
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    max={10}
-                                    step={0.1}
-                                    value={scoreValue}
-                                    onChange={(e) => handleWritingCriteriaScoreChange(item.key, e.target.value)}
-                                    placeholder="0"
-                                    style={{ width: 110, borderRadius: 8, border: `2px solid ${primaryColor}40`, background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)' }}
-                                  />
-                                  <span style={{ fontSize: '13px', color: theme === 'sun' ? '#666' : '#BBB', fontWeight: 500 }}>/ 10</span>
-                                </div>
                               </div>
                               <div className="criteria-editor-wrap" style={{ borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
                                 <CKEditor
@@ -3151,7 +3052,6 @@ const AIGenerateFeedback = () => {
                           icon={<EditOutlined />}
                           onClick={() => {
                             setEditFeedback(feedback);
-                            setEditSuggestedScore(suggestedScore);
                             setEditWritingCriteria(writingCriteria);
                             setEditModalVisible(true);
                           }}
@@ -3487,27 +3387,7 @@ const AIGenerateFeedback = () => {
                           )}
                           {/* Score moved to header row next to Back button */}
                           <div style={{ marginTop: 4 }}>
-                      {sectionType === 'writing' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                          <Text strong>Feedback</Text>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Text type="secondary" style={{ fontWeight: 500 }}>Suggested Score</Text>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={10}
-                              step={0.1}
-                              value={suggestedScore === null || suggestedScore === undefined ? '' : suggestedScore}
-                              onChange={handleSuggestedScoreChange}
-                              placeholder="0"
-                              style={{ width: 120, borderRadius: 8, border: `2px solid ${primaryColor}40`, background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)' }}
-                            />
-                            <span style={{ fontSize: '14px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>/ 10</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <Text strong>Feedback</Text>
-                      )}
+                      <Text strong>Feedback</Text>
                       {sectionType === 'writing' ? (
                         <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
                           <CKEditor
@@ -3623,23 +3503,8 @@ const AIGenerateFeedback = () => {
                     <>
                       {/* Feedback first */}
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                        <div style={{ marginBottom: 12 }}>
                           <Text strong style={{ fontSize: 14, display: 'block' }}>Feedback</Text>
-                          {sectionType === 'writing' && (() => {
-                            const scoreNum = Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null;
-                            const scoreVal = scoreNum != null ? `${scoreNum}/10` : '-';
-                            const level = scoreNum == null ? 'neutral' : (scoreNum < 4 ? 'low' : (scoreNum < 7 ? 'mid' : 'high'));
-                            const badgeBg = level === 'low' ? '#FEE2E2' : level === 'mid' ? '#FEF3C7' : level === 'high' ? '#DCFCE7' : 'transparent';
-                            const badgeText = level === 'low' ? 'Needs Work' : level === 'mid' ? 'Fair' : level === 'high' ? 'Good' : '';
-                            return (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div style={{ fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#F9FAFB' }}>{scoreVal}</div>
-                                {scoreNum != null && (
-                                  <span style={{ background: badgeBg, color: '#111827', borderRadius: 999, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>{badgeText}</span>
-                                )}
-                              </div>
-                            );
-                          })()}
                         </div>
                         <div
                           style={{
@@ -3657,17 +3522,6 @@ const AIGenerateFeedback = () => {
                               : '0 6px 18px rgba(46, 70, 110, 0.3)'
                           }}
                         >
-                          {sectionType === 'writing' && (() => {
-                            const scoreNum = Number.isFinite(Number(suggestedScore)) ? Number(suggestedScore) : null;
-                            const percent = scoreNum != null ? Math.max(0, Math.min(100, (scoreNum / 10) * 100)) : 0;
-                            const level = scoreNum == null ? 'neutral' : (scoreNum < 4 ? 'low' : (scoreNum < 7 ? 'mid' : 'high'));
-                            const barColor = level === 'low' ? '#EF4444' : level === 'mid' ? '#F59E0B' : level === 'high' ? '#22C55E' : 'transparent';
-                            return (
-                              <div style={{ height: 8, borderRadius: 8, background: 'rgba(0,0,0,0.08)', overflow: 'hidden', marginBottom: 12 }}>
-                                <div style={{ width: `${percent}%`, height: '100%', borderRadius: 8, background: barColor, transition: 'width 0.3s ease' }} />
-                              </div>
-                            );
-                          })()}
                           <div
                             style={{
                               borderRadius: 12,
@@ -3705,14 +3559,7 @@ const AIGenerateFeedback = () => {
                             {WRITING_CRITERIA_KEYS.map((item) => {
                               const data = writingCriteria?.[item.key];
                               if (!data) return null;
-                              const scoreNum = Number.isFinite(Number(data?.score)) ? Number(data.score) : null;
-                              const scoreVal = scoreNum != null ? `${scoreNum}/10` : '-';
                               const fb = (data?.feedback || '').trim();
-                              const percent = scoreNum != null ? Math.max(0, Math.min(100, (scoreNum / 10) * 100)) : 0;
-                              const level = scoreNum == null ? 'neutral' : (scoreNum < 4 ? 'low' : (scoreNum < 7 ? 'mid' : 'high'));
-                              const barColor = level === 'low' ? '#EF4444' : level === 'mid' ? '#F59E0B' : '#22C55E';
-                              const badgeBg = level === 'low' ? '#FEE2E2' : level === 'mid' ? '#FEF3C7' : '#DCFCE7';
-                              const badgeText = level === 'low' ? 'Needs Work' : level === 'mid' ? 'Fair' : 'Good';
                               const cs = criteriaStyles[item.key] || { bg: theme === 'sun' ? 'rgba(113,179,253,0.08)' : 'rgba(167,139,250,0.10)', border: `${primaryColor}40` };
                               return (
                                 <div
@@ -3729,15 +3576,6 @@ const AIGenerateFeedback = () => {
                                 >
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                                     <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#C7D2FE' }}>{item.label}</Typography.Text>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                      <div style={{ fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#F9FAFB' }}>{scoreVal}</div>
-                                      {scoreNum != null && (
-                                        <span style={{ background: badgeBg, color: '#111827', borderRadius: 999, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>{badgeText}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div style={{ height: 8, borderRadius: 8, background: 'rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-                                    <div style={{ width: `${percent}%`, height: '100%', borderRadius: 8, background: barColor, transition: 'width 0.3s ease' }} />
                                   </div>
                                   {fb && (
                                     <div 
@@ -4070,14 +3908,12 @@ const AIGenerateFeedback = () => {
             onClick={() => {
               if (sectionType === 'writing') {
                 setFeedback(editFeedback);
-                setSuggestedScore(editSuggestedScore);
                 setWritingCriteria(editWritingCriteria);
                 // Update sessionStorage
                 const currentSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
                 if (currentSubmissionQuestionId) {
                   saveAIGeneratedData(currentSubmissionQuestionId, {
                     feedback: editFeedback,
-                    suggestedScore: editSuggestedScore,
                     writingCriteria: editWritingCriteria,
                     writingSectionFeedbacks: writingSectionFeedbacks,
                     hasAIGenerated: true,
@@ -4245,32 +4081,6 @@ const AIGenerateFeedback = () => {
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Suggested Score - giống Score (0-10) của Task Response */}
-                {sectionType === 'writing' && (
-                  <div>
-                    <Text style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>Score (0-10)</Text>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={10}
-                      step={0.1}
-                      value={editSuggestedScore === null || editSuggestedScore === undefined ? '' : editSuggestedScore}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === '' || val === null || val === undefined) {
-                          setEditSuggestedScore(null);
-                          return;
-                        }
-                        const normalized = clampSuggestedScoreValue(val);
-                        if (normalized !== null) {
-                          setEditSuggestedScore(normalized);
-                        }
-                      }}
-                      placeholder="0"
-                      style={{ width: 120, borderRadius: 8 }}
-                    />
-                  </div>
-                )}
                 {/* Feedback editor */}
                 <div>
                   <div className="feedback-editor-wrap" style={{ borderRadius: 8, background: '#fff', border: theme === 'sun' ? '1px solid rgba(78, 205, 196, 0.25)' : '1px solid rgba(76, 201, 240, 0.35)' }}>
@@ -4311,7 +4121,6 @@ const AIGenerateFeedback = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {WRITING_CRITERIA_KEYS.map((item) => {
                   const data = editWritingCriteria?.[item.key] || {};
-                  const currentScore = Number.isFinite(Number(data?.score)) ? Number(data.score) : null;
                   const currentFeedback = data?.feedback || '';
                   const cs = criteriaStyles[item.key] || { bg: theme === 'sun' ? 'rgba(113,179,253,0.08)' : 'rgba(167,139,250,0.10)', border: `${primaryColor}40` };
                   
@@ -4329,29 +4138,6 @@ const AIGenerateFeedback = () => {
                       }}
                     >
                       <Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#C7D2FE' }}>{item.label}</Text>
-                      <div>
-                        <Text style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>Score (0-10)</Text>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={10}
-                          step={0.1}
-                          value={currentScore === null ? '' : currentScore}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            const score = val === '' ? null : clampSuggestedScoreValue(val);
-                            setEditWritingCriteria(prev => ({
-                              ...(prev || {}),
-                              [item.key]: {
-                                ...(prev?.[item.key] || {}),
-                                score: score
-                              }
-                            }));
-                          }}
-                          placeholder="0"
-                          style={{ width: 120, borderRadius: 8 }}
-                        />
-                      </div>
                       <div>
                         <Text style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>Feedback</Text>
                         <div className="feedback-editor-wrap" style={{ borderRadius: 8 }}>

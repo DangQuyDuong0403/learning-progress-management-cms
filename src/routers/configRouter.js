@@ -74,6 +74,7 @@ import StudentClassList from '../pages/management/ManagementStudent/StudentClass
 import StudentDailyChallengeList from '../pages/management/ManagementStudent/StudentDailyChallengeList.jsx';
 import StudentDailyChallengeTake from '../pages/management/ManagementStudent/StudentDailyChallengeTake.jsx';
 import StudentDailyChallengeResult from '../pages/management/ManagementStudent/StudentDailyChallengeResult.jsx';
+import StudentLearningProgressOverviewView from '../pages/management/ManagementStudent/StudentLearningProgressOverview.jsx';
   
 const CONFIG_ROUTER = [
 	//   {
@@ -340,6 +341,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Daily Challenge Section Feedback',
 		exact: true,
 		key: 'STUDENT_DAILY_CHALLENGE_SECTION_FEEDBACK',
+		private: true,
+		role: 'student',
+	},
+	{
+		show: false,
+		component: StudentLearningProgressOverviewView,
+		path: ROUTER_PAGE.STUDENT_LEARNING_PROGRESS,
+		menuName: 'Student Learning Progress Overview',
+		exact: true,
+		key: 'STUDENT_LEARNING_PROGRESS',
 		private: true,
 		role: 'student',
 	},

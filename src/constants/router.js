@@ -30,6 +30,7 @@ const ROUTER_PAGE = {
 	STUDENT_DAILY_CHALLENGE_RESULT: '/student/daily-challenges/result/:id',
 	STUDENT_DAILY_CHALLENGE_SUBMISSION_DETAIL: '/student/daily-challenges/detail/:id/submissions/:submissionId',
 	STUDENT_DAILY_CHALLENGE_SECTION_FEEDBACK: '/student/daily-challenges/detail/:id/submissions/:submissionId/feedback/:submissionQuestionId',
+	STUDENT_LEARNING_PROGRESS: '/student/learning-progress',
 	// Test Taker Routes
 	TEST_TAKER_DASHBOARD: '/test-taker/dashboard',
 	TEST_TAKER_CLASSES: '/test-taker/classes',
