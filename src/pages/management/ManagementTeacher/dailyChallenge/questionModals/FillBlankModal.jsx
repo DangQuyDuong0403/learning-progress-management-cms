@@ -104,6 +104,8 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const parseQuestionText = useCallback(
 		(questionText, contentData) => {
 			const blanksData = [];
+			// Track positionIds to avoid duplicates
+			const positionIdsSeen = new Set();
 
 			// Create a temporary DOM element to parse HTML
 			const tempDiv = document.createElement('div');
@@ -133,10 +135,17 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 						// Add blank (respect max 10 blanks)
 						const positionId = match[1];
+						// Skip if this positionId was already processed
+						if (positionIdsSeen.has(positionId)) {
+							lastIndex = regex.lastIndex;
+							continue;
+						}
+						
 						const blankData = contentData.find(
 							(item) => item.positionId === positionId
 						);
 						if (blanksData.length < 10) {
+							positionIdsSeen.add(positionId);
 							const blankId = `blank-${Date.now()}-${positionId}`;
 							const blankItem = {
 								type: 'blank',
@@ -179,47 +188,89 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 					return result;
 				} else if (node.nodeType === Node.ELEMENT_NODE) {
-					// Check if this element contains blank patterns
+					// Regular HTML element, preserve it
+					const tagName = node.tagName.toLowerCase();
+					const innerHTML = node.innerHTML;
+
+					// Special handling for image wrapper - always preserve
+					if (
+						node.hasAttribute('data-image-wrapper') ||
+						node.classList.contains('image-wrapper')
+					) {
+						return {
+							type: 'html',
+							content: node.outerHTML,
+							id: `html-${Date.now()}`,
+						};
+					}
+
+					// Special handling for images - always preserve
+					if (tagName === 'img') {
+						return {
+							type: 'html',
+							content: node.outerHTML,
+							id: `html-${Date.now()}`,
+						};
+					}
+
+					// Special handling for tables - ALWAYS preserve structure, extract blank data from patterns
+					// This must be checked BEFORE checking if element contains patterns
+					if (tagName === 'table') {
+						// Extract blank data from table cells that contain patterns
+						const textContent = node.textContent;
+						if (textContent && /\[\[pos_([a-z0-9]+)\]\]/.test(textContent)) {
+							// Extract all positionIds from table
+							const positionIdRegex = /\[\[pos_([a-z0-9]+)\]\]/g;
+							let match;
+							while ((match = positionIdRegex.exec(textContent)) !== null) {
+								const positionId = match[1];
+								// Skip if this positionId was already processed
+								if (positionIdsSeen.has(positionId)) {
+									continue;
+								}
+								
+								const blankData = contentData.find(
+									(item) => item.positionId === positionId
+								);
+								
+								if (blanksData.length < 10) {
+									positionIdsSeen.add(positionId);
+									const blankId = `blank-${Date.now()}-${positionId}`;
+									blanksData.push({
+										id: blankId,
+										positionId: positionId,
+										answer: blankData?.value || '',
+										color: blankColors[blanksData.length % blankColors.length],
+									});
+								}
+							}
+						}
+						
+						// Always preserve table as HTML (patterns will be converted during render)
+						return {
+							type: 'html',
+							content: node.outerHTML,
+							id: `html-${Date.now()}`,
+						};
+					}
+
+					// For other elements, check if they contain blank patterns
 					const textContent = node.textContent;
 					if (textContent && /\[\[pos_([a-z0-9]+)\]\]/.test(textContent)) {
-						// This element contains blanks, process its text content
-						return processNode(document.createTextNode(textContent));
+						// This element contains blanks, but it's not a table/image
+						// Process its child nodes recursively to preserve structure while parsing blanks
+						const childResults = [];
+						for (let i = 0; i < node.childNodes.length; i++) {
+							const childResult = processNode(node.childNodes[i]);
+							if (Array.isArray(childResult)) {
+								childResults.push(...childResult);
+							} else if (childResult) {
+								childResults.push(childResult);
+							}
+						}
+						return childResults.length > 0 ? childResults : [];
 					} else {
-						// Regular HTML element, preserve it
-						const tagName = node.tagName.toLowerCase();
-						const innerHTML = node.innerHTML;
-
-						// Special handling for image wrapper
-						if (
-							node.hasAttribute('data-image-wrapper') ||
-							node.classList.contains('image-wrapper')
-						) {
-							return {
-								type: 'html',
-								content: node.outerHTML,
-								id: `html-${Date.now()}`,
-							};
-						}
-
-						// Special handling for images
-						if (tagName === 'img') {
-							return {
-								type: 'html',
-								content: node.outerHTML,
-								id: `html-${Date.now()}`,
-							};
-						}
-
-						// Special handling for tables
-						if (tagName === 'table') {
-							return {
-								type: 'html',
-								content: node.outerHTML,
-								id: `html-${Date.now()}`,
-							};
-						}
-
-						// For other elements, preserve the HTML
+						// No blank patterns, preserve the HTML
 						if (innerHTML) {
 							return {
 								type: 'html',
@@ -227,7 +278,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								id: `html-${Date.now()}`,
 							};
 						}
-
 						return { type: 'text', content: '', id: `text-${Date.now()}` };
 					}
 				}
@@ -1671,13 +1721,81 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				);
 				editorRef.current.appendChild(blankElement);
 			} else if (item.type === 'html') {
-				// Create a temporary div to parse HTML
-				const tempDiv = document.createElement('div');
-				tempDiv.innerHTML = item.content;
-
-				// Move all child nodes to editor
-				while (tempDiv.firstChild) {
-					editorRef.current.appendChild(tempDiv.firstChild);
+				// Parse HTML content and insert it, handling blank patterns inside
+				if (item.content) {
+					const tempDiv = document.createElement('div');
+					tempDiv.innerHTML = item.content;
+					
+					// Process the HTML to convert blank patterns to blank elements
+					const processHtmlNode = (node, parentElement) => {
+						if (node.nodeType === Node.TEXT_NODE) {
+							const text = node.textContent;
+							const regex = /\[\[pos_([a-z0-9]+)\]\]/g;
+							let lastIndex = 0;
+							let match;
+							let hasPatterns = false;
+							
+							while ((match = regex.exec(text)) !== null) {
+								hasPatterns = true;
+								// Add text before blank
+								if (match.index > lastIndex) {
+									const textContent = text.substring(lastIndex, match.index);
+									if (textContent) {
+										parentElement.appendChild(document.createTextNode(textContent));
+									}
+								}
+								
+								// Find blank data for this positionId
+								const positionId = match[1];
+								// Use currentBlanks from ref (which includes blanks from table)
+								const blankData = currentBlanks.find((b) => b.positionId === positionId);
+								if (blankData) {
+									const blankIndex = currentBlanks.findIndex((b) => b.id === blankData.id);
+									const blankElement = createBlankElement(
+										blankData,
+										blankIndex >= 0 ? blankIndex : currentBlanks.length
+									);
+									parentElement.appendChild(blankElement);
+								} else {
+									// Keep the pattern as text if blank not found
+									parentElement.appendChild(document.createTextNode(match[0]));
+								}
+								
+								lastIndex = regex.lastIndex;
+							}
+							
+							// Add remaining text or entire text if no patterns
+							if (hasPatterns) {
+								if (lastIndex < text.length) {
+									const remainingText = text.substring(lastIndex);
+									if (remainingText) {
+										parentElement.appendChild(document.createTextNode(remainingText));
+									}
+								}
+							} else {
+								// No patterns found, append entire text
+								if (text) {
+									parentElement.appendChild(document.createTextNode(text));
+								}
+							}
+						} else if (node.nodeType === Node.ELEMENT_NODE) {
+							// Clone the node
+							const clonedNode = node.cloneNode(false);
+							
+							// Process children recursively
+							for (let i = 0; i < node.childNodes.length; i++) {
+								processHtmlNode(node.childNodes[i], clonedNode);
+							}
+							
+							// Append the cloned node to parent
+							parentElement.appendChild(clonedNode);
+						}
+					};
+					
+					// Process all nodes in the HTML and append to editor
+					for (let i = 0; i < tempDiv.childNodes.length; i++) {
+						processHtmlNode(tempDiv.childNodes[i], editorRef.current);
+					}
 				}
 			}
 		});

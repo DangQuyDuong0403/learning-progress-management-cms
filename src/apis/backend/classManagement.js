@@ -153,7 +153,12 @@ const classManagementApi = {
 			queryParams.append('text', params.text.trim());
 		}
 		if (params.status && params.status !== 'all') {
-			queryParams.append('status', params.status);
+			// Support both single status and array of statuses
+			if (Array.isArray(params.status)) {
+				params.status.forEach(status => queryParams.append('status', status));
+			} else {
+				queryParams.append('status', params.status);
+			}
 		}
 		if (params.sortBy) {
 			queryParams.append('sortBy', params.sortBy);
@@ -184,7 +189,12 @@ const classManagementApi = {
 			queryParams.append('text', params.text.trim());
 		}
 		if (params.status && params.status !== 'all') {
-			queryParams.append('status', params.status);
+			// Support both single status and array of statuses
+			if (Array.isArray(params.status)) {
+				params.status.forEach(status => queryParams.append('status', status));
+			} else {
+				queryParams.append('status', params.status);
+			}
 		}
 		if (params.sortBy) {
 			queryParams.append('sortBy', params.sortBy);
@@ -232,6 +242,62 @@ const classManagementApi = {
 		const url = `/class/${classId}/overview`;
 		console.log('GetClassOverview API - URL:', url);
 		console.log('GetClassOverview API - Params:', { classId });
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy thông tin tổng quan của lớp (reports API)
+	getClassReportOverview: (classId) => {
+		const url = `/reports/class/${classId}/overview`;
+		console.log('GetClassReportOverview API - URL:', url);
+		console.log('GetClassReportOverview API - Params:', { classId });
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy chi tiết thành viên của lớp (reports API)
+	getClassReportMembers: (classId, sortBy = 'score') => {
+		const queryParams = new URLSearchParams();
+		if (sortBy) {
+			queryParams.append('sortBy', sortBy);
+		}
+		const url = `/reports/class/${classId}/members${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+		console.log('GetClassReportMembers API - URL:', url);
+		console.log('GetClassReportMembers API - Params:', { classId, sortBy });
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy challenge stats by skill (reports API)
+	getClassChallengeStatsBySkill: (classId, skill) => {
+		const url = `/reports/class/${classId}/challenges/skill?skill=${skill}`;
+		console.log('GetClassChallengeStatsBySkill API - URL:', url);
+		console.log('GetClassChallengeStatsBySkill API - Params:', { classId, skill });
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
+	// Lấy challenge progress by all skills (reports API)
+	getClassChallengeProgress: (classId) => {
+		const url = `/reports/class/${classId}/challenges/progress`;
+		console.log('GetClassChallengeProgress API - URL:', url);
+		console.log('GetClassChallengeProgress API - Params:', { classId });
 		
 		return axiosClient.get(url, {
 			headers: {

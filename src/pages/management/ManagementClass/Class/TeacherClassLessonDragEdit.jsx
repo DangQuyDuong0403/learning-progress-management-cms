@@ -205,6 +205,21 @@ const TeacherClassLessonDragEdit = () => {
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
 	
+	// Security check: Only TEACHER role can access edit positions page
+	useEffect(() => {
+		if (user && userRole) {
+			if (userRole !== 'teacher' && userRole !== 'manager') {
+				spaceToast.error(t('common.accessDenied') || 'You do not have permission to access this page');
+				// Redirect based on user role
+				if (userRole === 'teaching_assistant') {
+					navigate(`/teaching-assistant/classes/chapters/${classId}/${chapterId}/lessons`);
+				} else {
+					navigate('/choose-login');
+				}
+			}
+		}
+	}, [user, userRole, classId, chapterId, navigate, t]);
+	
 	const [lessons, setLessons] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -634,6 +649,11 @@ const TeacherClassLessonDragEdit = () => {
 			setSaving(false);
 		}
 	}, [lessons, chapterId, classId, t, navigate, routePrefix]);
+
+	// Early return if user doesn't have permission (defense in depth)
+	if (user && userRole && userRole !== 'teacher' && userRole !== 'manager') {
+		return null;
+	}
 
 	if (!classData || !chapterData || isInitialLoading) {
 		console.log('TeacherClassLessonDragEdit - Rendering loading state');

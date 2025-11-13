@@ -1047,15 +1047,17 @@ const ClassListTable = () => {
 							/>
 						</Tooltip>
 					)}
-					<Tooltip title={t('classManagement.delete')}>
-						<Button
-							type="text"
-							size="small"
-							danger
-							icon={<DeleteOutlined style={{ fontSize: '20px', color: '#ff4d4f' }} />}
-							onClick={() => handleDelete(record)}
-						/>
-					</Tooltip>
+					{record.status === 'PENDING' && (
+						<Tooltip title={t('classManagement.delete')}>
+							<Button
+								type="text"
+								size="small"
+								danger
+								icon={<DeleteOutlined style={{ fontSize: '20px', color: '#ff4d4f' }} />}
+								onClick={() => handleDelete(record)}
+							/>
+						</Tooltip>
+					)}
 				</Space>
 			),
 		},

@@ -883,7 +883,7 @@ const DailyChallengeSubmissionDetail = () => {
     return parts;
   };
 
-  // Hide floating toolbar when clicking outside
+  // Hide  toolbar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (textSelection.visible) {
@@ -932,6 +932,32 @@ const DailyChallengeSubmissionDetail = () => {
       let incorrectCount = 0;
       let unansweredCount = 0;
 
+      const hasSubmittedData = (questionType, submittedContentRaw) => {
+        if (!submittedContentRaw) return false;
+        const entries = Array.isArray(submittedContentRaw) ? submittedContentRaw : [submittedContentRaw];
+        return entries.some((entry) => {
+          if (!entry) return false;
+          const rawId = entry.id;
+          const rawValue = entry.value;
+          const rawText = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+          const idText = typeof rawId === 'string' ? rawId.trim() : rawId;
+          switch (questionType) {
+            case 'MULTIPLE_CHOICE':
+            case 'TRUE_OR_FALSE':
+            case 'MULTIPLE_SELECT':
+            case 'DROPDOWN':
+            case 'DRAG_AND_DROP':
+            case 'REARRANGE':
+              return Boolean(idText) || Boolean(rawText);
+            case 'FILL_IN_THE_BLANK':
+            case 'REWRITE':
+              return Boolean(rawText);
+            default:
+              return Boolean(idText) || Boolean(rawText);
+          }
+        });
+      };
+
       sectionDetails.forEach((sectionDetail) => {
         const section = sectionDetail.section || {};
         const questionResults = sectionDetail.questionResults || [];
@@ -968,16 +994,21 @@ const DailyChallengeSubmissionDetail = () => {
           receivedScore += q.receivedScore || 0;
           
           // Count correct, incorrect, unanswered
+          const submittedContentRaw = q.submittedContent?.data;
+          const questionHasSubmission = hasSubmittedData(q.questionType, submittedContentRaw);
+
           if (q.receivedScore > 0) {
             correctCount++;
-          } else if (q.submittedContent && q.submittedContent.data && q.submittedContent.data.length > 0) {
+          } else if (questionHasSubmission) {
             incorrectCount++;
           } else {
             unansweredCount++;
           }
 
           const questionContent = q.questionContent?.data || [];
-          const submittedContent = q.submittedContent?.data || [];
+          const submittedContent = Array.isArray(submittedContentRaw)
+            ? submittedContentRaw
+            : (submittedContentRaw ? [submittedContentRaw] : []);
 
           // Map student answers based on question type
           if (q.questionType === 'MULTIPLE_CHOICE' || q.questionType === 'TRUE_OR_FALSE') {
@@ -1032,61 +1063,63 @@ const DailyChallengeSubmissionDetail = () => {
           } else if (q.questionType === 'DROPDOWN') {
             const submittedItems = submittedContent || [];
             const dropdownAnswers = {};
-            // For dropdown, need to match each submitted answer with correct positionId
             submittedItems.forEach((submitted) => {
-              if (submitted && submitted.id) {
-                // Use the positionId directly from submittedContent (most reliable)
-                const submittedPosId = submitted.positionId;
-                
-                // Try multiple ways to identify the selected option
-                // 1) Match by option id
-                let matchedItem = questionContent.find(item => item.id === submitted.id);
-                // 2) If not found, match by value text (submitted.value or submitted.id might be the text)
-                if (!matchedItem) {
-                  const submittedText = (submitted.value || submitted.id || '').trim();
-                  if (submittedText) {
-                    matchedItem = questionContent.find(item => (item.value || '').trim() === submittedText);
-                  }
+              if (!submitted) return;
+              const submittedPosId = submitted.positionId || '';
+              const submittedValueRaw = typeof submitted.value === 'string' ? submitted.value : '';
+              const submittedValue = submittedValueRaw ? submittedValueRaw.trim() : '';
+              const submittedIdRaw = submitted.id != null ? String(submitted.id) : '';
+              const submittedId = submittedIdRaw ? submittedIdRaw.trim() : '';
+              
+              // Prefer the text the student actually saw
+              let selectedValue = submittedValue;
+              
+              const findMatchedItem = () => {
+                if (!questionContent || questionContent.length === 0) return null;
+                // Try by id first
+                if (submittedId) {
+                  const byId = questionContent.find(item => item.id === submittedId);
+                  if (byId) return byId;
                 }
-                
-                if (matchedItem && matchedItem.value) {
-                  const selectedValue = matchedItem.value;
-                  
-                  // Map by positionId from submittedContent if available
-                  if (submittedPosId) {
-                    dropdownAnswers[`pos_${submittedPosId}`] = selectedValue;
-                    dropdownAnswers[submittedPosId] = selectedValue;
-                  }
-                  
-                  // Also map by positionId from matchedItem if different
-                  if (matchedItem.positionId && matchedItem.positionId !== submittedPosId) {
-                    dropdownAnswers[`pos_${matchedItem.positionId}`] = selectedValue;
-                    dropdownAnswers[matchedItem.positionId] = selectedValue;
-                  }
-                  
-                  // Map all options with same positionId
-                  if (matchedItem.positionId) {
-                    questionContent.forEach(opt => {
-                      if (opt.positionId === matchedItem.positionId && opt.positionId) {
-                        dropdownAnswers[`pos_${opt.positionId}`] = selectedValue;
-                        dropdownAnswers[opt.positionId] = selectedValue;
-                      }
-                    });
-                  }
-                } else if (submittedPosId) {
-                  // Fallback: if still not found, try to locate by positionId AND submitted text
-                  const submittedText = (submitted.value || submitted.id || '').trim();
-                  const candidates = questionContent.filter(item => item.positionId === submittedPosId);
-                  let byText = null;
-                  if (submittedText) {
-                    byText = candidates.find(item => (item.value || '').trim() === submittedText);
-                  }
-                  const finalItem = byText || candidates[0] || null;
-                  if (finalItem && finalItem.value) {
-                    dropdownAnswers[`pos_${submittedPosId}`] = finalItem.value;
-                    dropdownAnswers[submittedPosId] = finalItem.value;
-                  }
+                // Then by value text
+                if (submittedValue) {
+                  const byValue = questionContent.find(item => (item.value || '').trim() === submittedValue);
+                  if (byValue) return byValue;
                 }
+                // Finally by positionId
+                if (submittedPosId) {
+                  return questionContent.find(item => {
+                    const itemPosId = String(item.positionId || '').replace(/^pos_/, '');
+                    const cleanSubmittedPos = String(submittedPosId).replace(/^pos_/, '');
+                    return itemPosId === cleanSubmittedPos;
+                  });
+                }
+                return null;
+              };
+              
+              const matchedItem = findMatchedItem();
+              
+              if (!selectedValue) {
+                if (matchedItem?.value) {
+                  selectedValue = matchedItem.value;
+                } else if (submittedId) {
+                  selectedValue = submittedId;
+                }
+              }
+              
+              if (!selectedValue) return;
+              
+              const assignForPosition = (posId) => {
+                if (!posId) return;
+                const cleanPos = String(posId).replace(/^pos_/, '');
+                dropdownAnswers[`pos_${cleanPos}`] = selectedValue;
+                dropdownAnswers[cleanPos] = selectedValue;
+              };
+              
+              if (submittedPosId) {
+                assignForPosition(submittedPosId);
+              } else if (matchedItem?.positionId) {
+                assignForPosition(matchedItem.positionId);
               }
             });
             studentAnswersMap[q.questionId] = dropdownAnswers;
@@ -1098,21 +1131,49 @@ const DailyChallengeSubmissionDetail = () => {
                 const submittedPosId = submitted.positionId;
                 const submittedValue = submitted.value || submitted.id || '';
                 
-                if (submittedPosId && submittedValue) {
-                  // Map with "pos_" prefix (as used in questionText like [[pos_ng4ud2]])
-                  dragDropAnswers[`pos_${submittedPosId}`] = submittedValue;
-                  // Also map without prefix as fallback
-                  dragDropAnswers[submittedPosId] = submittedValue;
-                }
-                
-                // Fallback: Try to find matching option in questionContent by value
-                if (!submittedPosId && submittedValue) {
+                if (submittedPosId) {
+                  // Find matching item in questionContent by positionId and submitted value/id
+                  let matchedItem = questionContent.find(item => {
+                    const itemPosId = String(item.positionId || '').trim();
+                    const itemPosIdNoPrefix = itemPosId.replace(/^pos_/, '');
+                    const submittedPosIdNoPrefix = String(submittedPosId).replace(/^pos_/, '');
+                    
+                    // Match by positionId
+                    return itemPosId === submittedPosId || 
+                           itemPosId === `pos_${submittedPosId}` ||
+                           itemPosIdNoPrefix === submittedPosId ||
+                           itemPosIdNoPrefix === submittedPosIdNoPrefix;
+                  });
+                  
+                  // If not found by positionId, try to find by value or id
+                  if (!matchedItem && submittedValue) {
+                    matchedItem = questionContent.find(item => 
+                      item.value === submittedValue || item.id === submittedValue
+                    );
+                  }
+                  
+                  // Use matched item's value, or fallback to submittedValue
+                  const finalValue = matchedItem?.value || submittedValue;
+                  
+                  if (finalValue) {
+                    // Map with "pos_" prefix (as used in questionText like [[pos_autu87]])
+                    const posIdKey = String(submittedPosId).replace(/^pos_/, '');
+                    dragDropAnswers[`pos_${posIdKey}`] = finalValue;
+                    dragDropAnswers[posIdKey] = finalValue;
+                    // Also map with original submittedPosId format
+                    dragDropAnswers[submittedPosId] = finalValue;
+                    if (submittedPosId !== `pos_${posIdKey}`) {
+                      dragDropAnswers[`pos_${submittedPosId}`] = finalValue;
+                    }
+                  }
+                } else if (submittedValue) {
+                  // Fallback: Try to find matching option in questionContent by value
                   const matchedItem = questionContent.find(item => 
                     item.value === submittedValue || item.id === submittedValue
                   );
                   
                   if (matchedItem?.positionId) {
-                    const posId = matchedItem.positionId;
+                    const posId = String(matchedItem.positionId).replace(/^pos_/, '');
                     const value = matchedItem.value || submittedValue;
                     dragDropAnswers[`pos_${posId}`] = value;
                     dragDropAnswers[posId] = value;
@@ -1122,33 +1183,41 @@ const DailyChallengeSubmissionDetail = () => {
             });
             studentAnswersMap[q.questionId] = dragDropAnswers;
           } else if (q.questionType === 'REARRANGE') {
-            // Build lookup: positionId (without prefix) -> value from student's submission
-            const byPosId = {};
-            (submittedContent || []).forEach(s => {
-              const submittedValue = s?.value || s?.id || '';
-              const rawPos = String(s?.positionId || '').replace(/^pos_/, '');
-              if (!rawPos) return;
-              // Normalize to the option's value using questionContent when possible
-              const matchedItem = questionContent.find(item => 
-                item.positionId?.replace(/^pos_/, '') === rawPos ||
-                item.value === submittedValue || item.id === submittedValue
-              );
-              const finalValue = matchedItem?.value || submittedValue;
-              if (finalValue) byPosId[rawPos] = finalValue;
-            });
+            const submittedSequence = (submittedContent || [])
+              .map((entry) => {
+                if (!entry) return '';
+                const rawPos = String(entry.positionId || '').replace(/^pos_/, '');
+                const valueFromEntry = typeof entry.value === 'string' ? entry.value.trim() : entry.value;
+                const idFromEntry = typeof entry.id === 'string' ? entry.id.trim() : entry.id;
+                const lookupToken = valueFromEntry || idFromEntry || '';
+                if (!lookupToken && !rawPos) return '';
+                const matchedItem = questionContent.find((item) => {
+                  const itemPosId = String(item.positionId || '').replace(/^pos_/, '');
+                  const itemValue = typeof item.value === 'string' ? item.value.trim() : item.value;
+                  return (
+                    (rawPos && itemPosId === rawPos) ||
+                    (itemValue && typeof lookupToken === 'string' && itemValue.toLowerCase() === lookupToken.toLowerCase()) ||
+                    (idFromEntry && item.id === idFromEntry)
+                  );
+                });
+                const finalValue = (() => {
+                  if (typeof valueFromEntry === 'string' && valueFromEntry.length > 0) {
+                    return valueFromEntry;
+                  }
+                  if (matchedItem?.value) {
+                    return matchedItem.value;
+                  }
+                  return idFromEntry || lookupToken;
+                })();
+                return typeof finalValue === 'string' ? finalValue.trim() : finalValue;
+              })
+              .filter((value) => {
+                if (value === null || value === undefined) return false;
+                if (typeof value === 'string') return value.trim().length > 0;
+                return true;
+              });
 
-            // Respect the order of placeholders as they appear in the question text
-            const positionIdsInOrder = [];
-            const regex = /\[\[pos_(.*?)\]\]/g; let match;
-            const qText = (q && q.questionText) ? q.questionText : '';
-            while ((match = regex.exec(qText)) !== null) {
-              positionIdsInOrder.push(match[1]);
-            }
-            const submittedOrder = positionIdsInOrder
-              .map(pid => byPosId[pid])
-              .filter(Boolean);
-
-            studentAnswersMap[q.questionId] = submittedOrder;
+            studentAnswersMap[q.questionId] = submittedSequence;
           } else if (q.questionType === 'REWRITE') {
             // For rewrite, store student's answer text
             const submittedText = (submittedContent?.[0]?.value || submittedContent?.[0]?.id || '').trim();
@@ -1188,6 +1257,8 @@ const DailyChallengeSubmissionDetail = () => {
             points: q.score || 0,
             receivedScore: q.receivedScore || 0,
             orderNumber: q.orderNumber || 0,
+            hasSubmissionData: questionHasSubmission,
+            submittedContentCount: questionHasSubmission ? submittedContent.length : 0,
           };
         });
 
@@ -1512,7 +1583,7 @@ const DailyChallengeSubmissionDetail = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching submission detail:', error);
-      spaceToast.error(error.response?.data?.message || 'Error loading submission detail');
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || 'Error loading submission detail');
       setLoading(false);
     }
   }, [submissionId, id]);
@@ -1762,7 +1833,7 @@ const DailyChallengeSubmissionDetail = () => {
       await fetchSubmissionDetail();
     } catch (err) {
       console.error('Save grading failed:', err);
-      spaceToast.error(err?.response?.data?.message || 'Failed to save grading');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed to save grading');
     } finally {
       setSavingGrading(false);
     }
@@ -1819,7 +1890,7 @@ const DailyChallengeSubmissionDetail = () => {
       // No toast; header Save will show BE message
     } catch (error) {
       console.error('Error saving teacher feedback:', error);
-      spaceToast.error(error.response?.data?.error || 'Failed to save teacher feedback');
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || 'Failed to save teacher feedback');
     } finally {
       setSavingFeedback(false);
     }
@@ -1852,13 +1923,25 @@ const DailyChallengeSubmissionDetail = () => {
     try {
       setSavingFeedback(true);
       const stripHtml = (html) => (html || '').replace(/<[^>]*>/g, '').trim();
-      const penaltyValue = penaltyAppliedDraft ? parseFloat(penaltyAppliedDraft) : 0;
-      if (penaltyValue < 0 || penaltyValue > 1) {
-        spaceToast.error('Penalty must be between 0 and 1');
+      
+      // Validate Raw Score (0-10)
+      const rawScoreValue = finalScoreDraft ? parseFloat(finalScoreDraft) : 0;
+      if (isNaN(rawScoreValue) || rawScoreValue < 0 || rawScoreValue > 10) {
+        spaceToast.error('Raw score must be  0 and 10');
+        setSavingFeedback(false);
         return;
       }
+      
+      // Validate Penalty Applied (0.0-1.0)
+      const penaltyValue = penaltyAppliedDraft ? parseFloat(penaltyAppliedDraft) : 0;
+      if (isNaN(penaltyValue) || penaltyValue < 0 || penaltyValue > 1) {
+        spaceToast.error('Penalty applied must be  0.0 and 1.0');
+        setSavingFeedback(false);
+        return;
+      }
+
       const payload = {
-        rawScore: finalScoreDraft ? Number(finalScoreDraft) : 0,
+        rawScore: rawScoreValue,
         penaltyApplied: penaltyValue,
         overallFeedback: stripHtml(overallFeedbackDraft)
       };
@@ -1872,7 +1955,7 @@ const DailyChallengeSubmissionDetail = () => {
       await fetchSubmissionDetail();
     } catch (err) {
       console.error('Save overall feedback failed:', err);
-      spaceToast.error(err?.response?.data?.message || 'Failed to save feedback');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed to save feedback');
     } finally {
       setSavingFeedback(false);
     }
@@ -2093,7 +2176,12 @@ const DailyChallengeSubmissionDetail = () => {
           'vertical-align:middle',
           'line-height:1.4',
           'font-size:14px',
-          'font-weight:600'
+          'font-weight:600',
+          'word-wrap:break-word',
+          'overflow-wrap:break-word',
+          'word-break:break-word',
+          'white-space:normal',
+          'overflow:hidden'
         ].join(';');
 
         const hasPositionIds = contentData.some(item => {
@@ -2228,7 +2316,17 @@ const DailyChallengeSubmissionDetail = () => {
             </span>
           </div>
           <div
-            style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}
+            style={{ 
+              fontSize: '15px', 
+              fontWeight: 350, 
+              lineHeight: '1.8', 
+              color: '#000000',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              overflow: 'hidden',
+              width: '100%'
+            }}
             dangerouslySetInnerHTML={{ __html: dropdownHtml }}
           />
         </div>
@@ -2239,73 +2337,106 @@ const DailyChallengeSubmissionDetail = () => {
     if (q.type === 'DRAG_AND_DROP') {
       const contentData = q.content?.data || [];
       const studentAnswerObj = studentAnswers?.[q.id] || {};
-      const regex = /\[\[pos_(.*?)\]\]/g;
-      const baseStyles = [
-        'display:inline-block',
-        'min-width:120px',
-        'max-width:200px',
-        'min-height:32px',
-        'padding:4px 12px',
-        'margin:0 8px',
-        'border-radius:8px',
-        'box-sizing:border-box',
-        'text-align:center',
-        'vertical-align:middle',
-        'line-height:1.4',
-        'font-size:15px',
-        'font-weight:350'
-      ].join(';');
-
-      const dragHtml = String(questionText || '').replace(regex, (_match, rawId) => {
-        const positionId = `pos_${rawId}`;
-        const rawPositionId = rawId;
-
-        const correctItem = contentData.find(item => {
-          const itemPosId = String(item.positionId || '');
-          return itemPosId === positionId || itemPosId === rawPositionId;
-        });
-
-        const correctAnswerText = stripHtmlSimple(correctItem?.value || '');
-
-        const studentAnswerRaw =
-          studentAnswerObj[positionId] ||
-          studentAnswerObj[rawPositionId] ||
-          studentAnswerObj[rawId] ||
-          '';
-        const studentAnswerText = stripHtmlSimple(studentAnswerRaw);
-
-        const isCorrect =
-          correctAnswerText &&
-          studentAnswerText &&
-          studentAnswerText.toLowerCase() === correctAnswerText.toLowerCase();
-        const isUnanswered = !studentAnswerText;
-        const displayValue = isUnanswered ? (correctAnswerText || '—') : studentAnswerText;
-
-        const bgColor = isCorrect
-          ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
-          : isUnanswered
-            ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
-            : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
-        const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
-        const textColor = isCorrect ? '#52c41a' : (isUnanswered ? '#faad14' : '#ff4d4f');
-
-        let replacement = `<span style="${baseStyles};background:${bgColor};border:2px solid ${borderColor};color:${textColor};">${escapeHtmlSimple(displayValue)}</span>`;
-
-        if (!isCorrect && !isUnanswered && correctAnswerText) {
-          const extraStyle = [
-            'font-size:15px',
-            'color:#52c41a',
-            'font-weight:600',
-            'white-space:nowrap',
-            'margin-left:8px',
-            'margin-right:8px',
-            'display:inline-block'
-          ].join(';');
-          replacement += `<span style="${extraStyle}">${escapeHtmlSimple(correctAnswerText)}</span>`;
+      
+      const renderDragDropForSection = () => {
+        const parts = [];
+        const regex = /(\[\[pos_(.*?)\]\])/g;
+        let lastIndex = 0;
+        let match;
+        let inputIndex = 0;
+        
+        while ((match = regex.exec(questionText)) !== null) {
+          if (match.index > lastIndex) {
+            const textContent = questionText.slice(lastIndex, match.index);
+            parts.push(
+              <span key={`text_${inputIndex}`} className="question-text-content" dangerouslySetInnerHTML={{ __html: textContent }} />
+            );
+          }
+          inputIndex += 1;
+          const positionId = `pos_${match[2]}`;
+          const rawPositionId = match[2]; // Without "pos_" prefix
+          
+          // Find correct item - check both with and without "pos_" prefix
+          let correctItem = contentData.find(item => 
+            (item.positionId === positionId || item.positionId === rawPositionId) && item.correct
+          );
+          // Fallback: if no correct item found, try to find any item with matching positionId
+          if (!correctItem) {
+            correctItem = contentData.find(item => 
+              item.positionId === positionId || item.positionId === rawPositionId
+            );
+          }
+          const correctAnswerText = stripHtmlSimple(correctItem?.value || '');
+          
+          let studentAnswer = '';
+          if (typeof studentAnswerObj === 'object' && studentAnswerObj !== null) {
+            // Check multiple possible keys
+            studentAnswer = studentAnswerObj[positionId] || 
+                          studentAnswerObj[rawPositionId] || 
+                          studentAnswerObj[match[2]] || 
+                          '';
+          } else if (typeof studentAnswerObj === 'string') {
+            studentAnswer = studentAnswerObj;
+          }
+          const isCorrect = correctAnswerText && studentAnswer.trim().toLowerCase() === correctAnswerText.trim().toLowerCase();
+          const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
+          const displayValue = isUnanswered ? (correctAnswerText || '—') : studentAnswer;
+          const bgColor = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const textColor = isCorrect ? '#52c41a' : (isUnanswered ? '#faad14' : '#ff4d4f');
+          
+          parts.push(
+            <span
+              key={`drag_${inputIndex}`}
+              style={{
+                display: 'inline-block',
+                minWidth: '120px',
+                maxWidth: '200px',
+                minHeight: '32px',
+                padding: '4px 12px',
+                margin: '0 8px',
+                background: bgColor,
+                border: `2px solid ${borderColor}`,
+                borderRadius: '8px',
+                boxSizing: 'border-box',
+                textAlign: 'center',
+                verticalAlign: 'middle',
+                lineHeight: '1.4',
+                fontSize: '15px',
+                fontWeight: 350,
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word',
+                whiteSpace: 'normal',
+                overflow: 'hidden',
+                color: textColor
+              }}
+            >
+              {displayValue}
+            </span>
+          );
+          
+          // Show correct answer only when answered wrong (not for unanswered since shown inside span)
+          if (!isCorrect && correctAnswerText && !(isUnanswered)) {
+            parts.push(
+              <span key={`answer_${inputIndex}`} style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
+                {correctAnswerText}
+              </span>
+            );
+          }
+          lastIndex = match.index + match[0].length;
         }
-
-        return replacement;
-      });
+        if (lastIndex < questionText.length) {
+          parts.push(
+            <span key={`text_final`} className="question-text-content" dangerouslySetInnerHTML={{ __html: questionText.slice(lastIndex) }} />
+          );
+        }
+        return parts;
+      };
 
       return (
         <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
@@ -2316,11 +2447,10 @@ const DailyChallengeSubmissionDetail = () => {
             </span>
           </div>
           <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
-            <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
-              <div
-                style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}
-                dangerouslySetInnerHTML={{ __html: dragHtml }}
-              />
+            <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflow: 'auto' }}>
+              <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                {renderDragDropForSection()}
+              </div>
             </div>
             <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
               <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>Available words:</Typography.Text>
@@ -2329,7 +2459,7 @@ const DailyChallengeSubmissionDetail = () => {
                   const itemValue = item?.value || '';
                   const isCorrectWord = item?.correct === true;
                   return (
-                    <div key={idx} style={{ padding: '12px 20px', background: isCorrectWord ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'), border: `2px solid ${isCorrectWord ? '#52c41a' : '#ff4d4f'}`, borderRadius: '12px', fontSize: '16px', fontWeight: '600', color: isCorrectWord ? '#52c41a' : '#ff4d4f', cursor: 'default', userSelect: 'none', minWidth: '80px', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: itemValue }} />
+                      <div key={idx} style={{ padding: '12px 20px', background: isCorrectWord ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'), border: `2px solid ${isCorrectWord ? '#52c41a' : '#ff4d4f'}`, borderRadius: '12px', fontSize: '16px', fontWeight: '600', color: isCorrectWord ? '#52c41a' : '#ff4d4f', cursor: 'default', userSelect: 'none', minWidth: '80px', maxWidth: '200px', textAlign: 'center', wordBreak: 'break-word', wordWrap: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', overflow: 'hidden' }} dangerouslySetInnerHTML={{ __html: itemValue }} />
                   );
                 })}
               </div>
@@ -2343,6 +2473,12 @@ const DailyChallengeSubmissionDetail = () => {
     if (q.type === 'REARRANGE') {
       const contentData = q.content?.data || [];
       const studentAnswer = studentAnswers?.[q.id] || [];
+      const normalizeWord = (word) => stripHtmlSimple(typeof word === 'string' ? word : String(word || '')).toLowerCase();
+      const normalizeDisplay = (word) => {
+        if (word === null || word === undefined) return '';
+        if (typeof word === 'string') return word;
+        return String(word);
+      };
       
       // Get correct order by parsing questionText to extract positionIds in order
       // questionText format: "[[pos_u64lgh]] [[pos_22ylfg]] [[pos_mchmz2]]"
@@ -2366,7 +2502,7 @@ const DailyChallengeSubmissionDetail = () => {
       })();
       
       // Student answer should be an array of values (not ids) from mapping
-      const studentOrder = Array.isArray(studentAnswer) 
+      const studentOrderRaw = Array.isArray(studentAnswer) 
         ? studentAnswer 
         : (typeof studentAnswer === 'object' && studentAnswer !== null 
             ? Object.keys(studentAnswer)
@@ -2378,9 +2514,15 @@ const DailyChallengeSubmissionDetail = () => {
                 .map(key => studentAnswer[key])
                 .filter(Boolean) 
             : []);
-      
-      const isCorrect = studentOrder.length === correctOrder.length && 
-        studentOrder.every((word, idx) => word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase());
+      const studentOrder = studentOrderRaw
+        .map((word) => normalizeDisplay(word))
+        .filter((word) => word && word.toString().trim().length > 0);
+
+      const normalizedStudent = studentOrder.map(normalizeWord);
+      const normalizedCorrect = correctOrder.map((word) => normalizeWord(word));
+
+      const isCorrect = normalizedStudent.length === normalizedCorrect.length &&
+        normalizedStudent.every((word, idx) => word === normalizedCorrect[idx]);
       const displayText = ((questionText).replace(/\[\[pos_.*?\]\]/g, '')).trim();
 
       return (
@@ -2395,7 +2537,7 @@ const DailyChallengeSubmissionDetail = () => {
             <div className="question-text-content" dangerouslySetInnerHTML={{ __html: displayText || 'Rearrange the words to form a correct sentence:' }} />
           </div>
           <div style={{ marginBottom: '24px', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
-            <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>Your answer:</Typography.Text>
+            <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>Student answer:</Typography.Text>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
               {studentOrder.length > 0 ? studentOrder.map((word, index) => (
                 <div key={index} style={{ minWidth: '100px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${isCorrect ? '#52c41a' : '#ff4d4f'}`, borderRadius: '8px', background: isCorrect ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)') : (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)'), cursor: 'not-allowed' }}>
@@ -3191,6 +3333,7 @@ const DailyChallengeSubmissionDetail = () => {
   const renderQuestion = (q, qIndex) => {
     const questionNumber = qIndex + 1;
     const questionText = q.questionText || q.question || '';
+    const hasSubmissionData = Boolean(q.hasSubmissionData);
     const studentAnswer = studentAnswers?.[q.id];
 
     if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE' || q.type === 'MULTIPLE_SELECT') {
@@ -3296,7 +3439,23 @@ const DailyChallengeSubmissionDetail = () => {
                 
                 const isSelectedWrong = isSelected && !isCorrectAnswer;
                 const isCorrectMissing = !isSelected && isCorrectAnswer && isMulti;
-                const isUnanswered = isMulti ? (Array.isArray(studentAnswer) && studentAnswer.length === 0) : (!isSelected && (studentAnswer == null));
+                const isQuestionUnanswered = !hasSubmissionData;
+                const shouldShowCorrectWarning = isCorrectAnswer && isQuestionUnanswered;
+                const shouldShowCorrectSuccess = isCorrectAnswer && !isQuestionUnanswered;
+                
+                const optionBackground = shouldShowCorrectWarning
+                  ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+                  : shouldShowCorrectSuccess
+                    ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
+                    : isSelectedWrong
+                      ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
+                      : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)');
+                
+                const optionBorder = shouldShowCorrectWarning
+                  ? '#faad14'
+                  : shouldShowCorrectSuccess
+                    ? 'rgb(82, 196, 26)'
+                    : (isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'));
                 
                 return (
                   <div key={key} style={{
@@ -3304,24 +3463,8 @@ const DailyChallengeSubmissionDetail = () => {
                     alignItems: 'center',
                     gap: '12px',
                     padding: '14px 18px',
-                    background: (isUnanswered && !isMulti && isCorrectAnswer)
-                      ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
-                      : (isCorrectMissing
-                        ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
-                        : (isCorrectAnswer
-                          ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.2)')
-                          : isSelectedWrong
-                            ? (theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.2)')
-                            : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'))),
-                    border: `2px solid ${
-                      (isUnanswered && !isMulti && isCorrectAnswer)
-                        ? '#faad14'
-                        : (isCorrectMissing
-                          ? '#faad14'
-                          : (isCorrectAnswer
-                            ? 'rgb(82, 196, 26)'
-                            : (isSelectedWrong ? 'rgb(255, 77, 79)' : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'))))
-                    }`,
+                    background: optionBackground,
+                    border: `2px solid ${optionBorder}`,
                     borderRadius: '12px',
                   }}>
                     <input 
@@ -3331,7 +3474,11 @@ const DailyChallengeSubmissionDetail = () => {
                       style={{ 
                         width: '18px',
                         height: '18px',
-                        accentColor: isCorrectMissing ? '#faad14' : (isCorrectAnswer ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'))),
+                        accentColor: shouldShowCorrectWarning
+                          ? '#faad14'
+                          : (isCorrectAnswer
+                            ? '#52c41a'
+                            : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'))),
                       }} 
                     />
                     <span style={{ 
@@ -3359,17 +3506,17 @@ const DailyChallengeSubmissionDetail = () => {
                         marginLeft: 'auto',
                       }} />
                     )}
-                    {(isUnanswered && !isMulti && isCorrectAnswer) && !isSelectedWrong && (
+                    {(isQuestionUnanswered && isCorrectAnswer) && !isSelectedWrong && (
                       <CheckCircleOutlined style={{
                         fontSize: '20px',
                         color: '#faad14',
                         marginLeft: 'auto',
                       }} />
                     )}
-                    {(!isUnanswered || isMulti) && (isCorrectMissing || (isCorrectAnswer && !isCorrectMissing)) && !isSelectedWrong && (
+                    {(!isQuestionUnanswered) && isCorrectAnswer && !isSelectedWrong && (
                       <CheckCircleOutlined style={{
                         fontSize: '20px',
-                        color: isCorrectMissing ? '#faad14' : '#52c41a',
+                        color: '#52c41a',
                         marginLeft: 'auto',
                       }} />
                     )}
@@ -3404,6 +3551,8 @@ const DailyChallengeSubmissionDetail = () => {
           'font-size:14px'
         ].join(';');
 
+        const questionHasSubmission = hasSubmissionData;
+
         return String(questionText || '').replace(regex, (_match, rawId) => {
           const positionId = `pos_${rawId}`;
           const rawPositionId = rawId;
@@ -3435,23 +3584,33 @@ const DailyChallengeSubmissionDetail = () => {
             correctAnswerText &&
             studentAnswerText &&
             studentAnswerText.toLowerCase() === correctAnswerText.toLowerCase();
-          const isUnanswered = !studentAnswerText;
-          const displayValue = isUnanswered ? (correctAnswerText || '—') : studentAnswerText;
+          const hasSlotSubmission = Boolean(studentAnswerText);
 
-          const bgColor = isCorrect
-            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
-            : isUnanswered
-              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
-              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
-          const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
-          const textColor = isCorrect
-            ? (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)')
-            : (isUnanswered ? '#faad14' : (theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'));
-          const fontWeight = isUnanswered ? '600' : '400';
+          let displayValue = hasSlotSubmission ? studentAnswerText : '—';
+
+          let bgColor;
+          let borderColor;
+          let textColor;
+          let fontWeight = hasSlotSubmission ? '400' : '600';
+
+          if (isCorrect && hasSlotSubmission) {
+            bgColor = theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)';
+            borderColor = 'rgb(82, 196, 26)';
+            textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
+          } else {
+            bgColor = theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)';
+            borderColor = 'rgb(255, 77, 79)';
+            textColor = '#ff4d4f';
+            if (!hasSlotSubmission && correctAnswerText) {
+              displayValue = '—';
+            }
+          }
 
           let replacement = `<span style="${baseStyles};background:${bgColor};border:2px solid ${borderColor};color:${textColor};font-weight:${fontWeight};">${escapeHtmlSimple(displayValue)}</span>`;
 
-          if (!isCorrect && !isUnanswered && correctAnswerText) {
+          const shouldShowCorrectAnswerHint = Boolean(correctAnswerText) && (!isCorrect || !hasSlotSubmission || !questionHasSubmission);
+
+          if (shouldShowCorrectAnswerHint) {
             const extraStyle = [
               'font-size:15px',
               'color:#52c41a',
@@ -3540,24 +3699,33 @@ const DailyChallengeSubmissionDetail = () => {
       const studentAnswerObj = studentAnswers?.[q.id] || {};
       
       const renderDropdownSelects = () => {
-        const parts = [];
         const regex = /\[\[pos_(.*?)\]\]/g;
-        let last = 0;
-        let match;
-        let idx = 0;
-        
-        while ((match = regex.exec(questionText)) !== null) {
-          if (match.index > last) {
-            parts.push(
-              <span 
-                key={`text_${idx}`}
-                className="question-text-content"
-                dangerouslySetInnerHTML={{ __html: questionText.slice(last, match.index) }}
-              />
-            );
-          }
-          const positionId = `pos_${match[1]}`;
-          const rawPositionId = match[1]; // Without "pos_" prefix
+        const baseStyles = [
+          'display:inline-block',
+          'min-width:120px',
+          'max-width:200px',
+          'height:32px',
+          'padding:4px 12px',
+          'margin:0 8px',
+          'border-radius:8px',
+          'box-sizing:border-box',
+          'font-size:14px',
+          'font-weight:600',
+          'cursor:not-allowed',
+          'outline:none',
+          'vertical-align:middle',
+          'text-align:center',
+          'text-align-last:center',
+          'word-wrap:break-word',
+          'overflow-wrap:break-word',
+          'word-break:break-word',
+          'white-space:normal',
+          'overflow:hidden'
+        ].join(';');
+
+        return String(questionText || '').replace(regex, (_match, rawId) => {
+          const positionId = `pos_${rawId}`;
+          const rawPositionId = rawId;
           
           const optionsForPosition = contentData.filter(opt => {
             const optPosId = String(opt.positionId || '');
@@ -3569,15 +3737,22 @@ const DailyChallengeSubmissionDetail = () => {
           const correctAnswer = correctItem?.value || '';
           
           // Get student answer - check multiple possible keys
-          const studentAnswer = studentAnswerObj[positionId] || 
-                              studentAnswerObj[rawPositionId] || 
-                              studentAnswerObj[match[1]] || 
-                              '';
+          let studentAnswerRaw = '';
+          if (typeof studentAnswerObj === 'object' && studentAnswerObj !== null) {
+            studentAnswerRaw = studentAnswerObj[positionId] || 
+                            studentAnswerObj[rawPositionId] || 
+                            studentAnswerObj[rawId] || 
+                            '';
+          } else if (typeof studentAnswerObj === 'string') {
+            studentAnswerRaw = studentAnswerObj;
+          }
+          const studentAnswer = stripHtmlSimple(studentAnswerRaw);
           
           const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
           const isUnanswered = !studentAnswer || studentAnswer.trim().length === 0;
           const displayedValue = isUnanswered ? correctAnswer : studentAnswer;
-          const optionValues = optionsForPosition.map(it => it.value).filter(Boolean);
+          const optionValues = optionsForPosition.map(it => stripHtmlSimple(it.value)).filter(Boolean);
+          
           const ddBg = isCorrect
             ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
             : isUnanswered
@@ -3585,71 +3760,34 @@ const DailyChallengeSubmissionDetail = () => {
               : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
           const ddBorder = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
           const ddColor = isUnanswered ? '#faad14' : (isCorrect ? '#52c41a' : '#ff4d4f');
-          
-          parts.push(
-            <select
-              key={`dd_${q.id}_${idx++}`}
-              value={displayedValue || ''}
-              disabled
-              style={{
-                display: 'inline-block',
-                minWidth: '120px',
-                height: '32px',
-                padding: '4px 12px',
-                margin: '0 8px',
-                background: ddBg,
-                border: `2px solid ${ddBorder}`,
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 600,
-                color: ddColor,
-                cursor: 'not-allowed',
-                outline: 'none',
-                verticalAlign: 'middle',
-                textAlign: 'center',
-                textAlignLast: 'center',
-              }}
-            >
-              <option value="" disabled hidden style={{ textAlign: 'center' }}>Select</option>
-              {optionValues.map((opt, optIdx) => (
-                <option key={optIdx} value={opt}>{opt}</option>
-              ))}
-            </select>
-          );
-          
+
+          const optionsHtml = optionValues.map(opt => 
+            `<option value="${escapeHtmlSimple(opt)}" ${opt === displayedValue ? 'selected' : ''}>${escapeHtmlSimple(opt)}</option>`
+          ).join('');
+
+          let replacement = `<select disabled style="${baseStyles};background:${ddBg};border:2px solid ${ddBorder};color:${ddColor};">${optionsHtml}</select>`;
+
           // Only show side answer when answered wrong; for unanswered it's inside select
-          if (!isCorrect && correctAnswer && !isUnanswered) {
-            parts.push(
-              <span 
-                key={`answer_${idx++}`}
-                style={{ 
-                  fontSize: '15px',
-                  color: '#52c41a',
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                  marginLeft: '8px',
-                  marginRight: '8px',
-                  display: 'inline-block'
-                }}
-              >
-                {correctAnswer}
-              </span>
-            );
+          // Also check questionHasSubmission to determine if we should show hint
+          const shouldShowCorrectAnswerHint = Boolean(correctAnswer) && !isCorrect && !isUnanswered;
+          if (shouldShowCorrectAnswerHint) {
+            const extraStyle = [
+              'font-size:15px',
+              'color:#52c41a',
+              'font-weight:600',
+              'white-space:nowrap',
+              'margin-left:8px',
+              'margin-right:8px',
+              'display:inline-block'
+            ].join(';');
+            replacement += `<span style="${extraStyle}">${escapeHtmlSimple(correctAnswer)}</span>`;
           }
-          
-          last = match.index + match[0].length;
-        }
-        if (last < questionText.length) {
-          parts.push(
-            <span 
-              key={`text_final_${idx}`}
-              className="question-text-content"
-              dangerouslySetInnerHTML={{ __html: questionText.slice(last) }}
-            />
-          );
-        }
-        return parts;
+
+          return replacement;
+        });
       };
+
+      const dropdownHtml = renderDropdownSelects();
 
       return (
         <div
@@ -3706,15 +3844,21 @@ const DailyChallengeSubmissionDetail = () => {
             </div>
           </div>
           <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
-            <div style={{ 
-              fontSize: '15px', 
-              fontWeight: 350,
-              lineHeight: '1.8',
-              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-              marginBottom: '16px'
-            }}>
-              {renderDropdownSelects()}
-            </div>
+            <div
+              style={{ 
+                fontSize: '15px', 
+                fontWeight: 350,
+                lineHeight: '1.8',
+                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                marginBottom: '16px',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word',
+                overflow: 'hidden',
+                width: '100%'
+              }}
+              dangerouslySetInnerHTML={{ __html: dropdownHtml }}
+            />
           </div>
         </div>
       );
@@ -3724,20 +3868,92 @@ const DailyChallengeSubmissionDetail = () => {
     if (q.type === 'DRAG_AND_DROP') {
       const contentData = q.content?.data || [];
       const studentAnswerObj = studentAnswers?.[q.id] || {};
-      const text = questionText;
-      const parts = [];
-      const regex = /\[\[pos_(.*?)\]\]/g;
-      let last = 0;
-      let match;
-      let idx = 0;
       
-      while ((match = regex.exec(text)) !== null) {
-        if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) });
-        const posId = match[1];
-        parts.push({ type: 'position', positionId: `pos_${posId}`, index: idx++ });
-        last = match.index + match[0].length;
-      }
-      if (last < text.length) parts.push({ type: 'text', content: text.slice(last) });
+      const renderDragDropInputs = () => {
+        const regex = /\[\[pos_(.*?)\]\]/g;
+        const baseStyles = [
+          'display:inline-block',
+          'min-width:120px',
+          'max-width:200px',
+          'min-height:32px',
+          'padding:4px 12px',
+          'margin:0 8px',
+          'border-radius:8px',
+          'box-sizing:border-box',
+          'text-align:center',
+          'vertical-align:middle',
+          'line-height:1.4',
+          'font-size:15px',
+          'font-weight:350',
+          'word-wrap:break-word',
+          'overflow-wrap:break-word',
+          'word-break:break-word',
+          'white-space:normal',
+          'overflow:hidden'
+        ].join(';');
+
+        return String(questionText || '').replace(regex, (_match, rawId) => {
+          const positionId = `pos_${rawId}`;
+          const rawPositionId = rawId;
+
+          let correctItem = contentData.find(item =>
+            (String(item.positionId || '') === positionId || String(item.positionId || '') === rawPositionId) && item.correct
+          );
+          if (!correctItem) {
+            correctItem = contentData.find(item =>
+              String(item.positionId || '') === positionId || String(item.positionId || '') === rawPositionId
+            );
+          }
+
+          const correctAnswerText = stripHtmlSimple(correctItem?.value || '');
+
+          let studentAnswerRaw = '';
+          if (typeof studentAnswerObj === 'object' && studentAnswerObj !== null) {
+            studentAnswerRaw =
+              studentAnswerObj[positionId] ||
+              studentAnswerObj[rawPositionId] ||
+              studentAnswerObj[rawId] ||
+              '';
+          } else if (typeof studentAnswerObj === 'string') {
+            studentAnswerRaw = studentAnswerObj;
+          }
+          const studentAnswerText = stripHtmlSimple(studentAnswerRaw);
+
+          const isCorrect =
+            correctAnswerText &&
+            studentAnswerText &&
+            studentAnswerText.toLowerCase() === correctAnswerText.toLowerCase();
+          const isUnanswered = !studentAnswerText;
+          const displayValue = isUnanswered ? (correctAnswerText || '—') : studentAnswerText;
+
+          const bgColor = isCorrect
+            ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
+            : isUnanswered
+              ? (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)')
+              : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)');
+          const borderColor = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
+          const textColor = isCorrect ? '#52c41a' : (isUnanswered ? '#faad14' : '#ff4d4f');
+
+          let replacement = `<span style="${baseStyles};background:${bgColor};border:2px solid ${borderColor};color:${textColor};">${escapeHtmlSimple(displayValue)}</span>`;
+
+          if (!isCorrect && !isUnanswered && correctAnswerText) {
+            const extraStyle = [
+              'font-size:15px',
+              'color:#52c41a',
+              'font-weight:600',
+              'white-space:nowrap',
+              'margin-left:8px',
+              'margin-right:8px',
+              'display:inline-block'
+            ].join(';');
+            replacement += `<span style="${extraStyle}">${escapeHtmlSimple(correctAnswerText)}</span>`;
+          }
+
+          return replacement;
+        });
+      };
+
+      const dragDropHtml = renderDragDropInputs();
 
       return (
         <div
@@ -3805,98 +4021,10 @@ const DailyChallengeSubmissionDetail = () => {
                 <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
                   Question:
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                  {parts.map((part, pIdx) => {
-                    if (part.type === 'text') {
-                      return <span key={pIdx} dangerouslySetInnerHTML={{ __html: part.content || '' }} />;
-                    }
-                    
-                    // Extract raw positionId from part.positionId (e.g., "pos_dqn1x8" -> "dqn1x8")
-                    const rawPositionId = part.positionId.replace(/^pos_/, '');
-                    
-                    // Get student answer - check multiple possible keys
-                    const studentAnswer = studentAnswerObj[part.positionId] || 
-                                        studentAnswerObj[rawPositionId] || 
-                                        '';
-                    
-                    // Find correct item - check both with and without "pos_" prefix
-                    let correctItem = contentData.find(item => {
-                      const itemPosId = String(item.positionId || '');
-                      return (itemPosId === part.positionId || itemPosId === rawPositionId) && item.correct;
-                    });
-                    
-                    // Fallback: if no correct item found, try to find any item with matching positionId
-                    if (!correctItem) {
-                      correctItem = contentData.find(item => {
-                        const itemPosId = String(item.positionId || '');
-                        return itemPosId === part.positionId || itemPosId === rawPositionId;
-                      });
-                    }
-                    
-                    const correctAnswer = correctItem?.value || '';
-                    const isCorrect = correctAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
-                    
-                    return (
-                      <React.Fragment key={pIdx}>
-                        {studentAnswer ? (
-                          <>
-                            <div style={{
-                              minWidth: '120px',
-                              minHeight: '32px',
-                              maxWidth: '200px',
-                              margin: '0 8px',
-                              background: isCorrect 
-                                ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
-                                : (theme === 'sun' ? 'rgba(255, 77, 79, 0.1)' : 'rgba(255, 77, 79, 0.15)'),
-                              border: `2px solid ${isCorrect ? 'rgb(82, 196, 26)' : 'rgb(255, 77, 79)'}`,
-                              borderRadius: '8px',
-                              display: 'inline-block',
-                              padding: '4px 12px',
-                              fontSize: '15px',
-                              fontWeight: '350',
-                              color: isCorrect ? '#52c41a' : '#ff4d4f',
-                              cursor: 'not-allowed',
-                              verticalAlign: 'middle',
-                              lineHeight: '1.4',
-                              boxSizing: 'border-box',
-                              textAlign: 'center',
-                              wordBreak: 'break-word',
-                              wordWrap: 'break-word',
-                              overflow: 'hidden',
-                              whiteSpace: 'normal'
-                            }} dangerouslySetInnerHTML={{ __html: studentAnswer || '' }} />
-                            {/* Show correct answer if wrong (same as Fill in the Blank) */}
-                            {!isCorrect && correctAnswer && (
-                              <span style={{ fontSize: '15px', color: '#52c41a', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '8px', marginRight: '8px', display: 'inline-block' }}>
-                                {correctAnswer}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <div style={{
-                            minWidth: '120px',
-                            minHeight: '32px',
-                            maxWidth: '200px',
-                            margin: '0 8px',
-                            background: (theme === 'sun' ? 'rgba(250, 173, 20, 0.12)' : 'rgba(250, 173, 20, 0.2)'),
-                            border: '2px solid #faad14',
-                            borderRadius: '8px',
-                            display: 'inline-block',
-                            padding: '4px 12px',
-                            fontSize: '15px',
-                            fontWeight: '600',
-                            color: '#faad14',
-                            cursor: 'not-allowed',
-                            verticalAlign: 'middle',
-                            lineHeight: '1.4',
-                            boxSizing: 'border-box',
-                            textAlign: 'center'
-                          }} dangerouslySetInnerHTML={{ __html: correctAnswer || '' }} />
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
+                <div
+                  style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}
+                  dangerouslySetInnerHTML={{ __html: dragDropHtml }}
+                />
               </div>
               <div style={{
                 flex: '1',
@@ -3926,7 +4054,13 @@ const DailyChallengeSubmissionDetail = () => {
                         cursor: 'default',
                         userSelect: 'none',
                         minWidth: '80px',
+                        maxWidth: '200px',
                         textAlign: 'center',
+                        wordBreak: 'break-word',
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        whiteSpace: 'normal',
+                        overflow: 'hidden'
                       }} dangerouslySetInnerHTML={{ __html: itemValue }} />
                     );
                   })}
@@ -3942,6 +4076,12 @@ const DailyChallengeSubmissionDetail = () => {
     if (q.type === 'REARRANGE') {
       const contentData = q.content?.data || [];
       const studentAnswer = studentAnswers?.[q.id] || [];
+      const normalizeWord = (word) => stripHtmlSimple(typeof word === 'string' ? word : String(word || '')).toLowerCase();
+      const normalizeDisplay = (word) => {
+        if (word === null || word === undefined) return '';
+        if (typeof word === 'string') return word;
+        return String(word);
+      };
       
       // Get correct order by parsing questionText to extract positionIds in order
       // questionText format: "[[pos_u64lgh]] [[pos_22ylfg]] [[pos_mchmz2]]"
@@ -3965,7 +4105,7 @@ const DailyChallengeSubmissionDetail = () => {
       })();
       
       // Student answer should be an array of values (not ids) from mapping
-      const studentOrder = Array.isArray(studentAnswer) 
+      const studentOrderRaw = Array.isArray(studentAnswer) 
         ? studentAnswer 
         : (typeof studentAnswer === 'object' && studentAnswer !== null 
             ? Object.keys(studentAnswer)
@@ -3977,9 +4117,15 @@ const DailyChallengeSubmissionDetail = () => {
                 .map(key => studentAnswer[key])
                 .filter(Boolean) 
             : []);
+      const studentOrder = studentOrderRaw
+        .map((word) => normalizeDisplay(word))
+        .filter((word) => word && word.toString().trim().length > 0);
       
-      const isCorrect = studentOrder.length === correctOrder.length && 
-        studentOrder.every((word, idx) => word.trim().toLowerCase() === correctOrder[idx].trim().toLowerCase());
+      const normalizedStudent = studentOrder.map(normalizeWord);
+      const normalizedCorrect = correctOrder.map((word) => normalizeWord(word));
+      
+      const isCorrect = normalizedStudent.length === normalizedCorrect.length && 
+        normalizedStudent.every((word, idx) => word === normalizedCorrect[idx]);
       
       const displayText = ((questionText).replace(/\[\[pos_.*?\]\]/g, '')).trim();
 
@@ -4468,7 +4614,11 @@ const DailyChallengeSubmissionDetail = () => {
                 boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                 }}
               >
-                {(teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0) ? 'Edit Grading' : 'Finalize Grading'}
+                {(() => {
+                  const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
+                  const hasScore = submissionData?.submission?.score != null && submissionData?.submission?.score !== undefined;
+                  return (hasFeedback || hasScore) ? 'Edit Grading' : 'Finalize Grading';
+                })()}
             </Button>
           </div>
             )}
@@ -4775,13 +4925,9 @@ const DailyChallengeSubmissionDetail = () => {
                               }}
                             >
                               {(() => {
-                                // For auto-graded types (grammar, reading, listening), show score if available
-                                // For writing/speaking, require both score and teacherFeedback
+                                // Show score if available (no longer require feedback for writing/speaking)
                                 const hasScore = submission.score != null && submission.score !== undefined;
-                                const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
-                                const shouldShowScore = hasWritingOrSpeaking 
-                                  ? (hasScore && hasFeedback) 
-                                  : hasScore;
+                                const shouldShowScore = hasScore;
                                 
                                 // Format score display with penalty
                                 let scoreDisplay = '-';
@@ -6275,7 +6421,11 @@ const DailyChallengeSubmissionDetail = () => {
               padding: '6px 0'
             }}
           >
-            {teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0 ? 'Edit Grading' : 'Add Grading'}
+            {(() => {
+              const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
+              const hasScore = submissionData?.submission?.score != null && submissionData?.submission?.score !== undefined;
+              return (hasFeedback || hasScore) ? 'Edit Grading' : 'Add Grading';
+            })()}
           </div>
         }
         open={overallFeedbackModalVisible}
@@ -6332,9 +6482,27 @@ const DailyChallengeSubmissionDetail = () => {
           <Input
             type="number"
             value={finalScoreDraft}
-            onChange={(e) => setFinalScoreDraft(e.target.value)}
-            placeholder="Enter raw score"
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '' || value === '-') {
+                setFinalScoreDraft(value);
+                return;
+              }
+              const numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                if (numValue >= 0 && numValue <= 10) {
+                  setFinalScoreDraft(value);
+                } else if (numValue > 10) {
+                  setFinalScoreDraft('10');
+                } else if (numValue < 0) {
+                  setFinalScoreDraft('0');
+                }
+              }
+            }}
+            placeholder="Enter raw score (0-10)"
             min={0}
+            max={10}
+            step={0.1}
             style={{
               width: '100%',
               height: '40px',
@@ -6352,7 +6520,23 @@ const DailyChallengeSubmissionDetail = () => {
           <Input
             type="number"
             value={penaltyAppliedDraft}
-            onChange={(e) => setPenaltyAppliedDraft(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '' || value === '-') {
+                setPenaltyAppliedDraft(value);
+                return;
+              }
+              const numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                if (numValue >= 0 && numValue <= 1) {
+                  setPenaltyAppliedDraft(value);
+                } else if (numValue > 1) {
+                  setPenaltyAppliedDraft('1');
+                } else if (numValue < 0) {
+                  setPenaltyAppliedDraft('0');
+                }
+              }
+            }}
             placeholder="Enter penalty (0 to 1, e.g., 0.5 for 50%)"
             min={0}
             max={1}
