@@ -204,6 +204,60 @@ const studentManagementApi = {
 			throw error;
 		});
 	},
+
+	// Lấy tổng quan của học sinh: thời gian bắt đầu học, level hiện tại, lớp hiện tại, tỷ lệ làm DC (reports API)
+	// Endpoint: GET /reports/student/overview
+	getStudentOverview: () => {
+		const url = `/reports/student/overview`;
+		console.log('GetStudentOverview API - URL:', url);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('GetStudentOverview API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Lấy lịch sử các level đã học: thông tin level, các lớp đã học, điểm TB theo từng loại DC (reports API)
+	// Endpoint: GET /reports/student/level-history
+	getStudentLevelHistory: () => {
+		const url = `/reports/student/level-history`;
+		console.log('GetStudentLevelHistory API - URL:', url);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('GetStudentLevelHistory API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
+	// Chi tiết DC của học sinh trong 1 lớp: list DC kèm điểm, type, status, tỷ lệ hoàn thành đúng hạn (reports API)
+	// Endpoint: GET /reports/student/class/{classId}/challenges
+	getStudentClassChallengeDetail: (classId) => {
+		const url = `/reports/student/class/${classId}/challenges`;
+		console.log('GetStudentClassChallengeDetail API - URL:', url);
+		
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		}).catch(error => {
+			console.error('GetStudentClassChallengeDetail API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
 };
 
 export default studentManagementApi;
