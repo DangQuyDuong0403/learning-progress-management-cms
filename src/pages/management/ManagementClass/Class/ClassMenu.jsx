@@ -162,6 +162,7 @@ const ClassMenu = () => {
       icon: <BarChartOutlined style={{ fontSize: '48px', color: '#00d4ff' }} />,
       path: `${routePrefix}/dashboard/${id}`,
       color: "#00d4ff",
+      hideForRoles: ['student'], // Hide for student
     },
     {
       id: "activities",
