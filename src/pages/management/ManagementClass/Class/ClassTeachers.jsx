@@ -73,7 +73,7 @@ const ClassTeachers = () => {
   const [teachers, setTeachers] = useState([]);
   const [classData, setClassData] = useState(null);
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ACTIVE");
+  const [statusFilter, setStatusFilter] = useState(["ACTIVE"]); // Changed to array to support multiple statuses
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [filterDropdown, setFilterDropdown] = useState({
     visible: false,
@@ -115,7 +115,6 @@ const ClassTeachers = () => {
   const statusOptions = [
     { key: "ACTIVE", label: t('classTeachers.active') },
     { key: "INACTIVE", label: t('classTeachers.inactive') },
-    { key: "REMOVED", label: t('classTeachers.removed') },
   ];
 
   // Handle click outside to close filter dropdown
@@ -148,16 +147,16 @@ const ClassTeachers = () => {
     setFilterDropdown(prev => ({
       ...prev,
       visible: !prev.visible,
-      selectedStatuses: prev.visible ? prev.selectedStatuses : [statusFilter].filter(s => s !== 'all'),
+      selectedStatuses: prev.visible ? prev.selectedStatuses : (Array.isArray(statusFilter) ? statusFilter : [statusFilter]).filter(s => s !== 'all'),
     }));
   };
 
   // Handle filter submission
   const handleFilterSubmit = () => {
     if (filterDropdown.selectedStatuses.length > 0) {
-      setStatusFilter(filterDropdown.selectedStatuses[0]);
+      setStatusFilter(filterDropdown.selectedStatuses); // Save all selected statuses as array
     } else {
-      setStatusFilter('ACTIVE');
+      setStatusFilter(['ACTIVE']); // Default to ACTIVE as array
     }
     setFilterDropdown(prev => ({
       ...prev,
@@ -204,7 +203,7 @@ const ClassTeachers = () => {
         page: params.page !== undefined ? params.page : 0,
         size: params.size !== undefined ? params.size : 10,
         text: params.text !== undefined ? params.text : '',
-        status: params.status !== undefined ? params.status : 'ACTIVE',
+        status: params.status !== undefined ? params.status : ['ACTIVE'], // Default to array
         sortBy: params.sortBy !== undefined ? params.sortBy : 'joinedAt',
         sortDir: params.sortDir !== undefined ? params.sortDir : 'desc',
       };
@@ -663,7 +662,7 @@ const ClassTeachers = () => {
               <Button 
                 icon={<FilterOutlined />}
                 onClick={handleFilterToggle}
-                className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter !== 'ACTIVE') ? 'has-filters' : ''}`}
+                className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(Array.isArray(statusFilter) ? statusFilter.length !== 1 || statusFilter[0] !== 'ACTIVE' : statusFilter !== 'ACTIVE') ? 'has-filters' : ''}`}
               >
                 {t('classTeachers.filter')}
               </Button>
@@ -871,10 +870,15 @@ const ClassTeachers = () => {
                 allowClear
                 loading={loadingTeachers}
                 showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
-                }
+                filterOption={(input, option) => {
+                  const teacher = availableTeachers.find(t => t.id === option.value);
+                  if (!teacher) return false;
+                  const searchText = (input || '').toLowerCase();
+                  const fullName = (teacher.fullName || '').toLowerCase();
+                  const userName = (teacher.userName || '').toLowerCase();
+                  const email = (teacher.email || '').toLowerCase();
+                  return fullName.includes(searchText) || userName.includes(searchText) || email.includes(searchText);
+                }}
               >
                 {availableTeachers.map(teacher => (
                   <Option key={teacher.id} value={teacher.id}>
@@ -897,10 +901,15 @@ const ClassTeachers = () => {
                 allowClear
                 loading={loadingTeachers}
                 showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
-                }
+                filterOption={(input, option) => {
+                  const ta = availableTeachingAssistants.find(t => t.id === option.value);
+                  if (!ta) return false;
+                  const searchText = (input || '').toLowerCase();
+                  const fullName = (ta.fullName || '').toLowerCase();
+                  const userName = (ta.userName || '').toLowerCase();
+                  const email = (ta.email || '').toLowerCase();
+                  return fullName.includes(searchText) || userName.includes(searchText) || email.includes(searchText);
+                }}
               >
                 {availableTeachingAssistants.map(ta => (
                   <Option key={ta.id} value={ta.id}>

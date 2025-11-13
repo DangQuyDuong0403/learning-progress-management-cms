@@ -153,7 +153,12 @@ const classManagementApi = {
 			queryParams.append('text', params.text.trim());
 		}
 		if (params.status && params.status !== 'all') {
-			queryParams.append('status', params.status);
+			// Support both single status and array of statuses
+			if (Array.isArray(params.status)) {
+				params.status.forEach(status => queryParams.append('status', status));
+			} else {
+				queryParams.append('status', params.status);
+			}
 		}
 		if (params.sortBy) {
 			queryParams.append('sortBy', params.sortBy);
@@ -184,7 +189,12 @@ const classManagementApi = {
 			queryParams.append('text', params.text.trim());
 		}
 		if (params.status && params.status !== 'all') {
-			queryParams.append('status', params.status);
+			// Support both single status and array of statuses
+			if (Array.isArray(params.status)) {
+				params.status.forEach(status => queryParams.append('status', status));
+			} else {
+				queryParams.append('status', params.status);
+			}
 		}
 		if (params.sortBy) {
 			queryParams.append('sortBy', params.sortBy);

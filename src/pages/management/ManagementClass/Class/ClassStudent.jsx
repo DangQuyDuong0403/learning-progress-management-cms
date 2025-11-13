@@ -44,6 +44,14 @@ const ClassStudent = () => {
   // State for available students from API
   const [availableStudents, setAvailableStudents] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [availableStudentsPagination, setAvailableStudentsPagination] = useState({
+    page: 0,
+    size: 10, // Load 10 students per page for better infinite scroll experience
+    total: 0,
+    hasMore: true,
+    currentLoaded: 0, // Track how many students are currently loaded
+  });
+  const [loadingMore, setLoadingMore] = useState(false);
   const { id } = useParams();
   const { theme } = useTheme();
   const { user } = useSelector((state) => state.auth);
@@ -64,8 +72,12 @@ const ClassStudent = () => {
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState([]);
   const [classData, setClassData] = useState(null);
+  
+  // Check if class is finished (hide add, import, delete buttons)
+  const isClassFinished = classData?.status === 'FINISHED';
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [studentSearchText, setStudentSearchText] = useState(""); // Search text for student modal
+  const [statusFilter, setStatusFilter] = useState([]); // Changed to array to support multiple statuses
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const searchTimeoutRef = useRef(null);
@@ -112,7 +124,6 @@ const ClassStudent = () => {
   const statusOptions = [
     { key: "ACTIVE", label: t('classDetail.active') },
     { key: "INACTIVE", label: t('classDetail.inactive') },
-    { key: "DROPPED", label: t('classDetail.dropped') },
   ];
 
   // Handle click outside to close filter dropdown
@@ -145,17 +156,14 @@ const ClassStudent = () => {
     setFilterDropdown(prev => ({
       ...prev,
       visible: !prev.visible,
-      selectedStatuses: prev.visible ? prev.selectedStatuses : [statusFilter].filter(s => s !== 'all'),
+      selectedStatuses: prev.visible ? prev.selectedStatuses : statusFilter.length > 0 ? [...statusFilter] : [],
     }));
   };
 
   // Handle filter submission
   const handleFilterSubmit = () => {
-    if (filterDropdown.selectedStatuses.length > 0) {
-      setStatusFilter(filterDropdown.selectedStatuses[0]);
-    } else {
-      setStatusFilter('all');
-    }
+    // Save all selected statuses as array
+    setStatusFilter(filterDropdown.selectedStatuses.length > 0 ? [...filterDropdown.selectedStatuses] : []);
     setFilterDropdown(prev => ({
       ...prev,
       visible: false,
@@ -186,6 +194,7 @@ const ClassStudent = () => {
             data.title ??
             data.classTitle ??
             '',
+          status: data.status ?? data.classStatus ?? null,
         };
         setClassData(mapped);
       }
@@ -197,11 +206,21 @@ const ClassStudent = () => {
 
   const fetchStudents = useCallback(async (params = {}) => {
     try {
+      // Convert status to array format for API
+      let statusParam = 'all';
+      if (params.status !== undefined) {
+        if (Array.isArray(params.status)) {
+          statusParam = params.status.length > 0 ? params.status : 'all';
+        } else if (params.status !== 'all') {
+          statusParam = [params.status];
+        }
+      }
+      
       const apiParams = {
         page: params.page !== undefined ? params.page : 0, // Default to first page
         size: params.size !== undefined ? params.size : 10, // Default page size
         text: params.text !== undefined ? params.text : '',
-        status: params.status !== undefined ? params.status : 'all',
+        status: statusParam,
         sortBy: params.sortBy !== undefined ? params.sortBy : 'joinedAt',
         sortDir: params.sortDir !== undefined ? params.sortDir : 'desc',
       };
@@ -226,62 +245,165 @@ const ClassStudent = () => {
   }, [id]);
 
   // Fetch available students for adding to class
-  const fetchAvailableStudents = useCallback(async (searchText = '') => {
+  const fetchAvailableStudents = useCallback(async (searchText = '', page = 0, append = false) => {
     try {
-      setSearchLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setSearchLoading(true);
+      }
+      
       const params = {
-        page: 0,
-        size: 100, // Get more results for better search experience
+        page: page,
+        size: availableStudentsPagination.size,
         text: searchText,
         status: ['ACTIVE'], // Only get active students
         roleName: ['STUDENT', 'TEST_TAKER'], // Get both students and test takers
       };
       
-      console.log('Fetching available students with params:', params);
-      const response = await studentManagementApi.getStudents(params);
-      console.log('Available students response:', response);
+      console.log('=== FETCHING AVAILABLE STUDENTS ===');
+      console.log('Params sent to API:', JSON.stringify(params, null, 2));
+      console.log('Page (0-based):', page);
+      console.log('Size:', availableStudentsPagination.size);
       
-      if (response.success) {
-        const allStudents = response.data || [];
-        console.log('All students:', allStudents);
-        // Filter out students who are already in the class
-        const currentStudentIds = students.map(s => s.userId);
-        const filteredStudents = allStudents.filter(student => 
-          !currentStudentIds.includes(student.userId)
-        );
-        
-        // Map the response to match our expected format
-        const mappedStudents = filteredStudents.map(student => {
+      const response = await studentManagementApi.getStudents(params);
+      console.log('=== Available students response (FULL) ===', response);
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', Object.keys(response || {}));
+      console.log('Response.success:', response?.success);
+      console.log('Response.data:', response?.data);
+      console.log('Response.totalElements:', response?.totalElements);
+      console.log('Response.page:', response?.page);
+      console.log('Response.size:', response?.size);
+      
+      // Check if response structure is correct
+      if (!response) {
+        console.error('❌ Response is null or undefined!');
+        return;
+      }
+      
+      if (!response.success) {
+        console.error('❌ API returned success=false:', response);
+        if (!append) {
+          setAvailableStudents([]);
+        }
+        return;
+      }
+      
+      // Handle different response structures
+      let allStudents = [];
+      let totalElements = 0;
+      
+      // Check if data is directly in response or nested
+      if (Array.isArray(response.data)) {
+        allStudents = response.data;
+      } else if (Array.isArray(response)) {
+        // Response might be array directly
+        allStudents = response;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        allStudents = response.data.data;
+      }
+      
+      totalElements = response.totalElements || response.data?.totalElements || 0;
+      const responsePage = response.page || response.data?.page || 0;
+      const responseSize = response.size || response.data?.size || 10;
+      
+      console.log('=== PARSED RESPONSE ===');
+      console.log('All students (raw from API):', allStudents);
+      console.log('All students count:', allStudents.length);
+      console.log('Total elements:', totalElements);
+      console.log('Response page:', responsePage);
+      console.log('Response size:', responseSize);
+      
+      if (allStudents.length === 0 && totalElements > 0) {
+        console.warn('⚠️ WARNING: API returned 0 students but totalElements > 0!');
+        console.warn('This might indicate a pagination issue or filter problem');
+      }
+      
+      // Filter out students who are already in the class
+      const currentStudentIds = students.map(s => s.userId);
+      console.log('Current student IDs in class:', currentStudentIds);
+      console.log('Current students count in class:', currentStudentIds.length);
+      
+      const filteredStudents = allStudents.filter(student => 
+        !currentStudentIds.includes(student.userId)
+      );
+      
+      console.log('Filtered students count (after removing existing):', filteredStudents.length);
+      console.log('Filtered students:', filteredStudents);
+      
+      // Map the response to match our expected format
+      const mappedStudents = filteredStudents.map(student => {
           console.log('Mapping student:', student);
           const userId = student.userId || student.id;
           if (!userId) {
             console.warn('Student without userId:', student);
           }
-          return {
-            id: userId,
-            userId: userId,
-            code: student.studentCode || student.code,
-            name: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
-            fullName: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
-            email: student.email,
-            firstName: student.firstName,
-            lastName: student.lastName,
-            status: student.status,
-          };
-        });
-        setAvailableStudents(mappedStudents);
+        return {
+          id: userId,
+          userId: userId,
+          code: student.studentCode || student.code,
+          name: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+          fullName: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+          email: student.email,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          status: student.status,
+        };
+      });
+      
+      if (append) {
+        // Append new students to existing list
+        setAvailableStudents(prev => [...prev, ...mappedStudents]);
       } else {
-        console.error('Failed to fetch available students:', response.message);
-        setAvailableStudents([]);
+        // Replace with new search results
+        setAvailableStudents(mappedStudents);
       }
+      
+      // Update pagination state
+      setAvailableStudentsPagination(prev => {
+        const currentLoaded = append 
+          ? prev.currentLoaded + mappedStudents.length 
+          : mappedStudents.length;
+        
+        // Check if we have more data to load
+        // hasMore should be true if:
+        // 1. API returned full page (allStudents.length === prev.size) - means there might be more
+        // 2. OR if we haven't reached the total yet ((page + 1) * prev.size < totalElements)
+        // But we need to be careful: if all students in this page are filtered out, we should still try next page
+        const hasMore = allStudents.length === prev.size || (page + 1) * prev.size < totalElements;
+        
+        console.log('Pagination update:', {
+          page,
+          currentLoaded,
+          totalElements,
+          allStudentsLength: allStudents.length,
+          mappedStudentsLength: mappedStudents.length,
+          hasMore,
+          size: prev.size,
+          condition1: allStudents.length === prev.size,
+          condition2: (page + 1) * prev.size < totalElements
+        });
+        
+        return {
+          ...prev,
+          page: page,
+          total: totalElements,
+          hasMore: hasMore,
+          currentLoaded: currentLoaded,
+        };
+      });
     } catch (error) {
       console.error('Error fetching available students:', error);
-      setAvailableStudents([]);
+      if (!append) {
+        setAvailableStudents([]);
+      }
       spaceToast.error(error.response?.data?.error);
     } finally {
       setSearchLoading(false);
+      setLoadingMore(false);
     }
-  }, [students]);
+  }, [students, availableStudentsPagination.size]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -337,8 +459,16 @@ const ClassStudent = () => {
     setTimeout(() => {
       setSelectedStudents([]);
       setIsModalVisible(true);
+      // Reset pagination when opening modal
+      setAvailableStudentsPagination({
+        page: 0,
+        size: 10,
+        total: 0,
+        hasMore: true,
+        currentLoaded: 0,
+      });
       // Fetch available students when opening modal
-      fetchAvailableStudents("");
+      fetchAvailableStudents("", 0, false);
       setButtonLoading(prev => ({ ...prev, add: false }));
     }, 100);
   };
@@ -346,6 +476,7 @@ const ClassStudent = () => {
 
   const handleStudentSearch = (value) => {
     console.log('Search input:', value);
+    setStudentSearchText(value); // Save search text to state
     
     // Clear previous timeout
     if (searchTimeoutRef.current) {
@@ -355,14 +486,134 @@ const ClassStudent = () => {
     // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(() => {
       console.log('Executing search after timeout for:', value);
+      // Reset pagination on new search
+      setAvailableStudentsPagination({
+        page: 0,
+        size: 10,
+        total: 0,
+        hasMore: true,
+        currentLoaded: 0,
+      });
+      
       if (value.length >= 2) {
-        fetchAvailableStudents(value);
+        fetchAvailableStudents(value, 0, false);
       } else if (value.length === 0) {
-        fetchAvailableStudents("");
+        fetchAvailableStudents("", 0, false);
       }
       // Don't call API for single character
     }, 500);
   };
+
+  // Handle scroll to load more students using useEffect with MutationObserver
+  useEffect(() => {
+    if (!isModalVisible) return;
+
+    let scrollableElement = null;
+    let observer = null;
+    let scrollHandler = null;
+
+    // Find the dropdown scrollable element with retry
+    const findScrollableElement = () => {
+      // Try multiple selectors for Ant Design Select dropdown
+      const selectors = [
+        '.rc-virtual-list-holder',
+        '.rc-select-list',
+        '.ant-select-dropdown .rc-select-list',
+        '.ant-select-dropdown .rc-virtual-list-holder',
+        '.ant-select-dropdown .rc-select-dropdown',
+        '[class*="rc-select-list"]',
+        '[class*="virtual-list-holder"]'
+      ];
+
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element && element.scrollHeight > element.clientHeight) {
+          console.log('Found scrollable element:', selector);
+          return element;
+        }
+      }
+      return null;
+    };
+
+    const attachScrollListener = () => {
+      scrollableElement = findScrollableElement();
+      
+      if (!scrollableElement) {
+        console.log('Scrollable element not found, will retry...');
+        return false;
+      }
+
+      scrollHandler = (e) => {
+        const target = e.target;
+        const scrollTop = target.scrollTop;
+        const scrollHeight = target.scrollHeight;
+        const clientHeight = target.clientHeight;
+        
+        // Load more when scrolled to 70% of the list
+        const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+        
+        console.log('Scroll detected:', {
+          scrollTop,
+          scrollHeight,
+          clientHeight,
+          scrollPercentage,
+          hasMore: availableStudentsPagination.hasMore,
+          loadingMore,
+          searchLoading
+        });
+        
+        if (scrollPercentage >= 0.7) {
+          if (availableStudentsPagination.hasMore && !loadingMore && !searchLoading) {
+            console.log('Loading more students from scroll listener...', {
+              hasMore: availableStudentsPagination.hasMore,
+              loadingMore,
+              searchLoading,
+              nextPage: availableStudentsPagination.page + 1,
+              scrollPercentage
+            });
+            const nextPage = availableStudentsPagination.page + 1;
+            fetchAvailableStudents(studentSearchText, nextPage, true);
+          }
+        }
+      };
+
+      scrollableElement.addEventListener('scroll', scrollHandler, { passive: true });
+      console.log('Scroll listener attached to:', scrollableElement);
+      return true;
+    };
+
+    // Try to attach immediately
+    if (!attachScrollListener()) {
+      // Use MutationObserver to watch for dropdown appearance
+      observer = new MutationObserver(() => {
+        if (!scrollableElement && attachScrollListener()) {
+          observer.disconnect();
+        }
+      });
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+
+    // Also try after a delay
+    const timer = setTimeout(() => {
+      if (!scrollableElement) {
+        attachScrollListener();
+      }
+    }, 500);
+
+    return () => {
+      if (scrollableElement && scrollHandler) {
+        scrollableElement.removeEventListener('scroll', scrollHandler);
+      }
+      if (observer) {
+        observer.disconnect();
+      }
+      clearTimeout(timer);
+    };
+  }, [isModalVisible, availableStudentsPagination.hasMore, availableStudentsPagination.page, loadingMore, searchLoading, studentSearchText, fetchAvailableStudents]);
 
   const handleSelectStudent = (selectedIds) => {
     console.log("Students selected:", selectedIds);
@@ -439,16 +690,24 @@ const ClassStudent = () => {
   };
 
   const handleValidateImport = async () => {
-    if (importModal.fileList.length === 0) {
-      spaceToast.warning(t('classDetail.selectFileToImportError'));
+    // Validate file selection
+    if (importModal.fileList.length === 0 || !importModal.fileList[0]) {
+      spaceToast.error(t('classDetail.selectFileToImportError'));
+      return;
+    }
+
+    const file = importModal.fileList[0];
+    
+    // Validate Excel file
+    const validation = validateExcelFile(file);
+    if (!validation.valid) {
+      spaceToast.error(validation.message);
       return;
     }
 
     setImportModal(prev => ({ ...prev, validating: true }));
 
     try {
-      const file = importModal.fileList[0];
-      
       // Create FormData object
       const formData = new FormData();
       formData.append('file', file);
@@ -526,16 +785,24 @@ const ClassStudent = () => {
   };
 
   const handleImportOk = async () => {
-    if (importModal.fileList.length === 0) {
-      spaceToast.warning(t('classDetail.selectFileToImportError'));
+    // Validate file selection
+    if (importModal.fileList.length === 0 || !importModal.fileList[0]) {
+      spaceToast.error(t('classDetail.selectFileToImportError'));
+      return;
+    }
+
+    const file = importModal.fileList[0];
+    
+    // Validate Excel file
+    const validation = validateExcelFile(file);
+    if (!validation.valid) {
+      spaceToast.error(validation.message);
       return;
     }
 
     setImportModal(prev => ({ ...prev, uploading: true }));
 
     try {
-      const file = importModal.fileList[0];
-      
       // Create FormData object
       const formData = new FormData();
       formData.append('file', file);
@@ -586,23 +853,46 @@ const ClassStudent = () => {
     }));
   };
 
-  // Handle file selection with validation
-  const handleFileSelect = (file) => {
+  // Helper function to validate Excel file
+  const validateExcelFile = (file) => {
+    if (!file || !(file instanceof File)) {
+      return { valid: false, message: t('classDetail.invalidFileError') };
+    }
+
     // Validate file type - only Excel files
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
       'application/vnd.ms-excel', // .xls
     ];
     
-    if (!allowedTypes.includes(file.type)) {
-      spaceToast.error('Please select a valid Excel file (.xlsx, .xls)');
-      return false;
+    // Also check by file extension as fallback (some browsers may not set MIME type correctly)
+    const fileName = file.name.toLowerCase();
+    const allowedExtensions = ['.xlsx', '.xls'];
+    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!allowedTypes.includes(file.type) && !hasValidExtension) {
+      return { valid: false, message: t('classDetail.invalidExcelFileError') };
     }
     
     // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
-      spaceToast.error('File size must be less than 10MB');
+      return { valid: false, message: t('classDetail.fileSizeExceededError') };
+    }
+
+    if (file.size === 0) {
+      return { valid: false, message: t('classDetail.emptyFileError') };
+    }
+    
+    return { valid: true, message: '' };
+  };
+
+  // Handle file selection with validation
+  const handleFileSelect = (file) => {
+    const validation = validateExcelFile(file);
+    
+    if (!validation.valid) {
+      spaceToast.error(validation.message);
       return false;
     }
     
@@ -710,9 +1000,9 @@ const ClassStudent = () => {
         exportParams.text = searchText;
       }
 
-      // Add status filter if not 'all'
-      if (statusFilter !== 'all') {
-        exportParams.status = [statusFilter];
+      // Add status filter if not empty
+      if (statusFilter.length > 0) {
+        exportParams.status = statusFilter;
       }
 
       // Add roleName filter for students
@@ -790,6 +1080,7 @@ const ClassStudent = () => {
   const handleModalCancel = () => {
     setIsModalVisible(false);
     setSelectedStudents([]);
+    setStudentSearchText(""); // Reset search text
     // Clear any pending search timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -818,11 +1109,17 @@ const ClassStudent = () => {
     const timeoutId = setTimeout(async () => {
       setLoading(true);
       try {
+        // Convert statusFilter array to API format
+        let statusParam = 'all';
+        if (statusFilter.length > 0) {
+          statusParam = statusFilter;
+        }
+        
         const apiParams = {
           page: (pagination.current - 1) < 0 ? 0 : (pagination.current - 1),
           size: pagination.pageSize,
           text: searchText,
-          status: statusFilter,
+          status: statusParam,
           sortBy: sortConfig.sortBy,
           sortDir: sortConfig.sortDir,
         };
@@ -952,7 +1249,7 @@ const ClassStudent = () => {
             onClick={() => handleViewProfile(record)}
             title={t('classDetail.viewProfile')}
           />
-          {!isReadOnly && (
+          {!isReadOnly && !isClassFinished && (
             <Button
               type="text"
               icon={<DeleteOutlined style={{ fontSize: '24px' }} />}
@@ -1005,7 +1302,7 @@ const ClassStudent = () => {
               <Button 
                 icon={<FilterOutlined />}
                 onClick={handleFilterToggle}
-                className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter !== 'all') ? 'has-filters' : ''}`}
+                className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0) ? 'has-filters' : ''}`}
               >
                 {t('classDetail.filter')}
               </Button>
@@ -1074,24 +1371,28 @@ const ClassStudent = () => {
                 >
                   {t('classDetail.exportData')}
                 </Button>
-                <Button 
-                  icon={<DownloadOutlined />}
-                  className={`import-button ${theme}-import-button`}
-                  onClick={handleImport}
-                  loading={buttonLoading.import}
-                  disabled={buttonLoading.import || buttonLoading.export}
-                >
-                  {t('classDetail.importData')}
-                </Button>
-                <Button 
-                  icon={<PlusOutlined />}
-                  className={`create-button ${theme}-create-button`}
-                  onClick={handleAddStudent}
-                  loading={buttonLoading.add}
-                  disabled={buttonLoading.add || buttonLoading.import || buttonLoading.export}
-                >
-                  {t('classDetail.addStudent')}
-                </Button>
+                {!isClassFinished && (
+                  <>
+                    <Button 
+                      icon={<DownloadOutlined />}
+                      className={`import-button ${theme}-import-button`}
+                      onClick={handleImport}
+                      loading={buttonLoading.import}
+                      disabled={buttonLoading.import || buttonLoading.export}
+                    >
+                      {t('classDetail.importData')}
+                    </Button>
+                    <Button 
+                      icon={<PlusOutlined />}
+                      className={`create-button ${theme}-create-button`}
+                      onClick={handleAddStudent}
+                      loading={buttonLoading.add}
+                      disabled={buttonLoading.add || buttonLoading.import || buttonLoading.export}
+                    >
+                      {t('classDetail.addStudent')}
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1143,7 +1444,7 @@ const ClassStudent = () => {
           okText={`${t('classDetail.addStudents')} ${selectedStudents.length} ${t('classDetail.studentsAdded')}`}
           cancelText={t('common.cancel')}
           okButtonProps={{
-            disabled: selectedStudents.length === 0,
+            
             style: {
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -1191,12 +1492,79 @@ const ClassStudent = () => {
                   fontSize: "15px",
                 }}
                 optionFilterProp="children"
-                filterOption={(input, option) => {
-                  const inputStr = String(input || '').toLowerCase();
-                  const optionStr = String(option?.children || '').toLowerCase();
-                  return optionStr.includes(inputStr);
+                filterOption={false} // Disable client-side filtering since we're using server-side search
+                notFoundContent={
+                  searchLoading 
+                    ? t('common.loading') || 'Loading...' 
+                    : availableStudents.length === 0 
+                      ? t('classDetail.noStudentsFound') || 'No students found'
+                      : loadingMore
+                        ? t('common.loadingMore') || 'Loading more...'
+                        : null
+                }
+                dropdownRender={(menu) => (
+                  <>
+                    {menu}
+                    {loadingMore && (
+                      <div style={{ 
+                        padding: '8px', 
+                        textAlign: 'center', 
+                        borderTop: '1px solid #f0f0f0',
+                        background: '#fafafa'
+                      }}>
+                        {t('common.loadingMore') || 'Loading more...'}
+                      </div>
+                    )}
+                    {!availableStudentsPagination.hasMore && availableStudents.length > 0 && !loadingMore && (
+                      <div style={{ 
+                        padding: '8px', 
+                        textAlign: 'center', 
+                        borderTop: '1px solid #f0f0f0',
+                        color: '#999',
+                        fontSize: '12px'
+                      }}>
+                        {t('classDetail.allStudentsLoaded') || 'All students loaded'}
+                      </div>
+                    )}
+                  </>
+                )}
+                onPopupScroll={(e) => {
+                  // This is a backup method, main scroll handling is in useEffect
+                  const target = e.target || e.currentTarget;
+                  if (!target) return;
+                  
+                  const scrollTop = target.scrollTop;
+                  const scrollHeight = target.scrollHeight;
+                  const clientHeight = target.clientHeight;
+                  
+                  // Load more when scrolled to 70% of the list
+                  const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+                  
+                  console.log('onPopupScroll event:', {
+                    scrollTop,
+                    scrollHeight,
+                    clientHeight,
+                    scrollPercentage,
+                    hasMore: availableStudentsPagination.hasMore,
+                    loadingMore,
+                    searchLoading,
+                    target: target.className
+                  });
+                  
+                  if (scrollPercentage >= 0.7) {
+                    if (availableStudentsPagination.hasMore && !loadingMore && !searchLoading) {
+                      console.log('Loading more students from onPopupScroll...', {
+                        hasMore: availableStudentsPagination.hasMore,
+                        loadingMore,
+                        searchLoading,
+                        nextPage: availableStudentsPagination.page + 1,
+                        scrollPercentage
+                      });
+                      const nextPage = availableStudentsPagination.page + 1;
+                      fetchAvailableStudents(studentSearchText, nextPage, true);
+                    }
+                  }
                 }}
-                notFoundContent={searchLoading ? 'Loading...' : 'No students found'}
               >
                 {availableStudents.filter(student => student.userId).map((student) => (
                   <Option key={student.userId} value={student.userId}>
@@ -1247,7 +1615,7 @@ const ClassStudent = () => {
               key="validate" 
               onClick={handleValidateImport}
               loading={importModal.validating}
-              disabled={importModal.fileList.length === 0 || importModal.uploading || importModal.validating}
+              disabled={importModal.uploading || importModal.validating}
               style={{
                 background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
                 borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -1268,7 +1636,7 @@ const ClassStudent = () => {
               type="primary"
               onClick={handleImportOk}
               loading={importModal.uploading}
-              disabled={importModal.fileList.length === 0 || importModal.uploading || importModal.validating}
+              disabled={importModal.uploading || importModal.validating}
               style={{
                 background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
                 borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
@@ -1536,6 +1904,7 @@ const ClassStudent = () => {
     </ThemedLayout>
   );
 };
+
 
 export default ClassStudent;
   
