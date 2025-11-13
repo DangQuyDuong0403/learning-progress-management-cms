@@ -621,33 +621,37 @@ const LessonListPage = () => {
 			},
 		},
 		{
-			title: t('lessonManagement.lessonName'),
+			title: <span style={{ textAlign: 'left', display: 'block' }}>{t('lessonManagement.lessonName')}</span>,
 			dataIndex: 'name',
 			key: 'name',
 			width: '20%',
+			align: 'left',
 			render: (text) => (
 				<div style={{ 
 					fontSize: '20px',
-					maxWidth: '200px',
-					overflow: 'hidden',
-					textOverflow: 'ellipsis',
-					whiteSpace: 'nowrap'
+					textAlign: 'left',
+					whiteSpace: 'normal',
+					wordWrap: 'break-word',
+					overflow: 'visible',
+					textOverflow: 'clip'
 				}}>
 					{text}
 				</div>
 			),
 		},
 		{
-			title: t('lessonManagement.content'),
+			title: <span style={{ textAlign: 'left', display: 'block' }}>{t('lessonManagement.content')}</span>,
 			dataIndex: 'content',
 			key: 'content',
 			width: '45%',
+			align: 'left',
 			render: (content) => (
 				<div style={{ 
-					maxWidth: '400px',
-					overflow: 'hidden',
-					textOverflow: 'ellipsis',
-					whiteSpace: 'nowrap'
+					textAlign: 'left',
+					whiteSpace: 'normal',
+					wordWrap: 'break-word',
+					overflow: 'visible',
+					textOverflow: 'clip'
 				}}>
 					{content || 'N/A'}
 				</div>
@@ -725,6 +729,28 @@ const LessonListPage = () => {
 
 				{/* Table Section */}
 				<div className={`table-section ${theme}-table-section`}>
+					<style>
+						{`
+							.ant-table-thead > tr > th[data-column-key="name"],
+							.ant-table-thead > tr > th[data-column-key="content"] {
+								text-align: left !important;
+							}
+							.ant-table-tbody > tr > td[data-column-key="name"],
+							.ant-table-tbody > tr > td[data-column-key="content"] {
+								text-align: left !important;
+								white-space: normal !important;
+								word-wrap: break-word !important;
+								overflow: visible !important;
+								text-overflow: clip !important;
+							}
+							.ant-table-tbody > tr > td[data-column-key="name"] > div,
+							.ant-table-tbody > tr > td[data-column-key="content"] > div {
+								max-width: 100% !important;
+								overflow: visible !important;
+								text-overflow: clip !important;
+							}
+						`}
+					</style>
 					<Table
 						columns={columns}
 						dataSource={filteredLessons}

@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Button, message, Typography, Modal, Input } from 'antd';
+import { Button, Typography, Modal, Input } from 'antd';
 import {
 	PlusOutlined,
 	DeleteOutlined,
 	SaveOutlined,
-	ArrowLeftOutlined,
 	EditOutlined,
 	SwapOutlined,
 } from '@ant-design/icons';
@@ -41,7 +40,7 @@ const { Text, Title } = Typography;
 
 // Optimized: Memoized Sortable Chapter Item Component
 const SortableChapterItem = memo(
-	({ chapter, index, onDeleteChapter, onUpdateChapterName, theme, t }) => {
+	({ chapter, index, onDeleteChapter, onUpdateChapterName, onInputChange, theme, t }) => {
 		const [editValue, setEditValue] = useState(chapter.name || '');
 
 		// Update editValue when chapter.name changes - optimized
@@ -82,10 +81,16 @@ const SortableChapterItem = memo(
 		);
 
 		const handleSaveEdit = useCallback(() => {
+			// Chỉ update state khi blur, không validate ở đây
 			if (editValue.trim()) {
 				onUpdateChapterName(index, editValue.trim());
+			} else {
+				// Reset về giá trị ban đầu nếu trống
+				setEditValue(chapter.name || '');
+				// Update state với giá trị rỗng để validation khi save có thể bắt được
+				onUpdateChapterName(index, '');
 			}
-		}, [index, editValue, onUpdateChapterName]);
+		}, [index, editValue, onUpdateChapterName, chapter.name]);
 
 		const handleDelete = useCallback(() => {
 			onDeleteChapter(index);
@@ -111,7 +116,14 @@ const SortableChapterItem = memo(
 						</Text>
 						<Input
 							value={editValue}
-							onChange={(e) => setEditValue(e.target.value)}
+							onChange={(e) => {
+								const newValue = e.target.value;
+								setEditValue(newValue);
+								// Sync giá trị vào state ngay lập tức để validation có thể kiểm tra
+								if (onInputChange) {
+									onInputChange(index, newValue);
+								}
+							}}
 							onBlur={handleSaveEdit}
 							size="small"
 							style={{ width: '200px', fontSize: '16px' }}
@@ -302,7 +314,7 @@ const ChapterDragEdit = () => {
 		return () => {
 			exitSyllabusMenu();
 		};
-	}, [syllabusInfo?.id, enterSyllabusMenu, exitSyllabusMenu]);
+	}, [syllabusInfo, enterSyllabusMenu, exitSyllabusMenu]);
 
 	const handleAddChapterAtPosition = useCallback((index) => {
 		setEditingChapter(null);
@@ -408,6 +420,31 @@ const ChapterDragEdit = () => {
 		[chapters]
 	);
 
+	const handleInputChange = useCallback(
+		(index, newValue) => {
+			// Sync giá trị vào state ngay khi user type để validation có thể kiểm tra
+			setChapters((prev) => {
+				const visibleChapters = prev.filter(chapter => !chapter.toBeDeleted);
+				const chapterToUpdate = visibleChapters[index];
+				
+				if (!chapterToUpdate) {
+					return prev;
+				}
+
+				return prev.map((chapter) => {
+					if (chapter.id === chapterToUpdate.id) {
+						return {
+							...chapter,
+							name: newValue, // Update ngay lập tức
+						};
+					}
+					return chapter;
+				});
+			});
+		},
+		[]
+	);
+
 	const handleUpdateChapterName = useCallback(
 		(index, newName) => {
 			setChapters((prev) => {
@@ -434,6 +471,7 @@ const ChapterDragEdit = () => {
 		},
 		[]
 	);
+
 
 	const handleDragStart = useCallback((event) => {
 		// Thêm class để document không bị scroll
@@ -487,18 +525,57 @@ const ChapterDragEdit = () => {
 	);
 
 	const handleSave = useCallback(async () => {
+		// Trigger blur cho tất cả inputs để sync giá trị vào state trước khi validate
+		const allInputs = document.querySelectorAll('input[type="text"]');
+		allInputs.forEach(input => {
+			if (input.closest('.level-drag-item')) {
+				input.blur();
+			}
+		});
+		
+		// Đợi một chút để state được cập nhật sau khi blur
+		await new Promise(resolve => setTimeout(resolve, 100));
+		
 		const visibleChapters = chapters.filter(chapter => !chapter.toBeDeleted);
-		const invalidChapters = visibleChapters.filter((chapter) => !chapter.name.trim());
+		
+		// Kiểm tra chapter name trống - kiểm tra kỹ hơn
+		const invalidChapters = visibleChapters.filter((chapter) => {
+			const name = chapter.name;
+			return !name || (typeof name === 'string' && !name.trim());
+		});
+		
+		console.log('Validation check:', {
+			totalChapters: visibleChapters.length,
+			invalidChapters: invalidChapters.length,
+			invalidDetails: invalidChapters.map(ch => ({
+				id: ch.id,
+				position: ch.position,
+				name: ch.name,
+				nameType: typeof ch.name
+			}))
+		});
+		
 		if (invalidChapters.length > 0) {
-			message.error(t('chapterManagement.chapterNameRequired'));
-			return;
+			// Hiển thị message với số thứ tự của các chapter bị lỗi
+			const invalidPositions = invalidChapters.map(ch => `#${ch.position}`).join(', ');
+			spaceToast.error(
+				t('chapterManagement.chapterNameRequired') + 
+				` (${invalidPositions})`
+			);
+			console.log('Validation failed - blocking save');
+			return; // Ngăn không cho save
 		}
 
 		// Kiểm tra độ dài tên chapter
-		const longNameChapters = visibleChapters.filter((chapter) => chapter.name.length > 100);
+		const longNameChapters = visibleChapters.filter((chapter) => chapter.name && chapter.name.length > 100);
 		if (longNameChapters.length > 0) {
-			message.error(t('chapterManagement.chapterNameTooLong'));
-			return;
+			// Hiển thị message với số thứ tự của các chapter có tên quá dài
+			const longNamePositions = longNameChapters.map(ch => `#${ch.position}`).join(', ');
+			spaceToast.error(
+				(t('chapterManagement.chapterNameTooLong') || 'Chapter name is too long!') + 
+				` (${longNamePositions})`
+			);
+			return; // Ngăn không cho save
 		}
 
 		setSaving(true);
@@ -552,10 +629,6 @@ const ChapterDragEdit = () => {
 			setSaving(false);
 		}
 	}, [chapters, syllabusId, t, navigate]);
-
-	const handleGoBack = useCallback(() => {
-		navigate(`/manager/syllabuses/${syllabusId}/chapters`);
-	}, [navigate, syllabusId]);
 
 
 	if (!syllabusInfo || isInitialLoading) {
@@ -634,6 +707,7 @@ const ChapterDragEdit = () => {
 														index={index}
 														onDeleteChapter={handleDeleteChapter}
 														onUpdateChapterName={handleUpdateChapterName}
+														onInputChange={handleInputChange}
 														theme={theme}
 														t={t}
 													/>

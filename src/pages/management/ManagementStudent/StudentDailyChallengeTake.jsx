@@ -3,6 +3,7 @@ import {
   Button,
   Typography,
   Modal,
+  Spin,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -23,6 +24,7 @@ import { useTheme } from "../../../contexts/ThemeContext";
 import usePageTitle from "../../../hooks/usePageTitle";
 import { spaceToast } from "../../../component/SpaceToastify";
 import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
+import classManagementApi from "../../../apis/backend/classManagement";
 import { useTestSecurity } from "../../../hooks/useTestSecurity";
 import TextTranslator from "../../../component/TextTranslator/TextTranslator";
 import CustomCursor from "../../../component/cursor/CustomCursor";
@@ -58,7 +60,40 @@ const MemoizedHTML = React.memo(
       return result;
     };
 
-    const processedHtml = enhanceImages(html);
+    const enhanceTables = (rawHtml) => {
+      if (!rawHtml) return '';
+      let result = String(rawHtml);
+      // Add table-layout: fixed and border styles to all tables
+      result = result.replace(/<table(?![^>]*style=)/gi, '<table style="table-layout:fixed;width:100%;border-collapse:collapse;border-spacing:0;border:1px solid #000000 !important;"');
+      result = result.replace(/<table([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+        const hasTableLayout = styles.includes('table-layout');
+        const hasBorder = styles.includes('border');
+        let appended = styles;
+        if (!hasTableLayout) appended += '; table-layout:fixed;';
+        if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+        appended += '; width:100%; border-collapse:collapse; border-spacing:0;';
+        return `<table${prefix}style="${appended}"`;
+      });
+      // Add border to all th and td
+      result = result.replace(/<th(?![^>]*style=)/gi, '<th style="border:1px solid #000000 !important;font-weight:normal !important;"');
+      result = result.replace(/<th([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+        const hasBorder = styles.includes('border');
+        let appended = styles;
+        if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+        if (!styles.includes('font-weight')) appended += '; font-weight:normal !important;';
+        return `<th${prefix}style="${appended}"`;
+      });
+      result = result.replace(/<td(?![^>]*style=)/gi, '<td style="border:1px solid #000000 !important;"');
+      result = result.replace(/<td([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+        const hasBorder = styles.includes('border');
+        let appended = styles;
+        if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+        return `<td${prefix}style="${appended}"`;
+      });
+      return result;
+    };
+
+    const processedHtml = enhanceTables(enhanceImages(html));
 
     return (
       <div
@@ -94,7 +129,40 @@ const processPassageContent = (content, theme, challengeType) => {
       return `<img${prefix}style="${styles}; width:300px; height:300px; object-fit:contain;"`;
     });
 
-  let processed = enhanceImages(content);
+  const enhanceTables = (rawHtml) => {
+    if (!rawHtml) return '';
+    let result = String(rawHtml);
+    // Add table-layout: fixed and border styles to all tables
+    result = result.replace(/<table(?![^>]*style=)/gi, '<table style="table-layout:fixed;width:100%;border-collapse:collapse;border-spacing:0;border:1px solid #000000 !important;"');
+    result = result.replace(/<table([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+      const hasTableLayout = styles.includes('table-layout');
+      const hasBorder = styles.includes('border');
+      let appended = styles;
+      if (!hasTableLayout) appended += '; table-layout:fixed;';
+      if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+      appended += '; width:100%; border-collapse:collapse; border-spacing:0;';
+      return `<table${prefix}style="${appended}"`;
+    });
+    // Add border to all th and td
+    result = result.replace(/<th(?![^>]*style=)/gi, '<th style="border:1px solid #000000 !important;font-weight:normal !important;"');
+    result = result.replace(/<th([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+      const hasBorder = styles.includes('border');
+      let appended = styles;
+      if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+      if (!styles.includes('font-weight')) appended += '; font-weight:normal !important;';
+      return `<th${prefix}style="${appended}"`;
+    });
+    result = result.replace(/<td(?![^>]*style=)/gi, '<td style="border:1px solid #000000 !important;"');
+    result = result.replace(/<td([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+      const hasBorder = styles.includes('border');
+      let appended = styles;
+      if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+      return `<td${prefix}style="${appended}"`;
+    });
+    return result;
+  };
+
+  let processed = enhanceTables(enhanceImages(content));
 
   // Only process for Speaking challenges
   if (challengeType === 'SP') {
@@ -1016,7 +1084,13 @@ useEffect(() => {
                                       userSelect: 'none',
                                       transition: 'all 0.2s ease',
                                       minWidth: '60px',
+                                      maxWidth: '200px',
                                       textAlign: 'center',
+                                      wordBreak: 'break-word',
+                                      wordWrap: 'break-word',
+                                      overflowWrap: 'break-word',
+                                      whiteSpace: 'normal',
+                                      overflow: 'hidden',
                                       boxShadow: theme === 'sun' 
                                         ? '0 2px 6px rgba(24, 144, 255, 0.15)' 
                                         : '0 2px 6px rgba(138, 122, 255, 0.15)'
@@ -2300,7 +2374,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
                                           <span 
                                             draggable 
                                             onDragStart={(e) => handleDragStartFromDropped(e, qDroppedItems[part.positionId], part.positionId)} 
-                                            style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'100px', minHeight:'28px', padding:'4px 8px', margin:'0 6px', background: theme==='sun'? 'rgba(24,144,255,0.15)':'rgba(138,122,255,0.18)', border: `2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'6px', fontSize:'14px', fontWeight:'350', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', verticalAlign:'baseline', textAlign:'center' }}
+                                            style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'100px', maxWidth:'200px', minHeight:'28px', padding:'4px 8px', margin:'0 6px', background: theme==='sun'? 'rgba(24,144,255,0.15)':'rgba(138,122,255,0.18)', border: `2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'6px', fontSize:'14px', fontWeight:'350', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', verticalAlign:'baseline', textAlign:'center', wordBreak:'break-word', wordWrap:'break-word', overflowWrap:'break-word', whiteSpace:'normal', overflow:'hidden' }}
                                             dangerouslySetInnerHTML={{ __html: qDroppedItems[part.positionId] || '' }}
                                           />
                                         ) : (
@@ -2322,7 +2396,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
                                       key={idx} 
                                       draggable 
                                       onDragStart={(e)=>handleDragStart(e, item)} 
-                                      style={{ padding:'8px 12px', background: theme==='sun'?'rgba(24,144,255,0.08)':'rgba(138,122,255,0.12)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', fontSize:'13px', fontWeight:'600', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', userSelect:'none', minWidth:'60px', textAlign:'center' }}
+                                      style={{ padding:'8px 12px', background: theme==='sun'?'rgba(24,144,255,0.08)':'rgba(138,122,255,0.12)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', fontSize:'13px', fontWeight:'600', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', userSelect:'none', minWidth:'60px', maxWidth:'200px', textAlign:'center', wordBreak:'break-word', wordWrap:'break-word', overflowWrap:'break-word', whiteSpace:'normal', overflow:'hidden' }}
                                       dangerouslySetInnerHTML={{ __html: item || '' }}
                                     />
                                   ))}
@@ -2379,7 +2453,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
                                       delete fillBlankRefs.current[`${q.id}_pos_${positionId}`];
                                     }
                                   }}
-                                  style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'120px', maxWidth:'200px', minHeight:'32px', padding:'4px 12px', margin:'4px 8px 6px 8px', background: theme==='sun'?'#E9EEFF94':'rgba(255,255,255,0.1)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', cursor:'text', outline:'none', verticalAlign:'top', lineHeight:'1.4', fontSize:'14px', boxSizing:'border-box', color:'#000000', textAlign:'center' }}
+                                  style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'120px', maxWidth:'200px', minHeight:'32px', padding:'4px 12px', margin:'4px 8px 6px 8px', background: theme==='sun'?'#E9EEFF94':'rgba(255,255,255,0.1)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', cursor:'text', outline:'none', verticalAlign:'top', lineHeight:'1.4', fontSize:'14px', boxSizing:'border-box', color:'#000000', textAlign:'center', wordBreak:'break-word', wordWrap:'break-word', overflowWrap:'break-word', whiteSpace:'normal', overflow:'hidden' }}
                                 />
                               );
                               last = match.index + match[0].length;
@@ -2705,6 +2779,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [wordCount, setWordCount] = useState(0);
   const [writingMode, setWritingMode] = useState(null); // null or 'handwriting'
+  const [isUploading, setIsUploading] = useState(false);
 
   const toPlainText = (html) => {
     if (!html) return '';
@@ -2909,42 +2984,72 @@ const WritingSectionItem = ({ question, index, theme }) => {
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     
-    // Upload each file to server and get server URLs
-    const uploadedFilesData = await Promise.all(
-      files.map(async (file) => {
-        try {
-          // Upload file to backend
-          const uploadRes = await dailyChallengeApi.uploadFile(file);
-          // Get URL from response (handle different response structures)
-          const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
-          
-          if (serverUrl && typeof serverUrl === 'string') {
-            console.log('✅ File uploaded to server:', serverUrl);
-            return {
-              id: Date.now() + Math.random(),
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              url: serverUrl // Use server URL instead of blob URL
-            };
-          } else {
-            throw new Error('Server did not return valid URL');
-          }
-        } catch (error) {
-          console.error('❌ Failed to upload file:', file.name, error);
-          // Fallback to blob URL if upload fails
-          return {
-            id: Date.now() + Math.random(),
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            url: URL.createObjectURL(file)
-          };
-        }
-      })
-    );
+    // Validate file types - only allow JPG and PNG
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png'];
     
-    setUploadedFiles(prev => [...prev, ...uploadedFilesData]);
+    const invalidFiles = files.filter(file => {
+      const fileName = file.name.toLowerCase();
+      const fileExtension = '.' + fileName.split('.').pop();
+      const isValidType = file.type && allowedTypes.includes(file.type.toLowerCase());
+      const isValidExtension = allowedExtensions.includes(fileExtension);
+      // File is invalid if it doesn't have a valid type AND doesn't have a valid extension
+      return !isValidType && !isValidExtension;
+    });
+    
+    if (invalidFiles.length > 0) {
+      const invalidFileNames = invalidFiles.map(f => f.name).join(', ');
+      spaceToast.error(`Only JPG and PNG image files are allowed. Invalid file(s): ${invalidFileNames}`);
+      // Reset file input
+      event.target.value = '';
+      return;
+    }
+    
+    // Set uploading state
+    setIsUploading(true);
+    
+    try {
+      // Upload each file to server and get server URLs
+      const uploadedFilesData = await Promise.all(
+        files.map(async (file) => {
+          try {
+            // Upload file to backend
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            // Get URL from response (handle different response structures)
+            const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
+            
+            if (serverUrl && typeof serverUrl === 'string') {
+              console.log('✅ File uploaded to server:', serverUrl);
+              return {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                url: serverUrl // Use server URL instead of blob URL
+              };
+            } else {
+              throw new Error('Server did not return valid URL');
+            }
+          } catch (error) {
+            console.error('❌ Failed to upload file:', file.name, error);
+            spaceToast.error(`Failed to upload file: ${file.name}`);
+            return null; // Return null for failed uploads
+          }
+        })
+      );
+      
+      // Filter out null values (failed uploads)
+      const successfulUploads = uploadedFilesData.filter(file => file !== null);
+      
+      if (successfulUploads.length > 0) {
+        setUploadedFiles(prev => [...prev, ...successfulUploads]);
+      }
+    } finally {
+      // Reset uploading state
+      setIsUploading(false);
+      // Reset file input
+      event.target.value = '';
+    }
   };
 
   const removeFile = (fileId) => {
@@ -3119,133 +3224,305 @@ const WritingSectionItem = ({ question, index, theme }) => {
           }}>
             <div style={{ padding: '20px' }}>
               {writingMode === null ? (
-                /* Show 2 options initially */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {/* Handwriting Option - Hide when files are uploaded */}
-                  {uploadedFiles.length === 0 && (
-                    <div
-                      onClick={() => setWritingMode('handwriting')}
-                      style={{
-                        padding: '24px',
-                        background: theme === 'sun' 
-                          ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
-                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
-                        border: `2px solid ${theme === 'sun' 
-                          ? 'rgba(24, 144, 255, 0.3)' 
-                          : 'rgba(138, 122, 255, 0.3)'}`,
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = theme === 'sun' 
-                          ? '0 4px 12px rgba(24, 144, 255, 0.2)'
-                          : '0 4px 12px rgba(138, 122, 255, 0.25)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>✍️</div>
-                      <div style={{ 
-                        fontSize: '16px', 
-                        fontWeight: '600',
-                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                        marginBottom: '4px'
-                      }}>
-                        Write Essay Here
-                      </div>
-                      <div style={{ 
-                        fontSize: '13px',
-                        color: theme === 'sun' ? '#666' : '#999'
-                      }}>
-                        Type your essay directly in the text area
-                      </div>
+                /* Show 2 options initially - Hide in view only mode */
+                isViewOnly ? (
+                  /* View only mode: Show submitted answer if exists, otherwise show message */
+                  (essayText.trim() || uploadedFiles.length > 0) ? (
+                    <div>
+                      {essayText.trim() && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '8px'
+                          }}>
+                            <label style={{
+                              fontSize: '18px',
+                              fontWeight: '600',
+                              color: theme === 'sun' ? '#333' : '#1F2937'
+                            }}>
+                              Submitted Essay:
+                            </label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ 
+                                fontSize: '16px', 
+                                fontWeight: '500',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                letterSpacing: '0.3px'
+                              }}>
+                                {wordCount}
+                              </span>
+                              <span style={{ 
+                                fontSize: '16px',
+                                color: theme === 'sun' ? '#999' : '#777',
+                                fontWeight: '400'
+                              }}>
+                                words
+                              </span>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              width: '100%',
+                              minHeight: '200px',
+                              padding: '16px',
+                              fontSize: '14px',
+                              fontFamily: 'inherit',
+                              border: `2px solid ${theme === 'sun' 
+                                ? 'rgba(24, 144, 255, 0.2)' 
+                                : 'rgba(138, 122, 255, 0.3)'}`,
+                              borderRadius: '8px',
+                              background: theme === 'sun' 
+                                ? 'linear-gradient(135deg, #ffffff 0%, rgba(24, 144, 255, 0.02) 100%)'
+                                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(138, 122, 255, 0.05) 100%)',
+                              color: theme === 'sun' ? '#333' : '#1F2937',
+                              whiteSpace: 'pre-wrap',
+                              wordWrap: 'break-word'
+                            }}
+                          >
+                            {essayText}
+                          </div>
+                        </div>
+                      )}
+                      {uploadedFiles.length > 0 && (
+                        <div style={{ marginTop: essayText.trim() ? '20px' : '0' }}>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            marginBottom: '12px',
+                            color: theme === 'sun' ? '#333' : '#1F2937'
+                          }}>
+                            Uploaded Files:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                            {uploadedFiles.map((file) => (
+                              <div
+                                key={file.id}
+                                style={{
+                                  position: 'relative',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '8px',
+                                  padding: '8px',
+                                  background: theme === 'sun' 
+                                    ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
+                                    : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
+                                  border: `1px solid ${theme === 'sun' 
+                                    ? 'rgba(24, 144, 255, 0.2)' 
+                                    : 'rgba(138, 122, 255, 0.25)'}`,
+                                  borderRadius: '8px',
+                                  transition: 'all 0.3s ease'
+                                }}
+                              >
+                                {file.url && (
+                                  <img
+                                    src={file.url}
+                                    alt={file.name}
+                                    style={{
+                                      width: '500px',
+                                      height: '500px',
+                                      objectFit: 'contain',
+                                      borderRadius: '6px',
+                                      border: `1px solid ${theme === 'sun' 
+                                        ? 'rgba(24, 144, 255, 0.1)' 
+                                        : 'rgba(138, 122, 255, 0.15)'}`,
+                                      background: theme === 'sun' ? '#f5f5f5' : 'rgba(0, 0, 0, 0.05)'
+                                    }}
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                    }}
+                                  />
+                                )}
+                                <div style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'space-between',
+                                  gap: '8px',
+                                  fontSize: '12px'
+                                }}>
+                                  <span style={{ 
+                                    color: theme === 'sun' ? '#333' : '#1F2937',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    maxWidth: '400px'
+                                  }}>
+                                    {file.name}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ) : (
+                    <div style={{
+                      padding: '40px',
+                      textAlign: 'center',
+                      color: theme === 'sun' ? '#999' : '#777',
+                      fontSize: '14px'
+                    }}>
+                      No answer submitted
+                    </div>
+                  )
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Handwriting Option - Hide when files are uploaded */}
+                    {uploadedFiles.length === 0 && (
+                      <div
+                        onClick={() => setWritingMode('handwriting')}
+                        style={{
+                          padding: '24px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                          border: `2px solid ${theme === 'sun' 
+                            ? 'rgba(24, 144, 255, 0.3)' 
+                            : 'rgba(138, 122, 255, 0.3)'}`,
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = theme === 'sun' 
+                            ? '0 4px 12px rgba(24, 144, 255, 0.2)'
+                            : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>✍️</div>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '600',
+                          color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                          marginBottom: '4px'
+                        }}>
+                          Write Essay Here
+                        </div>
+                        <div style={{ 
+                          fontSize: '13px',
+                          color: theme === 'sun' ? '#666' : '#999'
+                        }}>
+                          Type your essay directly in the text area
+                        </div>
+                      </div>
+                    )}
 
-                  {/* Upload File Option */}
-                  <div style={{
-                    position: 'relative'
-                  }}>
-                    <input
-                      type="file"
-                      id="upload-option"
-                      accept="image/*"
-                      multiple
-                      onChange={handleFileUpload}
-                      disabled={isViewOnly}
-                      style={{ display: 'none' }}
-                    />
-                    <label
-                      htmlFor="upload-option"
-                      style={{
-                        display: 'block',
-                        padding: '24px',
-                        background: theme === 'sun' 
-                          ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
-                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
-                        border: `2px solid ${theme === 'sun' 
-                          ? 'rgba(82, 196, 26, 0.3)' 
-                          : 'rgba(138, 122, 255, 0.3)'}`,
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = theme === 'sun' 
-                          ? '0 4px 12px rgba(82, 196, 26, 0.2)'
-                          : '0 4px 12px rgba(138, 122, 255, 0.25)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>📎</div>
-                      <div style={{ 
-                        fontSize: '16px', 
-                        fontWeight: '600',
-                        color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                        marginBottom: '4px'
-                      }}>
-                        Upload
-                      </div>
-                      <div style={{ 
-                        fontSize: '13px',
-                        color: theme === 'sun' ? '#666' : '#999'
-                      }}>
-                        Upload image(s) of your handwritten essay (Max 5MB per image)
-                      </div>
-                    </label>
+                    {/* Upload File Option */}
+                    <div style={{
+                      position: 'relative'
+                    }}>
+                      <input
+                        type="file"
+                        id="upload-option"
+                        accept="image/jpeg,image/jpg,image/png,.jpg,.jpeg,.png"
+                        multiple
+                        onChange={handleFileUpload}
+                        disabled={isViewOnly || isUploading}
+                        style={{ display: 'none' }}
+                      />
+                      <label
+                        htmlFor={isUploading ? undefined : "upload-option"}
+                        style={{
+                          display: 'block',
+                          padding: '24px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                          border: `2px solid ${theme === 'sun' 
+                            ? 'rgba(82, 196, 26, 0.3)' 
+                            : 'rgba(138, 122, 255, 0.3)'}`,
+                          borderRadius: '12px',
+                          cursor: isUploading ? 'wait' : 'pointer',
+                          textAlign: 'center',
+                          transition: 'all 0.3s ease',
+                          opacity: isUploading ? 0.7 : 1,
+                          pointerEvents: isUploading ? 'none' : 'auto'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isUploading) {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = theme === 'sun' 
+                              ? '0 4px 12px rgba(82, 196, 26, 0.2)'
+                              : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        {isUploading ? (
+                          <>
+                            <Spin size="large" style={{ marginBottom: '8px' }} />
+                            <div style={{ 
+                              fontSize: '16px', 
+                              fontWeight: '600',
+                              color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                              marginBottom: '4px'
+                            }}>
+                              Uploading...
+                            </div>
+                            <div style={{ 
+                              fontSize: '13px',
+                              color: theme === 'sun' ? '#666' : '#999'
+                            }}>
+                              Please wait while files are being uploaded
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: '32px', marginBottom: '8px' }}>📎</div>
+                            <div style={{ 
+                              fontSize: '16px', 
+                              fontWeight: '600',
+                              color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                              marginBottom: '4px'
+                            }}>
+                              Upload
+                            </div>
+                            <div style={{ 
+                              fontSize: '13px',
+                              color: theme === 'sun' ? '#666' : '#999'
+                            }}>
+                              Upload image(s) of your handwritten essay (Max 5MB per image)
+                            </div>
+                          </>
+                        )}
+                      </label>
+                    </div>
                   </div>
-                </div>
+                )
               ) : writingMode === 'handwriting' ? (
                 /* Show textarea when handwriting mode */
                 <div>
-                  <button
-                    onClick={() => {
-                      setWritingMode(null);
-                    }}
-                    style={{
-                      padding: '6px 12px',
-                      marginBottom: '16px',
-                      background: 'none',
-                      border: `1px solid ${theme === 'sun' ? '#d9d9d9' : 'rgba(255, 255, 255, 0.2)'}`,
-                      borderRadius: '6px',
-                      color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '500'
-                    }}
-                  >
-                    ← Back to options
-                  </button>
+                  {!isViewOnly && (
+                    <button
+                      onClick={() => {
+                        setWritingMode(null);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        marginBottom: '16px',
+                        background: 'none',
+                        border: `1px solid ${theme === 'sun' ? '#d9d9d9' : 'rgba(255, 255, 255, 0.2)'}`,
+                        borderRadius: '6px',
+                        color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      ← Back to options
+                    </button>
+                  )}
                   <div style={{ marginBottom: '20px' }}>
                     <div style={{
                       display: 'flex',
@@ -3258,7 +3535,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                         fontWeight: '600',
                         color: theme === 'sun' ? '#333' : '#1F2937'
                       }}>
-                        Your Essay:
+                        {isViewOnly ? 'Submitted Essay:' : 'Your Essay:'}
                       </label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ 
@@ -3392,29 +3669,31 @@ const WritingSectionItem = ({ question, index, theme }) => {
                           }}>
                             {file.name}
                           </span>
-                          <button
-                            onClick={() => removeFile(file.id)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#ff4d4f',
-                              cursor: 'pointer',
-                              fontSize: '16px',
-                              padding: '2px 4px',
-                              borderRadius: '4px',
-                              transition: 'all 0.2s ease',
-                              flexShrink: 0
-                            }}
-                            onMouseEnter={(e) => {
-                              e.target.style.background = 'rgba(255, 77, 79, 0.1)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.target.style.background = 'none';
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
+                          {!isViewOnly && (
+                            <button
+                              onClick={() => removeFile(file.id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#ff4d4f',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                padding: '2px 4px',
+                                borderRadius: '4px',
+                                transition: 'all 0.2s ease',
+                                flexShrink: 0
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.background = 'rgba(255, 77, 79, 0.1)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.background = 'none';
+                              }}
+                              title="Remove file"
+                            >
+                              ✕
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -5720,6 +5999,12 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
     container.innerHTML = html;
     const cleanup = [];
     const slots = Array.from(container.querySelectorAll('span.dropdown-slot'));
+    // Sort slots by data-slot-index to ensure correct order even when HTML contains tables
+    slots.sort((a, b) => {
+      const idxA = Number(a.getAttribute('data-slot-index') || '0');
+      const idxB = Number(b.getAttribute('data-slot-index') || '0');
+      return idxA - idxB;
+    });
     slots.forEach((slot) => {
       const posToken = slot.getAttribute('data-pos') || '';
       const idx = Number(slot.getAttribute('data-slot-index') || '0');
@@ -5727,6 +6012,7 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
       const select = document.createElement('select');
       select.className = 'dropdown-input';
       select.setAttribute('data-state-key', stateKey);
+      select.setAttribute('data-pos-token', posToken);
       select.style.display = 'inline-block';
       select.style.minWidth = '120px';
       select.style.height = '32px';
@@ -5749,6 +6035,7 @@ const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
       placeholderOption.textContent = 'Select';
       select.appendChild(placeholderOption);
 
+      // Use positionId (posToken) directly if hasPositionIds is true, otherwise use slotIndex
       const options = getOptionsForSlot(idx, posToken);
       options.forEach(({ value, label }) => {
         const optionEl = document.createElement('option');
@@ -5927,34 +6214,35 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
     setDragOverPosition(null);
     const item = e.dataTransfer.getData('text/plain');
     if (!item) return;
-    const isDropped = e.dataTransfer.getData('isDropped') === 'true';
     const fromPositionId = e.dataTransfer.getData('positionId');
 
     setDroppedItems((prev) => {
       const next = { ...prev };
-      const currentItem = next[positionId];
+      const previousValue = prev[positionId];
 
-      if (fromPositionId && fromPositionId !== positionId) {
-        next[positionId] = item;
-        if (fromPositionId in next) {
-          delete next[fromPositionId];
-        }
-        if (currentItem) {
-          setAvailableItems((prevPool) => [...prevPool, currentItem]);
-        }
-        return next;
+      if (fromPositionId && fromPositionId !== positionId && fromPositionId in next) {
+        delete next[fromPositionId];
       }
 
-      if (!isDropped) {
-        next[positionId] = item;
-        setAvailableItems((prevPool) => {
-          const idx = prevPool.indexOf(item);
-          if (idx === -1) return prevPool;
-          const updated = [...prevPool];
-          updated.splice(idx, 1);
-          return updated;
-        });
-      }
+      next[positionId] = item;
+
+      setAvailableItems((prevPool) => {
+        const updated = [...prevPool];
+        const removeFromPool = (value) => {
+          const idx = updated.indexOf(value);
+          if (idx !== -1) {
+            updated.splice(idx, 1);
+          }
+        };
+
+        if (previousValue && previousValue !== item) {
+          updated.push(previousValue);
+        }
+
+        removeFromPool(item);
+
+        return updated;
+      });
 
       return next;
     });
@@ -6003,7 +6291,9 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
       wrapper.style.alignItems = 'center';
       wrapper.style.justifyContent = 'center';
       wrapper.style.minWidth = '120px';
-      wrapper.style.height = '32px';
+      wrapper.style.maxWidth = '200px';
+      wrapper.style.height = 'auto';
+      wrapper.style.minHeight = '32px';
       wrapper.style.margin = '0 8px';
       wrapper.style.borderRadius = '8px';
       wrapper.style.padding = '4px 12px';
@@ -6011,6 +6301,11 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
       wrapper.style.verticalAlign = 'top';
       wrapper.style.transition = 'all 0.2s ease';
       wrapper.style.cursor = isViewOnly ? 'default' : 'pointer';
+      wrapper.style.wordBreak = 'break-word';
+      wrapper.style.wordWrap = 'break-word';
+      wrapper.style.overflowWrap = 'break-word';
+      wrapper.style.whiteSpace = 'normal';
+      wrapper.style.overflow = 'hidden';
 
       const onDrop = (event) => handleDrop(event, stateKey);
       const onDragOver = (event) => handleDragOver(event, stateKey);
@@ -6059,6 +6354,11 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
         chip.style.boxSizing = 'border-box';
         chip.style.textAlign = 'center';
         chip.style.cursor = isViewOnly ? 'default' : 'grab';
+        chip.style.wordBreak = 'break-word';
+        chip.style.wordWrap = 'break-word';
+        chip.style.overflowWrap = 'break-word';
+        chip.style.whiteSpace = 'normal';
+        chip.style.overflow = 'hidden';
         chip.draggable = !isViewOnly;
         chip.innerHTML = value;
         if (!isViewOnly) {
@@ -6241,7 +6541,13 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
                     userSelect: 'none',
                     transition: 'all 0.2s ease',
                     minWidth: '80px',
+                    maxWidth: '200px',
                     textAlign: 'center',
+                    wordBreak: 'break-word',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'break-word',
+                    whiteSpace: 'normal',
+                    overflow: 'hidden',
                     boxShadow: theme === 'sun' 
                       ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
                       : '0 2px 8px rgba(138, 122, 255, 0.15)'
@@ -7339,6 +7645,35 @@ const StudentDailyChallengeTake = () => {
     return { id: submissionId, status };
   }, []);
 
+  // Retry function with exponential backoff
+  const retryWithDelay = async (fn, maxRetries = 3, delay = 1000) => {
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await fn();
+        if (result) {
+          return { result, retried: attempt > 1 };
+        }
+        // If result is null/undefined, wait and retry
+        if (attempt < maxRetries) {
+          const waitTime = delay * attempt; // 1s, 2s, 3s
+          console.log(`Retry attempt ${attempt}/${maxRetries} after ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      } catch (error) {
+        console.error(`Retry attempt ${attempt}/${maxRetries} failed:`, error);
+        lastError = error;
+        if (attempt < maxRetries) {
+          const waitTime = delay * attempt;
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          throw error;
+        }
+      }
+    }
+    return { result: null, retried: true, lastError };
+  };
+
   const fetchSubmissionMeta = useCallback(
     async (challengeIdParam) => {
       try {
@@ -7765,12 +8100,40 @@ const StudentDailyChallengeTake = () => {
     setLoading(true);
     
     // First, try to get submission metadata if not provided via navigation
+    // Use retry logic for fetching submission metadata (job auto may not have finished processing)
     const getSubmissionMetaPromise = initialSubmissionId
-      ? Promise.resolve({ id: initialSubmissionId, status: submissionStatusFromState || null })
-      : fetchSubmissionMeta(challengeId);
+      ? Promise.resolve({ id: initialSubmissionId, status: submissionStatusFromState || null, retried: false })
+      : retryWithDelay(
+          () => fetchSubmissionMeta(challengeId),
+          3, // max retries
+          3000 // initial delay 3s
+        ).then((response) => {
+          // response is { result, retried, lastError }
+          if (!response.result) {
+            return { ...response, id: null, status: null };
+          }
+          return { ...response.result, retried: response.retried };
+        });
 
     getSubmissionMetaPromise
       .then((submissionMeta) => {
+        // If submissionMeta is null after retries, handle the error
+        if (!submissionMeta?.id && !initialSubmissionId) {
+          const submissionError = new Error('SUBMISSION_NOT_FOUND');
+          submissionError.code = 'SUBMISSION_NOT_FOUND';
+          // If retried 3 times, it's likely job auto hasn't finished processing
+          // Otherwise, it's likely unauthorized access (student from different class)
+          if (submissionMeta?.retried) {
+            submissionError.userMessage = 'Submission is being processed. Please try again in a few minutes.';
+            submissionError.isUnauthorized = false;
+          } else {
+            submissionError.userMessage = 'You do not have permission to access this challenge. This challenge belongs to a different class.';
+            submissionError.isUnauthorized = true;
+          }
+          submissionError.details = { challengeId, retried: submissionMeta?.retried || false };
+          throw submissionError;
+        }
+
         let finalSubmissionId = submissionMeta?.id || initialSubmissionId;
         const resolvedStatusRaw = submissionMeta?.status || submissionStatusFromState || '';
         const resolvedStatus = typeof resolvedStatusRaw === 'string' ? resolvedStatusRaw.toUpperCase() : '';
@@ -7785,8 +8148,15 @@ const StudentDailyChallengeTake = () => {
         if (!finalSubmissionId) {
           const submissionError = new Error('SUBMISSION_NOT_FOUND');
           submissionError.code = 'SUBMISSION_NOT_FOUND';
-          submissionError.userMessage = 'There is no submission found for this challenge. Please refresh the page or contact the teacher.';
-          submissionError.details = { challengeId };
+          // Check if this was after retries or first attempt
+          if (submissionMeta?.retried) {
+            submissionError.userMessage = 'Submission is being processed. Please try again in a few minutes.';
+            submissionError.isUnauthorized = false;
+          } else {
+            submissionError.userMessage = 'You do not have permission to access this challenge. This challenge belongs to a different class.';
+            submissionError.isUnauthorized = true;
+          }
+          submissionError.details = { challengeId, retried: submissionMeta?.retried || false };
           throw submissionError;
         }
 
@@ -8005,7 +8375,93 @@ const StudentDailyChallengeTake = () => {
           error?.response?.data?.error ||
           error?.response?.data?.message ||
           'Failed to load challenge data';
-        spaceToast.error(errorMessage);
+        
+        // Show error message with appropriate type based on error
+        // For unauthorized access, show specific permission message
+        if (error?.isUnauthorized) {
+          spaceToast.error('You do not have permission to access this challenge. This challenge belongs to a different class.');
+        } else {
+          // For other errors, show regular error message
+          spaceToast.error(errorMessage);
+        }
+        
+        // Always redirect to daily challenge list after a short delay for any error
+        // Increase delay to ensure message is visible before redirect
+        setTimeout(() => {
+          // Try to get classId from multiple sources
+          let resolvedClassId = location.state?.classId || error?.details?.classId;
+          
+          // Helper function to redirect to DC list
+          const redirectToDCList = (classIdToUse) => {
+            if (classIdToUse) {
+              navigate(`${routePrefix}/classes/daily-challenges/${classIdToUse}`);
+            } else {
+              // Last resort: redirect to student's first class DC list or general DC list
+              // Try to get student's classes and redirect to first class
+              classManagementApi.getStudentClasses({ page: 0, size: 1 })
+                .then((response) => {
+                  let studentClasses = [];
+                  if (response?.data) {
+                    if (Array.isArray(response.data)) {
+                      studentClasses = response.data;
+                    } else if (response.data.content && Array.isArray(response.data.content)) {
+                      studentClasses = response.data.content;
+                    } else if (response.data.data && Array.isArray(response.data.data)) {
+                      studentClasses = response.data.data;
+                    }
+                  }
+                  
+                  if (studentClasses.length > 0) {
+                    const firstClassId = studentClasses[0]?.id;
+                    if (firstClassId) {
+                      navigate(`${routePrefix}/classes/daily-challenges/${firstClassId}`);
+                      return;
+                    }
+                  }
+                  // If no classes found, redirect to general DC list
+                  navigate(`${routePrefix}/daily-challenges`);
+                })
+                .catch(() => {
+                  // If fetch fails, redirect to general DC list
+                  navigate(`${routePrefix}/daily-challenges`);
+                });
+            }
+          };
+          
+          // If we have classId, redirect immediately
+          if (resolvedClassId) {
+            redirectToDCList(resolvedClassId);
+            return;
+          }
+          
+          // If still no classId, try to get from challenge info if available
+          if (challengeId) {
+            // Try to fetch challenge info to get classId
+            dailyChallengeApi.getChallengeSubmissions(challengeId, { page: 0, size: 1 })
+              .then((response) => {
+                const submissions = extractSubmissionList(response);
+                if (submissions && submissions.length > 0) {
+                  const firstSubmission = submissions[0];
+                  const challengeClassId = firstSubmission?.challenge?.classId || 
+                                         firstSubmission?.classId || 
+                                         firstSubmission?.challenge?.class?.id;
+                  if (challengeClassId) {
+                    redirectToDCList(challengeClassId);
+                    return;
+                  }
+                }
+                // Fallback: try to get from student's classes
+                redirectToDCList(null);
+              })
+              .catch(() => {
+                // If fetch fails, try to get from student's classes
+                redirectToDCList(null);
+              });
+          } else {
+            // No challengeId, try to get from student's classes
+            redirectToDCList(null);
+          }
+        }, error?.isUnauthorized ? 3000 : 2000); // Longer delay for unauthorized access to ensure message is visible
       })
       .finally(() => {
         setLoading(false);

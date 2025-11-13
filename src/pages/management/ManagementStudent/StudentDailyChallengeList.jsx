@@ -5,7 +5,6 @@ import {
   Space,
   Table,
   Typography,
-  Tooltip,
 } from "antd";
 import {
   SearchOutlined,
@@ -86,7 +85,7 @@ const transformApiData = (apiData) => {
           maxPossibleWeight: (ss.maxPossibleWeight ?? challenge.maxPossibleWeight),
           submissionChallengeId: (ss.submissionId ?? challenge.submissionChallengeId),
           submissionStatus: (ss.submissionStatus ?? challenge.submissionStatus),
-          late: (typeof ss.late !== 'undefined' ? ss.late : challenge.late),
+          late: (typeof ss.isLate !== 'undefined' ? ss.isLate : challenge.isLate),
           hasAntiCheat: dc.hasAntiCheat,
           shuffleQuestion: dc.shuffleQuestion,
           translateOnScreen: dc.translateOnScreen,
@@ -530,25 +529,20 @@ const StudentDailyChallengeList = () => {
       key: 'title',
       width: 300,
       align: 'left',
-      ellipsis: {
-        showTitle: false,
-      },
       render: (text, record) => {
         if (record.isEmptyLesson) {
           return <span style={{ color: '#999' }}></span>;
         }
         return (
-          <Tooltip placement="topLeft" title={text}>
-            <span style={{ 
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              textAlign: 'left',
-            }}>
-              {text}
-            </span>
-          </Tooltip>
+          <span style={{ 
+            display: 'block',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            textAlign: 'left',
+            lineHeight: '1.5',
+          }}>
+            {text}
+          </span>
         );
       },
     },
@@ -593,7 +587,7 @@ const StudentDailyChallengeList = () => {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
             <span style={{ fontSize: '17px', fontWeight: 600, color: '#1f2937' }}>{timeStr}</span>
-            <span style={{ fontSize: '14px', color: '#888', marginTop: 2 }}>{dateStr}</span>
+            <span style={{ fontSize: '14px', color: '#888', marginTop: 2, fontStyle:'italic' }}>{dateStr}</span>
           </div>
         );
       },
@@ -645,6 +639,24 @@ const StudentDailyChallengeList = () => {
           return <span></span>;
         }
 
+        const isLate = record.late === true;
+
+        // Check if status is MISSED - show 0/10
+        const effectiveStatus = (record.submissionStatus || 'PENDING').toUpperCase();
+        if (effectiveStatus === 'MISSED') {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
+              <span style={{
+                fontSize: '18px',
+                color: 'rgb(255, 77, 79)', // Red color for missed
+                fontWeight: 600,
+              }}>
+                0/10
+              </span>
+            </div>
+          );
+        }
+
         // Check if endDate has passed - only show score after endDate
         const now = new Date();
         const endDate = record.endDate ? new Date(record.endDate) : null;
@@ -664,6 +676,20 @@ const StudentDailyChallengeList = () => {
 
         const computedScore = totalScore;
 
+        // If late and no score, show "Late" instead of "Not yet"
+        if ((computedScore === null || computedScore === undefined) && isLate) {
+          return (
+            <span style={{
+              fontSize: '16px',
+              color: 'rgb(255, 77, 79)',
+              fontWeight: 600,
+            }}>
+              {t('dailyChallenge.late', 'Late')}
+            </span>
+          );
+        }
+
+        // If no score and not late, show "Not yet"
         if (computedScore === null || computedScore === undefined) {
           return (
             <span style={{
@@ -682,6 +708,18 @@ const StudentDailyChallengeList = () => {
           return 'rgb(255, 77, 79)'; // Red for low score (< 5)
         };
 
+        // Format score: if integer, show without .0, otherwise show 1 decimal place
+        const formatScore = (score) => {
+          const numScore = typeof score === 'number' ? score : parseFloat(score);
+          if (isNaN(numScore)) return String(score);
+          // Check if it's an integer
+          if (Number.isInteger(numScore)) {
+            return numScore.toString();
+          }
+          // Otherwise show 1 decimal place
+          return numScore.toFixed(1);
+        };
+
         return (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
             <span style={{
@@ -689,9 +727,18 @@ const StudentDailyChallengeList = () => {
               color: getScoreColor(Number(computedScore)),
               fontWeight: 600,
             }}>
-              {(typeof computedScore === 'number' ? computedScore.toFixed(1) : (parseFloat(computedScore)?.toFixed ? parseFloat(computedScore).toFixed(1) : String(computedScore)))}
-              /10
+              {formatScore(computedScore)}/10
             </span>
+            {isLate && (
+              <span style={{ 
+                marginTop: '4px',
+                fontSize: '12px', 
+                color: 'rgb(255, 77, 79)',
+                fontWeight: 600,
+              }}>
+                {t('dailyChallenge.late', 'Late')}
+              </span>
+            )}
           </div>
         );
       },
@@ -707,8 +754,6 @@ const StudentDailyChallengeList = () => {
           return <span style={{ color: '#999' }}></span>;
         }
         
-        const isLate = record.late === true;
-        
         const renderStartLikeButton = (label, icon = <PlayCircleOutlined />) => {
           // Use different color for "Do challenge" button
           const isDoChallenge = label === 'Do challenge';
@@ -716,123 +761,99 @@ const StudentDailyChallengeList = () => {
           const hoverColor = isDoChallenge ? 'rgb(224,107,107)' : 'rgb(224,183,107)';
           
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Button
-                type="primary"
-                icon={icon}
-                onClick={() => handleViewClick(record)}
-                className="action-btn-start"
-                style={{
-                  borderRadius: '6px',
-                  fontWeight: 500,
-                  height: '36px',
-                  padding: '0 16px',
-                  fontSize: '14px',
-                  background: buttonColor,
-                  borderColor: buttonColor,
-                  color: '#000',
-                  border: 'none',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = hoverColor;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = buttonColor;
-                }}
-              >
-                {label}
-              </Button>
-              {isLate && (
-                <span style={{ 
-                  marginTop: '4px',
-                  fontSize: '12px', 
-                  color: 'rgb(255, 77, 79)',
-                  fontWeight: 600,
-                }}>
-                  {t('dailyChallenge.late', 'Late')}
-                </span>
-              )}
-            </div>
+            <Button
+              type="primary"
+              icon={icon}
+              onClick={() => handleViewClick(record)}
+              className="action-btn-start"
+              style={{
+                borderRadius: '6px',
+                fontWeight: 500,
+                height: '36px',
+                padding: '0 16px',
+                fontSize: '14px',
+                background: buttonColor,
+                borderColor: buttonColor,
+                color: '#000',
+                border: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = hoverColor;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = buttonColor;
+              }}
+            >
+              {label}
+            </Button>
           );
         };
 
         const renderViewResultButton = (label) => (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Button
-              type="primary"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewResult(record)}
-              className="action-btn-view-result"
-              style={{
-                borderRadius: '6px',
-                fontWeight: 500,
-                height: '36px',
-                padding: '0 16px',
-                fontSize: '14px',
-                background: 'rgb(157,207,242)',
-                borderColor: 'rgb(157,207,242)',
-                color: '#000',
-                border: 'none',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgb(137,187,222)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgb(157,207,242)';
-              }}
-            >
-              {label}
-            </Button>
-            {isLate && (
-              <span style={{ 
-                marginTop: '4px',
-                fontSize: '12px', 
-                color: 'rgb(255, 77, 79)',
-                fontWeight: 600,
-              }}>
-                {t('dailyChallenge.late', 'Late')}
-              </span>
-            )}
-          </div>
+          <Button
+            type="primary"
+            icon={<EyeOutlined />}
+            onClick={() => handleViewResult(record)}
+            className="action-btn-view-result"
+            style={{
+              borderRadius: '6px',
+              fontWeight: 500,
+              height: '36px',
+              padding: '0 16px',
+              fontSize: '14px',
+              background: 'rgb(157,207,242)',
+              borderColor: 'rgb(157,207,242)',
+              color: '#000',
+              border: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgb(137,187,222)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgb(157,207,242)';
+            }}
+          >
+            {label}
+          </Button>
         );
 
         const renderViewAnswerButton = (label) => (
+          <Button
+            type="primary"
+            icon={<EyeOutlined />}
+            onClick={() => handleViewAnswer(record)}
+            className="action-btn-view-answer"
+            style={{
+              borderRadius: '6px',
+              fontWeight: 500,
+              height: '36px',
+              padding: '0 16px',
+              fontSize: '14px',
+              background: 'rgb(157,207,242)',
+              borderColor: 'rgb(157,207,242)',
+              color: '#000',
+              border: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgb(137,187,222)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgb(157,207,242)';
+            }}
+          >
+            {label}
+          </Button>
+        );
+
+        const renderMissedStatus = () => (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Button
-              type="primary"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewAnswer(record)}
-              className="action-btn-view-answer"
-              style={{
-                borderRadius: '6px',
-                fontWeight: 500,
-                height: '36px',
-                padding: '0 16px',
-                fontSize: '14px',
-                background: 'rgb(157,207,242)',
-                borderColor: 'rgb(157,207,242)',
-                color: '#000',
-                border: 'none',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgb(137,187,222)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgb(157,207,242)';
-              }}
-            >
-              {label}
-            </Button>
-            {isLate && (
-              <span style={{ 
-                marginTop: '4px',
-                fontSize: '12px', 
-                color: 'rgb(255, 77, 79)',
-                fontWeight: 600,
-              }}>
-                {t('dailyChallenge.late', 'Late')}
-              </span>
-            )}
+            <span style={{
+              fontSize: '16px',
+              color: 'rgb(255, 77, 79)',
+              fontWeight: 600,
+            }}>
+              {t('dailyChallenge.missed', 'Missed')}
+            </span>
           </div>
         );
         
@@ -844,6 +865,7 @@ const StudentDailyChallengeList = () => {
             {effectiveStatus === 'DRAFT' && renderStartLikeButton('Edit answer', <EditOutlined />)}
             {effectiveStatus === 'SUBMITTED' && renderViewAnswerButton('View answer')}
             {effectiveStatus === 'GRADED' && renderViewResultButton('View result')}
+            {effectiveStatus === 'MISSED' && renderMissedStatus()}
           </Space>
         );
       },
