@@ -556,6 +556,7 @@ const classManagementApi = {
 		if (params.startDate) queryParams.append('startDate', params.startDate);
 		if (params.endDate) queryParams.append('endDate', params.endDate);
 		if (params.actionBy) queryParams.append('actionBy', params.actionBy);
+		if (params.text) queryParams.append('text', params.text);
 
 		const url = `/class/history/${classId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 		console.log('GetClassHistory API - URL:', url);

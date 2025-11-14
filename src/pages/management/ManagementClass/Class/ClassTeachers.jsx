@@ -846,11 +846,11 @@ const ClassTeachers = () => {
                   t.roleName === "TEACHING_ASSISTANT" ||
                   (t.userName?.startsWith('TA') && teachers.length > 1)
                 );
-                return `${tas.length} ${t('classTeachers.people')}`;
+                return `${tas.length} ${tas.length === 1 ? t('classTeachers.person') : t('classTeachers.people')}`;
               })()}
             </div>
             <div style={{ fontSize: '13px', color: '#586069' }}>
-              • {t('classTeachers.total')} {teachers.length} {t('classTeachers.members')}
+              • {t('classTeachers.total')} {teachers.length} {teachers.length === 1 ? t('classTeachers.member') : t('classTeachers.members')}
             </div>
           </div>
 
