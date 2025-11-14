@@ -39,7 +39,8 @@ const AIGenerateListening = () => {
     challengeId: location.state?.challengeId || id,
     challengeName: location.state?.challengeName || null,
     challengeType: 'LISTENING',
-  }), [id, location.state?.classId, location.state?.className, location.state?.challengeId, location.state?.challengeName]);
+    aiSource: location.state?.aiSource || null, // 'settings' or 'file'
+  }), [id, location.state?.classId, location.state?.className, location.state?.challengeId, location.state?.challengeName, location.state?.aiSource]);
 
   const [prompt, setPrompt] = useState(""); // Transcript content
   const [description, setDescription] = useState(""); // Description field
@@ -64,20 +65,11 @@ const AIGenerateListening = () => {
   // State for new API fields
   const [levelType, setLevelType] = useState(null); // 'system', 'academic', 'cefr'
   const [selectedLevel, setSelectedLevel] = useState(null); // Selected level value/id
-  const [lessonFocus, setLessonFocus] = useState([]); // Array of selected lesson focus values
-  const [customLessonFocus, setCustomLessonFocus] = useState([]); // Array of custom lesson focus texts
-  const [customLessonFocusInput, setCustomLessonFocusInput] = useState(""); // Current input value for custom lesson focus
-  const [vocabularyList, setVocabularyList] = useState(""); // Vocabulary list text
   const [systemLevels, setSystemLevels] = useState([]); // Fetched Camkey levels (published levels)
   
   // Dropdown menu states
   const [isLevelDropdownOpen, setIsLevelDropdownOpen] = useState(false);
   const [hoveredLevelType, setHoveredLevelType] = useState(null);
-  
-  // Lesson Focus dropdown states
-  const [isLessonFocusDropdownOpen, setIsLessonFocusDropdownOpen] = useState(false);
-  const [isCustomFocusInputOpen, setIsCustomFocusInputOpen] = useState(false); // Track if Custom Focus input field is open (checkbox checked)
-  const [lessonFocusSearchTerm, setLessonFocusSearchTerm] = useState(""); // Search term for lesson focus
 
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
@@ -147,75 +139,6 @@ const AIGenerateListening = () => {
     { value: 'C2', label: 'C2 - Proficiency' },
   ], []);
 
-  // Lesson Focus options constants
-  const lessonFocusOptions = [
-    // Grammar Tenses
-    { value: 'PRESENT_SIMPLE', label: 'Present Simple' },
-    { value: 'PRESENT_CONTINUOUS', label: 'Present Continuous' },
-    { value: 'PRESENT_PERFECT', label: 'Present Perfect' },
-    { value: 'PRESENT_PERFECT_CONTINUOUS', label: 'Present Perfect Continuous' },
-    { value: 'PAST_SIMPLE', label: 'Past Simple' },
-    { value: 'PAST_CONTINUOUS', label: 'Past Continuous' },
-    { value: 'PAST_PERFECT', label: 'Past Perfect' },
-    { value: 'PAST_PERFECT_CONTINUOUS', label: 'Past Perfect Continuous' },
-    { value: 'FUTURE_SIMPLE', label: 'Future Simple (will)' },
-    { value: 'FUTURE_BE_GOING_TO', label: 'Future (be going to)' },
-    { value: 'FUTURE_CONTINUOUS', label: 'Future Continuous' },
-    { value: 'FUTURE_PERFECT', label: 'Future Perfect' },
-    { value: 'MIXED_TENSES', label: 'Mixed Tenses' },
-    // Grammar Structures
-    { value: 'CONDITIONALS_ZERO_FIRST', label: 'Conditionals: Zero & First' },
-    { value: 'CONDITIONALS_SECOND', label: 'Conditionals: Second' },
-    { value: 'CONDITIONALS_THIRD', label: 'Conditionals: Third' },
-    { value: 'MIXED_CONDITIONALS', label: 'Mixed Conditionals' },
-    { value: 'PASSIVE_VOICE_PRESENT', label: 'Passive Voice: Present' },
-    { value: 'PASSIVE_VOICE_PAST', label: 'Passive Voice: Past' },
-    { value: 'PASSIVE_VOICE_PERFECT', label: 'Passive Voice: Perfect' },
-    { value: 'PASSIVE_VOICE_MODAL', label: 'Passive Voice: Modal' },
-    { value: 'REPORTED_SPEECH_STATEMENTS', label: 'Reported Speech: Statements' },
-    { value: 'REPORTED_SPEECH_QUESTIONS', label: 'Reported Speech: Questions' },
-    { value: 'REPORTED_SPEECH_COMMANDS', label: 'Reported Speech: Commands' },
-    { value: 'RELATIVE_CLAUSES_DEFINING', label: 'Relative Clauses: Defining' },
-    { value: 'RELATIVE_CLAUSES_NON_DEFINING', label: 'Relative Clauses: Non-defining' },
-    { value: 'QUESTIONS_FORMATION', label: 'Question Formation' },
-    { value: 'QUESTIONS_SUBJECT_OBJECT', label: 'Subject vs Object Questions' },
-    { value: 'QUESTION_TAGS', label: 'Question Tags' },
-    // Modal Verbs
-    { value: 'MODALS_ABILITY', label: 'Modals: Ability' },
-    { value: 'MODALS_PERMISSION', label: 'Modals: Permission' },
-    { value: 'MODALS_OBLIGATION', label: 'Modals: Obligation' },
-    { value: 'MODALS_PROHIBITION', label: 'Modals: Prohibition' },
-    { value: 'MODALS_ADVICE', label: 'Modals: Advice' },
-    { value: 'MODALS_DEDUCTION', label: 'Modals: Deduction' },
-    { value: 'MODALS_PAST', label: 'Modal Perfects' },
-    // Word Forms & Patterns
-    { value: 'COMPARATIVES_SUPERLATIVES', label: 'Comparatives & Superlatives' },
-    { value: 'ADJECTIVES_ORDER', label: 'Adjective Order' },
-    { value: 'ADJECTIVES_WITH_PREPOSITIONS', label: 'Adjectives + Prepositions' },
-    { value: 'VERB_PATTERNS_GERUND', label: 'Verb Patterns: Gerund' },
-    { value: 'VERB_PATTERNS_INFINITIVE', label: 'Verb Patterns: Infinitive' },
-    { value: 'VERB_PATTERNS_BOTH', label: 'Verb Patterns: Both' },
-    { value: 'PHRASAL_VERBS', label: 'Phrasal Verbs' },
-    { value: 'PREPOSITIONS_TIME', label: 'Prepositions: Time' },
-    { value: 'PREPOSITIONS_PLACE', label: 'Prepositions: Place' },
-    { value: 'PREPOSITIONS_MOVEMENT', label: 'Prepositions: Movement' },
-    // Articles & Determiners
-    { value: 'ARTICLES_A_AN_THE', label: 'Articles: a/an/the' },
-    { value: 'QUANTIFIERS', label: 'Quantifiers' },
-    { value: 'COUNTABLE_UNCOUNTABLE', label: 'Countable vs Uncountable' },
-    // Listening Comprehension
-    { value: 'LISTENING_MAIN_IDEA', label: 'Listening: Main Idea' },
-    { value: 'LISTENING_DETAILS', label: 'Listening: Specific Details' },
-    { value: 'LISTENING_INFERENCE', label: 'Listening: Inference' },
-    { value: 'LISTENING_ATTITUDE', label: "Listening: Speaker's Attitude" },
-    // Exam-Specific
-    { value: 'ERROR_CORRECTION', label: 'Error Correction' },
-    { value: 'SENTENCE_TRANSFORMATION', label: 'Sentence Transformation' },
-    { value: 'WORD_CHOICE', label: 'Word Choice' },
-    { value: 'GAP_FILLING', label: 'Gap Filling' },
-    // Custom
-    { value: 'CUSTOM', label: 'Custom Focus' },
-  ];
 
   const [questionTypeConfigs, setQuestionTypeConfigs] = useState(() => availableQuestionTypes.map(q => ({ questionType: q.value, numberOfQuestions: 0 })));
 
@@ -452,11 +375,6 @@ const AIGenerateListening = () => {
         ],
         description: description || '',
         level: levelValue,
-        ...(lessonFocus.length > 0 && { lessonFocus }),
-        customLessonFocus: Array.isArray(customLessonFocus) && customLessonFocus.length > 0 
-          ? customLessonFocus.join(', ') 
-          : '',
-        vocabularyList: vocabularyList || '',
       };
       // Note: backend API for generation currently accepts description only; audio is required by UI but not sent
       const res = await dailyChallengeApi.generateContentBasedQuestions(payload);
@@ -483,7 +401,7 @@ const AIGenerateListening = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [prompt, description, challengeInfo.challengeId, questionTypeConfigs, t, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, audioUrl, getBackendMessage]);
+  }, [prompt, description, challengeInfo.challengeId, questionTypeConfigs, t, normalizeQuestionsFromAI, selectedLevel, audioUrl, getBackendMessage]);
 
   const handleGenerateFromFile = useCallback(async () => {
     if (!uploadedFile) {
@@ -648,10 +566,27 @@ const AIGenerateListening = () => {
         <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
           {/* Hierarchy info moved inside the main container */}
           <Card
-            style={{ borderRadius: '20px', border: theme === 'sun' ? '2px solid rgba(24, 144, 255, 0.35)' : '2px solid rgba(139, 92, 246, 0.35)', background: theme === 'sun' ? 'linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(240,249,255,0.55) 100%)' : 'linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(244,240,255,0.45) 100%)', backdropFilter: 'blur(6px)', boxShadow: theme === 'sun' ? '0 8px 24px rgba(24, 144, 255, 0.12)' : '0 8px 24px rgba(139, 92, 246, 0.12)', padding: 16 }}
+            style={{ 
+              borderRadius: '20px', 
+              border: theme === 'sun' ? '2px solid rgba(24, 144, 255, 0.35)' : '2px solid rgba(139, 92, 246, 0.35)', 
+              background: theme === 'sun' ? 'linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(240,249,255,0.55) 100%)' : 'linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(244,240,255,0.45) 100%)', 
+              backdropFilter: 'blur(6px)', 
+              boxShadow: theme === 'sun' ? '0 8px 24px rgba(24, 144, 255, 0.12)' : '0 8px 24px rgba(139, 92, 246, 0.12)', 
+              padding: 16,
+              maxWidth: challengeInfo.aiSource === 'file' ? '650px' : '100%',
+              width: challengeInfo.aiSource === 'file' ? 'auto' : '100%',
+              margin: challengeInfo.aiSource === 'file' ? '0 auto' : '0'
+            }}
             bodyStyle={{ padding: 16 }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'stretch' }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: challengeInfo.aiSource === 'file' ? '1fr' : '2fr 1fr', 
+              gap: '20px', 
+              alignItems: 'stretch',
+              width: '100%'
+            }}>
+              {challengeInfo.aiSource !== 'file' && (
               <Card
                 className={`prompt-description-card ${theme}-prompt-description-card`}
                 style={{ borderRadius: '16px', border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.25)' : '2px solid rgba(138, 122, 255, 0.2)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', backdropFilter: 'blur(10px)', minHeight: '540px', height: '100%', display: 'flex', flexDirection: 'column' }}
@@ -732,10 +667,12 @@ const AIGenerateListening = () => {
               </div>
                 </div>
 
-                {/* Level and Lesson Focus - Side by Side */}
+                {/* Level and Additional Description - Side by Side */}
                 <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                  {/* Level Selection - Custom 2-Level Dropdown */}
-                  <div style={{ flex: 1, position: 'relative' }}>
+                  {/* Level Selection */}
+                  <div style={{ flex: 1 }}>
+                    {/* Level Selection - Custom 2-Level Dropdown */}
+                    <div style={{ position: 'relative' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
                       Level <span style={{ color: 'red' }}>*</span>
                   </Typography.Text>
@@ -1016,497 +953,31 @@ const AIGenerateListening = () => {
                       </div>
                     </>
                   )}
+                    </div>
                   </div>
 
-                  {/* Lesson Focus - Custom Dropdown with Input */}
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                    Lesson Focus <span style={{ color: 'red' }}>*</span>
-                    </Typography.Text>
-                  
-                  {/* Input Field */}
-                  <div
-                    onClick={(e) => {
-                      if (e.target.closest('span[data-tag]')) {
-                        return;
-                      }
-                      const willOpen = !isLessonFocusDropdownOpen;
-                      setIsLessonFocusDropdownOpen(willOpen);
-                      // Reset search term when closing dropdown
-                      if (!willOpen) {
-                        setLessonFocusSearchTerm("");
-                      }
-                      if (willOpen && customLessonFocus.length > 0 && !isCustomFocusInputOpen) {
-                        setIsCustomFocusInputOpen(true);
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      minHeight: '36px',
-                      padding: '6px 12px',
-                      borderRadius: '8px',
-                      border: `2px solid ${primaryColor}60`,
-                      background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                      gap: '6px',
-                      transition: 'all 0.3s ease',
-                      position: 'relative',
-                      zIndex: isLessonFocusDropdownOpen ? 1000 : 10
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = primaryColor;
-                      e.currentTarget.style.boxShadow = `0 0 0 2px ${primaryColor}20`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = `${primaryColor}60`;
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    {lessonFocus.length === 0 && customLessonFocus.length === 0 ? (
-                      <span style={{ 
-                        color: theme === 'sun' ? '#999' : '#999',
-                        fontSize: '14px',
-                        fontWeight: 400
-                      }}>
-                        Select lesson focus
-                      </span>
-                    ) : (() => {
-                      const allTags = [
-                        ...lessonFocus
-                          .filter(focus => {
-                            if (focus === 'CUSTOM' && customLessonFocus.length > 0) {
-                              return false;
-                            }
-                            return true;
-                          })
-                          .map((focus) => {
-                            const option = lessonFocusOptions.find(opt => opt.value === focus);
-                            return option ? { type: 'option', value: focus, label: option.label } : null;
-                          })
-                          .filter(Boolean),
-                        ...customLessonFocus.map((customFocus, index) => ({ 
-                          type: 'custom', 
-                          value: `custom-${index}`, 
-                          label: customFocus,
-                          index 
-                        }))
-                      ];
-
-                      const maxVisibleTags = isLessonFocusDropdownOpen ? allTags.length : 3;
-                      const visibleTags = allTags.slice(0, maxVisibleTags);
-                      const remainingCount = allTags.length - maxVisibleTags;
-
-                      return (
-                        <div style={{ 
-                          display: 'flex', 
-                          flexWrap: isLessonFocusDropdownOpen ? 'wrap' : 'nowrap',
-                          gap: '4px', 
-                          flex: 1,
-                          overflow: isLessonFocusDropdownOpen ? 'visible' : 'hidden',
-                          maxHeight: isLessonFocusDropdownOpen ? 'none' : '26px',
-                        }}>
-                          {visibleTags.map((tag) => (
-                            tag.type === 'option' ? (
-                              <span
-                                key={tag.value}
-                                data-tag="true"
-                                style={{
-                                  padding: '3px 8px',
-                                  borderRadius: '6px',
-                                  background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                                  border: `1px solid ${primaryColor}60`,
-                                  fontSize: '13px',
-                                  color: theme === 'sun' ? '#000' : '#000',
-                                  fontWeight: 400,
-                                  display: 'inline-flex',
-                  alignItems: 'center',
-                                  gap: '4px',
-                                  flexShrink: 0,
-                                  position: 'relative',
-                                  zIndex: 1001
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                }}
-                              >
-                                {tag.label}
-                                <CloseOutlined 
-                                  style={{ fontSize: '10px', cursor: 'pointer', pointerEvents: 'auto' }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    setLessonFocus(prev => prev.filter(f => f !== tag.value));
-                                  }}
-                                />
-                              </span>
-                            ) : (
-                              <span
-                                key={tag.value}
-                                data-tag="true"
-                                style={{
-                                  padding: '3px 8px',
-                                  borderRadius: '6px',
-                                  background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                                  border: `1px solid ${primaryColor}60`,
-                                  fontSize: '13px',
-                                  color: theme === 'sun' ? '#000' : '#000',
-                                  fontWeight: 400,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  flexShrink: 0,
-                                  position: 'relative',
-                                  zIndex: 1001
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                }}
-                              >
-                                {tag.label}
-                                <CloseOutlined 
-                                  style={{ fontSize: '10px', cursor: 'pointer', pointerEvents: 'auto' }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    setCustomLessonFocus(prev => prev.filter((_, i) => i !== tag.index));
-                                    if (customLessonFocus.length === 1) {
-                                      setLessonFocus(prev => prev.filter(f => f !== 'CUSTOM'));
-                                      setIsCustomFocusInputOpen(false);
-                                    }
-                                  }}
-                                />
-                              </span>
-                            )
-                          ))}
-                          {!isLessonFocusDropdownOpen && remainingCount > 0 && (
-                            <span style={{
-                              padding: '3px 8px',
-                              fontSize: '13px',
-                              color: theme === 'sun' ? '#666' : '#999',
-                              fontWeight: 400,
-                              flexShrink: 0
-                            }}>
-                              +{remainingCount}...
-                            </span>
-                          )}
-                </div>
-                      );
-                    })()}
-                    <span style={{ 
-                      transform: isLessonFocusDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.3s ease',
-                      fontSize: '12px',
-                      color: primaryColor,
-                      flexShrink: 0
-                    }}>▼</span>
-                </div>
-
-                  {/* Dropdown Menu */}
-                  {isLessonFocusDropdownOpen && (
-                    <>
-                      <div
-                        onClick={() => {
-                          setIsLessonFocusDropdownOpen(false);
-                          setLessonFocusSearchTerm("");
-                        }}
-                        style={{
-                          position: 'fixed',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          zIndex: 998
-                        }}
-                      />
-                      
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          marginTop: '8px',
-                          width: '100%',
-                          maxHeight: '300px',
-                          background: theme === 'sun' 
-                            ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
-                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-                          backdropFilter: 'blur(10px)',
-                          borderRadius: '16px',
-                          border: `2px solid ${primaryColor}40`,
-                          boxShadow: theme === 'sun'
-                            ? '0 8px 32px rgba(24, 144, 255, 0.2)'
-                            : '0 8px 32px rgba(139, 92, 246, 0.2)',
-                          zIndex: 999,
-                          overflow: 'hidden',
-                          display: 'flex',
-                          flexDirection: 'column'
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {/* Search Bar */}
-                        <div style={{ padding: '12px', borderBottom: `1px solid ${primaryColor}20` }}>
-                          <Input
-                            prefix={<SearchOutlined style={{ color: primaryColor }} />}
-                            placeholder="Search lesson focus..."
-                            value={lessonFocusSearchTerm}
-                            onChange={(e) => setLessonFocusSearchTerm(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{
-                              borderRadius: '8px',
-                              border: `2px solid ${primaryColor}40`,
-                              background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.95)',
-                            }}
-                          />
-                        </div>
-
-                        <div style={{
-                          flex: 1,
-                          overflowY: 'auto',
-                          maxHeight: '250px',
-                          padding: '8px',
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: `${primaryColor}40 transparent`
-                        }}>
-                          {lessonFocusOptions
-                            .filter((option) => {
-                              if (!lessonFocusSearchTerm) return true;
-                              const searchLower = lessonFocusSearchTerm.toLowerCase();
-                              return option.label.toLowerCase().includes(searchLower) ||
-                                     option.value.toLowerCase().includes(searchLower);
-                            })
-                            .map((option) => {
-                              const isSelected = lessonFocus.includes(option.value);
-                              const isCustom = option.value === 'CUSTOM';
-                              const isCustomChecked = isCustom ? (isCustomFocusInputOpen || customLessonFocus.length > 0) : isSelected;
-                              
-                              return (
-                                <div key={option.value} style={{ marginBottom: '8px' }}>
-                                  <div
-                                    onClick={() => {
-                                      if (isCustom) {
-                                        if (isCustomFocusInputOpen) {
-                                          setIsCustomFocusInputOpen(false);
-                                          if (customLessonFocus.length === 0) {
-                                            setLessonFocus(prev => prev.filter(f => f !== 'CUSTOM'));
-                                          }
-                                        } else {
-                                          setIsCustomFocusInputOpen(true);
-                                          setTimeout(() => {
-                                            const input = document.getElementById('custom-focus-input');
-                                            if (input) input.focus();
-                                          }, 100);
-                                        }
-                                      } else {
-                                        if (isSelected) {
-                                          setLessonFocus(prev => prev.filter(f => f !== option.value));
-                                        } else {
-                                          setLessonFocus(prev => [...prev, option.value]);
-                                        }
-                                      }
-                                    }}
-                                    style={{
-                                      padding: isCustom && isCustomChecked ? '12px 16px 8px 16px' : '12px 16px',
-                                      borderRadius: isCustom && isCustomChecked ? '8px 8px 0 0' : '8px',
-                                      cursor: 'pointer',
-                                      background: isCustomChecked
-                                        ? primaryColorWithAlpha
-                                        : 'transparent',
-                                      border: `2px solid ${
-                                        isCustomChecked
-                                          ? primaryColor
-                                          : `${primaryColor}20`
-                                      }`,
-                                      borderBottom: isCustom && isCustomChecked ? 'none' : `2px solid ${
-                                        isCustomChecked
-                                          ? primaryColor
-                                          : `${primaryColor}20`
-                                      }`,
-                                      transition: 'all 0.2s ease',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '12px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      if (!isCustomChecked) {
-                                        e.currentTarget.style.background = theme === 'sun'
-                                          ? 'rgba(24, 144, 255, 0.08)'
-                                          : 'rgba(139, 92, 246, 0.12)';
-                                        e.currentTarget.style.borderColor = `${primaryColor}60`;
-                                      }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      if (!isCustomChecked) {
-                                        e.currentTarget.style.background = 'transparent';
-                                        e.currentTarget.style.borderColor = `${primaryColor}20`;
-                                      }
-                                    }}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isCustomChecked}
-                                      readOnly
-                                      style={{
-                                        width: '18px',
-                                        height: '18px',
-                                        accentColor: primaryColor,
-                                        cursor: 'pointer',
-                                        flexShrink: 0
-                                      }}
-                                    />
-                                    <span style={{
-                                      fontSize: '14px',
-                                      fontWeight: 400,
-                                      color: isCustomChecked
-                                        ? primaryColor
-                                        : (theme === 'sun' ? '#000' : '#000'),
-                                      flex: 1
-                                    }}>
-                                      {option.label}
-                                    </span>
-                                    {isCustomChecked && !isCustom && (
-                                      <CheckOutlined style={{ 
-                                        color: primaryColor, 
-                                        fontSize: '16px',
-                                        flexShrink: 0
-                                      }} />
-                                    )}
-                                    {isCustom && (
-                                      <span style={{ 
-                                        color: primaryColor, 
-                                        fontSize: '12px',
-                                        flexShrink: 0,
-                                        transform: isCustomChecked ? 'rotate(180deg)' : 'rotate(0deg)',
-                                        transition: 'transform 0.3s ease'
-                                      }}>▼</span>
-                                    )}
-                </div>
-
-                                  {isCustom && isCustomChecked && (
-                                    <div
-                                      style={{
-                                        padding: '12px 16px',
-                                        background: theme === 'sun'
-                                          ? `linear-gradient(135deg, ${primaryColorWithAlpha}, rgba(240, 249, 255, 0.95))`
-                                          : `linear-gradient(135deg, ${primaryColorWithAlpha}, rgba(244, 240, 255, 0.95))`,
-                                        border: `2px solid ${primaryColor}`,
-                                        borderTop: 'none',
-                                        borderRadius: '0 0 8px 8px',
-                                        animation: 'fadeIn 0.3s ease'
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                  <Input
-                                        id="custom-focus-input"
-                    value={customLessonFocusInput}
-                                        onChange={(e) => {
-                                          const value = e.target.value;
-                                          setCustomLessonFocusInput(value);
-                                        }}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' && customLessonFocusInput.trim()) {
-                                            e.preventDefault();
-                                            setCustomLessonFocus(prev => [...prev, customLessonFocusInput.trim()]);
-                                            if (!lessonFocus.includes('CUSTOM')) {
-                                              setLessonFocus(prev => [...prev, 'CUSTOM']);
-                                            }
-                                            setCustomLessonFocusInput('');
-                                          }
-                                        }}
-                                        onBlur={(e) => {
-                                          if (customLessonFocusInput.trim()) {
-                                            setCustomLessonFocus(prev => [...prev, customLessonFocusInput.trim()]);
-                                            if (!lessonFocus.includes('CUSTOM')) {
-                                              setLessonFocus(prev => [...prev, 'CUSTOM']);
-                                            }
-                                            setCustomLessonFocusInput('');
-                                          }
-                                          e.currentTarget.style.borderColor = customLessonFocus.length > 0 
-                                            ? primaryColor 
-                                            : `${primaryColor}70`;
-                                          e.currentTarget.style.boxShadow = customLessonFocus.length > 0 
-                                            ? `0 0 0 2px ${primaryColor}15`
-                                            : 'none';
-                                        }}
-                    style={{
-                                          width: '100%',
-                      borderRadius: '8px',
-                                          border: `2px solid ${customLessonFocus.length > 0 ? primaryColor : `${primaryColor}70`}`,
-                                          background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.98)',
-                                          fontSize: '14px',
-                                          padding: '10px 14px',
-                                          fontWeight: 400,
-                                          transition: 'all 0.3s ease',
-                                          outline: 'none'
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onFocus={(e) => {
-                                          e.stopPropagation();
-                                          e.currentTarget.style.borderColor = primaryColor;
-                                          e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}20`;
-                    }}
-                  />
-              </div>
-            )}
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  </div>
-                </div>
-
-
-                {/* Vocabulary List and Description - Side by Side */}
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                {/* Vocabulary List */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                    Vocabulary List
-                  </Typography.Text>
-                  <TextArea
-                    value={vocabularyList}
-                    onChange={(e) => setVocabularyList(e.target.value)}
-                      autoSize={{ minRows: 4, maxRows: 8 }}
-                    placeholder="new word..."
-                    style={{
-                        width: '100%',
-                      borderRadius: '8px',
-                      border: `2px solid ${primaryColor}60`,
-                      background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                        fontSize: '14px',
-                        outline: 'none',
-                    }}
-                  />
-                </div>
-
-                {/* Additional Description */}
+                  {/* Additional Description */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
                       Additional Description
-                  </Typography.Text>
-                  <TextArea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    </Typography.Text>
+                    <TextArea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
-                    placeholder="Optional: Add any additional instructions or context..."
-                    style={{
+                      placeholder="Optional: Add any additional instructions or context..."
+                      style={{
                         width: '100%',
-                      fontSize: '14px',
-                      borderRadius: '8px',
-                      border: `2px solid ${primaryColor}99`,
-                      background: theme === 'sun'
-                        ? 'rgba(240, 249, 255, 0.5)'
-                        : 'rgba(244, 240, 255, 0.3)',
-                      outline: 'none',
-                      boxShadow: 'none',
-                    }}
-                  />
+                        fontSize: '14px',
+                        borderRadius: '8px',
+                        border: `2px solid ${primaryColor}99`,
+                        background: theme === 'sun'
+                          ? 'rgba(240, 249, 255, 0.5)'
+                          : 'rgba(244, 240, 255, 0.3)',
+                        outline: 'none',
+                        boxShadow: 'none',
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -1574,6 +1045,7 @@ const AIGenerateListening = () => {
                 />
                 </div>
               </Card>
+              )}
 
               <Card
                 className={`prompt-description-card ${theme}-prompt-description-card`}
@@ -1639,15 +1111,6 @@ const AIGenerateListening = () => {
 
                 {questionSettingsMode === 'upload' && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 16, width: '100%', minHeight: 540 }}>
-                    <Button
-                      icon={<ArrowLeftOutlined />}
-                      onClick={() => setQuestionSettingsMode(null)}
-                      className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                      style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px', marginBottom: 16, alignSelf: 'flex-start' }}
-                    >
-                      {t('common.back')}
-                    </Button>
-
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
                       <label
                         htmlFor="listening-question-upload-input"
@@ -1698,17 +1161,7 @@ const AIGenerateListening = () => {
 
                 {questionSettingsMode === 'manual' && (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 12, marginBottom: 20 }}>
-                      <Button
-                        icon={<ArrowLeftOutlined />}
-                        onClick={() => setQuestionSettingsMode(null)}
-                        className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                        style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px' }}
-                      >
-                        {t('common.back')}
-                      </Button>
-                    </div>
-                    <div style={{ border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.6)' : 'rgba(139, 92, 246, 0.6)'}`, borderRadius: '16px', background: theme === 'sun' ? 'rgba(24, 144, 255, 0.06)' : 'rgba(139, 92, 246, 0.08)', padding: '12px', boxShadow: theme === 'sun' ? 'inset 0 0 0 1px rgba(24, 144, 255, 0.05)' : 'inset 0 0 0 1px rgba(139, 92, 246, 0.08)', height: '400px', overflowY: 'auto' }}>
+                    <div style={{ border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.6)' : 'rgba(139, 92, 246, 0.6)'}`, borderRadius: '16px', background: theme === 'sun' ? 'rgba(24, 144, 255, 0.06)' : 'rgba(139, 92, 246, 0.08)', padding: '12px', boxShadow: theme === 'sun' ? 'inset 0 0 0 1px rgba(24, 144, 255, 0.05)' : 'inset 0 0 0 1px rgba(139, 92, 246, 0.08)', height: '400px', overflowY: 'auto', marginTop: '12px' }}>
                       <div className="question-settings-scroll" style={{ height: '360px', overflowY: 'auto', paddingRight: '8px' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '16px' }}>
                           {availableQuestionTypes.map((qt) => {

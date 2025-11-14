@@ -94,9 +94,9 @@ const AdminDashboard = () => {
     const total = s.totalAccounts ?? 0;
     const pct = (v) => {
       const denominator = total || 0;
-      if (!denominator) return '0% tổng số';
+      if (!denominator) return '0% of total';
       const p = ((v ?? 0) / denominator) * 100;
-      return `${p.toFixed(1)}% tổng số`;
+      return `${p.toFixed(1)}% of total`;
     };
 
     return [
