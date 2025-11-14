@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import {
   Table,
@@ -48,6 +48,8 @@ const { Title, Text } = Typography;
 const StudentList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const listReturnPath = useMemo(() => `${location.pathname}${location.search}`, [location.pathname, location.search]);
   
   // Set page title
   usePageTitle('Student Management');
@@ -972,7 +974,9 @@ const StudentList = () => {
             // Navigate to student profile if student ID is available
             if (response.data && response.data.id) {
               console.log('Navigating to student profile:', response.data.id);
-              navigate(`/manager/student/${response.data.id}/profile`);
+              navigate(`/manager/student/${response.data.id}/profile`, {
+                state: { returnTo: listReturnPath },
+              });
             } else {
               // Fallback: refresh the list if no ID available
               fetchStudents(1, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
@@ -1017,7 +1021,9 @@ const StudentList = () => {
       spaceToast.error('Student ID not found');
       return;
     }
-    navigate(`/manager/student/${record.id}/profile`);
+    navigate(`/manager/student/${record.id}/profile`, {
+      state: { returnTo: listReturnPath },
+    });
   };
 
   // Handle assign student to class

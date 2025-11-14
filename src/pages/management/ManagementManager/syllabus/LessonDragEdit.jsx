@@ -17,6 +17,7 @@ import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
 import LessonForm from './LessonForm';
+import ROUTER_PAGE from '../../../../constants/router';
 import {
 	DndContext,
 	closestCenter,
@@ -337,6 +338,9 @@ const LessonDragEdit = () => {
 						name: syllabus.syllabusName,
 						description: syllabus.description,
 						chapterName: chapterInfo.name,
+						backUrl: ROUTER_PAGE.MANAGER_SYLLABUS_CHAPTER_LESSONS
+							.replace(':syllabusId', String(syllabusId))
+							.replace(':chapterId', String(chapterId)),
 					});
 				}
 			} catch (error) {
