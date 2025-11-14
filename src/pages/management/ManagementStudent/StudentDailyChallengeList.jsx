@@ -56,6 +56,7 @@ const transformApiData = (apiData) => {
         submissionChallengeId: null,
         submissionStatus: null,
         late: null,
+        challengeMethod: null,
         isEmptyLesson: true, // Flag to identify empty lessons
       };
       flattened.push(emptyLessonRow);
@@ -89,6 +90,7 @@ const transformApiData = (apiData) => {
           hasAntiCheat: dc.hasAntiCheat,
           shuffleQuestion: dc.shuffleQuestion,
           translateOnScreen: dc.translateOnScreen,
+          challengeMethod: dc.challengeMethod || challenge.challengeMethod || 'NORMAL',
           isEmptyLesson: false,
         };
 
@@ -564,6 +566,35 @@ const StudentDailyChallengeList = () => {
             color: '#000000'
           }}>
             {getTypeLabelByCode(type)}
+          </span>
+        );
+      },
+    },
+    {
+      title: t('dailyChallenge.method', 'Method'),
+      dataIndex: 'challengeMethod',
+      key: 'method',
+      width: 120,
+      align: 'center',
+      render: (challengeMethod, record) => {
+        if (record.isEmptyLesson) {
+          return <span style={{ color: '#999' }}></span>;
+        }
+        
+        const method = challengeMethod === 'TEST' ? 'exam' : 'normal';
+        const methodLabel = method === 'exam' 
+          ? 'Exam'
+          : 'Normal';
+        
+        return (
+          <span style={{
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '16px',
+            fontWeight: 400,
+            color: '#000000',
+          }}>
+            {methodLabel}
           </span>
         );
       },

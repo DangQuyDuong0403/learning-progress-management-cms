@@ -1841,6 +1841,7 @@
     "createChallenge": "Create Challenge",
     "challengeTitle": "Challenge Title",
     "type": "Type",
+    "method": "Method",
     "completion": "Completion",
     "finished": "Finished",
     "inProgress": "In Progress",
