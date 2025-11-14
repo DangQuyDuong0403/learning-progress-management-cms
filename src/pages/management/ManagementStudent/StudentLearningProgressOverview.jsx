@@ -50,7 +50,9 @@ const StudentLearningProgressOverview = () => {
   const [overviewData, setOverviewData] = useState(null);
   const [levelChartData, setLevelChartData] = useState([]);
   const [challengeDetailData, setChallengeDetailData] = useState(null);
-  const [challengeTypeFilter, setChallengeTypeFilter] = useState('ALL');
+  const [challengeTypeFilter, setChallengeTypeFilter] = useState('GV');
+  const [studentClasses, setStudentClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState(null);
 
   // Load student learning progress data
   useEffect(() => {
@@ -217,10 +219,39 @@ const StudentLearningProgressOverview = () => {
           
           console.log('Level Chart Data Array:', levelChartDataArray);
           setLevelChartData(levelChartDataArray);
-          
         } else {
           console.warn('No levels data found in response');
           setLevelChartData([]);
+        }
+        
+        // Collect all classes from REAL levels data (not mock data) - both past and current
+        const allClasses = [];
+        if (Array.isArray(levels) && levels.length > 0) {
+          levels.forEach(level => {
+            if (level.classes && Array.isArray(level.classes)) {
+              level.classes.forEach(classItem => {
+                allClasses.push({
+                  classId: classItem.classId,
+                  className: classItem.className,
+                  classCode: classItem.classCode,
+                  levelName: level.levelName,
+                  levelCode: level.levelCode,
+                  joinedAt: classItem.joinedAt,
+                  leftAt: classItem.leftAt,
+                });
+              });
+            }
+          });
+        }
+        setStudentClasses(allClasses);
+        
+        // Set default selected class to current class
+        const currentClassId = overview?.currentClass?.classId || null;
+        if (currentClassId && allClasses.some(c => c.classId === currentClassId)) {
+          setSelectedClassId(currentClassId);
+        } else if (allClasses.length > 0) {
+          // If current class not found, select the first class
+          setSelectedClassId(allClasses[0].classId);
         }
         
         setLoading(false);
@@ -234,17 +265,16 @@ const StudentLearningProgressOverview = () => {
     loadData();
   }, []);
 
-  // Load challenge detail when currentClassId is available
+  // Load challenge detail when selectedClassId is available
   useEffect(() => {
     const loadChallengeDetail = async () => {
-      const classId = overviewData?.currentClassId;
-      if (!classId) {
+      if (!selectedClassId) {
         setChallengeDetailData(null);
         return;
       }
 
       try {
-        const response = await studentManagementApi.getStudentClassChallengeDetail(classId);
+        const response = await studentManagementApi.getStudentClassChallengeDetail(selectedClassId);
         console.log('Student Class Challenge Detail Response:', response);
         
         const challengeData = response?.data?.data || response?.data;
@@ -261,10 +291,10 @@ const StudentLearningProgressOverview = () => {
       }
     };
 
-    if (overviewData?.currentClassId) {
+    if (selectedClassId) {
       loadChallengeDetail();
     }
-  }, [overviewData?.currentClassId]);
+  }, [selectedClassId]);
 
   // Render summary cards
   const renderSummaryCards = (cards = []) => (
@@ -329,9 +359,7 @@ const StudentLearningProgressOverview = () => {
         return date.toLocaleDateString('vi-VN', { 
           year: 'numeric', 
           month: '2-digit', 
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
+          day: '2-digit'
         });
       } catch (e) {
         return 'N/A';
@@ -399,9 +427,7 @@ const StudentLearningProgressOverview = () => {
   // Challenge line chart data (0-10 scale), sorted by submittedAt, filter by challenge type
   const challengeLineData = useMemo(() => {
     if (!challengeDetailData?.challenges || !Array.isArray(challengeDetailData.challenges)) return [];
-    const filtered = challengeTypeFilter === 'ALL'
-      ? challengeDetailData.challenges
-      : challengeDetailData.challenges.filter(c => c.challengeType === challengeTypeFilter);
+    const filtered = challengeDetailData.challenges.filter(c => c.challengeType === challengeTypeFilter);
     const withOrder = filtered
       .map((c) => ({
         ...c,
@@ -566,29 +592,43 @@ const StudentLearningProgressOverview = () => {
                   paddingTop: 8,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <CheckCircleOutlined style={{ color: '#6366f1', fontSize: 20 }} />
                     <div className="slpv-title">
                       Challenge details - {challengeDetailData.className} ({challengeDetailData.classCode})
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
-                    <span style={{ color: '#6b7280', fontSize: 14 }}>Filter by skill:</span>
-                    <Select
-                      size="small"
-                      style={{ width: 160 }}
-                      value={challengeTypeFilter}
-                      onChange={setChallengeTypeFilter}
-                      options={[
-                        { value: 'ALL', label: 'All' },
-                        { value: 'GV', label: 'Vocabulary' },
-                        { value: 'RE', label: 'Reading' },
-                        { value: 'LI', label: 'Listening' },
-                        { value: 'WR', label: 'Writing' },
-                        { value: 'SP', label: 'Speaking' },
-                      ]}
-                    />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: '#6b7280', fontSize: 14 }}>Class:</span>
+                      <Select
+                        size="small"
+                        style={{ width: 200 }}
+                        value={selectedClassId}
+                        onChange={setSelectedClassId}
+                        options={studentClasses.map(cls => ({
+                          value: cls.classId,
+                          label: `${cls.className} (${cls.classCode})`,
+                        }))}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: '#6b7280', fontSize: 14 }}>Skill:</span>
+                      <Select
+                        size="small"
+                        style={{ width: 160 }}
+                        value={challengeTypeFilter}
+                        onChange={setChallengeTypeFilter}
+                        options={[
+                          { value: 'GV', label: 'Vocabulary' },
+                          { value: 'RE', label: 'Reading' },
+                          { value: 'LI', label: 'Listening' },
+                          { value: 'WR', label: 'Writing' },
+                          { value: 'SP', label: 'Speaking' },
+                        ]}
+                      />
+                    </div>
                   </div>
                 </div>
                 
@@ -640,13 +680,13 @@ const StudentLearningProgressOverview = () => {
                           <Line 
                             type="monotone"
                             dataKey="score10"
-                            stroke={challengeTypeFilter === 'ALL' ? '#60A5FA' : (
+                            stroke={
                               challengeTypeFilter === 'GV' ? '#A5B4FC' :
                               challengeTypeFilter === 'RE' ? '#86EFAC' :
                               challengeTypeFilter === 'LI' ? '#FDE68A' :
                               challengeTypeFilter === 'WR' ? '#C4B5FD' :
                               '#FCA5A5'
-                            )}
+                            }
                             strokeWidth={2.5}
                             dot={{ r: 4, fill: '#3B82F6' }}
                             activeDot={{ r: 6, fill: '#2563EB' }}
@@ -656,9 +696,40 @@ const StudentLearningProgressOverview = () => {
                       </ResponsiveContainer>
                       {/* Custom legend placed under X-axis label */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#60A5FA' }}>
-                          <span style={{ width: 18, height: 3, backgroundColor: '#60A5FA', borderRadius: 2 }} />
-                          <span style={{ color: '#60A5FA', fontSize: 14 }}>Score (0-10)</span>
+                        <div style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: 8, 
+                          color: (
+                            challengeTypeFilter === 'GV' ? '#A5B4FC' :
+                            challengeTypeFilter === 'RE' ? '#86EFAC' :
+                            challengeTypeFilter === 'LI' ? '#FDE68A' :
+                            challengeTypeFilter === 'WR' ? '#C4B5FD' :
+                            '#FCA5A5'
+                          )
+                        }}>
+                          <span style={{ 
+                            width: 18, 
+                            height: 3, 
+                            backgroundColor: (
+                              challengeTypeFilter === 'GV' ? '#A5B4FC' :
+                              challengeTypeFilter === 'RE' ? '#86EFAC' :
+                              challengeTypeFilter === 'LI' ? '#FDE68A' :
+                              challengeTypeFilter === 'WR' ? '#C4B5FD' :
+                              '#FCA5A5'
+                            ), 
+                            borderRadius: 2 
+                          }} />
+                          <span style={{ 
+                            color: (
+                              challengeTypeFilter === 'GV' ? '#A5B4FC' :
+                              challengeTypeFilter === 'RE' ? '#86EFAC' :
+                              challengeTypeFilter === 'LI' ? '#FDE68A' :
+                              challengeTypeFilter === 'WR' ? '#C4B5FD' :
+                              '#FCA5A5'
+                            ), 
+                            fontSize: 14 
+                          }}>Score (0-10)</span>
                         </div>
                       </div>
                     </>

@@ -39,31 +39,26 @@ const formatTimestamp = (timestamp) => {
   }
 };
 
-// Helper function to get activity type color
-const getActivityTypeColor = (actionType) => {
-  switch (actionType) {
-    case 'CREATE_STUDENT':
-    case 'ADD_STUDENT':
-      return '#10b981'; // green
-    case 'CREATE_CHAPTER':
-    case 'CREATE_LESSON':
-    case 'ADD_LESSON':
-      return '#3b82f6'; // blue
-    case 'CREATE_TEACHER':
-    case 'ADD_TEACHER':
-      return '#8b5cf6'; // purple
-    case 'UPDATE_CLASS':
-    case 'UPDATE_STUDENT':
-    case 'UPDATE_TEACHER':
-      return '#f59e0b'; // amber
-    case 'DELETE_STUDENT':
-    case 'DELETE_TEACHER':
-    case 'DELETE_CHAPTER':
-    case 'DELETE_LESSON':
-      return '#ef4444'; // red
-    default:
-      return '#6b7280'; // gray
-  }
+// Helper function to get a brighter color palette per activity type
+const getActivityColorPalette = (actionType) => {
+  const palette = {
+    CREATE_STUDENT: { primary: '#0ea5e9', soft: 'rgba(14, 165, 233, 0.15)' },
+    ADD_STUDENT: { primary: '#0ea5e9', soft: 'rgba(14, 165, 233, 0.15)' },
+    CREATE_CHAPTER: { primary: '#6366f1', soft: 'rgba(99, 102, 241, 0.16)' },
+    CREATE_LESSON: { primary: '#6366f1', soft: 'rgba(99, 102, 241, 0.16)' },
+    ADD_LESSON: { primary: '#6366f1', soft: 'rgba(99, 102, 241, 0.16)' },
+    CREATE_TEACHER: { primary: '#ec4899', soft: 'rgba(236, 72, 153, 0.16)' },
+    ADD_TEACHER: { primary: '#ec4899', soft: 'rgba(236, 72, 153, 0.16)' },
+    UPDATE_CLASS: { primary: '#f97316', soft: 'rgba(249, 115, 22, 0.18)' },
+    UPDATE_STUDENT: { primary: '#f97316', soft: 'rgba(249, 115, 22, 0.18)' },
+    UPDATE_TEACHER: { primary: '#f97316', soft: 'rgba(249, 115, 22, 0.18)' },
+    DELETE_STUDENT: { primary: '#ef4444', soft: 'rgba(239, 68, 68, 0.18)' },
+    DELETE_TEACHER: { primary: '#ef4444', soft: 'rgba(239, 68, 68, 0.18)' },
+    DELETE_CHAPTER: { primary: '#ef4444', soft: 'rgba(239, 68, 68, 0.18)' },
+    DELETE_LESSON: { primary: '#ef4444', soft: 'rgba(239, 68, 68, 0.18)' },
+  };
+
+  return palette[actionType] ?? { primary: '#14b8a6', soft: 'rgba(20, 184, 166, 0.16)' };
 };
 
 const ClassActivities = () => {
@@ -106,6 +101,7 @@ const ClassActivities = () => {
     endDate: null,
   });
   const filterContainerRef = useRef(null);
+  const prevSearchTextRef = useRef(searchText);
 
   const fetchClassData = useCallback(async () => {
     try {
@@ -139,46 +135,74 @@ const ClassActivities = () => {
   const fetchActivities = useCallback(async () => {
     setLoading(true);
     try {
+      // Reset pagination to page 1 if searchText changed
+      const currentPage = prevSearchTextRef.current !== searchText ? 1 : paginationCurrent;
+      if (prevSearchTextRef.current !== searchText) {
+        prevSearchTextRef.current = searchText;
+        setPagination(prev => ({
+          ...prev,
+          current: 1,
+        }));
+      }
+      
       const apiParams = {
-        page: paginationCurrent - 1,
+        page: currentPage - 1,
         size: paginationPageSize,
         sortBy: 'actionAt',
         sortDir: 'desc',
         startDate: filters.startDate ? filters.startDate.startOf('day').toISOString() : undefined,
         endDate: filters.endDate ? filters.endDate.endOf('day').toISOString() : undefined,
+        // Gửi searchText lên API nếu có - có thể dùng actionBy hoặc text parameter
+        ...(searchText && searchText.trim() ? { text: searchText.trim() } : {}),
       };
 
       const response = await classManagementApi.getClassHistory(id, apiParams);
-      console.log('🔍 Class History API Response:', response);
-
-      const payload = response?.data ?? response;
+      // Response structure from API: { data: [...], totalElements: 39, totalPages: 4, ... }
+      // Axios response: response = { data: { data: [...], totalElements: 39, totalPages: 4, ... } }
       let activitiesData = [];
-      let totalElementsFromPayload = 0;
+      let totalElements = 0;
+      const responseData = response?.data ?? response;
 
-      if (payload) {
-        if (Array.isArray(payload?.data)) {
-          activitiesData = payload.data;
-          totalElementsFromPayload = payload.totalElements ?? payload.total ?? payload.data.length;
-        } else if (payload?.data && Array.isArray(payload.data?.content)) {
-          activitiesData = payload.data.content;
-          totalElementsFromPayload = payload.data.totalElements ?? payload.data.total ?? activitiesData.length;
-        } else if (Array.isArray(payload?.content)) {
-          activitiesData = payload.content;
-          totalElementsFromPayload = payload.totalElements ?? payload.total ?? activitiesData.length;
-        } else if (Array.isArray(payload)) {
-          activitiesData = payload;
-          totalElementsFromPayload = payload.length;
+      // Check response structure
+      if (responseData) {
+        // Case 1: responseData.data is array (most common case)
+        // Structure: { data: [...], totalElements: 39, totalPages: 4, ... }
+        // totalElements is at responseData level (same level as data array)
+        if (Array.isArray(responseData.data)) {
+          activitiesData = responseData.data;
+          totalElements = responseData.totalElements ?? responseData.total ?? 0;
+        }
+        // Case 2: responseData itself is array (unwrapped)
+        // Structure: response.data = [...]
+        // totalElements might be at response level
+        else if (Array.isArray(responseData)) {
+          activitiesData = responseData;
+          // Try to get totalElements from response object (one level up)
+          totalElements = response?.totalElements ?? response?.total ?? responseData.length;
+        }
+        // Case 3: Nested structure with content array (Spring Page format)
+        else if (responseData.data && Array.isArray(responseData.data.content)) {
+          activitiesData = responseData.data.content;
+          totalElements = responseData.data.totalElements ?? responseData.data.total ?? 0;
+        }
+        // Case 4: content array at root
+        else if (Array.isArray(responseData.content)) {
+          activitiesData = responseData.content;
+          totalElements = responseData.totalElements ?? responseData.total ?? 0;
         }
       }
 
-      const totalElements = totalElementsFromPayload || payload?.totalElements || payload?.total || activitiesData.length;
+      // Fallback: if totalElements is still 0 or not found, check response object directly
+      if ((!totalElements || totalElements === 0) && response) {
+        totalElements = response.totalElements ?? response.total ?? 0;
+      }
 
       setActivities(activitiesData);
-      // Only update total to avoid triggering another fetch loop
-      setPagination(prev => {
-        if (prev.total === totalElements) return prev;
-        return { ...prev, total: totalElements };
-      });
+      // Update pagination with total from API
+      setPagination(prev => ({
+        ...prev,
+        total: totalElements,
+      }));
     } catch (error) {
       console.error('Error fetching class history:', error);
       spaceToast.error(t('classActivities.loadingActivities'));
@@ -197,12 +221,18 @@ const ClassActivities = () => {
     paginationPageSize,
     filters.startDate,
     filters.endDate,
+    searchText,
   ]);
 
   // Initial data loading
   useEffect(() => {
     fetchClassData();
   }, [fetchClassData]);
+
+  // Initialize prevSearchTextRef on mount
+  useEffect(() => {
+    prevSearchTextRef.current = searchText;
+  }, []);
 
   useEffect(() => {
     fetchActivities();
@@ -305,20 +335,13 @@ const ClassActivities = () => {
     };
   }, [filterDropdown.visible]);
 
-  // Clear all filters
-  // Filter activities based on search text
-  const filteredActivities = activities.filter(activity => 
-    (activity.actionByFullName && activity.actionByFullName.toLowerCase().includes(searchText.toLowerCase())) ||
-    (activity.actionByUsername && String(activity.actionByUsername).toLowerCase().includes(searchText.toLowerCase())) ||
-    (activity.actionByEmailPrefix && String(activity.actionByEmailPrefix).toLowerCase().includes(searchText.toLowerCase())) ||
-    (activity.actionDetails && activity.actionDetails.toLowerCase().includes(searchText.toLowerCase())) ||
-    (activity.actionType && activity.actionType.toLowerCase().includes(searchText.toLowerCase()))
-  );
+  // Use activities directly from API (search is handled server-side)
+  const displayedActivities = activities;
 
   // Debug logs
   console.log('🔍 Current pagination state:', pagination);
   console.log('🔍 Activities count:', activities.length);
-  console.log('🔍 Filtered activities count:', filteredActivities.length);
+  console.log('🔍 Search text:', searchText);
 
 
 
@@ -466,9 +489,13 @@ const ClassActivities = () => {
             <div style={{ 
               maxHeight: '600px', 
               overflowY: 'auto',
-              padding: '20px 0'
-            }}>
-              {filteredActivities.map((activity, index) => (
+              overflowX: 'hidden',
+              padding: '20px 0',
+              paddingRight: '12px'
+            }}
+            className="activity-timeline-scroll"
+            >
+              {displayedActivities.map((activity, index) => (
                 <div
                   key={activity.id}
                   style={{
@@ -479,7 +506,7 @@ const ClassActivities = () => {
                   }}
                 >
                   {/* Timeline line */}
-                  {index < filteredActivities.length - 1 && (
+                  {index < displayedActivities.length - 1 && (
                     <div
                       style={{
                         position: 'absolute',
@@ -493,119 +520,132 @@ const ClassActivities = () => {
                   )}
                   
                   {/* Timeline dot */}
-                  <div
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      backgroundColor: getActivityTypeColor(activity.actionType),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: '20px',
-                      flexShrink: 0,
-                      zIndex: 1,
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: 'white',
-                      }}
-                    />
-                  </div>
+                  {(() => {
+                    const palette = getActivityColorPalette(activity.actionType);
+                    return (
+                      <div
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: palette.primary,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: '20px',
+                          flexShrink: 0,
+                          zIndex: 1,
+                          boxShadow: '0 8px 18px rgba(15, 23, 42, 0.18)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            backgroundColor: '#ffffff',
+                          }}
+                        />
+                      </div>
+                    );
+                  })()}
                   
                   {/* Activity content */}
                   <div style={{ flex: 1, minWidth: 0, paddingLeft: '8px' }}>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '8px',
-                      marginBottom: '4px'
-                    }}>
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '600',
-                        color: '#24292e'
-                      }}>
-                        {activity.actionByFullName || activity.actionByUsername || activity.actionByEmailPrefix || 'Unknown User'}
-                      </span>
-                      <span style={{ 
-                        fontSize: '14px', 
-                        color: '#586069'
-                      }}>
-                        {activity.actionDetails || 'No details available'}
-                      </span>
-                    </div>
-                    
-                    {(activity.actionByUsername || activity.actionByEmailPrefix) && (
-                      <div
-                        title={`${activity.actionByUsername || ''}${activity.actionByUsername && activity.actionByEmailPrefix ? ' • ' : ''}${activity.actionByEmailPrefix || ''}`}
-                        style={{
-                          fontSize: '12px',
-                          color: '#6b7280',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          marginBottom: '4px'
-                        }}
-                      >
-                        {activity.actionByUsername && (
-                          <span style={{
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: '#eef2ff',
-                            color: '#3730a3',
-                            fontWeight: 500
+                    {(() => {
+                      const palette = getActivityColorPalette(activity.actionType);
+                      return (
+                        <>
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px',
+                            marginBottom: '6px'
                           }}>
-                            {activity.actionByUsername}
-                          </span>
-                        )}
-                        {activity.actionByEmailPrefix && (
-                          <span style={{
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: '#f1f5f9',
-                            color: '#334155'
+                            <span style={{ 
+                              fontSize: '15px', 
+                              fontWeight: '600',
+                              color: '#0f172a'
+                            }}>
+                              {activity.actionByFullName || activity.actionByUsername || activity.actionByEmailPrefix || 'Unknown User'}
+                            </span>
+                            <span style={{ 
+                              fontSize: '14px', 
+                              color: '#334155'
+                            }}>
+                              {activity.actionDetails || 'No details available'}
+                            </span>
+                          </div>
+                          
+                          {(activity.actionByUsername || activity.actionByEmailPrefix) && (
+                            <div
+                              title={`${activity.actionByUsername || ''}${activity.actionByUsername && activity.actionByEmailPrefix ? ' • ' : ''}${activity.actionByEmailPrefix || ''}`}
+                              style={{
+                                fontSize: '12px',
+                                color: '#475569',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                marginBottom: '6px'
+                              }}
+                            >
+                              {activity.actionByUsername && (
+                                <span style={{
+                                  padding: '4px 10px',
+                                  borderRadius: '999px',
+                                  background: 'rgba(59, 130, 246, 0.14)',
+                                  color: '#1d4ed8',
+                                  fontWeight: 500
+                                }}>
+                                  {activity.actionByUsername}
+                                </span>
+                              )}
+                              {activity.actionByEmailPrefix && (
+                                <span style={{
+                                  padding: '4px 10px',
+                                  borderRadius: '999px',
+                                  background: 'rgba(15, 23, 42, 0.07)',
+                                  color: '#0f172a'
+                                }}>
+                                  {activity.actionByEmailPrefix}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          
+                          <div style={{ 
+                            fontSize: '12px', 
+                            color: '#475569',
+                            marginLeft: '0'
                           }}>
-                            {activity.actionByEmailPrefix}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    
-                    <div style={{ 
-                      fontSize: '12px', 
-                      color: '#8b949e',
-                      marginLeft: '0'
-                    }}>
-                      {formatTimestamp(activity.actionAt)}
-                    </div>
-                    
-                    {/* Action Type Badge */}
-                    <div style={{ 
-                      marginTop: '4px',
-                      display: 'inline-block'
-                    }}>
-                      <span style={{
-                        fontSize: '10px',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        backgroundColor: getActivityTypeColor(activity.actionType),
-                        color: 'white',
-                        fontWeight: '500'
-                      }}>
-                        {activity.actionType || 'UNKNOWN'}
-                      </span>
-                    </div>
+                            {formatTimestamp(activity.actionAt)}
+                          </div>
+                          
+                          {/* Action Type Badge */}
+                          <div style={{ 
+                            marginTop: '8px',
+                            display: 'inline-flex'
+                          }}>
+                            <span style={{
+                              fontSize: '11px',
+                              padding: '4px 12px',
+                              borderRadius: '999px',
+                              backgroundColor: palette.soft,
+                              color: palette.primary,
+                              fontWeight: 600,
+                              letterSpacing: '0.02em'
+                            }}>
+                              {activity.actionType || 'UNKNOWN'}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
               
-              {filteredActivities.length === 0 && (
+              {displayedActivities.length === 0 && (
                 <div style={{
                   textAlign: 'center',
                   padding: '40px',
