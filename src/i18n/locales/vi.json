@@ -1831,6 +1831,7 @@
     "createChallenge": "Tạo Challenge",
     "challengeTitle": "Tên Challenge",
     "type": "Loại",
+    "method": "Phương thức",
     "no": "STT",
     "finished": "Đã hoàn thành",
     "closed": "Đã đóng",
