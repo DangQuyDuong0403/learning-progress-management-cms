@@ -1467,13 +1467,25 @@ const AIGenerateQuestions = () => {
               boxShadow: theme === 'sun'
                 ? '0 8px 24px rgba(24, 144, 255, 0.12)'
                 : '0 8px 24px rgba(139, 92, 246, 0.12)',
-              padding: 16
+              padding: 16,
+              maxWidth: challengeInfo.aiSource === 'file' ? '650px' : '100%',
+              margin: challengeInfo.aiSource === 'file' ? '0 auto' : '0',
+              width: challengeInfo.aiSource === 'file' ? 'auto' : '100%'
             }}
             bodyStyle={{ padding: 16 }}
           >
             {/* Two-column layout: left = Text Prompt (2/3), right = Question Settings (1/3) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'stretch' }}>
-              {/* Left: Text Prompt (no passage) */}
+            {/* When aiSource === 'file', hide AI Generation Settings and center Question Settings */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: challengeInfo.aiSource === 'file' ? '1fr' : '2fr 1fr', 
+              gap: '20px', 
+              alignItems: 'stretch',
+              justifyContent: challengeInfo.aiSource === 'file' ? 'center' : 'stretch',
+              width: '100%'
+            }}>
+              {/* Left: Text Prompt (no passage) - Hide when aiSource === 'file' */}
+              {challengeInfo.aiSource !== 'file' && (
               <Card
                 className={`prompt-description-card ${theme}-prompt-description-card`}
                 style={{
@@ -1869,7 +1881,7 @@ const AIGenerateQuestions = () => {
                   {/* Lesson Focus - Custom Dropdown with Input */}
                   <div className="lesson-focus-dropdown-container" style={{ flex: 1, position: 'relative', zIndex: 1000, overflow: 'visible' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                    Lesson Focus <span style={{ color: 'red' }}>*</span>
+                    Lesson Focus
                     </Typography.Text>
                   
                   {/* Input Field */}
@@ -2381,6 +2393,7 @@ const AIGenerateQuestions = () => {
                   </div>
                 </div>
               </Card>
+              )}
 
               {/* Right: Question Settings (with Upload or Manual modes) */}
               <Card
@@ -2486,18 +2499,6 @@ const AIGenerateQuestions = () => {
 
                 {questionSettingsMode === 'upload' && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 16, width: '100%', minHeight: 540 }}>
-                    {/* Hide Back button if mode was set from modal (aiSource exists) */}
-                    {!challengeInfo.aiSource && (
-                      <Button
-                        icon={<ArrowLeftOutlined />}
-                        onClick={() => setQuestionSettingsMode(null)}
-                        className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                        style={{ height: '32px', borderRadius: '8px', fontWeight: 500, fontSize: '14px', marginBottom: 16, alignSelf: 'flex-start' }}
-                      >
-                        {t('common.back')}
-                      </Button>
-                    )}
-
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
                       <label
                         htmlFor="question-upload-input"
