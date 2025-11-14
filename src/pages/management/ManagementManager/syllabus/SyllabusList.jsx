@@ -631,7 +631,7 @@ const SyllabusList = () => {
 			setTotalElements(prev => prev - selectedRowKeys.length);
 			
 			// Show success message
-			spaceToast.success(`${t('syllabusManagement.bulkDeleteSuccess')} ${selectedRowKeys.length} ${t('syllabusManagement.syllabuses')} ${t('common.success')}`);
+			spaceToast.success(`${t('syllabusManagement.bulkDeleteSuccess')} ${selectedRowKeys.length} ${selectedRowKeys.length === 1 ? 'Syllabus' : t('syllabusManagement.syllabuses')} ${t('common.success')}`);
 			
 			setIsBulkDeleteModalVisible(false);
 			setSelectedRowKeys([]);
@@ -688,7 +688,7 @@ const SyllabusList = () => {
 			document.body.removeChild(link);
 			window.URL.revokeObjectURL(url);
 			
-			spaceToast.success(`${t('syllabusManagement.exportSuccess')}: ${selectedRowKeys.length} ${t('syllabusManagement.syllabuses')}`);
+			spaceToast.success(`${t('syllabusManagement.exportSuccess')}: ${selectedRowKeys.length} ${selectedRowKeys.length === 1 ? 'Syllabus' : t('syllabusManagement.syllabuses')}`);
 			setIsExportModalVisible(false);
 		} catch (error) {
 			console.error('Error exporting selected syllabuses:', error);
@@ -1436,7 +1436,7 @@ const SyllabusList = () => {
 						margin: 0,
 						fontWeight: '400'
 					}}>
-						<strong>{selectedRowKeys.length} {t('syllabusManagement.syllabuses')}</strong>
+						<strong>{selectedRowKeys.length} {selectedRowKeys.length === 1 ? 'Syllabus' : t('syllabusManagement.syllabuses')}</strong>
 					</div>
 				</div>
 			</Modal>
@@ -1678,7 +1678,7 @@ const SyllabusList = () => {
 									color: '#000000',
 									borderRadius: '8px',
 								}}>
-								{t('syllabusManagement.exportSelected')} ({selectedRowKeys.length} {t('syllabusManagement.syllabuses')})
+								{t('syllabusManagement.exportSelected')} ({selectedRowKeys.length} {selectedRowKeys.length === 1 ? 'Syllabus' : t('syllabusManagement.syllabuses')})
 							</Button>
 						)}
 
