@@ -1511,7 +1511,7 @@ const CreateReadingChallenge = () => {
                  )}
                {/* Title - Always show at top */}
                <div style={{ marginBottom: '0px', position: 'relative' }}>
-                  {passage?.type === 'manual' && !(isWritingChallenge || isSpeakingChallenge) && !isManualMode && (
+                  {passage?.type === 'manual' && !(isWritingChallenge || isSpeakingChallenge) && !isManualMode && !editingPassage && (
                     <Button
                       type="text"
                       icon={<ArrowLeftOutlined />}

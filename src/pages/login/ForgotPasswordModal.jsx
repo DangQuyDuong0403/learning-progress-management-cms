@@ -84,9 +84,9 @@ export default function ForgotPasswordModal({ visible, onCancel, onMethodSelect 
                         <div className='recover-card'>
                             <div className='recover-icon'>👨‍🏫</div>
                             <h6>{t('forgotPassword.viaTeacher')}</h6>
-                            <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: isSunTheme ? '#6b7280' : '#999' }}>
+                            {/* <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: isSunTheme ? '#6b7280' : '#999' }}>
                                 {t('forgotPassword.teacherDescription')}
-                            </p>
+                            </p> */}
                         </div>
                     </div>
                 </div>
