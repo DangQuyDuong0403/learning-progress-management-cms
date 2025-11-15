@@ -1314,7 +1314,8 @@
     "selectedFile": "File đã chọn:",
     "importSuccess": "Nhập file thành công",
     "selectFileToImportError": "Vui lòng chọn file để nhập",
-    "removed": "Đã xóa"
+    "removed": "Đã xóa",
+    "maxTwoTeachingAssistants": "Bạn chỉ có thể chọn tối đa 2 trợ giảng"
   },
   "classActivities": {
     "title": "Hoạt động lớp học",

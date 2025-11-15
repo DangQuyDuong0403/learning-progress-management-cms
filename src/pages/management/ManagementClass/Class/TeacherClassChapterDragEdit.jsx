@@ -294,12 +294,22 @@ const TeacherClassChapterDragEdit = () => {
 			};
 
 			const response = await teacherManagementApi.getClassChapters(classId, params);
-			const data = response?.data ?? [];
-			if (!data || data.length === 0) {
-				throw new Error('No chapters found for this class');
+			
+			// Handle different response structures
+			let chaptersData = [];
+			if (response.data) {
+				if (Array.isArray(response.data)) {
+					chaptersData = response.data;
+				} else if (response.data.data && Array.isArray(response.data.data)) {
+					chaptersData = response.data.data;
+				} else if (response.data.content && Array.isArray(response.data.content)) {
+					chaptersData = response.data.content;
+				}
 			}
-
-			const mappedChapters = data.map((chapter, index) => ({
+			
+			// Allow empty array - class may not have chapters yet
+			// Backend handles authorization, so if API returns empty array, it's valid
+			const mappedChapters = chaptersData.map((chapter, index) => ({
 				id: chapter.id,
 				name: chapter.classChapterName,
 				description: chapter.description || '',

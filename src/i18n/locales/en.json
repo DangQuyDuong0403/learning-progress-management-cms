@@ -1321,7 +1321,8 @@
     "selectedFile": "Selected file:",
     "importSuccess": "File imported successfully",
     "selectFileToImportError": "Please select a file to import",
-    "removed": "Removed"
+    "removed": "Removed",
+    "maxTwoTeachingAssistants": "You can only select a maximum of 2 teaching assistants"
   },
   "classActivities": {
     "title": "Class Activities",

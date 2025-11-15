@@ -891,6 +891,19 @@ const ClassTeachers = () => {
             <Form.Item
               label={t('classTeachers.teachingAssistantsIncludingBoth')}
               name="selectedTeachingAssistants"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value || value.length === 0) {
+                      return Promise.resolve();
+                    }
+                    if (value.length > 2) {
+                      return Promise.reject(new Error(t('classTeachers.maxTwoTeachingAssistants')));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
             >
               <Select 
                 mode="multiple"
@@ -901,6 +914,16 @@ const ClassTeachers = () => {
                 allowClear
                 loading={loadingTeachers}
                 showSearch
+                maxTagCount={2}
+                onChange={(value) => {
+                  // Limit to maximum 2 teaching assistants
+                  if (value && value.length > 2) {
+                    const limitedValue = value.slice(0, 2);
+                    form.setFieldsValue({ selectedTeachingAssistants: limitedValue });
+                    spaceToast.warning(t('classTeachers.maxTwoTeachingAssistants'));
+                    return;
+                  }
+                }}
                 filterOption={(input, option) => {
                   const ta = availableTeachingAssistants.find(t => t.id === option.value);
                   if (!ta) return false;

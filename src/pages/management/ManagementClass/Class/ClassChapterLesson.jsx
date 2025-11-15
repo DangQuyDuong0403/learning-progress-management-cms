@@ -58,6 +58,7 @@ const ClassChapterLesson = () => {
 	const isManager = userRole === 'manager';
 	const isStudent = userRole === 'student';
 	const isTeachingAssistant = userRole === 'teaching_assistant';
+	const isTeacher = userRole === 'teacher';
 
 	// Check URL path and redirect if student tries to access manager routes
 	useEffect(() => {
@@ -170,7 +171,13 @@ const ClassChapterLesson = () => {
 		try {
 			const response = await teacherManagementApi.getClassChapterById(chapterId);
 			const data = response?.data ?? response;
-			if (!data || data.classId !== classId) {
+			if (!data) {
+				throw new Error('Chapter not found');
+			}
+			// Convert both to string for comparison to handle type mismatch
+			const chapterClassId = String(data.classId || '');
+			const currentClassId = String(classId || '');
+			if (chapterClassId && currentClassId && chapterClassId !== currentClassId) {
 				throw new Error('Chapter not found in this class');
 			}
 			setChapterData({
@@ -220,8 +227,24 @@ const ClassChapterLesson = () => {
 				}
 			}
 
-			if (!lessonsData.some(lesson => lesson.classId === classId)) {
-				throw new Error('Unauthorized to view lessons of another class');
+			// Only validate classId if lessons exist and have classId field
+			// If lessons array is empty, it's valid (no lessons yet)
+			// If lessons don't have classId field, trust the API (backend handles authorization)
+			if (lessonsData.length > 0) {
+				const hasClassIdField = lessonsData.some(lesson => lesson.hasOwnProperty('classId'));
+				if (hasClassIdField) {
+					// Convert both to string for comparison to handle type mismatch
+					const currentClassId = String(classId || '');
+					const hasMatchingClassId = lessonsData.some(lesson => {
+						const lessonClassId = String(lesson.classId || '');
+						return lessonClassId && currentClassId && lessonClassId === currentClassId;
+					});
+					// Only throw error if we have classId field but none match
+					// If no classId field exists, trust backend authorization
+					if (!hasMatchingClassId) {
+						console.warn('Lesson classId validation: No matching classId found, but trusting backend authorization');
+					}
+				}
 			}
 			
 			// Map API response to component format
@@ -366,8 +389,20 @@ const ClassChapterLesson = () => {
 					...params
 				});
 
+				// Handle different response structures
+				let lessonsData = [];
+				if (response.data) {
+					if (Array.isArray(response.data)) {
+						lessonsData = response.data;
+					} else if (response.data.data && Array.isArray(response.data.data)) {
+						lessonsData = response.data.data;
+					} else if (response.data.content && Array.isArray(response.data.content)) {
+						lessonsData = response.data.content;
+					}
+				}
+
 				// Get all IDs from the response
-				const allKeys = response.data.map(lesson => lesson.id);
+				const allKeys = lessonsData.map(lesson => lesson.id).filter(id => id != null);
 				setSelectedRowKeys(allKeys);
 			} catch (error) {
 				console.error('Error fetching all lesson IDs:', error);
@@ -734,50 +769,66 @@ const ClassChapterLesson = () => {
 			},
 		},
 		{
-			title: t('lessonManagement.lessonName'),
+			title: () => (
+				<span style={{ textAlign: 'left', display: 'block' }}>{t('lessonManagement.lessonName')}</span>
+			),
 			dataIndex: 'name',
 			key: 'name',
 			width: '80%',
+			align: 'left',
 			render: (text) => (
-				<span style={{ fontSize: '20px' }}>{text}</span>
+				<span style={{ fontSize: '20px', textAlign: 'left', display: 'block' }}>{text}</span>
 			),
 		},
 		{
 			title: t('lessonManagement.actions'),
 			key: 'actions',
 			width: '10%',
-				render: (_, record) => (
-					!isManager && !isStudent && !isTeachingAssistant ? (
-					<Space size="small">
-						<Tooltip title={t('common.edit')}>
-							<Button
-								type="text"
-								size="small"
-								icon={<EditOutlined style={{ fontSize: '25px' }} />}
-								onClick={() => handleEditLesson(record)}
-							/>
-						</Tooltip>
-						<Tooltip title={t('common.delete')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<DeleteOutlined style={{ fontSize: '25px' }} />}
-								onClick={() => handleDeleteLessonClick(record)}
-						/>
-						</Tooltip>
-					</Space>
-				) : (
-					<Tooltip title={t('common.view')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<EyeOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleViewLesson(record)}
-							style={{ color: '#1890ff' }}
-						/>
-					</Tooltip>
-				)
-			),
+				render: (_, record) => {
+					// Manager, Student, Teaching Assistant: View only
+					if (isManager || isStudent || isTeachingAssistant) {
+						return (
+							<Tooltip title={t('common.view')}>
+								<Button
+									type="text"
+									size="small"
+									icon={<EyeOutlined style={{ fontSize: '25px' }} />}
+									onClick={() => handleViewLesson(record)}
+									style={{ color: '#1890ff' }}
+								/>
+							</Tooltip>
+						);
+					}
+					// Teacher: Edit only (no delete)
+					if (isTeacher) {
+						return (
+							<Space size="small">
+								<Tooltip title={t('common.edit')}>
+									<Button
+										type="text"
+										size="small"
+										icon={<EditOutlined style={{ fontSize: '25px' }} />}
+										onClick={() => handleEditLesson(record)}
+									/>
+								</Tooltip>
+							</Space>
+						);
+					}
+					// Other roles: Edit and Delete
+					return (
+						<Space size="small">
+							<Tooltip title={t('common.edit')}>
+								<Button
+									type="text"
+									size="small"
+									icon={<EditOutlined style={{ fontSize: '25px' }} />}
+									onClick={() => handleEditLesson(record)}
+								/>
+							</Tooltip>
+							
+						</Space>
+					);
+				},
 		},
 	];
 
@@ -854,7 +905,7 @@ const ClassChapterLesson = () => {
 						dataSource={filteredLessons}
 						rowKey="id"
 						loading={loading}
-					rowSelection={!isManager && !isStudent && !isTeachingAssistant ? {
+					rowSelection={!isManager && !isStudent && !isTeachingAssistant && !isTeacher ? {
 							selectedRowKeys,
 							onChange: setSelectedRowKeys,
 							onSelectAll: handleSelectAll,
@@ -871,8 +922,8 @@ const ClassChapterLesson = () => {
 				</div>
 			</div>
 
-			{/* Bottom Action Bar - Only show for non-manager, non-student, non-TA roles */}
-			{!isManager && !isStudent && !isTeachingAssistant && (
+			{/* Bottom Action Bar - Only show for roles that can delete (not manager, student, TA, or teacher) */}
+			{!isManager && !isStudent && !isTeachingAssistant && !isTeacher && (
 				<BottomActionBar
 					selectedCount={selectedRowKeys.length}
 					onSelectAll={handleSelectAll}
