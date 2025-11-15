@@ -203,6 +203,15 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					const tagName = node.tagName.toLowerCase();
 					const innerHTML = node.innerHTML;
 
+					// Special handling for <br> tags - preserve as HTML item
+					if (tagName === 'br') {
+						return {
+							type: 'html',
+							content: '<br>',
+							id: `html-${Date.now()}`,
+						};
+					}
+
 					// Special handling for image wrapper - always preserve
 					if (
 						node.hasAttribute('data-image-wrapper') ||
@@ -1866,7 +1875,8 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 
 		// Process each child node
-		const processNode = (node) => {
+		// isTopLevel: true if this is a top-level node (direct child of editor), false if nested
+		const processNode = (node, isLastSibling = false, isTopLevel = false) => {
 			if (node.nodeType === Node.TEXT_NODE) {
 				return node.textContent;
 			} else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -1924,13 +1934,43 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 					// Process child nodes (including tables to capture dropdowns inside)
 					let innerContent = '';
-					node.childNodes.forEach((child) => {
-						innerContent += processNode(child);
+					const childNodes = Array.from(node.childNodes);
+					childNodes.forEach((child, index) => {
+						const isLastChild = index === childNodes.length - 1;
+						innerContent += processNode(child, isLastChild, false); // Nested, not top-level
 					});
 
-					// Don't wrap if it's a div or certain block elements from contentEditable
-					if (tagName === 'div' || tagName === 'br') {
-						return innerContent + (tagName === 'br' ? '<br>' : '');
+					// Handle line breaks - when user presses Enter, contentEditable creates <div> or <br>
+					if (tagName === 'br') {
+						return '<br>';
+					}
+					
+					// Handle div elements - preserve line breaks when div is used for new lines
+					if (tagName === 'div') {
+						// Check if this is a special div (like image-wrapper) - don't add line break
+						if (node.hasAttribute('data-image-wrapper') || node.classList.contains('image-wrapper')) {
+							return innerContent;
+						}
+						
+						// Regular div from contentEditable - each div represents a line/paragraph
+						// Check if div is effectively empty (no meaningful content)
+						const textContent = node.textContent || '';
+						const isEmpty = !textContent.trim() && node.childNodes.length === 0;
+						
+						if (isEmpty) {
+							// Empty div = line break
+							return '<br>';
+						}
+						
+						// Div has content - preserve content
+						// For top-level divs, don't add <br> here (handled in main loop)
+						// For nested divs, add <br> after if not last sibling
+						if (isTopLevel) {
+							return innerContent; // Top-level divs: <br> is added in main loop
+						} else {
+							// Nested divs: add <br> after if not last sibling
+							return isLastSibling ? innerContent : innerContent + '<br>';
+						}
 					}
 
 					// Wrap with appropriate HTML tag (preserve table wrapper so dropdowns inside are included)
@@ -1973,7 +2013,14 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					node.nodeType === Node.TEXT_NODE ? 'TEXT' : node.tagName,
 					node
 				);
-				result += processNode(node);
+				const isLastSibling = index === childNodes.length - 1;
+				result += processNode(node, isLastSibling, true); // true = isTopLevel
+				
+				// Add <br> between top-level nodes if this is not the last node
+				// This ensures line breaks are preserved when user presses Enter
+				if (!isLastSibling) {
+					result += '<br>';
+				}
 			});
 
 			return result;
@@ -2136,6 +2183,15 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			} else if (item.type === 'html') {
 				// Parse HTML content and insert it, handling dropdown patterns inside
 				if (item.content) {
+					// Special handling for <br> tags - create a new div (contentEditable uses div for line breaks)
+					if (item.content.trim() === '<br>' || item.content.trim() === '<br/>' || item.content.trim() === '<br />') {
+						// Create a new empty div to represent the line break
+						// This is how contentEditable handles line breaks
+						const newDiv = document.createElement('div');
+						editorRef.current.appendChild(newDiv);
+						return;
+					}
+					
 					const tempDiv = document.createElement('div');
 					tempDiv.innerHTML = item.content;
 					
@@ -2188,6 +2244,17 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								}
 							}
 						} else if (node.nodeType === Node.ELEMENT_NODE) {
+							const tagName = node.tagName.toLowerCase();
+							
+							// Special handling for <br> - create a new div (contentEditable uses div for line breaks)
+							if (tagName === 'br') {
+								// Create a new empty div to represent the line break
+								// This is how contentEditable handles line breaks
+								const newDiv = document.createElement('div');
+								parentElement.appendChild(newDiv);
+								return;
+							}
+							
 							// Clone the node
 							const clonedNode = node.cloneNode(false);
 							
