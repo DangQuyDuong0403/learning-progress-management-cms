@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Input,
@@ -24,69 +24,62 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import classManagementApi from "../../../../apis/backend/classManagement";
 
-const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
+const AssignStudentToClass = ({ student, students, onClose, onSuccess }) => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
   
+  // Determine if this is bulk assignment (multiple students)
+  const isBulkAssignment = Array.isArray(students) && students.length > 0;
+  const studentsList = useMemo(() => {
+    return isBulkAssignment ? students : (student ? [student] : []);
+  }, [isBulkAssignment, students, student]);
+  
   // State management
   const [searchText, setSearchText] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [allClasses, setAllClasses] = useState([]); // All classes loaded
+  const [displayedClasses, setDisplayedClasses] = useState([]); // Filtered classes to display
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
   const [assigningLoading, setAssigningLoading] = useState(false);
 
-  // Search and recommendation logic
-  const handleSearch = useCallback(async (searchValue) => {
-    
-    // Filter statuses for class search - can be easily modified
-    const FILTER_STATUSES = ['ACTIVE', 'PENDING', 'UPCOMING_END'];
-    if (!searchValue.trim()) {
-      setSearchResults([]);
-      setHasSearched(false);
-      return;
+  // Process and recommend classes - memoized based on studentsList
+  const processClasses = useCallback((classes, studentList) => {
+    if (!classes || classes.length === 0) {
+      return [];
     }
-
-    setIsSearching(true);
-    setHasSearched(true);
-
-    try {
-      
-      // Call API to search classes with multiple status filters
-      const response = await classManagementApi.getClasses({
-        page: 0,
-        size: 100,
-        searchText: searchValue.trim(),
-        status: FILTER_STATUSES // Filter on backend using array
-      });
-
-
-      if (response.success && response.data) {
-        const classes = response.data;
-        
-        // Debug: Log class data structure to understand the fields
-        // Add recommendation logic based on student's level
-        const recommended = classes.map(cls => {
+    
+    // Add recommendation logic based on student's level
+    const recommended = classes.map(cls => {
           let recommendationScore = 0;
           let reasons = [];
 
-          // Check if student is already assigned to this class
-          const studentsList = cls.students || cls.studentInfos || [];
-          const isAlreadyAssigned = studentsList.some(s => s.id === student.id);
+          // Check if students are already assigned to this class
+          const classStudentsList = cls.students || cls.studentInfos || [];
+          const studentIds = studentList.map(s => s.id);
+          const alreadyAssignedCount = classStudentsList.filter(s => studentIds.includes(s.id)).length;
+          const isAllAssigned = alreadyAssignedCount === studentList.length;
+          const isSomeAssigned = alreadyAssignedCount > 0 && alreadyAssignedCount < studentList.length;
 
 
-          // Level matching (highest priority)
-          if (cls.syllabus && cls.syllabus.level && student?.currentLevelInfo) {
+          // Level matching (highest priority) - check if any student matches
+          if (cls.syllabus && cls.syllabus.level) {
             const classLevel = cls.syllabus.level.levelName || cls.syllabus.level;
-            const studentLevel = student.currentLevelInfo.levelName || student.currentLevelInfo.name;
-            if (classLevel && studentLevel && classLevel.toLowerCase() === studentLevel.toLowerCase()) {
+            const matchingStudents = studentList.filter(s => {
+              const studentLevel = s.currentLevelInfo?.levelName || s.currentLevelInfo?.name;
+              return studentLevel && classLevel && studentLevel.toLowerCase() === classLevel.toLowerCase();
+            });
+            if (matchingStudents.length > 0) {
               recommendationScore += 50;
-              reasons.push(t('studentManagement.levelMatch'));
+              if (matchingStudents.length === studentList.length) {
+                reasons.push(t('studentManagement.allLevelMatch'));
+              } else {
+                reasons.push(t('studentManagement.someLevelMatch', { count: matchingStudents.length }));
+              }
             }
           }
 
           // Class capacity (prefer classes with more students)
-          const currentStudentCount = cls.studentCount || studentsList.length || 0;
+          const currentStudentCount = cls.studentCount || classStudentsList.length || 0;
           if (currentStudentCount > 15) {
             recommendationScore += 30;
             reasons.push(t('studentManagement.goodClassSize'));
@@ -109,7 +102,10 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
             recommendationScore,
             reasons,
             isRecommended: recommendationScore >= 30,
-            isAlreadyAssigned,
+            isAlreadyAssigned: isAllAssigned,
+            isSomeAssigned,
+            alreadyAssignedCount,
+            totalSelectedCount: studentList.length,
             studentCount: currentStudentCount,
             maxStudents: cls.maxStudents || 25,
             currentTeachers: cls.teacherInfos || []
@@ -127,64 +123,132 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
           return nameA.localeCompare(nameB);
         });
 
-        setSearchResults(recommended);
-      } else {
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('Error searching classes:', error);
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.searchError');
-      spaceToast.error(errorMessage);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [student, t]);
+    return recommended;
+  }, [t]);
 
-  // Debounced search
+  // Load all classes on component mount - only once
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      handleSearch(searchText);
-    }, 500);
+    let isMounted = true;
+    
+    const loadClasses = async () => {
+      setIsLoading(true);
+      try {
+        // Filter statuses for class search - can be easily modified
+        const FILTER_STATUSES = ['ACTIVE', 'PENDING', 'UPCOMING_END'];
+        
+        // Call API to get all classes with multiple status filters
+        const response = await classManagementApi.getClasses({
+          page: 0,
+          size: 100,
+          searchText: '', // Empty to get all
+          status: FILTER_STATUSES
+        });
 
-    return () => clearTimeout(timeoutId);
-  }, [searchText, handleSearch]);
+        if (isMounted) {
+          if (response.success && response.data) {
+            // Process classes with current studentsList
+            const processedClasses = processClasses(response.data, studentsList);
+            setAllClasses(processedClasses);
+            setDisplayedClasses(processedClasses);
+          } else {
+            setAllClasses([]);
+            setDisplayedClasses([]);
+          }
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error('Error loading classes:', error);
+          const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.searchError');
+          spaceToast.error(errorMessage);
+          setAllClasses([]);
+          setDisplayedClasses([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadClasses();
+    
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - studentsList is passed as parameter to processClasses
+
+  // Filter classes based on search text
+  useEffect(() => {
+    if (!searchText.trim()) {
+      // If no search text, show all classes
+      setDisplayedClasses(allClasses);
+      return;
+    }
+
+    // Filter classes by search text (case-insensitive)
+    const searchLower = searchText.toLowerCase().trim();
+    const filtered = allClasses.filter(cls => {
+      const className = (cls.className || cls.name || '').toLowerCase();
+      const classCode = (cls.classCode || '').toLowerCase();
+      const levelName = (cls.syllabus?.level?.levelName || cls.syllabus?.syllabusName || '').toLowerCase();
+      const teacherNames = (cls.teacherInfos || []).map(t => (t.fullName || t.userName || '').toLowerCase()).join(' ');
+      
+      return className.includes(searchLower) || 
+             classCode.includes(searchLower) || 
+             levelName.includes(searchLower) ||
+             teacherNames.includes(searchLower);
+    });
+
+    setDisplayedClasses(filtered);
+  }, [searchText, allClasses]);
 
   // Handle class selection (single selection only)
   const handleClassSelection = (classId) => {
     if (selectedClass?.id === classId) {
       setSelectedClass(null);
     } else {
-      const classItem = searchResults.find(cls => cls.id === classId);
+      const classItem = displayedClasses.find(cls => cls.id === classId);
       setSelectedClass(classItem);
     }
   };
 
-  // Handle assign student to class
+  // Handle assign students to class
   const handleAssignToClass = async () => {
     if (!selectedClass) {
       spaceToast.warning(t('studentManagement.selectAtLeastOneClass'));
       return;
     }
 
-    if (!student || !student.id) {
+    if (!studentsList || studentsList.length === 0) {
       spaceToast.error('Student information is missing');
+      return;
+    }
+
+    // Get all student IDs
+    const studentIds = studentsList.map(s => s.id).filter(id => id);
+    
+    if (studentIds.length === 0) {
+      spaceToast.error('No valid student IDs found');
       return;
     }
 
     setAssigningLoading(true);
     try {
-      const response = await classManagementApi.addStudentsToClass(selectedClass.id, [student.id]);
+      const response = await classManagementApi.addStudentsToClass(selectedClass.id, studentIds);
       
       if (response.success) {
-        spaceToast.success(response.message);
+        const successMessage = isBulkAssignment 
+          ? t('studentManagement.bulkAssignSuccess', { count: studentIds.length, className: selectedClass.className || selectedClass.name })
+          : response.message || t('studentManagement.assignStudentSuccess');
+        spaceToast.success(successMessage);
         onClose(); // Close modal
         if (onSuccess) {
           onSuccess(); // Refresh the student list
         }
       } 
     } catch (error) {
-      console.error('Error assigning student to class:', error);
+      console.error('Error assigning students to class:', error);
       const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.assignStudentError');
       spaceToast.error(errorMessage);
     } finally {
@@ -196,6 +260,7 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
   const renderClassItem = (classItem) => {
     const isSelected = selectedClass?.id === classItem.id;
     const isAlreadyAssigned = classItem.isAlreadyAssigned;
+    const isSomeAssigned = classItem.isSomeAssigned;
     
     return (
       <List.Item
@@ -235,7 +300,18 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
               )}
               {isAlreadyAssigned && (
                 <Tag color="red">
-                  {t('studentManagement.alreadyAssigned')}
+                  {isBulkAssignment 
+                    ? t('studentManagement.allAlreadyAssigned', { count: classItem.totalSelectedCount })
+                    : t('studentManagement.alreadyAssigned')
+                  }
+                </Tag>
+              )}
+              {isSomeAssigned && !isAlreadyAssigned && (
+                <Tag color="orange">
+                  {t('studentManagement.someAlreadyAssigned', { 
+                    assigned: classItem.alreadyAssignedCount, 
+                    total: classItem.totalSelectedCount 
+                  })}
                 </Tag>
               )}
             </div>
@@ -298,7 +374,10 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
               size="small"
               style={{ color: '#ff4d4f', borderColor: '#ff4d4f' }}
             >
-              {t('studentManagement.alreadyAssigned')}
+              {isBulkAssignment 
+                ? t('studentManagement.allAlreadyAssigned', { count: classItem.totalSelectedCount })
+                : t('studentManagement.alreadyAssigned')
+              }
             </Button>
           ) : isSelected ? (
             <Button
@@ -335,45 +414,80 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
     <div className={`assign-student-form ${theme}-assign-student-form`}>
       {/* Student Info Card */}
       <Card 
-        title={t('studentManagement.studentInfo')}
+        title={isBulkAssignment ? t('studentManagement.totalSelectedStudents', { count: studentsList.length }) : t('studentManagement.studentInfo')}
         className={`student-info-card ${theme}-student-info-card`}
         style={{ marginBottom: 24 }}
       >
-        <Row gutter={16}>
-          <Col span={8}>
-            <div style={{ textAlign: 'center' }}>
-              <UserOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+        {isBulkAssignment ? (
+          <div>
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              <List
+                size="small"
+                dataSource={studentsList}
+                renderItem={(s) => (
+                  <List.Item style={{ padding: '8px 0' }}>
+                    <List.Item.Meta
+                      avatar={<Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />}
+                      title={
+                        <span style={{ fontSize: '14px' }}>
+                          {s.fullName || s.userName || s.name}
+                        </span>
+                      }
+                      description={
+                        <div>
+                          <Tag color={s.roleName === 'STUDENT' ? 'blue' : 'green'} style={{ marginRight: 4 }}>
+                            {s.roleName === 'STUDENT' ? t('common.student') : t('common.testTaker')}
+                          </Tag>
+                          {s.currentLevelInfo && (
+                            <Tag color="orange">
+                              {s.currentLevelInfo.levelName || s.currentLevelInfo.name}
+                            </Tag>
+                          )}
+                        </div>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
             </div>
-          </Col>
-          <Col span={16}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '20px' }}>
-                {student?.fullName || student?.userName || student?.name}
-              </h3>
-              <Tag color={student?.roleName === 'STUDENT' ? 'blue' : 'green'}>
-                {student?.roleName === 'STUDENT' 
-                  ? t('common.student') 
-                  : t('common.testTaker')
-                }
-              </Tag>
-              {student?.currentLevelInfo && (
-                <Tag color="orange" style={{ marginLeft: 8 }}>
-                  {student.currentLevelInfo.levelName || student.currentLevelInfo.name}
+          </div>
+        ) : (
+          <Row gutter={16}>
+            <Col span={8}>
+              <div style={{ textAlign: 'center' }}>
+                <UserOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+              </div>
+            </Col>
+            <Col span={16}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '20px' }}>
+                  {studentsList[0]?.fullName || studentsList[0]?.userName || studentsList[0]?.name}
+                </h3>
+                <Tag color={studentsList[0]?.roleName === 'STUDENT' ? 'blue' : 'green'}>
+                  {studentsList[0]?.roleName === 'STUDENT' 
+                    ? t('common.student') 
+                    : t('common.testTaker')
+                  }
                 </Tag>
-              )}
-              {student?.email && (
-                <div style={{ marginTop: '8px', color: '#666' }}>
-                  {student.email}
-                </div>
-              )}
-            </div>
-          </Col>
-        </Row>
+                {studentsList[0]?.currentLevelInfo && (
+                  <Tag color="orange" style={{ marginLeft: 8 }}>
+                    {studentsList[0].currentLevelInfo.levelName || studentsList[0].currentLevelInfo.name}
+                  </Tag>
+                )}
+                {studentsList[0]?.email && (
+                  <div style={{ marginTop: '8px', color: '#666' }}>
+                    {studentsList[0].email}
+                  </div>
+                )}
+              </div>
+            </Col>
+          </Row>
+        )}
       </Card>
 
-      {/* Search Classes */}
+      {/* Classes List */}
       <Card 
-        title={t('studentManagement.searchAndRecommendClasses')}
+        title={t('studentManagement.selectClass')}
         className={`search-card ${theme}-search-card`}
         style={{ marginBottom: 24 }}
       >
@@ -391,35 +505,41 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
           </Col>
         </Row>
         
-        {/* Search Results */}
-        {hasSearched && (
-          <div style={{ marginTop: '16px' }}>
-            {isSearching ? (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <Spin size="large" />
-                <div style={{ marginTop: '16px', color: '#666' }}>
-                  {t('studentManagement.searchingClasses')}
-                </div>
+        {/* Classes List */}
+        <div style={{ marginTop: '16px' }}>
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <Spin size="large" />
+              <div style={{ marginTop: '16px', color: '#666' }}>
+                {t('studentManagement.searchingClasses')}
               </div>
-            ) : searchResults.length > 0 ? (
-              <div>
-                <div style={{ marginBottom: '16px', color: '#666' }}>
-                  {t('studentManagement.foundClasses', { count: searchResults.length })}
-                </div>
+            </div>
+          ) : displayedClasses.length > 0 ? (
+            <div>
+              <div style={{ marginBottom: '16px', color: '#666' }}>
+                {searchText.trim() 
+                  ? t('studentManagement.foundClasses', { count: displayedClasses.length })
+                  : t('studentManagement.availableClasses', { count: displayedClasses.length })
+                }
+              </div>
+              <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
                 <List
-                  dataSource={searchResults}
+                  dataSource={displayedClasses}
                   renderItem={renderClassItem}
                   className={`search-results-list ${theme}-search-results-list`}
                 />
               </div>
-            ) : (
-              <Empty
-                description={t('studentManagement.noClassesFound')}
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-              />
-            )}
-          </div>
-        )}
+            </div>
+          ) : (
+            <Empty
+              description={searchText.trim() 
+                ? t('studentManagement.noClassesFound')
+                : t('studentManagement.noClassesAvailable')
+              }
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          )}
+        </div>
       </Card>
 
       {/* Action Buttons */}
@@ -451,8 +571,14 @@ const AssignStudentToClass = ({ student, onClose, onSuccess }) => {
             className={`submit-button ${theme}-submit-button`}
           >
             {selectedClass 
-              ? `${t('studentManagement.assignToSelectedClass')}`
-              : t('studentManagement.assignToSelectedClass')
+              ? (isBulkAssignment 
+                  ? t('studentManagement.assignAllToSelectedClass', { count: studentsList.length })
+                  : t('studentManagement.assignToSelectedClass')
+                )
+              : (isBulkAssignment 
+                  ? t('studentManagement.selectClassToAssignAll')
+                  : t('studentManagement.selectClassToAssign')
+                )
             }
           </Button>
         </Col>
