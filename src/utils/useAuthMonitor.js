@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { logout } from '../redux/auth';
+import { useEffect, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { logout, getUserProfile } from '../redux/auth';
+import { spaceToast } from '../component/SpaceToastify';
 
 /**
  * Custom hook to monitor authentication state across browser tabs
@@ -8,6 +9,8 @@ import { logout } from '../redux/auth';
  */
 export const useAuthMonitor = () => {
   const dispatch = useDispatch();
+  const profileData = useSelector((state) => state.auth.profileData);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     // Function to check if user is still authenticated
@@ -37,6 +40,38 @@ export const useAuthMonitor = () => {
       return true;
     };
 
+    // Function to check account status from profile
+    const checkAccountStatus = async () => {
+      try {
+        const result = await dispatch(getUserProfile()).unwrap();
+        const accountStatus = result?.data?.status;
+        
+        // Nếu tài khoản bị inactive, tự động logout
+        if (accountStatus && accountStatus.toUpperCase() === 'INACTIVE') {
+          console.warn('🚨 ACCOUNT INACTIVE: Account status is INACTIVE, logging out...');
+          spaceToast.error('Your account has been deactivated. Please contact administrator.');
+          
+          // Clear all tokens and user data
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          localStorage.removeItem('mustChangePassword');
+          localStorage.removeItem('mustUpdateProfile');
+          
+          dispatch(logout());
+          
+          // Redirect to login page
+          if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/choose-login')) {
+            window.location.href = '/choose-login';
+          }
+        }
+      } catch (error) {
+        // Nếu lỗi khi check profile, có thể là do account đã bị inactive
+        // secureAxiosClient sẽ xử lý logout trong trường hợp này
+        console.log('Failed to check account status:', error);
+      }
+    };
+
     // Listen for storage changes (when localStorage is modified in other tabs)
     const handleStorageChange = (e) => {
       // Only handle changes to auth-related keys
@@ -57,7 +92,10 @@ export const useAuthMonitor = () => {
     // Listen for focus events (when user switches back to this tab)
     const handleFocus = () => {
       console.log('Window focused, checking auth status...');
-      checkAuthStatus();
+      if (checkAuthStatus()) {
+        // Nếu token hợp lệ, check account status
+        checkAccountStatus();
+      }
     };
 
     // Add event listeners
@@ -66,16 +104,52 @@ export const useAuthMonitor = () => {
 
     // Check auth status after a small delay to avoid immediate logout on app load
     const timeoutId = setTimeout(() => {
-      checkAuthStatus();
+      if (checkAuthStatus()) {
+        // Nếu token hợp lệ, check account status lần đầu
+        checkAccountStatus();
+      }
     }, 1000);
 
-    // Cleanup event listeners and timeout
+    // Kiểm tra định kỳ account status mỗi 2 phút (120000ms)
+    // Để phát hiện khi manager inactive tài khoản trong khi user đang dùng
+    if (checkAuthStatus()) {
+      intervalRef.current = setInterval(() => {
+        checkAccountStatus();
+      }, 120000); // Check every 2 minutes
+    }
+
+    // Cleanup event listeners, timeout and interval
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', handleFocus);
       clearTimeout(timeoutId);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
   }, [dispatch]);
+
+  // Monitor profileData changes to detect status changes
+  useEffect(() => {
+    if (profileData?.status && profileData.status.toUpperCase() === 'INACTIVE') {
+      console.warn('🚨 ACCOUNT INACTIVE: Profile data shows INACTIVE status, logging out...');
+      spaceToast.error('Your account has been deactivated. Please contact administrator.');
+      
+      // Clear all tokens and user data
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('mustChangePassword');
+      localStorage.removeItem('mustUpdateProfile');
+      
+      dispatch(logout());
+      
+      // Redirect to login page
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/choose-login')) {
+        window.location.href = '/choose-login';
+      }
+    }
+  }, [profileData, dispatch]);
 };
 
 export default useAuthMonitor;
