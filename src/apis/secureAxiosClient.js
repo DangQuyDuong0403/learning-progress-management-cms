@@ -1,7 +1,9 @@
 import axios from 'axios';
 import authApi from './backend/auth';
-import { isTokenExpiringSoon, decodeJWT, getRoleFromToken } from '../utils/jwtUtils';
+import { isTokenExpiringSoon, getRoleFromToken } from '../utils/jwtUtils';
 import { spaceToast } from '../component/SpaceToastify';
+import store from '../redux/store';
+import { logout } from '../redux/auth';
 
 // Tạo instance mặc định cho axios
 const axiosClient = axios.create({
@@ -165,17 +167,38 @@ axiosClient.interceptors.response.use(
 			} catch (refreshError) {
 				console.error('Token refresh failed:', refreshError);
 				
+				// Kiểm tra nếu lỗi do account bị inactive
+				const refreshErrorMessage = refreshError.response?.data?.message || refreshError.response?.data?.error || refreshError.message || '';
+				const refreshErrorData = refreshError.response?.data?.data || refreshError.response?.data || {};
+				
+				const isAccountInactiveFromRefresh = 
+					(refreshErrorMessage && (
+						refreshErrorMessage.toLowerCase().includes('inactive') ||
+						refreshErrorMessage.toLowerCase().includes('account is disabled') ||
+						refreshErrorMessage.toLowerCase().includes('account has been deactivated')
+					)) ||
+					(refreshErrorData.status && refreshErrorData.status.toUpperCase() === 'INACTIVE');
+
+				if (isAccountInactiveFromRefresh) {
+					console.warn('🚨 ACCOUNT INACTIVE: Refresh token failed due to inactive account');
+					spaceToast.error('Your account has been deactivated. Please contact administrator.');
+				}
+				
 				// Xóa tất cả tokens
 				localStorage.removeItem('accessToken');
 				localStorage.removeItem('refreshToken');
 				localStorage.removeItem('user');
 				localStorage.removeItem('mustChangePassword');
+				localStorage.removeItem('mustUpdateProfile');
+				
+				// Dispatch logout action
+				store.dispatch(logout());
 				
 				// Xử lý queue với error
 				processQueue(refreshError, null);
 				
 				// Chỉ redirect nếu không phải đang ở trang login
-				if (!window.location.pathname.includes('/login')) {
+				if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/choose-login')) {
 					window.location.href = '/choose-login';
 				}
 				
@@ -183,6 +206,47 @@ axiosClient.interceptors.response.use(
 			} finally {
 				isRefreshing = false;
 			}
+		}
+
+		// Kiểm tra nếu tài khoản bị inactive
+		const errorMessage = error.response?.data?.message || error.response?.data?.error || '';
+		const errorData = error.response?.data?.data || error.response?.data || {};
+		const statusCode = error.response?.status;
+		
+		// Kiểm tra các trường hợp cho thấy tài khoản bị inactive:
+		// 1. Error message chứa "inactive" hoặc "INACTIVE"
+		// 2. Error data có status = "INACTIVE"
+		// 3. 401/403 với message về account status
+		const isAccountInactive = 
+			(errorMessage && (
+				errorMessage.toLowerCase().includes('inactive') ||
+				errorMessage.toLowerCase().includes('account is disabled') ||
+				errorMessage.toLowerCase().includes('account has been deactivated')
+			)) ||
+			(errorData.status && errorData.status.toUpperCase() === 'INACTIVE') ||
+			((statusCode === 401 || statusCode === 403) && 
+				errorMessage.toLowerCase().includes('account'));
+
+		if (isAccountInactive) {
+			console.warn('🚨 ACCOUNT INACTIVE: User account has been deactivated, logging out...');
+			spaceToast.error('Your account has been deactivated. Please contact administrator.');
+			
+			// Clear all tokens and user data
+			localStorage.removeItem('accessToken');
+			localStorage.removeItem('refreshToken');
+			localStorage.removeItem('user');
+			localStorage.removeItem('mustChangePassword');
+			localStorage.removeItem('mustUpdateProfile');
+			
+			// Dispatch logout action
+			store.dispatch(logout());
+			
+			// Redirect to login page
+			if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/choose-login')) {
+				window.location.href = '/choose-login';
+			}
+			
+			return Promise.reject(new Error('Account has been deactivated'));
 		}
 
 		// Xử lý các lỗi khác

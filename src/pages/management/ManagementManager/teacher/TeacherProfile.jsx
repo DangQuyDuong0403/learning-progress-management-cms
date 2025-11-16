@@ -31,6 +31,7 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import accountManagementApi from '../../../../apis/backend/accountManagement';
+import { classManagementApi } from '../../../../apis/apis';
 import dayjs from 'dayjs';
 import './TeacherList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
@@ -60,6 +61,8 @@ const TeacherProfile = () => {
 
 	// Teacher data from API
 	const [teacher, setTeacher] = useState(null);
+	const [teacherClasses, setTeacherClasses] = useState([]);
+	const [loadingClasses, setLoadingClasses] = useState(false);
 
 
 
@@ -95,6 +98,81 @@ const TeacherProfile = () => {
 	useEffect(() => {
 		fetchTeacherProfile();
 	}, [fetchTeacherProfile]);
+
+	// Fetch teacher classes details
+	const fetchTeacherClasses = useCallback(async (classList) => {
+		if (!classList || !Array.isArray(classList) || classList.length === 0) {
+			setTeacherClasses([]);
+			return;
+		}
+		
+		setLoadingClasses(true);
+		try {
+			// Fetch details for each class
+			const classDetailsPromises = classList.map(async (classItem) => {
+				try {
+					const response = await classManagementApi.getClassDetail(classItem.id);
+					if (response.message && response.data) {
+						const cls = response.data;
+						return {
+							id: cls.id || classItem.id,
+							name: cls.className || cls.name || classItem.className || 'Unnamed Class',
+							students: cls.studentCount !== undefined ? cls.studentCount : (cls.students ? cls.students.length : 0),
+							startDate: cls.startDate,
+							status: cls.status || 'INACTIVE',
+							roleInClass: classItem.roleInClass || 'TEACHER'
+						};
+					}
+					// Fallback if detail fetch fails
+					return {
+						id: classItem.id,
+						name: classItem.className || 'Unnamed Class',
+						students: 0,
+						startDate: null,
+						status: 'UNKNOWN',
+						roleInClass: classItem.roleInClass || 'TEACHER'
+					};
+				} catch (error) {
+					console.error(`Error fetching class ${classItem.id} detail:`, error);
+					// Return basic info if detail fetch fails
+					return {
+						id: classItem.id,
+						name: classItem.className || 'Unnamed Class',
+						students: 0,
+						startDate: null,
+						status: 'UNKNOWN',
+						roleInClass: classItem.roleInClass || 'TEACHER'
+					};
+				}
+			});
+
+			const classDetails = await Promise.all(classDetailsPromises);
+			setTeacherClasses(classDetails);
+		} catch (error) {
+			console.error('Error fetching teacher classes:', error);
+			// Fallback to basic classList data
+			const basicClasses = classList.map(classItem => ({
+				id: classItem.id,
+				name: classItem.className || 'Unnamed Class',
+				students: 0,
+				startDate: null,
+				status: 'UNKNOWN',
+				roleInClass: classItem.roleInClass || 'TEACHER'
+			}));
+			setTeacherClasses(basicClasses);
+		} finally {
+			setLoadingClasses(false);
+		}
+	}, []);
+
+	// Fetch classes when teacher data is loaded
+	useEffect(() => {
+		if (teacher && teacher.classList) {
+			fetchTeacherClasses(teacher.classList);
+		} else {
+			setTeacherClasses([]);
+		}
+	}, [teacher, fetchTeacherClasses]);
 
 	const handleBack = () => {
 		navigate('/manager/teachers');
@@ -173,10 +251,8 @@ const TeacherProfile = () => {
 			if (response.success && response.data) {
 				setTeacher(response.data);
 				setEditModalVisible(false);
-				spaceToast.success(t('teacherManagement.updateTeacherSuccess'));
-			} else {
-				spaceToast.error(response.message || t('teacherManagement.updateTeacherError'));
-			}
+				spaceToast.success(response.message || t('teacherManagement.updateTeacherSuccess'));
+			} 
 		} catch (error) {
 			console.error('Error updating teacher profile:', error);
 			const errorMessage = error.response?.data?.error || error.message || t('teacherManagement.updateTeacherError');
@@ -236,7 +312,7 @@ const TeacherProfile = () => {
 			render: (students) => (
 				<Space>
 					<UserOutlined />
-					{students}
+					{students || 0}
 				</Space>
 			),
 		},
@@ -245,21 +321,46 @@ const TeacherProfile = () => {
 			dataIndex: 'startDate',
 			key: 'startDate',
 			render: (date) => (
-				<Space>
-					<CalendarOutlined />
-					{new Date(date).toLocaleDateString('vi-VN')}
-				</Space>
+				date ? (
+					<Space>
+						<CalendarOutlined />
+						{new Date(date).toLocaleDateString('vi-VN')}
+					</Space>
+				) : '-'
 			),
 		},
 		{
 			title: t('teacherManagement.status'),
 			dataIndex: 'status',
 			key: 'status',
-			render: (status) => (
-				<Tag color={status === 'active' ? 'green' : 'red'}>
-					{status === 'active' ? t('teacherManagement.active') : t('teacherManagement.inactive')}
-				</Tag>
-			),
+			render: (status) => {
+				const statusUpper = status?.toUpperCase();
+				let color = 'default';
+				let text = status;
+
+				if (statusUpper === 'ACTIVE') {
+					color = 'green';
+					text = t('teacherManagement.active');
+				} else if (statusUpper === 'PENDING') {
+					color = 'orange';
+					text = t('teacherManagement.pending');
+				} else if (statusUpper === 'UPCOMING_END') {
+					color = 'blue';
+					text = t('teacherManagement.upcomingEnd') || 'Upcoming End';
+				} else if (statusUpper === 'INACTIVE') {
+					color = 'red';
+					text = t('teacherManagement.inactive');
+				} else if (statusUpper === 'UNKNOWN') {
+					color = 'default';
+					text = '-';
+				}
+
+				return (
+					<Tag color={color}>
+						{text}
+					</Tag>
+				);
+			},
 		},
 	];
 
@@ -487,8 +588,7 @@ const TeacherProfile = () => {
 							border: '1px solid rgba(0, 0, 0, 0.1)',
 							maxWidth: '800px',
 							margin: '24px auto 0 auto',
-							minHeight: 'auto',
-							height: '300px'
+							minHeight: 'auto'
 						}}
 					>
 						{/* Classes Title */}
@@ -506,17 +606,23 @@ const TeacherProfile = () => {
 						</div>
 						
 						<div style={{ width: '100%' }}>
-							<Table
-								columns={classColumns}
-								dataSource={teacher.classList || []}
-								rowKey='id'
-								pagination={false}
-								size='small'
-								locale={{
-									emptyText: t('teacherManagement.noClassesFound')
-								}}
-								style={{ marginBottom: 0 }}
-							/>
+							{loadingClasses ? (
+								<div style={{ textAlign: 'center', padding: '40px 0' }}>
+									<Spin size="large" />
+								</div>
+							) : (
+								<Table
+									columns={classColumns}
+									dataSource={teacherClasses}
+									rowKey='id'
+									pagination={false}
+									size='small'
+									locale={{
+										emptyText: t('teacherManagement.noClassesFound')
+									}}
+									style={{ marginBottom: 0 }}
+								/>
+							)}
 						</div>
 					</div>
 
@@ -704,7 +810,7 @@ const TeacherProfile = () => {
 										{ max: 100, message: t('teacherManagement.nameMaxLength') },
 									]}
 								>
-									<Input placeholder={t('teacherManagement.enterFullName')} />
+									<Input/>
 								</Form.Item>
 							</Col>
 						</Row>
@@ -724,7 +830,7 @@ const TeacherProfile = () => {
 										{ max: 20, message: t('teacherManagement.phoneMaxLength') },
 									]}
 								>
-									<Input placeholder={t('teacherManagement.enterPhone')} />
+									<Input/>
 								</Form.Item>
 							</Col>
 							<Col span={12}>

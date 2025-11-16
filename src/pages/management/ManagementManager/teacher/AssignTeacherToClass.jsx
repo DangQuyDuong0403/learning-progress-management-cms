@@ -27,6 +27,9 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import { classManagementApi } from '../../../../apis/apis';
 
+// Filter statuses for class search - can be easily modified
+const FILTER_STATUSES = ['ACTIVE', 'PENDING', 'UPCOMING_END'];
+
 const AssignTeacherToClass = ({ teacher, onClose, onSuccess }) => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
@@ -35,38 +38,96 @@ const AssignTeacherToClass = ({ teacher, onClose, onSuccess }) => {
 
 	// State for classes data
 	const [searchResults, setSearchResults] = useState([]);
+	const [allClasses, setAllClasses] = useState([]); // Store all loaded classes
 	const [isSearching, setIsSearching] = useState(false);
-	const [hasSearched, setHasSearched] = useState(false);
+	const [isLoadingClasses, setIsLoadingClasses] = useState(true);
 	const [selectedClasses, setSelectedClasses] = useState([]);
 	const [assigningLoading, setAssigningLoading] = useState(false);
 
-	// Fetch all available classes
-	const fetchAllClasses = useCallback(async () => {
-		// Filter statuses for class search - can be easily modified
-		const FILTER_STATUSES = ['ACTIVE', 'PENDING', 'UPCOMING_END'];
-		
+	// Process classes with recommendation logic
+	const processClasses = useCallback((classes) => {
+		return classes.map(cls => {
+			let recommendationScore = 0;
+			let reasons = [];
+
+			// Check if teacher is already assigned to this class
+			const isAlreadyAssigned = cls.teacherInfos && cls.teacherInfos.some(t => t.teacherId === teacher.id);
+
+			// Specialization matching (highest priority)
+			if (cls.syllabus && cls.syllabus.level && teacher?.specialization) {
+				const levelName = cls.syllabus.level.levelName || cls.syllabus.level;
+				if (levelName && levelName.toLowerCase().includes(teacher.specialization.toLowerCase())) {
+					recommendationScore += 50;
+					reasons.push(t('teacherManagement.specializationMatch'));
+				}
+			}
+
+			// Class capacity (prefer classes with more students)
+			if (cls.students && cls.students.length > 15) {
+				recommendationScore += 30;
+				reasons.push(t('teacherManagement.goodClassSize'));
+			}
+
+			// Class status scoring
+			if (cls.status === 'ACTIVE') {
+				recommendationScore += 30;
+				reasons.push(t('teacherManagement.activeClass'));
+			} else if (cls.status === 'PENDING') {
+				recommendationScore += 20;
+				reasons.push(t('teacherManagement.pendingClass'));
+			} else if (cls.status === 'UPCOMING_END') {
+				recommendationScore += 10;
+				reasons.push(t('teacherManagement.upcomingEndClass'));
+			}
+
+			return {
+				...cls,
+				recommendationScore,
+				reasons,
+				isRecommended: recommendationScore >= 30,
+				isAlreadyAssigned,
+				studentCount: cls.students ? cls.students.length : 0,
+				maxStudents: cls.maxStudents || 25,
+				currentTeachers: cls.teacherInfos || []
+			};
+		}).sort((a, b) => {
+			if (b.recommendationScore !== a.recommendationScore) {
+				return b.recommendationScore - a.recommendationScore;
+			}
+			const nameA = a.className || a.name || '';
+			const nameB = b.className || b.name || '';
+			return nameA.localeCompare(nameB);
+		});
+	}, [teacher, t]);
+
+	// Load all classes on component mount
+	const loadAllClasses = useCallback(async () => {
+		setIsLoadingClasses(true);
 		try {
 			const response = await classManagementApi.getClasses({
 				page: 0,
 				size: 100, // Get all classes
-				status: FILTER_STATUSES // Filter on backend using array
+				status: FILTER_STATUSES
 			});
 			
 			if (response.message && response.data) {
-				// Classes will be loaded when user searches
-				console.log('Classes loaded successfully');
+				const processedClasses = processClasses(response.data);
+				setAllClasses(processedClasses);
+				setSearchResults(processedClasses);
 			}
 		} catch (error) {
 			console.error('Error fetching classes:', error);
 			const errorMessage = error.response?.data?.error || error.message || t('teacherManagement.loadClassesError');
 			spaceToast.error(errorMessage);
+		} finally {
+			setIsLoadingClasses(false);
 		}
-	}, [t]);
+	}, [processClasses, t]);
 
-	// Fetch all classes on component mount
+	// Load all classes on component mount
 	useEffect(() => {
-		fetchAllClasses();
-	}, [fetchAllClasses]);
+		loadAllClasses();
+	}, [loadAllClasses]);
 
 	const handleSubmit = async (values) => {
 		if (selectedClasses.length === 0) {
@@ -74,21 +135,57 @@ const AssignTeacherToClass = ({ teacher, onClose, onSuccess }) => {
 			return;
 		}
 
+		// Check if any selected class already has a teacher
+		const classesWithTeachers = selectedClasses
+			.map(classId => {
+				const classItem = searchResults.find(cls => cls.id === classId);
+				if (classItem && classItem.isAlreadyAssigned) {
+					return classItem;
+				}
+				return null;
+			})
+			.filter(Boolean);
+
+		if (classesWithTeachers.length > 0) {
+			// Find the first class that already has a teacher
+			const firstClassWithTeacher = classesWithTeachers[0];
+			const className = firstClassWithTeacher.className || firstClassWithTeacher.name || 'Unknown Class';
+			const errorMessage = `Class "${className}" already has a teacher. Please select a different class.`;
+			spaceToast.error(errorMessage);
+			return;
+		}
+
 		setAssigningLoading(true);
 		try {
-			// Assign teacher to each selected class
-			const assignPromises = selectedClasses.map(classId => 
-				classManagementApi.addTeacherToClass(classId, {
-					teachers: [
-						{
-							userId: teacher.id,
-							roleInClass: teacher.roleName || 'TEACHER'
-						}
-					]
-				})
-			);
-
-			await Promise.all(assignPromises);
+			// Assign teacher to each selected class sequentially
+			// Stop immediately if any class already has a teacher
+			for (const classId of selectedClasses) {
+				try {
+					await classManagementApi.addTeacherToClass(classId, {
+						teachers: [
+							{
+								userId: teacher.id,
+								roleInClass: teacher.roleName || 'TEACHER'
+							}
+						]
+					});
+				} catch (error) {
+					// Check if error is about class already having a teacher
+					const errorMessage = error.response?.data?.error || error.message || '';
+					if (errorMessage.toLowerCase().includes('already') || 
+						errorMessage.toLowerCase().includes('has teacher') ||
+						errorMessage.toLowerCase().includes('đã có')) {
+						// Find class name from searchResults
+						const classItem = searchResults.find(cls => cls.id === classId);
+						const className = classItem?.className || classItem?.name || 'Unknown Class';
+						const displayError = `Class "${className}" already has a teacher. Please select a different class.`;
+						spaceToast.error(displayError);
+						return; // Stop assigning immediately
+					}
+					// If it's a different error, throw it to be caught by outer catch
+					throw error;
+				}
+			}
 			
 			spaceToast.success(t('teacherManagement.assignTeacherSuccess'));
 			
@@ -115,91 +212,31 @@ const AssignTeacherToClass = ({ teacher, onClose, onSuccess }) => {
 		}
 	};
 
-	// Search and recommendation logic
+	// Search and filter logic
 	const handleSearch = useCallback(async (searchValue) => {
-		// Filter statuses for class search - can be easily modified
-		const FILTER_STATUSES = ['ACTIVE', 'PENDING', 'UPCOMING_END'];
+		const trimmedValue = searchValue.trim();
 		
-		if (!searchValue.trim()) {
-			setSearchResults([]);
-			setHasSearched(false);
+		// If search is empty, show all classes
+		if (!trimmedValue) {
+			setSearchResults(allClasses);
+			setIsSearching(false);
 			return;
 		}
 
 		setIsSearching(true);
-		setHasSearched(true);
 
 		try {
 			// Call API to search classes with multiple status filters
 			const response = await classManagementApi.getClasses({
 				page: 0,
 				size: 100,
-				searchText: searchValue.trim(),
-				status: FILTER_STATUSES // Filter on backend using array
+				searchText: trimmedValue,
+				status: FILTER_STATUSES
 			});
 
 			if (response.message && response.data) {
-				const classes = response.data;
-
-				// Add recommendation logic based on teacher's specialization
-				const recommended = classes.map(cls => {
-					let recommendationScore = 0;
-					let reasons = [];
-
-					// Check if teacher is already assigned to this class
-					const isAlreadyAssigned = cls.teacherInfos && cls.teacherInfos.some(t => t.teacherId === teacher.id);
-
-					// Specialization matching (highest priority)
-					if (cls.syllabus && cls.syllabus.level && teacher?.specialization) {
-						const levelName = cls.syllabus.level.levelName || cls.syllabus.level;
-						if (levelName && levelName.toLowerCase().includes(teacher.specialization.toLowerCase())) {
-							recommendationScore += 50;
-							reasons.push(t('teacherManagement.specializationMatch'));
-						}
-					}
-
-					// Class capacity (prefer classes with more students)
-					if (cls.students && cls.students.length > 15) {
-						recommendationScore += 30;
-						reasons.push(t('teacherManagement.goodClassSize'));
-					}
-
-					// Class status scoring
-					if (cls.status === 'ACTIVE') {
-						recommendationScore += 30;
-						reasons.push(t('teacherManagement.activeClass'));
-					} else if (cls.status === 'PENDING') {
-						recommendationScore += 20;
-						reasons.push(t('teacherManagement.pendingClass'));
-					} else if (cls.status === 'UPCOMING_END') {
-						recommendationScore += 10;
-						reasons.push(t('teacherManagement.upcomingEndClass'));
-					}
-
-					return {
-						...cls,
-						recommendationScore,
-						reasons,
-						isRecommended: recommendationScore >= 30,
-						isAlreadyAssigned,
-						studentCount: cls.students ? cls.students.length : 0,
-						maxStudents: cls.maxStudents || 25,
-						currentTeachers: cls.teacherInfos || []
-					};
-				});
-
-				// Sort by recommendation score (highest first), then by name
-				recommended.sort((a, b) => {
-					if (b.recommendationScore !== a.recommendationScore) {
-						return b.recommendationScore - a.recommendationScore;
-					}
-					// Use className instead of name, with fallback to empty string
-					const nameA = a.className || a.name || '';
-					const nameB = b.className || b.name || '';
-					return nameA.localeCompare(nameB);
-				});
-
-				setSearchResults(recommended);
+				const processedClasses = processClasses(response.data);
+				setSearchResults(processedClasses);
 			} else {
 				setSearchResults([]);
 			}
@@ -211,7 +248,7 @@ const AssignTeacherToClass = ({ teacher, onClose, onSuccess }) => {
 		} finally {
 			setIsSearching(false);
 		}
-	}, [teacher, t]);
+	}, [allClasses, processClasses, t]);
 
 	// Debounced search
 	useEffect(() => {
@@ -423,35 +460,38 @@ const AssignTeacherToClass = ({ teacher, onClose, onSuccess }) => {
 						</Col>
 					</Row>
 					
-					{/* Search Results */}
-					{hasSearched && (
-						<div style={{ marginTop: '16px' }}>
-							{isSearching ? (
-								<div style={{ textAlign: 'center', padding: '40px 0' }}>
-									<Spin size="large" />
-									<div style={{ marginTop: '16px', color: '#666' }}>
-										{t('teacherManagement.searchingClasses')}
-									</div>
+					{/* Classes List */}
+					<div style={{ marginTop: '16px' }}>
+						{isLoadingClasses ? (
+							<div style={{ textAlign: 'center', padding: '40px 0' }}>
+								<Spin size="large" />
+								<div style={{ marginTop: '16px', color: '#666' }}>
+									{t('teacherManagement.loadingClasses') || 'Loading classes...'}
 								</div>
-							) : searchResults.length > 0 ? (
-								<div>
-									<div style={{ marginBottom: '16px', color: '#666' }}>
-										{t('teacherManagement.foundClasses', { count: searchResults.length })}
-									</div>
-									<List
-										dataSource={searchResults}
-										renderItem={renderClassItem}
-										className={`search-results-list ${theme}-search-results-list`}
-									/>
+							</div>
+						) : isSearching ? (
+							<div style={{ textAlign: 'center', padding: '40px 0' }}>
+								<Spin size="large" />
+								<div style={{ marginTop: '16px', color: '#666' }}>
+									{t('teacherManagement.searchingClasses')}
 								</div>
-							) : (
-								<Empty
-									description={t('teacherManagement.noClassesFound')}
-									image={Empty.PRESENTED_IMAGE_SIMPLE}
+							</div>
+						) : searchResults.length > 0 ? (
+							<div>
+								
+								<List
+									dataSource={searchResults}
+									renderItem={renderClassItem}
+									className={`search-results-list ${theme}-search-results-list`}
 								/>
-							)}
-						</div>
-					)}
+							</div>
+						) : (
+							<Empty
+								description={t('teacherManagement.noClassesFound')}
+								image={Empty.PRESENTED_IMAGE_SIMPLE}
+							/>
+						)}
+					</div>
 				</Card>
 
 

@@ -1265,7 +1265,7 @@ const TeacherList = () => {
 				destroyOnClose
 				style={{ top: 20 }}
 				bodyStyle={{
-					maxHeight: '70vh',
+					maxHeight: 'calc(70vh + 30px)',
 					overflowY: 'auto',
 					padding: '24px',
 				}}>
