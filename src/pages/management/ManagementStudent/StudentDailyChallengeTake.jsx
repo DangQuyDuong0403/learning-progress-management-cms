@@ -3421,7 +3421,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                     }}>
                       <input
                         type="file"
-                        id="upload-option"
+                        id={`upload-option-${question.id}`}
                         accept="image/jpeg,image/jpg,image/png,.jpg,.jpeg,.png"
                         multiple
                         onChange={handleFileUpload}
@@ -3429,7 +3429,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                         style={{ display: 'none' }}
                       />
                       <label
-                        htmlFor={isUploading ? undefined : "upload-option"}
+                        htmlFor={isUploading ? undefined : `upload-option-${question.id}`}
                         style={{
                           display: 'block',
                           padding: '24px',
