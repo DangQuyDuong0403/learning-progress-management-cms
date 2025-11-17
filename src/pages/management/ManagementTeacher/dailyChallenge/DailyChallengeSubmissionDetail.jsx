@@ -11,6 +11,7 @@ import {
   Tooltip,
   Divider,
   Pagination,
+  Checkbox,
 } from "antd";
 import {
   ClockCircleOutlined,
@@ -66,6 +67,38 @@ const escapeHtmlSimple = (value) => {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 };
+
+const WritingHighlight = React.memo(({ isActive, onClick, children }) => {
+  const [isHovered, setIsHovered] = React.useState(false);
+
+  const backgroundColor = isActive
+    ? '#FFD700'
+    : isHovered
+      ? '#FFE066'
+      : '#FFEB3B';
+  const fontWeight = (isActive || isHovered) ? '600' : '500';
+  const boxShadow = (isActive || isHovered) ? '0 2px 4px rgba(0, 0, 0, 0.2)' : 'none';
+
+  return (
+    <span
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        backgroundColor,
+        cursor: 'pointer',
+        padding: '2px 0',
+        borderRadius: '3px',
+        fontWeight,
+        transition: 'all 0.2s ease',
+        display: 'inline',
+        boxShadow,
+      }}
+    >
+      {children}
+    </span>
+  );
+});
 
 const DailyChallengeSubmissionDetail = () => {
   const { t } = useTranslation();
@@ -139,6 +172,7 @@ const DailyChallengeSubmissionDetail = () => {
   const [overallFeedbackDraft, setOverallFeedbackDraft] = useState('');
   const [finalScoreDraft, setFinalScoreDraft] = useState('');
   const [penaltyAppliedDraft, setPenaltyAppliedDraft] = useState('');
+  const [isPenaltyEnabled, setIsPenaltyEnabled] = useState(false);
   const [savingGrading, setSavingGrading] = useState(false);
   const [antiCheatModalVisible, setAntiCheatModalVisible] = useState(false);
   const [antiCheatExpanded, setAntiCheatExpanded] = useState({});
@@ -475,7 +509,6 @@ const DailyChallengeSubmissionDetail = () => {
   });
   const [selectedComment, setSelectedComment] = useState(null);
   const [showCommentSidebar, setShowCommentSidebar] = useState(false);
-  const [hoveredHighlightId, setHoveredHighlightId] = useState(null);
   const [commentModal, setCommentModal] = useState({
     visible: false,
     sectionId: null,
@@ -813,14 +846,6 @@ const DailyChallengeSubmissionDetail = () => {
       const displayFeedback = activeFeedback || interval.feedbacks[0];
       const isActive = activeFeedback !== undefined;
       
-      // Check if any feedback in this interval is hovered
-      const isHovered = interval.feedbacks.some(fb => fb.id === hoveredHighlightId);
-      
-      // Determine background color: active > hovered > normal
-      const backgroundColor = isActive ? '#FFD700' : (isHovered ? '#FFD700' : '#FFEB3B');
-      const fontWeight = (isActive || isHovered) ? '600' : '500';
-      const boxShadow = (isActive || isHovered) ? '0 2px 4px rgba(0, 0, 0, 0.2)' : 'none';
-      
       // Create click handler that handles all covering feedbacks
       const handleClick = (e) => {
         // If multiple feedbacks cover this text, prioritize the active one or the first one
@@ -829,39 +854,16 @@ const DailyChallengeSubmissionDetail = () => {
         }
       };
       
-      // Handle hover - set hovered state for all feedbacks in this interval
-      const handleMouseEnter = () => {
-        if (interval.feedbacks.length > 0) {
-          // Use the display feedback ID for hover state
-          setHoveredHighlightId(displayFeedback.id);
-        }
-      };
-      
-      const handleMouseLeave = () => {
-        setHoveredHighlightId(null);
-      };
-      
       // Parse interval text for images (but keep highlighting for non-image parts)
       const parsedIntervalText = parseTextWithImages(intervalText);
       parts.push(
-        <span
+        <WritingHighlight
           key={`highlight-${interval.start}-${interval.end}-${idx}`}
+          isActive={isActive}
           onClick={handleClick}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          style={{
-            backgroundColor,
-            cursor: 'pointer',
-            padding: '2px 0',
-            borderRadius: '3px',
-            fontWeight,
-            transition: 'all 0.2s ease',
-            display: 'inline',
-            boxShadow,
-          }}
         >
           {parsedIntervalText}
-        </span>
+        </WritingHighlight>
       );
       
       currentIndex = interval.end;
@@ -1592,6 +1594,37 @@ const DailyChallengeSubmissionDetail = () => {
     fetchSubmissionDetail();
   }, [fetchSubmissionDetail]);
 
+useEffect(() => {
+  const sections = fakeData?.speakingSections || [];
+  if (!sections.length) return;
+
+  setAudioStates(prev => {
+    let hasUpdates = false;
+    const nextState = { ...prev };
+
+    sections.forEach((section, idx) => {
+      const sectionId = section.id || `speaking-${idx}`;
+      const studentSectionAnswer = studentAnswers?.[sectionId] || {};
+      const questionAnswer = section.questions?.length
+        ? (studentAnswers?.[section.questions[0]?.id] || {})
+        : {};
+      const hasAudio =
+        section.audioUrl ||
+        studentSectionAnswer.audio ||
+        studentSectionAnswer.audioUrl ||
+        questionAnswer.audio ||
+        questionAnswer.audioUrl;
+
+      if (hasAudio && !nextState[sectionId]) {
+        hasUpdates = true;
+        nextState[sectionId] = { isPlaying: false, currentTime: 0, duration: 0, volume: 1 };
+      }
+    });
+
+    return hasUpdates ? nextState : prev;
+  });
+}, [fakeData?.speakingSections, studentAnswers]);
+
   // Enter/exit daily challenge menu mode
   useEffect(() => {
     // Build back path to submissions list and preserve class/challenge info via query params
@@ -1783,6 +1816,63 @@ const DailyChallengeSubmissionDetail = () => {
                 {t('dailyChallenge.dailyChallengeManagement')}
               </h2>
             </div>
+            <div
+              style={{
+                marginTop: 20,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: 12
+              }}
+            >
+              <div
+                style={{
+                  padding: '14px',
+                  borderRadius: 12,
+                  background: theme === 'sun' ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${theme === 'sun' ? 'rgba(148,163,184,0.35)' : 'rgba(148,163,184,0.2)'}`,
+                  textAlign: 'center'
+                }}
+              >
+                <Typography.Text style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: theme === 'sun' ? '#64748B' : '#CBD5F5' }}>
+                  Saved Score
+                </Typography.Text>
+                <Typography.Text
+                  strong
+                  style={{
+                    display: 'block',
+                    marginTop: 4,
+                    fontSize: 24,
+                    color: theme === 'sun' ? '#1D4ED8' : '#A78BFA'
+                  }}
+                >
+                  {submissionData?.submission?.score != null ? submissionData.submission.score : '--'}
+                </Typography.Text>
+              </div>
+              <div
+                style={{
+                  padding: '14px',
+                  borderRadius: 12,
+                  background: theme === 'sun' ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${theme === 'sun' ? 'rgba(148,163,184,0.35)' : 'rgba(148,163,184,0.2)'}`,
+                  textAlign: 'center'
+                }}
+              >
+                <Typography.Text style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: theme === 'sun' ? '#64748B' : '#CBD5F5' }}>
+                  Accuracy
+                </Typography.Text>
+                <Typography.Text
+                  strong
+                  style={{
+                    display: 'block',
+                    marginTop: 4,
+                    fontSize: 24,
+                    color: theme === 'sun' ? '#059669' : '#34D399'
+                  }}
+                >
+                  {submissionData?.submission?.accuracy != null ? `${submissionData.submission.accuracy}%` : '--'}
+                </Typography.Text>
+              </div>
+            </div>
           </div>
         </nav>
       </header>
@@ -1933,11 +2023,15 @@ const DailyChallengeSubmissionDetail = () => {
       }
       
       // Validate Penalty Applied (0.0-1.0)
-      const penaltyValue = penaltyAppliedDraft ? parseFloat(penaltyAppliedDraft) : 0;
-      if (isNaN(penaltyValue) || penaltyValue < 0 || penaltyValue > 1) {
-        spaceToast.error('Penalty applied must be  0.0 and 1.0');
+      let penaltyValue = 0;
+      if (isPenaltyEnabled) {
+        const penaltyPercent = penaltyAppliedDraft ? parseFloat(penaltyAppliedDraft) : 0;
+        if (isNaN(penaltyPercent) || penaltyPercent < 0 || penaltyPercent > 100) {
+          spaceToast.error('Penalty percentage must be between 0 and 100');
         setSavingFeedback(false);
         return;
+        }
+        penaltyValue = penaltyPercent / 100;
       }
 
       const payload = {
@@ -2986,16 +3080,6 @@ const DailyChallengeSubmissionDetail = () => {
       audioRefs.current[sectionId] = React.createRef();
     }
     const audioRef = audioRefs.current[sectionId];
-
-    // Initialize audio state if not exists
-    if (!audioStates[sectionId] && section.audioUrl) {
-      setTimeout(() => {
-        setAudioStates(prev => ({
-          ...prev,
-          [sectionId]: { isPlaying: false, currentTime: 0, duration: 0, volume: 1 }
-        }));
-      }, 0);
-    }
 
     const togglePlayPause = () => {
       if (audioRef.current) {
@@ -4618,9 +4702,15 @@ const DailyChallengeSubmissionDetail = () => {
                   icon={<FileTextOutlined />}
                   loading={savingFeedback}
                   onClick={() => { 
+                    const existingPenalty = submissionData?.submission?.penaltyApplied ?? 0;
                     setOverallFeedbackDraft(teacherFeedback || ''); 
                     setFinalScoreDraft(submissionData?.submission?.rawScore?.toString() || '');
-                    setPenaltyAppliedDraft(submissionData?.submission?.penaltyApplied?.toString() || '0');
+                    setIsPenaltyEnabled(existingPenalty > 0);
+                    setPenaltyAppliedDraft(
+                      existingPenalty > 0
+                        ? parseFloat((existingPenalty * 100).toFixed(2)).toString()
+                        : ''
+                    );
                     setOverallFeedbackModalVisible(true); 
                   }}
                 className={`create-button ${theme}-create-button`}
@@ -5797,12 +5887,7 @@ const DailyChallengeSubmissionDetail = () => {
             <div className="sdc-questions-review-section" style={{ padding: '0' }}>
           {/* Grammar & Vocabulary Questions */}
           {questions.length > 0 && (
-            <div 
-              className={`question-item ${theme}-question-item`} 
-              style={{ marginBottom: '24px', borderRadius: '16px', padding: '24px', border: '2px solid', borderColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)' }}>
-              <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)' }}>
-              
-              </div>
+            <div style={{ marginBottom: '24px' }}>
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {questions.map((q, idx) => (
                   <div
@@ -6022,7 +6107,7 @@ const DailyChallengeSubmissionDetail = () => {
         open={teacherFeedbackDetailVisible}
         centered
         onCancel={() => setTeacherFeedbackDetailVisible(false)}
-        width={640}
+        width={560}
         footer={[
           <Button
             key="close"
@@ -6463,7 +6548,12 @@ const DailyChallengeSubmissionDetail = () => {
           >
             Cancel
           </Button>,
-          <Button key="clear" onClick={() => { setOverallFeedbackDraft(''); setFinalScoreDraft(''); setPenaltyAppliedDraft('0'); }}
+          <Button key="clear" onClick={() => { 
+            setOverallFeedbackDraft(''); 
+            setFinalScoreDraft(''); 
+            setPenaltyAppliedDraft(''); 
+            setIsPenaltyEnabled(false);
+          }}
             style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
           >
             Clear
@@ -6488,23 +6578,77 @@ const DailyChallengeSubmissionDetail = () => {
         {/* Force CKEditor sizing like AIGenerateFeedback to avoid global CSS overrides */}
         <style>{`
           .feedback-editor-wrap .ck-editor__editable_inline { 
-            min-height: 300px !important; 
-            max-height: 300px !important; 
+            min-height: 200px !important; 
+            max-height: 200px !important; 
             overflow-y: auto !important; 
             color: #000 !important; 
           }
           .feedback-editor-wrap .ck-editor__main .ck-editor__editable { 
-            min-height: 300px !important; 
-            max-height: 300px !important; 
+            min-height: 200px !important; 
+            max-height: 200px !important; 
             overflow-y: auto !important; 
             color: #000 !important; 
           }
         `}</style>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
+        <div style={{ marginBottom: 14 }}>
+          <style>{`
+            .grading-score-circle-input::-webkit-outer-spin-button,
+            .grading-score-circle-input::-webkit-inner-spin-button {
+              -webkit-appearance: none;
+              margin: 0;
+            }
+            .grading-score-circle-input {
+              -moz-appearance: textfield;
+            }
+          `}</style>
+          <div
+            style={{
+              padding: '12px',
+              borderRadius: 16,
+              background: theme === 'sun'
+                ? 'linear-gradient(140deg, rgba(238,246,255,1) 0%, rgba(197,227,255,0.82) 100%)'
+                : 'linear-gradient(140deg, rgba(30,28,46,0.95) 0%, rgba(74,58,104,0.7) 100%)',
+              border: `1px solid ${theme === 'sun' ? 'rgba(59,130,246,0.25)' : 'rgba(139,92,246,0.35)'}`,
+              boxShadow: theme === 'sun'
+                ? '0 12px 30px rgba(59,130,246,0.25)'
+                : '0 12px 30px rgba(0,0,0,0.55)'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: 1.2,
+                  color: theme === 'sun' ? '#1E3A8A' : '#E0E7FF',
+                  textTransform: 'uppercase'
+                }}
+              >
             Raw Score
-          </label>
+              </span>
+              <div style={{ position: 'relative', width: 140, height: 140 }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '10px',
+                    borderRadius: '50%',
+                    background: theme === 'sun'
+                      ? 'linear-gradient(180deg, #ffffff 0%, #dceeff 100%)'
+                      : 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(108,84,150,0.4) 100%)',
+                    border: `5px solid ${theme === 'sun' ? '#5AA0FF' : '#B7A3FF'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '16px 14px',
+                    textAlign: 'center',
+                    boxShadow: theme === 'sun'
+                      ? '0 10px 25px rgba(90,160,255,0.35)'
+                      : '0 10px 25px rgba(0,0,0,0.55)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
           <Input
+                      className="grading-score-circle-input"
             type="number"
             value={finalScoreDraft}
             onChange={(e) => {
@@ -6524,59 +6668,131 @@ const DailyChallengeSubmissionDetail = () => {
                 }
               }
             }}
-            placeholder="Enter raw score (0-10)"
+                      placeholder="0.0"
             min={0}
             max={10}
             step={0.1}
+                      bordered={false}
+                      inputMode="decimal"
             style={{
-              width: '100%',
-              height: '40px',
-              borderRadius: '8px',
-              border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(139, 92, 246, 0.3)'}`,
-              padding: '0 12px',
-              fontSize: '16px'
-            }}
-          />
+                        width: '60%',
+                        textAlign: 'right',
+                        fontSize: '20px',
+                        fontWeight: 600,
+                        background: 'transparent',
+                        boxShadow: 'none',
+                        color: theme === 'sun' ? '#0F172A' : '#F5F3FF',
+                        margin: 0,
+                        lineHeight: '1',
+                        padding: 0,
+                      }}
+                    />
+                    <span style={{ fontSize: 20, fontWeight: 500, color: theme === 'sun' ? '#2563EB' : '#D1C4F9' }}>
+                      /10
+                    </span>
         </div>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-            Penalty Applied (0-1)
+                </div>
+              </div>
+            </div>
+            <div
+              style={{
+                padding: '12px 16px',
+                borderRadius: 12,
+                background: theme === 'sun' ? '#FFFFFF' : 'rgba(255,255,255,0.05)',
+                border: `1px dashed ${theme === 'sun' ? 'rgba(37, 99, 235, 0.4)' : 'rgba(203, 213, 225, 0.3)'}`,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10
+              }}
+            >
+              <Checkbox
+                checked={isPenaltyEnabled}
+                onChange={(e) => {
+                  setIsPenaltyEnabled(e.target.checked);
+                  if (!e.target.checked) {
+                    setPenaltyAppliedDraft('');
+                  }
+                }}
+                style={{
+                  fontWeight: 600,
+                  color: theme === 'sun' ? '#1E3A8A' : '#E9D5FF'
+                }}
+              >
+                Apply penalty score?
+              </Checkbox>
+              {isPenaltyEnabled && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRadius: 10,
+                    border: `2px solid ${theme === 'sun' ? 'rgba(37, 99, 235, 0.4)' : 'rgba(203, 213, 225, 0.3)'}`,
+                    height: 42,
+                    overflow: 'hidden',
+                    width: 150,
+                    maxWidth: '100%'
+                  }}
+                >
+                  <Input
+                    type="number"
+                    value={penaltyAppliedDraft}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || value === '-') {
+                        setPenaltyAppliedDraft(value);
+                        return;
+                      }
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue)) {
+                        if (numValue >= 0 && numValue <= 100) {
+                          setPenaltyAppliedDraft(value);
+                        } else if (numValue > 100) {
+                          setPenaltyAppliedDraft('100');
+                        } else if (numValue < 0) {
+                          setPenaltyAppliedDraft('0');
+                        }
+                      }
+                    }}
+                 
+                    min={0}
+                    max={100}
+                    step={1}
+                    bordered={false}
+                    style={{
+                      flex: 1,
+                      height: '100%',
+                      fontSize: 16,
+                      fontWeight: 600,
+                      padding: '0 14px',
+                      boxShadow: 'none'
+                    }}
+                  />
+                  <span
+                    style={{
+                      padding: '0 14px',
+                      fontSize: 16,
+                      fontWeight: 600,
+                      color: theme === 'sun' ? '#2563EB' : '#E0E7FF'
+                    }}
+                  >
+                    %
+                  </span>
+                </div>
+              )}
+              {!isPenaltyEnabled && (
+                <div style={{ fontSize: 13, color: theme === 'sun' ? '#475569' : '#CBD5F5' }}>
+                  Enable penalty to deduct a percentage from the final score.
+        </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div>
+          <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#E9D5FF', fontSize: 14 }}>
+            Overall Feedback
           </label>
-          <Input
-            type="number"
-            value={penaltyAppliedDraft}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === '' || value === '-') {
-                setPenaltyAppliedDraft(value);
-                return;
-              }
-              const numValue = parseFloat(value);
-              if (!isNaN(numValue)) {
-                if (numValue >= 0 && numValue <= 1) {
-                  setPenaltyAppliedDraft(value);
-                } else if (numValue > 1) {
-                  setPenaltyAppliedDraft('1');
-                } else if (numValue < 0) {
-                  setPenaltyAppliedDraft('0');
-                }
-              }
-            }}
-            placeholder="Enter penalty (0 to 1, e.g., 0.5 for 50%)"
-            min={0}
-            max={1}
-            step={0.01}
-            style={{
-              width: '100%',
-              height: '40px',
-              borderRadius: '8px',
-              border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(139, 92, 246, 0.3)'}`,
-              padding: '0 12px',
-              fontSize: '16px'
-            }}
-          />
         </div>
-        <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.5)' : 'rgba(139, 92, 246, 0.5)'}`, background: theme === 'sun' ? 'rgba(24,144,255,0.08)' : 'rgba(139,92,246,0.12)' }}>
+        <div className="feedback-editor-wrap" style={{ borderRadius: 12, border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.5)' : 'rgba(139, 92, 246, 0.5)'}`, background: theme === 'sun' ? 'rgba(24,144,255,0.08)' : 'rgba(139,92,246,0.12)' }}>
           <CKEditor
             editor={ClassicEditor}
             data={overallFeedbackDraft}
@@ -6623,8 +6839,8 @@ const DailyChallengeSubmissionDetail = () => {
               try {
                 const el = editor.ui?.getEditableElement?.();
                 if (el) {
-                  el.style.minHeight = '300px';
-                  el.style.maxHeight = '300px';
+                  el.style.minHeight = '200px';
+                  el.style.maxHeight = '200px';
                   el.style.overflowY = 'auto';
                   el.style.color = '#000';
                 }

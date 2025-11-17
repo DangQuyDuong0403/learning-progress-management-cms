@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, Row, Col, Button, Avatar, Empty } from "antd";
-import { TrophyOutlined, BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, UserOutlined, TeamOutlined, BookOutlined } from "@ant-design/icons";
+import { TrophyOutlined, BarChartOutlined, UserOutlined, TeamOutlined, BookOutlined } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import { 
@@ -13,9 +13,7 @@ import {
   Tooltip, 
   ResponsiveContainer,
   CartesianGrid,
-  Legend,
-  Cell,
-  LabelList
+  Legend
 } from 'recharts';
 import "./DailyChallengePerformanceReport.css";
 import { useTranslation } from "react-i18next";
@@ -24,6 +22,38 @@ import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuCo
 import usePageTitle from "../../../../hooks/usePageTitle";
 import { dailyChallengeApi } from "../../../../apis/apis";
 import { useSelector } from "react-redux";
+
+const stripHtmlTags = (text = '') => {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/?p[^>]*>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const normalizePlaceholders = (text = '') => {
+  if (!text) return '';
+  return text.replace(/\[\[pos_[^\]]+\]\]/g, ' ____ ');
+};
+
+const formatQuestionPrompt = (question = {}) => {
+  const raw = question?.questionText || question?.question || '';
+  return normalizePlaceholders(stripHtmlTags(raw));
+};
+
+// eslint-disable-next-line no-unused-vars
+const truncateQuestionText = (text, maxLength = 80) => {
+  if (!text || text.length <= maxLength) {
+    return text || '';
+  }
+  return `${text.slice(0, maxLength)}...`;
+};
 
 const DailyChallengePerformance = () => {
   const { t } = useTranslation();
@@ -50,6 +80,7 @@ const DailyChallengePerformance = () => {
       challengeId: location.state?.challengeId || id,
       challengeName: location.state?.challengeName || qp.challengeName || null,
       lessonName: location.state?.lessonName || null,
+      challengeType: location.state?.challengeType || null,
     };
   });
   
@@ -76,6 +107,7 @@ const DailyChallengePerformance = () => {
         challengeId: location.state?.challengeId || challengeInfo.challengeId || id,
         challengeName: newChallengeName || challengeInfo.challengeName,
         lessonName: location.state?.lessonName || challengeInfo.lessonName || null,
+        challengeType: location.state?.challengeType || challengeInfo.challengeType || null,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,6 +131,7 @@ const DailyChallengePerformance = () => {
   });
   const [studentScores, setStudentScores] = useState([]);
   const [chartData, setChartData] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [questionStats, setQuestionStats] = useState([]);
   const [questionStatsLoading, setQuestionStatsLoading] = useState(false);
   const [questionStatsMeta, setQuestionStatsMeta] = useState({
@@ -106,6 +139,11 @@ const DailyChallengePerformance = () => {
     challengeId: null
   });
   const [questionStatsError, setQuestionStatsError] = useState(null);
+  const [questionMatrixData, setQuestionMatrixData] = useState({
+    questions: [],
+    students: [],
+    matrix: {} // { questionId: { userId: receivedWeight } }
+  });
 
   // Fetch challenge info from API if not available in state
   const fetchChallengeInfo = useCallback(async () => {
@@ -125,6 +163,7 @@ const DailyChallengePerformance = () => {
           ...prev,
           challengeId: data.id || id,
           challengeName: data.challengeName || data.name || data.title || prev.challengeName,
+          challengeType: data.challengeType || data.type || prev.challengeType,
           // Note: API might not return class info directly, may need additional fetch
         }));
       }
@@ -246,6 +285,14 @@ const DailyChallengePerformance = () => {
       if (overviewData && (overviewData.success !== undefined || overviewData.traceId !== undefined)) {
         const { traceId, success, message, timestamp, ...dataFields } = overviewData;
         overviewData = dataFields;
+      }
+      
+      // Update challengeType from overview data if available
+      if (overviewData?.challengeType) {
+        setChallengeInfo(prev => ({
+          ...prev,
+          challengeType: overviewData.challengeType || prev.challengeType
+        }));
       }
       
       console.log('Processed overviewData:', overviewData);
@@ -393,6 +440,7 @@ const DailyChallengePerformance = () => {
         ? question.correctRate
         : (totalAttempts > 0 ? (correctAttempts / totalAttempts) * 100 : 0);
       const accuracy = Number(Math.min(100, Math.max(0, accuracySource)).toFixed(1));
+      const formattedQuestionText = formatQuestionPrompt(question);
 
       return {
         key: question.questionId || `Q-${index + 1}`,
@@ -401,7 +449,7 @@ const DailyChallengePerformance = () => {
         sectionTitle: question.sectionTitle || question.sectionName || question.skill || question.questionType || t('dailyChallenge.generalSection', 'General section'),
         sectionOrder: typeof question.sectionOrder === 'number' ? question.sectionOrder : index,
         questionId: question.questionId,
-        questionText: question.questionText,
+        questionText: formattedQuestionText,
         questionType: question.questionType,
         questionOrder: question.questionOrder,
         totalAttempts,
@@ -433,11 +481,83 @@ const DailyChallengePerformance = () => {
         challengeName: payload?.challengeName || challengeInfo.challengeName || null,
         challengeId: payload?.challengeId || challengeId
       });
+
+      // Build matrix data for the new format
+      if (questions && questions.length > 0) {
+        // Collect all unique students from all questions
+        const studentMap = new Map();
+        questions.forEach(question => {
+          if (question.studentPerformances && Array.isArray(question.studentPerformances)) {
+            question.studentPerformances.forEach(perf => {
+              if (perf.userId && !studentMap.has(perf.userId)) {
+                studentMap.set(perf.userId, {
+                  userId: perf.userId,
+                  fullName: perf.fullName || '',
+                  email: perf.email || '',
+                  avatarUrl: perf.avatarUrl || null
+                });
+              }
+            });
+          }
+        });
+
+        const students = Array.from(studentMap.values()).sort((a, b) => {
+          const nameA = (a.fullName || a.email || '').toLowerCase();
+          const nameB = (b.fullName || b.email || '').toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+
+        // Build matrix: { questionId: { userId: receivedWeight } }
+        const matrix = {};
+        questions.forEach(question => {
+          if (!matrix[question.questionId]) {
+            matrix[question.questionId] = {};
+          }
+          if (question.studentPerformances && Array.isArray(question.studentPerformances)) {
+            question.studentPerformances.forEach(perf => {
+              if (perf.userId) {
+                matrix[question.questionId][perf.userId] = {
+                  receivedWeight: perf.receivedWeight || 0,
+                  totalWeight: perf.totalWeight || 0,
+                  isCorrect: perf.isCorrect || false
+                };
+              }
+            });
+          }
+        });
+
+        // Sort questions by sectionOrder and questionOrder
+        const sortedQuestions = [...questions].sort((a, b) => {
+          const sectionOrderA = typeof a.sectionOrder === 'number' ? a.sectionOrder : Number.MAX_SAFE_INTEGER;
+          const sectionOrderB = typeof b.sectionOrder === 'number' ? b.sectionOrder : Number.MAX_SAFE_INTEGER;
+          if (sectionOrderA !== sectionOrderB) return sectionOrderA - sectionOrderB;
+          const questionOrderA = typeof a.questionOrder === 'number' ? a.questionOrder : Number.MAX_SAFE_INTEGER;
+          const questionOrderB = typeof b.questionOrder === 'number' ? b.questionOrder : Number.MAX_SAFE_INTEGER;
+          return questionOrderA - questionOrderB;
+        });
+
+        setQuestionMatrixData({
+          questions: sortedQuestions,
+          students,
+          matrix
+        });
+      } else {
+        setQuestionMatrixData({
+          questions: [],
+          students: [],
+          matrix: {}
+        });
+      }
     } catch (error) {
       console.error('Error fetching question statistics:', error);
       console.error('Error details:', error?.response || error?.message);
       setQuestionStats([]);
       setQuestionStatsError(error);
+      setQuestionMatrixData({
+        questions: [],
+        students: [],
+        matrix: {}
+      });
     } finally {
       setQuestionStatsLoading(false);
     }
@@ -528,6 +648,19 @@ const DailyChallengePerformance = () => {
     console.log('Number of students in state:', studentScores.length);
   }, [studentScores]);
 
+  // Helper to translate type codes to labels
+  const getTypeLabelByCode = useCallback((typeCode) => {
+    if (!typeCode) return '';
+    switch(typeCode) {
+      case 'GV': return t('dailyChallenge.typeNames.GV') || 'Grammar & Vocabulary';
+      case 'RE': return t('dailyChallenge.typeNames.RE') || 'Reading';
+      case 'LI': return t('dailyChallenge.typeNames.LI') || 'Listening';
+      case 'WR': return t('dailyChallenge.typeNames.WR') || 'Writing';
+      case 'SP': return t('dailyChallenge.typeNames.SP') || 'Speaking';
+      default: return typeCode;
+    }
+  }, [t]);
+
   // Custom Tooltip for Chart (new chart data)
   const CustomChartTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -553,107 +686,25 @@ const DailyChallengePerformance = () => {
     return null;
   };
 
-  const QuestionAnalysisTooltip = ({ active, payload }) => {
-    if (!(active && payload && payload.length)) {
-      return null;
-    }
-    const data = payload[0]?.payload;
-    if (!data) return null;
-
-    return (
-      <div className={`dcpr-tooltip ${theme}-dcpr-tooltip`}>
-        <div style={{ fontWeight: 700, marginBottom: 4 }}>{data.questionId}</div>
-        <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 8 }}>
-          {data.questionText}
-        </div>
-        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-          {t('dailyChallenge.questionType', 'Type')}: {data.questionType || t('dailyChallenge.unknown', 'Unknown')}
-        </div>
-        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-          {t('dailyChallenge.totalAttempts', 'Total Attempts')}: {data.totalAttempts}
-        </div>
-        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-          {t('dailyChallenge.correctAttempts', 'Correct Count')}: {data.correctAttempts}
-        </div>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {t('dailyChallenge.correctRate', 'Correct Rate')}: {data.accuracy}% ({data.correctAttempts}/{data.totalAttempts})
-        </div>
-      </div>
-    );
-  };
-
-  const wrapXAxisLabel = (label = '', maxCharsPerLine = 10) => {
-    if (!label) return [''];
-    const words = label.split(' ');
-    const lines = [];
-    let currentLine = '';
-
-    words.forEach((word) => {
-      if ((currentLine + word).trim().length <= maxCharsPerLine) {
-        currentLine = currentLine ? `${currentLine} ${word}` : word;
-      } else if (word.length > maxCharsPerLine) {
-        // Break very long words
-        const chunks = word.match(new RegExp(`.{1,${maxCharsPerLine}}`, 'g')) || [];
-        if (currentLine) {
-          lines.push(currentLine);
-          currentLine = '';
-        }
-        lines.push(...chunks.slice(0, -1));
-        currentLine = chunks[chunks.length - 1] || '';
-      } else {
-        if (currentLine) {
-          lines.push(currentLine);
-        }
-        currentLine = word;
-      }
-    });
-
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-
-    return lines;
-  };
-
   const CustomXAxisTick = ({ x, y, payload }) => {
-    const lines = wrapXAxisLabel(payload?.value || '');
+    const label = payload?.value || '';
+    // Rút ngắn tên nếu quá dài
+    const shortLabel = label.length > 15 ? label.substring(0, 12) + '...' : label;
     return (
       <g transform={`translate(${x},${y})`}>
         <text
           x={0}
           y={0}
-          dy={32}
-          textAnchor="middle"
+          dy={8}
+          textAnchor="end"
           fill="#6b7280"
-          fontSize={11}
+          fontSize={10}
+          transform={`rotate(-45, 0, 0)`}
+          style={{ whiteSpace: 'nowrap' }}
         >
-          {lines.map((line, index) => (
-            <tspan key={index} x={0} dy={index === 0 ? 0 : 12}>
-              {line}
-            </tspan>
-          ))}
+          {shortLabel}
         </text>
       </g>
-    );
-  };
-
-  const renderAccuracyLabel = (props) => {
-    const { x, y, width, value } = props;
-    if (value === null || value === undefined) {
-      return null;
-    }
-    const labelValue = `${Number(value).toFixed(0)}%`;
-    return (
-      <text
-        x={x + width / 2}
-        y={y - 6}
-        textAnchor="middle"
-        fill="#374151"
-        fontSize={11}
-        fontWeight={600}
-      >
-        {labelValue}
-      </text>
     );
   };
 
@@ -687,8 +738,45 @@ const DailyChallengePerformance = () => {
         <div className="dcpr-content">
           <LoadingWithEffect loading={loading} message={t('dailyChallenge.loadingPerformance')}>
             {/* Overview Section - Statistics Cards */}
-            <Row gutter={[12, 16]} style={{ marginBottom: 24 }}>
-              <Col xs={24} sm={12} md={8} lg={8} flex="1 1 220px" style={{ display: 'flex' }}>
+            <Row gutter={[12, 16]} style={{ marginBottom: 24, marginTop: 32 }}>
+              {/* Challenge Type Card */}
+              <Col xs={24} sm={12} md={6} lg={6} flex="1 1 180px" style={{ display: 'flex' }}>
+                <Card
+                  hoverable
+                  style={{
+                    backgroundColor: '#f0f9ff',
+                    border: 'none',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 8px 20px rgba(0,0,0,0.08)' : undefined,
+                    minHeight: 170,
+                    width: '100%'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'rgba(255,255,255,0.9)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <BookOutlined style={{ color: '#0ea5e9' }} />
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: 18, color: '#5b6b83', lineHeight: 1.1 }}>
+                      Challenge Type
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 30, fontWeight: 600, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+                    {getTypeLabelByCode(challengeInfo.challengeType) || 'N/A'}
+                  </div>
+                  <div style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
+                    {challengeInfo.challengeType || 'Unknown'}
+                  </div>
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6} lg={6} flex="1 1 180px" style={{ display: 'flex' }}>
                 <Card
                   hoverable
                   style={{
@@ -716,15 +804,15 @@ const DailyChallengePerformance = () => {
                       {t('dailyChallenge.averageScore')}
                     </div>
                   </div>
-                  <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+                  <div style={{ fontSize: 30, fontWeight: 600, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
                     {performanceData.average}/10
                   </div>
-                  <div style={{ color: '#6b7280', fontSize: 14 }}>
+                  <div style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
                     Average score
                   </div>
                 </Card>
               </Col>
-              <Col xs={24} sm={12} md={8} lg={8} flex="1 1 220px" style={{ display: 'flex' }}>
+              <Col xs={24} sm={12} md={6} lg={6} flex="1 1 180px" style={{ display: 'flex' }}>
                 <Card
                   hoverable
                   style={{
@@ -752,15 +840,15 @@ const DailyChallengePerformance = () => {
                       {t('dailyChallenge.highestScore')}
                     </div>
                   </div>
-                  <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+                  <div style={{ fontSize: 30, fontWeight: 600, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
                     {performanceData.highest}/10
                   </div>
-                  <div style={{ color: '#6b7280', fontSize: 14 }}>
+                  <div style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
                     Highest score
                   </div>
                 </Card>
               </Col>
-              <Col xs={24} sm={12} md={8} lg={8} flex="1 1 220px" style={{ display: 'flex' }}>
+              <Col xs={24} sm={12} md={6} lg={6} flex="1 1 180px" style={{ display: 'flex' }}>
                 <Card
                   hoverable
                   style={{
@@ -788,207 +876,20 @@ const DailyChallengePerformance = () => {
                       {t('dailyChallenge.lowestScore')}
                     </div>
                   </div>
-                  <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+                  <div style={{ fontSize: 30, fontWeight: 600, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
                     {performanceData.lowest}/10
                   </div>
-                  <div style={{ color: '#6b7280', fontSize: 14 }}>
+                  <div style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
                     Lowest score
                   </div>
                 </Card>
               </Col>
             </Row>
 
+            {/* Chart Section - Left 2/3, Right Sidebar 1/3 */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-              {/* Top Rank Section */}
+              {/* Performance Chart - Left Side (2/3) */}
               <Col xs={24} lg={16}>
-                <Card
-                  style={{
-                    backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-                    border: 'none',
-                    borderRadius: 16,
-                    boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
-                    paddingTop: 8,
-                    minHeight: 420,
-                    height: '100%'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <TrophyOutlined style={{ color: '#f59e0b', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Top Scoring Students</div>
-                  </div>
-                  {getSortedStudents().length === 0 ? (
-                    <Empty description="No student data" style={{ padding: '40px 20px' }} />
-                  ) : (
-                    <div className="dcpr-table">
-                      <div className="dcpr-table__head" style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}>
-                        <div>Rank</div>
-                        <div>Student</div>
-                        <div>Score</div>
-                      </div>
-                      {getSortedStudents().slice(0, 5).map((student, index) => {
-                        const isTopScore = index === 0;
-                        const rank = index + 1;
-                        
-                        return (
-                          <div 
-                            key={student.id || student.userId || index}
-                            className={`dcpr-table__row ${isTopScore ? 'dcpr-table__row--top' : ''}`}
-                            style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}
-                          >
-                            <div style={{ 
-                              fontWeight: 700, 
-                              color: isTopScore ? '#1890ff' : '#6366f1',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}>
-                              {isTopScore && <TrophyOutlined style={{ color: '#f59e0b' }} />}
-                              #{rank}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                              <Avatar 
-                                size={36} 
-                                src={student.avatar} 
-                                icon={<UserOutlined />} 
-                                style={{ backgroundColor: '#6366f1' }} 
-                              />
-                              <div>
-                                <div style={{ fontWeight: 600, color: '#1f2937' }}>{student.name || student.email}</div>
-                                <div style={{ fontSize: 12, color: '#6b7280' }}>{student.email}</div>
-                              </div>
-                            </div>
-                            <div style={{ fontWeight: 700, color: '#1f2937', fontSize: 16 }}>
-                              {Number(student.score || 0).toFixed(2)}/10
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </Card>
-              </Col>
-
-              {/* Submission Stats Section */}
-              <Col xs={24} lg={8}>
-                <Card
-                  style={{
-                    backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-                    border: 'none',
-                    borderRadius: 16,
-                    boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
-                    paddingTop: 8,
-                    minHeight: 420,
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <TeamOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Submission Statistics</div>
-                  </div>
-                  <div style={{ 
-                    flex: 1, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    justifyContent: 'space-around',
-                    padding: '4px 0'
-                  }}>
-                    {[
-                      {
-                        label: t('dailyChallenge.completed', 'Completed'),
-                        count: performanceData.submissionStats?.completedCount || 0,
-                        icon: <CheckCircleOutlined />,
-                        color: '#1f7a3e',
-                        bgColor: '#dff7e8'
-                      },
-                      {
-                        label: t('dailyChallenge.late', 'Late'),
-                        count: performanceData.submissionStats?.lateCount || 0,
-                        icon: <ClockCircleOutlined />,
-                        color: '#f59e0b',
-                        bgColor: '#fef3c7'
-                      },
-                      {
-                        label: t('dailyChallenge.notStarted', 'Not Started'),
-                        count: performanceData.submissionStats?.notStartedCount || 0,
-                        icon: <UserOutlined />,
-                        color: '#ef4444',
-                        bgColor: '#fee2e2'
-                      },
-                      {
-                        label: t('dailyChallenge.totalStudents', 'Total Students'),
-                        count: performanceData.submissionStats?.totalStudents || 0,
-                        icon: <TeamOutlined />,
-                        color: '#6366f1',
-                        bgColor: '#e0e7ff'
-                      }
-                    ].map((item, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '12px 16px',
-                          marginBottom: index < 3 ? 10 : 0,
-                          backgroundColor: item.bgColor,
-                          borderRadius: 10,
-                          border: `2px solid ${item.color}20`,
-                          transition: 'all 0.3s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                          e.currentTarget.style.boxShadow = `0 4px 12px ${item.color}30`;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = 'none';
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-                          <div style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 10,
-                            background: 'rgba(255,255,255,0.9)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: `2px solid ${item.color}40`
-                          }}>
-                            <span style={{ fontSize: 20, color: item.color }}>
-                              {item.icon}
-                            </span>
-                          </div>
-                          <span style={{ 
-                            fontSize: 16, 
-                            fontWeight: 600, 
-                            color: item.color,
-                            flex: 1
-                          }}>
-                            {item.label}
-                          </span>
-                        </div>
-                        <div style={{
-                          fontSize: 28,
-                          fontWeight: 700,
-                          color: item.color,
-                          minWidth: 50,
-                          textAlign: 'right'
-                        }}>
-                          {item.count}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </Col>
-            </Row>
-
-            {/* Chart Section - Full Width */}
-            <Row gutter={[16, 16]}>
-              <Col xs={24}>
                 <Card
                   style={{
                     backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
@@ -1004,7 +905,7 @@ const DailyChallengePerformance = () => {
                     <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
                     <div className="manager-dashboard-v2__title">Performance Chart</div>
                   </div>
-                  <div style={{ width: '100%', height: 360 }}>
+                  <div style={{ width: '100%', height: 480 }}>
                     {chartData.length === 0 ? (
                       <div style={{ 
                         display: 'flex', 
@@ -1026,7 +927,7 @@ const DailyChallengePerformance = () => {
                             dataKey="name" 
                             tick={<CustomXAxisTick />}
                             height={80}
-                            tickMargin={12}
+                            tickMargin={4}
                             interval={0}
                           />
                           <YAxis 
@@ -1050,6 +951,7 @@ const DailyChallengePerformance = () => {
                             fill="#6366f1"
                             radius={[6, 6, 0, 0]}
                             name="Score"
+                            barCategoryGap="30%"
                           />
                           <Line 
                             yAxisId="right"
@@ -1066,6 +968,145 @@ const DailyChallengePerformance = () => {
                     )}
                   </div>
                 </Card>
+              </Col>
+
+              {/* Right Sidebar - Submission Statistics & Top Scoring Students (1/3) */}
+              <Col xs={24} lg={8}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
+                  {/* Submission Statistics - Top */}
+                  <div style={{ 
+                    padding: '12px',
+                    backgroundColor: theme === 'sun' ? '#f9fafb' : '#1f2937',
+                    borderRadius: 12,
+                    marginBottom: 16
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <TeamOutlined style={{ color: '#6366f1', fontSize: 20 }} />
+                      <div className="manager-dashboard-v2__title">Submission Statistics</div>
+                    </div>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 8
+                    }}>
+                      {[
+                        {
+                          label: t('dailyChallenge.completed', 'Completed'),
+                          count: performanceData.submissionStats?.completedCount || 0,
+                          color: '#1f7a3e'
+                        },
+                        {
+                          label: t('dailyChallenge.late', 'Late'),
+                          count: performanceData.submissionStats?.lateCount || 0,
+                          color: '#f59e0b'
+                        },
+                        {
+                          label: t('dailyChallenge.notStarted', 'Not Started'),
+                          count: performanceData.submissionStats?.notStartedCount || 0,
+                          color: '#ef4444'
+                        },
+                        {
+                          label: t('dailyChallenge.totalStudents', 'Total Students'),
+                          count: performanceData.submissionStats?.totalStudents || 0,
+                          color: '#6366f1'
+                        }
+                      ].map((item, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            padding: '8px 4px',
+                            textAlign: 'center'
+                          }}
+                        >
+                          <span style={{ 
+                            fontSize: 11, 
+                            fontWeight: 500, 
+                            color: theme === 'sun' ? '#6b7280' : '#9ca3af',
+                            marginBottom: 4
+                          }}>
+                            {item.label}
+                          </span>
+                          <div style={{
+                            fontSize: 20,
+                            fontWeight: 700,
+                            color: item.color
+                          }}>
+                            {item.count}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Top Scoring Students - Bottom */}
+                  <Card
+                    style={{
+                      backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                      border: 'none',
+                      borderRadius: 16,
+                      boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                      paddingTop: 8,
+                      flex: 1
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <TrophyOutlined style={{ color: '#f59e0b', fontSize: 20 }} />
+                      <div className="manager-dashboard-v2__title">Top Scoring Students</div>
+                    </div>
+                    {getSortedStudents().length === 0 ? (
+                      <Empty description="No student data" style={{ padding: '40px 20px' }} />
+                    ) : (
+                      <div className="dcpr-table">
+                        <div className="dcpr-table__head" style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}>
+                          <div>Rank</div>
+                          <div>Student</div>
+                          <div>Score</div>
+                        </div>
+                        {getSortedStudents().slice(0, 3).map((student, index) => {
+                          const isTopScore = index === 0;
+                          const rank = index + 1;
+                          
+                          return (
+                            <div 
+                              key={student.id || student.userId || index}
+                              className={`dcpr-table__row ${isTopScore ? 'dcpr-table__row--top' : ''}`}
+                              style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}
+                            >
+                              <div style={{ 
+                                fontWeight: 700, 
+                                color: isTopScore ? '#1890ff' : '#6366f1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}>
+                                {isTopScore && <TrophyOutlined style={{ color: '#f59e0b' }} />}
+                                #{rank}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <Avatar 
+                                  size={36} 
+                                  src={student.avatar} 
+                                  icon={<UserOutlined />} 
+                                  style={{ backgroundColor: '#6366f1' }} 
+                                />
+                                <div>
+                                  <div style={{ fontWeight: 600, color: '#1f2937' }}>{student.name || student.email}</div>
+                                  <div style={{ fontSize: 12, color: '#6b7280' }}>{student.email}</div>
+                                </div>
+                              </div>
+                              <div style={{ fontWeight: 700, color: '#1f2937', fontSize: 16 }}>
+                                {Number(student.score || 0).toFixed(2)}/10
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </Card>
+                </div>
               </Col>
             </Row>
 
@@ -1093,9 +1134,20 @@ const DailyChallengePerformance = () => {
                       )}
                     </div>
                   </div>
-                  <div style={{ width: '100%', height: 320 }}>
+                  <div 
+                    className={`dcpr-question-matrix-scroll ${theme === 'sun' ? '' : 'moon-dcpr-question-matrix-scroll'}`}
+                    style={{ 
+                      width: '100%', 
+                      overflowX: 'auto', 
+                      overflowY: 'auto', 
+                      maxHeight: '600px',
+                      borderRadius: '12px',
+                      border: `1px solid ${theme === 'sun' ? '#b3d9ff' : '#374151'}`,
+                      backgroundColor: theme === 'sun' ? '#e6f5ff' : '#111827'
+                    }}
+                  >
                     <LoadingWithEffect loading={questionStatsLoading} message={t('dailyChallenge.loadingQuestionStats', 'Loading question statistics...')}>
-                      {questionStats.length === 0 ? (
+                      {questionMatrixData.questions.length === 0 ? (
                         <Empty
                           description={
                             questionStatsError
@@ -1105,48 +1157,138 @@ const DailyChallengePerformance = () => {
                           style={{ padding: '40px 0' }}
                         />
                       ) : (
-                        <ResponsiveContainer>
-                          <ComposedChart
-                            data={questionStats}
-                            margin={{ top: 10, right: 32, left: 0, bottom: 30 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                            <XAxis
-                              dataKey="questionKey"
-                              tick={{ fontSize: 11 }}
-                              interval={0}
-                            />
-                            <YAxis
-                              yAxisId="accuracy"
-                              domain={[0, 100]}
-                              tick={{ fontSize: 12 }}
-                              label={{ value: 'Accuracy (%)', angle: -90, position: 'insideLeft' }}
-                            />
-                            <Tooltip content={<QuestionAnalysisTooltip />} />
-                            <Legend />
-                            <Bar
-                              yAxisId="accuracy"
-                              dataKey="accuracy"
-                              name={t('dailyChallenge.correctRate', 'Correct rate (%)')}
-                              radius={[6, 6, 0, 0]}
-                              fill="#10b981"
-                            >
-                              {questionStats.map((entry, index) => (
-                                <Cell
-                                  key={`accuracy-${entry.key}`}
-                                  fill={
-                                    entry.accuracy >= 70
-                                      ? '#10b981'
-                                      : entry.accuracy >= 40
-                                        ? '#f59e0b'
-                                        : '#ef4444'
-                                  }
-                                />
+                        <table style={{ 
+                          width: '100%',
+                          minWidth: 'max-content',
+                          borderCollapse: 'separate',
+                          borderSpacing: 0,
+                          tableLayout: 'auto'
+                        }}>
+                          <thead>
+                            <tr style={{ 
+                              backgroundColor: theme === 'sun' ? '#cce5ff' : '#374151'
+                            }}>
+                              <th style={{ 
+                                padding: '12px 16px',
+                                fontWeight: 700,
+                                fontSize: 14,
+                                color: theme === 'sun' ? '#1f2937' : '#f9fafb',
+                                border: `1px solid ${theme === 'sun' ? '#b3d9ff' : '#374151'}`,
+                                backgroundColor: theme === 'sun' ? '#cce5ff' : '#374151',
+                                position: 'sticky',
+                                top: 0,
+                                left: 0,
+                                zIndex: 12,
+                                minWidth: 120,
+                                textAlign: 'center',
+                                whiteSpace: 'nowrap',
+                                borderTopLeftRadius: '12px',
+                                boxShadow: theme === 'sun' 
+                                  ? '0 2px 4px rgba(0,0,0,0.1), 2px 0 4px rgba(0,0,0,0.1)' 
+                                  : '0 2px 4px rgba(0,0,0,0.3), 2px 0 4px rgba(0,0,0,0.3)'
+                              }}>
+                                Question
+                              </th>
+                              {questionMatrixData.students.map((student, idx) => (
+                                <th
+                                  key={student.userId}
+                                  style={{
+                                    padding: '12px 16px',
+                                    fontWeight: 600,
+                                    fontSize: 12,
+                                    color: theme === 'sun' ? '#1f2937' : '#f9fafb',
+                                    border: `1px solid ${theme === 'sun' ? '#b3d9ff' : '#374151'}`,
+                                    backgroundColor: theme === 'sun' ? '#cce5ff' : '#374151',
+                                    position: 'sticky',
+                                    top: 0,
+                                    zIndex: 11,
+                                    minWidth: 120,
+                                    textAlign: 'center',
+                                    whiteSpace: 'nowrap',
+                                    boxShadow: theme === 'sun' ? '0 2px 4px rgba(0,0,0,0.1)' : '0 2px 4px rgba(0,0,0,0.3)',
+                                    ...(idx === questionMatrixData.students.length - 1 && { borderTopRightRadius: '12px' })
+                                  }}
+                                >
+                                  {student.fullName || student.email || `Student ${idx + 1}`}
+                                </th>
                               ))}
-                              <LabelList content={renderAccuracyLabel} />
-                            </Bar>
-                          </ComposedChart>
-                        </ResponsiveContainer>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {questionMatrixData.questions.map((question, qIdx) => {
+                              const totalWeight = question.studentPerformances?.[0]?.totalWeight || 0;
+                              const questionKey = `Question ${qIdx + 1}`;
+                              const isLastRow = qIdx === questionMatrixData.questions.length - 1;
+                              return (
+                                <tr
+                                  key={question.questionId || qIdx}
+                                  style={{
+                                    backgroundColor: qIdx % 2 === 0 
+                                      ? (theme === 'sun' ? '#e6f5ff' : '#111827')
+                                      : (theme === 'sun' ? '#d6ebff' : '#1f2937')
+                                  }}
+                                >
+                                  <td style={{
+                                    padding: '12px 16px',
+                                    fontWeight: 600,
+                                    fontSize: 13,
+                                    color: theme === 'sun' ? '#1f2937' : '#f9fafb',
+                                    border: `1px solid ${theme === 'sun' ? '#b3d9ff' : '#374151'}`,
+                                    position: 'sticky',
+                                    left: 0,
+                                    zIndex: 9,
+                                    backgroundColor: qIdx % 2 === 0 
+                                      ? (theme === 'sun' ? '#e6f5ff' : '#111827')
+                                      : (theme === 'sun' ? '#d6ebff' : '#1f2937'),
+                                    minWidth: 120,
+                                    textAlign: 'left',
+                                    boxShadow: theme === 'sun' ? '2px 0 4px rgba(0,0,0,0.1)' : '2px 0 4px rgba(0,0,0,0.3)',
+                                    ...(isLastRow && { borderBottomLeftRadius: '12px' })
+                                  }}>
+                                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                                      {questionKey}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: theme === 'sun' ? '#6b7280' : '#9ca3af', fontWeight: 400 }}>
+                                      Max score: {totalWeight}
+                                    </div>
+                                  </td>
+                                  {questionMatrixData.students.map((student, sIdx) => {
+                                    const cellData = questionMatrixData.matrix[question.questionId]?.[student.userId];
+                                    const receivedWeight = cellData?.receivedWeight || 0;
+                                    const cellTotalWeight = cellData?.totalWeight || totalWeight;
+                                    let textColor = '#000000';
+                                    if (receivedWeight === 0) {
+                                      textColor = '#ef4444'; // Đỏ cho điểm 0
+                                    } else if (receivedWeight === cellTotalWeight) {
+                                      textColor = '#10b981'; // Xanh lá cho điểm tối đa
+                                    }
+                                    const isLastCell = sIdx === questionMatrixData.students.length - 1;
+                                    
+                                    return (
+                                      <td
+                                        key={student.userId}
+                                        style={{
+                                          padding: '12px 16px',
+                                          fontWeight: 600,
+                                          fontSize: 13,
+                                          color: textColor,
+                                          border: `1px solid ${theme === 'sun' ? '#b3d9ff' : '#374151'}`,
+                                          backgroundColor: 'transparent',
+                                          textAlign: 'center',
+                                          minWidth: 100,
+                                          maxWidth: 120,
+                                          ...(isLastRow && isLastCell && { borderBottomRightRadius: '12px' })
+                                        }}
+                                      >
+                                        {receivedWeight}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       )}
                     </LoadingWithEffect>
                   </div>
