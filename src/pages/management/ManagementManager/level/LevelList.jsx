@@ -406,6 +406,10 @@ const LevelList = () => {
 		},
 	];
 
+	const hasVisibleLevels = levels.length > 0;
+	const publishButtonDisabled = !hasVisibleLevels || isAllPublished;
+	const showEditPositionsButton = hasVisibleLevels && !isAllPublished;
+
 	return (
 		<ThemedLayout>
 			{/* Main Content Panel */}
@@ -441,10 +445,10 @@ const LevelList = () => {
 					</div>
 					<div className='action-buttons'>
 						<Button
-							icon={isAllPublished ? null : <SendOutlined />}
-							onClick={isAllPublished ? null : handlePublishAll}
+							icon={publishButtonDisabled ? null : <SendOutlined />}
+							onClick={publishButtonDisabled ? null : handlePublishAll}
 							loading={toggleLoading}
-							disabled={isAllPublished}
+							disabled={publishButtonDisabled}
 							className={`publish-all-button ${theme}-publish-all-button`}
 							style={{
 								height: '40px',
@@ -462,12 +466,12 @@ const LevelList = () => {
 								boxShadow: theme === 'space'
 									? '0 4px 12px rgba(76, 29, 149, 0.3)'
 									: '0 4px 12px rgba(24, 144, 255, 0.3)',
-								opacity: isAllPublished ? 0.5 : 1,
-								cursor: isAllPublished ? 'not-allowed' : 'pointer',
+								opacity: publishButtonDisabled ? 0.5 : 1,
+								cursor: publishButtonDisabled ? 'not-allowed' : 'pointer',
 							}}>
 							{isAllPublished ? t('levelManagement.published') : t('levelManagement.publishAll')}
 						</Button>
-						{!isAllPublished && (
+						{showEditPositionsButton && (
 							<Button
 								icon={<DragOutlined />}
 								className={`edit-positions-button ${theme}-edit-positions-button`}
