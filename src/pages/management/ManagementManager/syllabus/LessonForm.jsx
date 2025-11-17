@@ -110,6 +110,7 @@ const LessonForm = ({ lesson, chapter, onClose, theme }) => {
 					placeholder={t('lessonManagement.contentPlaceholder')}
 					maxLength={1000}
 					showCount
+					style={{ marginBottom: '10px' }}
 				/>
 			</Form.Item>
 
