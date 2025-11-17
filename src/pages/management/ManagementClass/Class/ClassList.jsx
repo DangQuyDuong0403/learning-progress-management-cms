@@ -70,6 +70,44 @@ const getClassAvatarUrl = (avatarUrl) => {
   return '/img/student_avatar/avatar5.png';
 };
 
+// Helper function to get status display text and styling
+const getStatusConfig = (status, theme) => {
+  const statusConfigs = {
+    PENDING: {
+      text: 'classManagement.pending',
+      bgColor: theme === 'sun' ? '#fff3cd' : '#f59e0b',
+      textColor: theme === 'sun' ? '#856404' : '#ffffff',
+      borderColor: theme === 'sun' ? '#ffeaa7' : 'none',
+    },
+    ACTIVE: {
+      text: 'classManagement.active',
+      bgColor: theme === 'sun' ? '#d4edda' : '#10b981',
+      textColor: theme === 'sun' ? '#155724' : '#ffffff',
+      borderColor: theme === 'sun' ? '#c3e6cb' : 'none',
+    },
+    UPCOMING_END: {
+      text: 'classManagement.upcomingEnd',
+      bgColor: theme === 'sun' ? '#ffeaa7' : '#f59e0b',
+      textColor: theme === 'sun' ? '#856404' : '#ffffff',
+      borderColor: theme === 'sun' ? '#fdcb6e' : 'none',
+    },
+    FINISHED: {
+      text: 'classManagement.finished',
+      bgColor: theme === 'sun' ? '#d1ecf1' : '#3b82f6',
+      textColor: theme === 'sun' ? '#0c5460' : '#ffffff',
+      borderColor: theme === 'sun' ? '#bee5eb' : 'none',
+    },
+    INACTIVE: {
+      text: 'classManagement.inactive',
+      bgColor: theme === 'sun' ? '#f8d7da' : '#ef4444',
+      textColor: theme === 'sun' ? '#721c24' : '#ffffff',
+      borderColor: theme === 'sun' ? '#f5c6cb' : 'none',
+    },
+  };
+  
+  return statusConfigs[status] || statusConfigs.INACTIVE;
+};
+
 const ClassList = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -184,7 +222,8 @@ const ClassList = () => {
           studentCount: 0, // API doesn't provide student count, set to 0
           color: getClassColor(classItem.id), // Use predefined color based on ID
           avatar: getClassAvatarUrl(classItem.avatarUrl), // Use avatar5.png as default if invalid
-          isActive: classItem.status === 'ACTIVE',
+          status: classItem.status, // Store full status
+          isActive: classItem.status === 'ACTIVE', // Keep for backward compatibility
           createdAt: classItem.createdAt ? classItem.createdAt.split('T')[0] : '-',
           syllabusName: classItem.syllabus?.syllabusName || '-',
           levelName: classItem.syllabus?.level?.levelName || '-',
@@ -389,7 +428,10 @@ const ClassList = () => {
                           allowClear
                           placeholder={t('classManagement.allStatus')}
                         >
+                          <Select.Option value="PENDING">{t('classManagement.pending')}</Select.Option>
                           <Select.Option value="ACTIVE">{t('classManagement.active')}</Select.Option>
+                          <Select.Option value="UPCOMING_END">{t('classManagement.upcomingEnd')}</Select.Option>
+                          <Select.Option value="FINISHED">{t('classManagement.finished')}</Select.Option>
                           <Select.Option value="INACTIVE">{t('classManagement.inactive')}</Select.Option>
                         </Select>
                       </Col>
@@ -570,25 +612,24 @@ const ClassList = () => {
                             
                             {/* Status Display */}
                             <div className="class-stats" style={{ flexShrink: 0 }}>
-                              <span
-                                style={{
-                                  padding: '4px 12px',
-                                  borderRadius: '12px',
-                                  fontSize: '13px',
-                                  fontWeight: '600',
-                                  backgroundColor: classItem.isActive 
-                                    ? (theme === 'sun' ? '#d4edda' : '#10b981') 
-                                    : (theme === 'sun' ? '#f8d7da' : '#ef4444'),
-                                  color: classItem.isActive
-                                    ? (theme === 'sun' ? '#155724' : '#ffffff')
-                                    : (theme === 'sun' ? '#721c24' : '#ffffff'),
-                                  border: classItem.isActive
-                                    ? (theme === 'sun' ? '1px solid #c3e6cb' : 'none')
-                                    : (theme === 'sun' ? '1px solid #f5c6cb' : 'none'),
-                                }}
-                              >
-                                {classItem.isActive ? t('classManagement.active') : t('classManagement.inactive')}
-                              </span>
+                              {(() => {
+                                const statusConfig = getStatusConfig(classItem.status || 'INACTIVE', theme);
+                                return (
+                                  <span
+                                    style={{
+                                      padding: '4px 12px',
+                                      borderRadius: '12px',
+                                      fontSize: '13px',
+                                      fontWeight: '600',
+                                      backgroundColor: statusConfig.bgColor,
+                                      color: statusConfig.textColor,
+                                      border: statusConfig.borderColor !== 'none' ? `1px solid ${statusConfig.borderColor}` : 'none',
+                                    }}
+                                  >
+                                    {t(statusConfig.text)}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
                           
