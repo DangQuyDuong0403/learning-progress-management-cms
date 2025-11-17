@@ -435,8 +435,8 @@ const ManagerDashboard = () => {
                       <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                       <ReTooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="newStudents" stroke="#60a5fa" strokeWidth={2.2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                      <Line type="monotone" dataKey="submissions" stroke="#f59e0b" strokeWidth={2.2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="newStudents" stroke="#3b82f6" strokeWidth={2.2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="submissions" stroke="#ea580c" strokeWidth={2.2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -463,7 +463,7 @@ const ManagerDashboard = () => {
               ) : (
                 <div style={{ width: '100%', height: 320 }}>
                   <ResponsiveContainer>
-                    <FunnelChart>
+                    <FunnelChart margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
                       <ReTooltip
                         formatter={(value, name, props) => {
                           const p = props?.payload || {};
@@ -493,7 +493,14 @@ const ManagerDashboard = () => {
                           position="center"
                           fill="black"
                           stroke="none"
-                          style={{ fontWeight: 500, fontSize: 14 }}
+                          style={{ fontWeight: 500, fontSize: 12 }}
+                          formatter={(value) => {
+                            // Truncate long labels to prevent overflow
+                            if (value && value.length > 15) {
+                              return value.substring(0, 12) + '...';
+                            }
+                            return value;
+                          }}
                         />
                       </Funnel>
                     </FunnelChart>
@@ -1173,7 +1180,7 @@ const ManagerDashboard = () => {
                     </div>
               <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
-                  <FunnelChart>
+                  <FunnelChart margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
                     <ReTooltip
                       formatter={(value, name, props) => {
                         const p = props?.payload || {};
@@ -1197,7 +1204,14 @@ const ManagerDashboard = () => {
                         position="center"
                         fill="black"
                         stroke="none"
-                        style={{ fontWeight: 500, fontSize: 14 }}
+                        style={{ fontWeight: 500, fontSize: 12 }}
+                        formatter={(value) => {
+                          // Truncate long labels to prevent overflow
+                          if (value && value.length > 15) {
+                            return value.substring(0, 12) + '...';
+                          }
+                          return value;
+                        }}
                       />
                     </Funnel>
                   </FunnelChart>
