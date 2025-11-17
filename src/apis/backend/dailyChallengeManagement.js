@@ -712,6 +712,20 @@ const dailyChallengeApi = {
 				'accept': '*/*',
 			}
 		});
+	},
+
+	// Lấy thống kê từng câu hỏi: tổng số lần làm và tỷ lệ đúng
+	// Endpoint: GET /reports/challenge/{challengeId}/question-stats
+	getChallengeQuestionStats: (challengeId) => {
+		const url = `/reports/challenge/${challengeId}/question-stats`;
+		console.log('GetChallengeQuestionStats API - URL:', url);
+		console.log('GetChallengeQuestionStats API - Params:', { challengeId });
+
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
 	}
 };
 

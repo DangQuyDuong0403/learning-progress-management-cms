@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Row, Col, Empty, Button, Select } from 'antd';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Card, Row, Col, Empty, Select, Button } from 'antd';
 import LoadingWithEffect from '../../../component/spinner/LoadingWithEffect';
 import {
   BookOutlined,
@@ -8,6 +8,9 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   TeamOutlined,
+  RiseOutlined,
+  FallOutlined,
+  HistoryOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
 import {
@@ -22,8 +25,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { Tag, Timeline } from 'antd';
 import { useTheme } from '../../../contexts/ThemeContext';
-import ThemedLayoutNoSidebar from '../../../component/teacherlayout/ThemedLayout';
+import ThemedLayout from '../../../component/teacherlayout/ThemedLayout';
 import ThemedHeader from '../../../component/ThemedHeader';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
@@ -31,12 +35,13 @@ import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../../../hooks/usePageTitle';
 import { spaceToast } from '../../../component/SpaceToastify';
 import { studentManagementApi } from '../../../apis/apis';
+import { getUserIdFromToken } from '../../../utils/jwtUtils';
 import './StudentLearningProgressView.css';
 
 const StudentLearningProgressOverview = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { user } = useSelector((state) => state.auth);
+  const { user, accessToken } = useSelector((state) => state.auth);
   const navigate = useNavigate();
   const userRole = user?.role;
   const isTestTaker = userRole === 'TEST_TAKER' || userRole === 'test_taker';
@@ -53,15 +58,42 @@ const StudentLearningProgressOverview = () => {
   const [challengeTypeFilter, setChallengeTypeFilter] = useState('GV');
   const [studentClasses, setStudentClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState(null);
+  const [selectedLevelClassId, setSelectedLevelClassId] = useState(null);
 
   // Load student learning progress data
   useEffect(() => {
+    if (!user && !accessToken) {
+      setLoading(false);
+      setOverviewData(null);
+      setLevelChartData([]);
+      setStudentClasses([]);
+      return;
+    }
+
     const loadData = async () => {
       setLoading(true);
       try {
+        // Get userId from JWT token or user object
+        let userId = null;
+        if (accessToken) {
+          userId = getUserIdFromToken(accessToken);
+        }
+        // Fallback to user object or profileData if token doesn't have userId
+        if (!userId) {
+          userId = user?.userId || user?.id;
+        }
+        if (!userId) {
+          console.error('No userId found in token or user object');
+          if (user || accessToken) {
+            spaceToast.error('User ID not found');
+          }
+          setLoading(false);
+          return;
+        }
+        
         // Call both APIs in parallel
         const [overviewResponse, levelHistoryResponse] = await Promise.all([
-          studentManagementApi.getStudentOverview(),
+          studentManagementApi.getStudentOverview(userId),
           studentManagementApi.getStudentLevelHistory(),
         ]);
         
@@ -137,74 +169,18 @@ const StudentLearningProgressOverview = () => {
         
         console.log('Level History Levels:', levels);
         
-        // Ensure we have at least 3 levels by adding mock levels if necessary
-        const randomBetween = (min, max) => {
-          const value = min + Math.random() * (max - min);
-          return Math.round(value * 10) / 10;
-        };
-        const buildMockScores = () => ({
-          vocabularyAvg: randomBetween(6.0, 9.2),
-          readingAvg: randomBetween(5.5, 8.8),
-          listeningAvg: randomBetween(6.2, 9.5),
-          writingAvg: randomBetween(5.0, 8.0),
-          speakingAvg: randomBetween(5.8, 9.0),
-        });
-        const mockLevelMeta = [
-          { name: 'Little Explorers', code: 'LV-M01' },
-          { name: 'Young Achievers', code: 'LV-M02' },
-          { name: 'Smart Learners', code: 'LV-M03' },
-        ];
-        const levelsForCharts = (() => {
-          const base = Array.isArray(levels) ? [...levels] : [];
-          let need = Math.max(0, 3 - base.length);
-          let idx = 0;
-          while (need > 0) {
-            const meta = mockLevelMeta[idx % mockLevelMeta.length];
-            base.push({
-              levelId: 1000 + idx,
-              levelName: meta.name,
-              levelCode: meta.code,
-              classes: [
-                {
-                  classId: 2000 + idx,
-                  className: `DEMO-${idx + 1}`,
-                  classCode: `CL-M${idx + 1}`,
-                  joinedAt: new Date(Date.now() - (idx + 1) * 7 * 24 * 3600 * 1000).toISOString(),
-                  leftAt: null,
-                  scoreByType: buildMockScores(),
-                },
-              ],
-            });
-            idx += 1;
-            need -= 1;
-          }
-          return base;
-        })();
-        
-        if (levelsForCharts && Array.isArray(levelsForCharts) && levelsForCharts.length > 0) {
-          // Prepare level chart data (for bar chart)
-          // Show 5 grouped bars per level (Vocabulary, Reading, Listening, Writing, Speaking)
-          const buildMockScoresIfNeeded = (scores) => {
-            const s = scores || {};
-            const values = [
-              s.vocabularyAvg || 0,
-              s.readingAvg || 0,
-              s.listeningAvg || 0,
-              s.writingAvg || 0,
-              s.speakingAvg || 0,
-            ];
-            const allZero = values.every((v) => !v || v === 0);
-            if (!allZero) return s;
-            return buildMockScores();
-          };
+        // Process level chart data from API only
+        if (levels && Array.isArray(levels) && levels.length > 0) {
           const levelChartDataArray = [];
-          levelsForCharts.forEach(level => {
+          levels.forEach(level => {
             if (level.classes && Array.isArray(level.classes) && level.classes.length > 0) {
               level.classes.forEach(classItem => {
-                const scores = buildMockScoresIfNeeded(classItem.scoreByType);
+                const scores = classItem.scoreByType || {};
                 levelChartDataArray.push({
+                  levelId: level.levelId,
                   level: level.levelName,
                   levelCode: level.levelCode,
+                  classId: classItem.classId,
                   class: classItem.className,
                   classCode: classItem.classCode,
                   vocabulary: scores.vocabularyAvg || 0,
@@ -212,6 +188,20 @@ const StudentLearningProgressOverview = () => {
                   listening: scores.listeningAvg || 0,
                   writing: scores.writingAvg || 0,
                   speaking: scores.speakingAvg || 0,
+                  ranking: classItem.ranking ?? null,
+                  studentAverageScore: classItem.studentAverageScore ?? null,
+                  classAverageScore: classItem.classAverageScore ?? null,
+                  completionRate: classItem.completionRate ?? null,
+                  lateSubmissionRate: classItem.lateSubmissionRate ?? null,
+                  notStartedRate: classItem.notStartedRate ?? null,
+                  totalChallenges: classItem.totalChallenges ?? null,
+                  completedChallenges: classItem.completedChallenges ?? null,
+                  lateChallenges: classItem.lateChallenges ?? null,
+                  notStartedChallenges: classItem.notStartedChallenges ?? null,
+                  joinedAt: classItem.joinedAt || null,
+                  leftAt: classItem.leftAt || null,
+                  startDate: classItem.startDate || null,
+                  endDate: classItem.endDate || null,
                 });
               });
             }
@@ -219,12 +209,18 @@ const StudentLearningProgressOverview = () => {
           
           console.log('Level Chart Data Array:', levelChartDataArray);
           setLevelChartData(levelChartDataArray);
+          if (levelChartDataArray.length > 0) {
+            setSelectedLevelClassId(levelChartDataArray[0].classId);
+          } else {
+            setSelectedLevelClassId(null);
+          }
         } else {
           console.warn('No levels data found in response');
           setLevelChartData([]);
+          setSelectedLevelClassId(null);
         }
         
-        // Collect all classes from REAL levels data (not mock data) - both past and current
+        // Collect all classes from levels data - both past and current
         const allClasses = [];
         if (Array.isArray(levels) && levels.length > 0) {
           levels.forEach(level => {
@@ -263,18 +259,35 @@ const StudentLearningProgressOverview = () => {
     };
 
     loadData();
-  }, []);
+  }, [user, accessToken]);
 
   // Load challenge detail when selectedClassId is available
   useEffect(() => {
-    const loadChallengeDetail = async () => {
-      if (!selectedClassId) {
-        setChallengeDetailData(null);
-        return;
-      }
+    if (!selectedClassId || (!user && !accessToken)) {
+      setChallengeDetailData(null);
+      return;
+    }
 
+    const loadChallengeDetail = async () => {
       try {
-        const response = await studentManagementApi.getStudentClassChallengeDetail(selectedClassId);
+        // Get userId from JWT token or user object
+        let userId = null;
+        if (accessToken) {
+          userId = getUserIdFromToken(accessToken);
+        }
+        // Fallback to user object if token doesn't have userId
+        if (!userId) {
+          userId = user?.userId || user?.id;
+        }
+        if (!userId) {
+          console.error('No userId found for challenge detail');
+          if (user || accessToken) {
+            spaceToast.error('User ID not found');
+          }
+          return;
+        }
+
+        const response = await studentManagementApi.getStudentClassChallengeDetail(selectedClassId, userId);
         console.log('Student Class Challenge Detail Response:', response);
         
         const challengeData = response?.data?.data || response?.data;
@@ -286,15 +299,15 @@ const StudentLearningProgressOverview = () => {
         }
       } catch (err) {
         console.error('Error loading challenge detail:', err);
-        spaceToast.error(err.response?.data?.message || 'Failed to load challenge detail');
+        if (user || accessToken) {
+          spaceToast.error(err.response?.data?.message || 'Failed to load challenge detail');
+        }
         setChallengeDetailData(null);
       }
     };
 
-    if (selectedClassId) {
-      loadChallengeDetail();
-    }
-  }, [selectedClassId]);
+    loadChallengeDetail();
+  }, [selectedClassId, user, accessToken]);
 
   // Render summary cards
   const renderSummaryCards = (cards = []) => (
@@ -345,6 +358,31 @@ const StudentLearningProgressOverview = () => {
       ))}
     </Row>
   );
+
+  const formatDateValue = (value, withTime = false) => {
+    if (!value) return 'N/A';
+    try {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'N/A';
+      const baseOptions = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      };
+      const timeOptions = withTime
+        ? {
+            hour: '2-digit',
+            minute: '2-digit',
+          }
+        : {};
+      return date.toLocaleString('vi-VN', {
+        ...baseOptions,
+        ...timeOptions,
+      });
+    } catch (e) {
+      return 'N/A';
+    }
+  };
 
   // Overview cards
   const overviewCards = useMemo(() => {
@@ -421,8 +459,162 @@ const StudentLearningProgressOverview = () => {
       listening: item.listening ?? 0,
       writing: item.writing ?? 0,
       speaking: item.speaking ?? 0,
+      classId: item.classId,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      joinedAt: item.joinedAt,
+      leftAt: item.leftAt,
+      ranking: item.ranking,
+      studentAverageScore: item.studentAverageScore,
+      classAverageScore: item.classAverageScore,
     }));
   }, [levelChartData]);
+
+  const selectedLevelClassData = useMemo(() => {
+    if (!selectedLevelClassId) return null;
+    return levelChartData.find(item => item.classId === selectedLevelClassId) || null;
+  }, [levelChartData, selectedLevelClassId]);
+
+  const selectedLevelSummaryCards = useMemo(() => {
+    if (!selectedLevelClassData) return [];
+    const data = selectedLevelClassData;
+    const cards = [];
+
+    if (typeof data.ranking === 'number') {
+      cards.push({
+        key: 'ranking',
+        title: 'Ranking',
+        value: `#${data.ranking}`,
+        subtitle: data.classCode ? data.classCode : data.class,
+        bg: '#fff7ed',
+        tag: data.totalChallenges ? `${data.totalChallenges} challenges` : null,
+      });
+    }
+
+    if (data.studentAverageScore !== null || data.classAverageScore !== null) {
+      const studentAvg =
+        data.studentAverageScore !== null ? Number(data.studentAverageScore) : null;
+      const classAvg = data.classAverageScore !== null ? Number(data.classAverageScore) : null;
+      const diff =
+        studentAvg !== null && classAvg !== null ? studentAvg - classAvg : null;
+
+      cards.push({
+        key: 'averageScore',
+        title: 'Student average score',
+        value: studentAvg !== null ? studentAvg.toFixed(2) : 'N/A',
+        subtitle: classAvg !== null ? `Class avg: ${classAvg.toFixed(2)}` : null,
+        bg: '#ecfdf5',
+        trend:
+          diff !== null
+            ? {
+                positive: diff >= 0,
+                text: `${diff >= 0 ? '+' : ''}${diff.toFixed(2)}`,
+              }
+            : null,
+      });
+    }
+
+    if (data.completionRate !== null) {
+      const completionRate = Number(data.completionRate);
+      cards.push({
+        key: 'completionRate',
+        title: 'Completion rate',
+        value: `${completionRate.toFixed(1)}%`,
+        subtitle:
+          data.completedChallenges !== null && data.totalChallenges !== null
+            ? `${data.completedChallenges}/${data.totalChallenges} challenges`
+            : null,
+        bg: '#eef2ff',
+        trend:
+          data.lateSubmissionRate !== null
+            ? {
+                positive: completionRate >= 0,
+                text: `Late: ${Number(data.lateSubmissionRate).toFixed(1)}%`,
+                neutral: true,
+              }
+            : null,
+      });
+    }
+
+    if (data.notStartedRate !== null) {
+      cards.push({
+        key: 'notStarted',
+        title: 'Not started rate',
+        value: `${Number(data.notStartedRate).toFixed(1)}%`,
+        subtitle:
+          data.notStartedChallenges !== null
+            ? `${data.notStartedChallenges} pending challenges`
+            : null,
+        bg: '#fdf2f8',
+      });
+    }
+
+    return cards;
+  }, [selectedLevelClassData]);
+
+  const renderLevelTooltip = useCallback(
+    ({ active, payload }) => {
+      if (!active || !payload || !payload.length) {
+        return null;
+      }
+      const data = payload[0].payload;
+      const labelMap = {
+        vocabulary: 'Vocabulary',
+        reading: 'Reading',
+        listening: 'Listening',
+        writing: 'Writing',
+        speaking: 'Speaking',
+      };
+
+      const tooltipBackground = theme === 'sun' ? '#ffffff' : '#0f172a';
+      const tooltipAccent = theme === 'sun' ? '#f3f4f6' : 'rgba(255,255,255,0.08)';
+      const primaryText = theme === 'sun' ? '#111827' : '#f1f5f9';
+      const secondaryText = theme === 'sun' ? '#6b7280' : '#cbd5f5';
+
+      return (
+        <div
+          style={{
+            background: tooltipBackground,
+            borderRadius: 16,
+            padding: 16,
+            boxShadow: '0 20px 40px rgba(15, 23, 42, 0.18)',
+            minWidth: 240,
+            border: `1px solid ${theme === 'sun' ? '#e5e7eb' : 'rgba(255,255,255,0.12)'}`,
+            marginTop: 8,
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 600, color: primaryText, marginBottom: 6 }}>
+            {data.level} · {data.class}
+          </div>
+          <div style={{ fontSize: 12, color: secondaryText, marginBottom: 12, lineHeight: 1.5 }}>
+            Program: {formatDateValue(data.startDate)} → {formatDateValue(data.endDate)}
+            <br />
+            Joined: {formatDateValue(data.joinedAt, true)} | Left:{' '}
+            {data.leftAt ? formatDateValue(data.leftAt, true) : 'Present'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {payload.map((entry) => (
+              <div
+                key={entry.dataKey}
+                style={{
+                  background: tooltipAccent,
+                  borderRadius: 10,
+                  padding: 8,
+                  border: `1px solid ${theme === 'sun' ? '#e5e7eb' : 'rgba(255,255,255,0.08)'}`,
+                }}
+              >
+                <div style={{ fontSize: 11, color: secondaryText }}>{labelMap[entry.dataKey] || entry.dataKey}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: primaryText }}>
+                  {Number(entry.value).toFixed(1)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    },
+    [formatDateValue, theme]
+  );
 
   // Challenge line chart data (0-10 scale), sorted by submittedAt, filter by challenge type
   const challengeLineData = useMemo(() => {
@@ -446,79 +638,207 @@ const StudentLearningProgressOverview = () => {
     return withOrder;
   }, [challengeDetailData, challengeTypeFilter]);
 
-  // Handle back navigation
-  const handleBack = () => {
-    navigate(`${routePrefix}/dashboard`);
-  };
+  // ========== FAKE DATA FOR NEW FEATURES ==========
+  
+  // 1. Class Ranking Data
+  const fakeClassRankingData = useMemo(() => {
+    return {
+      studentRank: 8,
+      totalStudents: 25,
+      percentile: 68, // Top 68% = rank 8/25
+      averageScore: 7.2,
+      classAverageScore: 7.8,
+      completionRate: 85.5,
+      classCompletionRate: 78.3,
+      improvementScore: 12.5, // % improvement
+    };
+  }, []);
 
-  const headerExtraLeft = ({ theme: headerTheme, t: headerT }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-      <Button
-        icon={<ArrowLeftOutlined />}
-        onClick={handleBack}
-        className={`class-menu-back-button ${headerTheme}-class-menu-back-button`}
-        style={{
-          height: 36,
-          borderRadius: 10,
-          fontWeight: 500,
-          fontSize: 14,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          border: '1px solid rgba(0, 0, 0, 0.1)',
-          background: '#ffffff',
-          color: '#000000',
-          backdropFilter: 'blur(10px)',
-        }}
-      >
-        {headerT('common.back')}
-      </Button>
-      <div
-        style={{
-          height: 24,
-          width: 1,
-          backgroundColor:
-            headerTheme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)',
-        }}
-      />
-      <h2
-        style={{
-          margin: 0,
-          fontSize: 22,
-          fontWeight: 600,
-          color: headerTheme === 'sun' ? '#1e40af' : '#fff',
-          textShadow:
-            headerTheme === 'sun'
-              ? '0 0 5px rgba(30, 64, 175, 0.3)'
-              : '0 0 15px rgba(134, 134, 134, 0.8)',
-        }}
-      >
-        {headerT('studentDashboard.learningProgressOverview', 'View Student Learning Progress Overview')}
-      </h2>
-    </div>
-  );
+  // 3. Level Progression Timeline Data (with classes)
+  const fakeLevelProgressionData = useMemo(() => {
+    return [
+      {
+        levelId: 'LE-001',
+        levelName: 'Little Explorers',
+        levelCode: 'LE',
+        startDate: '2023-09-01',
+        endDate: '2023-12-15',
+        durationDays: 105,
+        finalScore: 7.8,
+        status: 'completed',
+        classes: [
+          {
+            classId: 'CL-LE-001',
+            className: 'Little Explorers A1',
+            classCode: 'LE-A1',
+            joinedAt: '2023-09-01',
+            leftAt: '2023-10-20',
+            finalScore: 7.5,
+            syllabus: {
+              syllabusId: 'SYL-LE-001',
+              syllabusName: 'Little Explorers Foundation',
+              syllabusCode: 'LE-FOUNDATION',
+            },
+          },
+          {
+            classId: 'CL-LE-002',
+            className: 'Little Explorers A2',
+            classCode: 'LE-A2',
+            joinedAt: '2023-10-21',
+            leftAt: '2023-12-15',
+            finalScore: 8.0,
+            syllabus: {
+              syllabusId: 'SYL-LE-002',
+              syllabusName: 'Little Explorers Advanced',
+              syllabusCode: 'LE-ADVANCED',
+            },
+          },
+        ],
+      },
+      {
+        levelId: 'ST-001',
+        levelName: 'Starters',
+        levelCode: 'ST',
+        startDate: '2023-12-16',
+        endDate: '2024-03-20',
+        durationDays: 95,
+        finalScore: 8.2,
+        status: 'completed',
+        classes: [
+          {
+            classId: 'CL-ST-001',
+            className: 'Starters B1',
+            classCode: 'ST-B1',
+            joinedAt: '2023-12-16',
+            leftAt: '2024-02-05',
+            finalScore: 8.0,
+            syllabus: {
+              syllabusId: 'SYL-ST-001',
+              syllabusName: 'Starters Basic Course',
+              syllabusCode: 'ST-BASIC',
+            },
+          },
+          {
+            classId: 'CL-ST-002',
+            className: 'Starters B2',
+            classCode: 'ST-B2',
+            joinedAt: '2024-02-06',
+            leftAt: '2024-03-20',
+            finalScore: 8.4,
+            syllabus: {
+              syllabusId: 'SYL-ST-002',
+              syllabusName: 'Starters Intermediate Course',
+              syllabusCode: 'ST-INTERMEDIATE',
+            },
+          },
+        ],
+      },
+      {
+        levelId: 'MO-001',
+        levelName: 'Movers',
+        levelCode: 'MO',
+        startDate: '2024-03-21',
+        endDate: null,
+        durationDays: null,
+        finalScore: null,
+        status: 'current',
+        classes: [
+          {
+            classId: 'CL-MO-001',
+            className: 'Movers C1',
+            classCode: 'MO-C1',
+            joinedAt: '2024-03-21',
+            leftAt: null,
+            finalScore: null,
+            syllabus: {
+              syllabusId: 'SYL-MO-001',
+              syllabusName: 'Movers Comprehensive Course',
+              syllabusCode: 'MO-COMPREHENSIVE',
+            },
+          },
+        ],
+      },
+    ];
+  }, []);
+
+
+  const headerExtraLeft = useCallback(({ theme: headerTheme }) => {
+    const handleBack = () => {
+      navigate(`${routePrefix}/dashboard`);
+    };
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={handleBack}
+          className={`class-menu-back-button ${headerTheme}-class-menu-back-button`}
+          style={{
+            height: 36,
+            borderRadius: 10,
+            fontWeight: 500,
+            fontSize: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            border: '1px solid rgba(0, 0, 0, 0.1)',
+            background: '#ffffff',
+            color: '#000000',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          {t('common.back')}
+        </Button>
+        <div
+          style={{
+            height: 24,
+            width: 1,
+            backgroundColor:
+              headerTheme === 'sun' ? 'rgba(30, 64, 175, 0.3)' : 'rgba(255, 255, 255, 0.3)',
+          }}
+        />
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 20,
+            fontWeight: 600,
+            color: headerTheme === 'sun' ? '#1e40af' : '#fff',
+            textShadow:
+              headerTheme === 'sun'
+                ? '0 0 5px rgba(30, 64, 175, 0.3)'
+                : '0 0 15px rgba(134, 134, 134, 0.8)',
+          }}
+        >
+          {t('studentDashboard.learningProgressOverview')}
+        </h2>
+      </div>
+    );
+  }, [navigate, routePrefix, t]);
 
   const customHeader = <ThemedHeader extraLeftContent={headerExtraLeft} />;
 
   if (loading) {
     return (
-      <ThemedLayoutNoSidebar customHeader={customHeader}>
+      <ThemedLayout customHeader={customHeader}>
         <div className="slpv-container">
-          <LoadingWithEffect loading={true} message={t('studentProgress.loading')} />
+          <LoadingWithEffect
+            loading={true}
+            message={t('studentProgress.loading', 'Loading learning progress...')}
+          />
         </div>
-      </ThemedLayoutNoSidebar>
+      </ThemedLayout>
     );
   }
 
   return (
-    <ThemedLayoutNoSidebar customHeader={customHeader}>
+    <ThemedLayout customHeader={customHeader}>
       <div className={`slpv-container ${theme}-theme`}>
         {/* Overview Section */}
         {renderSummaryCards(overviewCards)}
 
         {/* Level Comparison Chart */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24}>
+          <Col xs={24} lg={15} style={{ display: 'flex' }}>
             <Card
               style={{
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
@@ -527,6 +847,8 @@ const StudentLearningProgressOverview = () => {
                 boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
                 paddingTop: 8,
                 minHeight: 420,
+                height: '100%',
+                flex: 1,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -536,9 +858,13 @@ const StudentLearningProgressOverview = () => {
               {levelChartFormatted.length === 0 ? (
                 <Empty description="No level data" />
               ) : (
-                <div style={{ width: '100%', height: 380 }}>
+                <div style={{ width: '100%', height: 340, marginTop: 12 }}>
                   <ResponsiveContainer>
-                    <ReBarChart data={levelChartFormatted} margin={{ top: 20, right: 30, bottom: 60, left: 20 }} barCategoryGap="18%">
+                    <ReBarChart
+                      data={levelChartFormatted}
+                      margin={{ top: 20, right: 30, bottom: 60, left: 20 }}
+                      barCategoryGap="18%"
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis 
                         dataKey="name" 
@@ -551,27 +877,155 @@ const StudentLearningProgressOverview = () => {
                         tick={{ fontSize: 12 }}
                         label={{ value: 'Score', angle: -90, position: 'insideLeft' }}
                       />
-                      <ReTooltip 
-                        formatter={(value, name, props) => {
-                          const labelMap = {
-                            vocabulary: 'Vocabulary',
-                            reading: 'Reading',
-                            listening: 'Listening',
-                            writing: 'Writing',
-                            speaking: 'Speaking',
-                          };
-                          return [`${Number(value).toFixed(1)}`, labelMap[name] || name];
-                        }}
+                      <ReTooltip
+                        content={renderLevelTooltip}
+                        cursor={{ fill: 'rgba(99, 102, 241, 0.08)' }}
+                        wrapperStyle={{ zIndex: 2000 }}
                       />
                       <Legend />
-                      <Bar dataKey="vocabulary" fill="#A5B4FC" radius={[6, 6, 0, 0]} name="Vocabulary" />
-                      <Bar dataKey="reading" fill="#86EFAC" radius={[6, 6, 0, 0]} name="Reading" />
-                      <Bar dataKey="listening" fill="#FDE68A" radius={[6, 6, 0, 0]} name="Listening" />
-                      <Bar dataKey="writing" fill="#C4B5FD" radius={[6, 6, 0, 0]} name="Writing" />
-                      <Bar dataKey="speaking" fill="#FCA5A5" radius={[6, 6, 0, 0]} name="Speaking" />
+                      <Bar
+                        dataKey="vocabulary"
+                        fill="#A5B4FC"
+                        radius={[6, 6, 0, 0]}
+                        name="Vocabulary"
+                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                      />
+                      <Bar
+                        dataKey="reading"
+                        fill="#86EFAC"
+                        radius={[6, 6, 0, 0]}
+                        name="Reading"
+                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                      />
+                      <Bar
+                        dataKey="listening"
+                        fill="#FDE68A"
+                        radius={[6, 6, 0, 0]}
+                        name="Listening"
+                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                      />
+                      <Bar
+                        dataKey="writing"
+                        fill="#C4B5FD"
+                        radius={[6, 6, 0, 0]}
+                        name="Writing"
+                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                      />
+                      <Bar
+                        dataKey="speaking"
+                        fill="#FCA5A5"
+                        radius={[6, 6, 0, 0]}
+                        name="Speaking"
+                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                      />
                     </ReBarChart>
                   </ResponsiveContainer>
                 </div>
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} lg={9} style={{ display: 'flex' }}>
+            <Card
+              style={{
+                backgroundColor: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.05)',
+                border: 'none',
+                borderRadius: 16,
+                boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                paddingTop: 8,
+                minHeight: 420,
+                height: '100%',
+                flex: 1,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                  marginBottom: 16,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <TrophyOutlined style={{ color: '#6366f1', fontSize: 18 }} />
+                  <div className="slpv-title" style={{ marginBottom: 0 }}>
+                    Class metrics
+                  </div>
+                </div>
+                {levelChartData.length > 0 && (
+                  <Select
+                    size="small"
+                    style={{ minWidth: 240, flexShrink: 0 }}
+                    value={selectedLevelClassId}
+                    onChange={setSelectedLevelClassId}
+                    options={levelChartData.map(item => ({
+                      value: item.classId,
+                      label: `${item.level} - ${item.class}`,
+                    }))}
+                  />
+                )}
+              </div>
+              {selectedLevelClassData ? (
+                selectedLevelSummaryCards.length > 0 ? (
+                  <Row gutter={[12, 12]}>
+                    {selectedLevelSummaryCards.map((card) => (
+                      <Col xs={24} sm={12} key={card.key}>
+                        <Card
+                          style={{
+                            backgroundColor: card.bg,
+                            border: 'none',
+                            borderRadius: 12,
+                            textAlign: 'center',
+                            height: '100%',
+                          }}
+                        >
+                          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 6 }}>{card.title}</div>
+                          <div style={{ fontSize: 26, fontWeight: 700, color: '#111827', marginBottom: 6 }}>
+                            {card.value}
+                          </div>
+                          {card.subtitle && (
+                            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>{card.subtitle}</div>
+                          )}
+                          {card.tag && (
+                            <div style={{ marginTop: 4 }}>
+                              <Tag color="orange">{card.tag}</Tag>
+                            </div>
+                          )}
+                          {card.trend && card.trend.text && (
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 4,
+                                fontSize: 12,
+                                color: card.trend.neutral
+                                  ? '#6b7280'
+                                  : card.trend.positive
+                                  ? '#22c55e'
+                                  : '#ef4444',
+                              }}
+                            >
+                              {!card.trend.neutral && (
+                                card.trend.positive ? (
+                                  <RiseOutlined style={{ fontSize: 12 }} />
+                                ) : (
+                                  <FallOutlined style={{ fontSize: 12 }} />
+                                )
+                              )}
+                              <span>{card.trend.text}</span>
+                            </div>
+                          )}
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                ) : (
+                  <Empty description="No metrics available" />
+                )
+              ) : (
+                <Empty description="No level details" />
               )}
             </Card>
           </Col>
@@ -741,8 +1195,10 @@ const StudentLearningProgressOverview = () => {
             </Col>
           </Row>
         )}
+
+
       </div>
-    </ThemedLayoutNoSidebar>
+    </ThemedLayout>
   );
 };
 

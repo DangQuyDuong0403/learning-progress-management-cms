@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, Row, Col, Button, Avatar, Empty } from "antd";
-import { TrophyOutlined, BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, UserOutlined, TeamOutlined } from "@ant-design/icons";
+import { TrophyOutlined, BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, UserOutlined, TeamOutlined, BookOutlined } from "@ant-design/icons";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 import { 
@@ -13,7 +13,9 @@ import {
   Tooltip, 
   ResponsiveContainer,
   CartesianGrid,
-  Legend
+  Legend,
+  Cell,
+  LabelList
 } from 'recharts';
 import "./DailyChallengePerformanceReport.css";
 import { useTranslation } from "react-i18next";
@@ -97,6 +99,13 @@ const DailyChallengePerformance = () => {
   });
   const [studentScores, setStudentScores] = useState([]);
   const [chartData, setChartData] = useState([]);
+  const [questionStats, setQuestionStats] = useState([]);
+  const [questionStatsLoading, setQuestionStatsLoading] = useState(false);
+  const [questionStatsMeta, setQuestionStatsMeta] = useState({
+    challengeName: null,
+    challengeId: null
+  });
+  const [questionStatsError, setQuestionStatsError] = useState(null);
 
   // Fetch challenge info from API if not available in state
   const fetchChallengeInfo = useCallback(async () => {
@@ -365,6 +374,75 @@ const DailyChallengePerformance = () => {
     });
   };
 
+  const mapQuestionStats = useCallback((questions = []) => {
+    if (!Array.isArray(questions)) return [];
+    const sorted = [...questions].sort((a, b) => {
+      const sectionOrderA = typeof a.sectionOrder === 'number' ? a.sectionOrder : Number.MAX_SAFE_INTEGER;
+      const sectionOrderB = typeof b.sectionOrder === 'number' ? b.sectionOrder : Number.MAX_SAFE_INTEGER;
+      if (sectionOrderA !== sectionOrderB) return sectionOrderA - sectionOrderB;
+      const questionOrderA = typeof a.questionOrder === 'number' ? a.questionOrder : Number.MAX_SAFE_INTEGER;
+      const questionOrderB = typeof b.questionOrder === 'number' ? b.questionOrder : Number.MAX_SAFE_INTEGER;
+      if (questionOrderA !== questionOrderB) return questionOrderA - questionOrderB;
+      return (a.questionId || 0) - (b.questionId || 0);
+    });
+
+    return sorted.map((question, index) => {
+      const totalAttempts = Number(question.totalAttempts) || 0;
+      const correctAttempts = Number(question.correctCount ?? question.correctAttempts) || 0;
+      const accuracySource = typeof question.correctRate === 'number'
+        ? question.correctRate
+        : (totalAttempts > 0 ? (correctAttempts / totalAttempts) * 100 : 0);
+      const accuracy = Number(Math.min(100, Math.max(0, accuracySource)).toFixed(1));
+
+      return {
+        key: question.questionId || `Q-${index + 1}`,
+        questionKey: `Q${index + 1}`,
+        sectionId: question.sectionId,
+        sectionTitle: question.sectionTitle || question.sectionName || question.skill || question.questionType || t('dailyChallenge.generalSection', 'General section'),
+        sectionOrder: typeof question.sectionOrder === 'number' ? question.sectionOrder : index,
+        questionId: question.questionId,
+        questionText: question.questionText,
+        questionType: question.questionType,
+        questionOrder: question.questionOrder,
+        totalAttempts,
+        correctAttempts,
+        accuracy,
+      };
+    });
+  }, [t]);
+
+  const fetchQuestionStats = useCallback(async () => {
+    const challengeId = challengeInfo.challengeId || id;
+    if (!challengeId) {
+      return;
+    }
+
+    setQuestionStatsLoading(true);
+    setQuestionStatsError(null);
+
+    try {
+      const response = await dailyChallengeApi.getChallengeQuestionStats(challengeId);
+      let payload = response?.data ?? response;
+      if (payload?.data?.questions) {
+        payload = payload.data;
+      }
+      const questions = payload?.questions || [];
+      const normalized = mapQuestionStats(questions);
+      setQuestionStats(normalized);
+      setQuestionStatsMeta({
+        challengeName: payload?.challengeName || challengeInfo.challengeName || null,
+        challengeId: payload?.challengeId || challengeId
+      });
+    } catch (error) {
+      console.error('Error fetching question statistics:', error);
+      console.error('Error details:', error?.response || error?.message);
+      setQuestionStats([]);
+      setQuestionStatsError(error);
+    } finally {
+      setQuestionStatsLoading(false);
+    }
+  }, [challengeInfo.challengeId, challengeInfo.challengeName, id, mapQuestionStats]);
+
   // Fetch challenge info if needed
   useEffect(() => {
     fetchChallengeInfo();
@@ -434,6 +512,7 @@ const DailyChallengePerformance = () => {
   useEffect(() => {
     if (challengeInfo.challengeId || id) {
       fetchPerformanceData();
+      fetchQuestionStats();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, challengeInfo.challengeId]);
@@ -473,6 +552,111 @@ const DailyChallengePerformance = () => {
     }
     return null;
   };
+
+  const QuestionAnalysisTooltip = ({ active, payload }) => {
+    if (!(active && payload && payload.length)) {
+      return null;
+    }
+    const data = payload[0]?.payload;
+    if (!data) return null;
+
+    return (
+      <div className={`dcpr-tooltip ${theme}-dcpr-tooltip`}>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>{data.questionId}</div>
+        <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 8 }}>
+          {data.questionText}
+        </div>
+        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+          {t('dailyChallenge.questionType', 'Type')}: {data.questionType || t('dailyChallenge.unknown', 'Unknown')}
+        </div>
+        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+          {t('dailyChallenge.totalAttempts', 'Total Attempts')}: {data.totalAttempts}
+        </div>
+        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+          {t('dailyChallenge.correctAttempts', 'Correct Count')}: {data.correctAttempts}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>
+          {t('dailyChallenge.correctRate', 'Correct Rate')}: {data.accuracy}% ({data.correctAttempts}/{data.totalAttempts})
+        </div>
+      </div>
+    );
+  };
+
+  const wrapXAxisLabel = (label = '', maxCharsPerLine = 10) => {
+    if (!label) return [''];
+    const words = label.split(' ');
+    const lines = [];
+    let currentLine = '';
+
+    words.forEach((word) => {
+      if ((currentLine + word).trim().length <= maxCharsPerLine) {
+        currentLine = currentLine ? `${currentLine} ${word}` : word;
+      } else if (word.length > maxCharsPerLine) {
+        // Break very long words
+        const chunks = word.match(new RegExp(`.{1,${maxCharsPerLine}}`, 'g')) || [];
+        if (currentLine) {
+          lines.push(currentLine);
+          currentLine = '';
+        }
+        lines.push(...chunks.slice(0, -1));
+        currentLine = chunks[chunks.length - 1] || '';
+      } else {
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        currentLine = word;
+      }
+    });
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    return lines;
+  };
+
+  const CustomXAxisTick = ({ x, y, payload }) => {
+    const lines = wrapXAxisLabel(payload?.value || '');
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text
+          x={0}
+          y={0}
+          dy={32}
+          textAnchor="middle"
+          fill="#6b7280"
+          fontSize={11}
+        >
+          {lines.map((line, index) => (
+            <tspan key={index} x={0} dy={index === 0 ? 0 : 12}>
+              {line}
+            </tspan>
+          ))}
+        </text>
+      </g>
+    );
+  };
+
+  const renderAccuracyLabel = (props) => {
+    const { x, y, width, value } = props;
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const labelValue = `${Number(value).toFixed(0)}%`;
+    return (
+      <text
+        x={x + width / 2}
+        y={y - 6}
+        textAnchor="middle"
+        fill="#374151"
+        fontSize={11}
+        fontWeight={600}
+      >
+        {labelValue}
+      </text>
+    );
+  };
+
 
   return (
     <ThemedLayout>
@@ -635,52 +819,50 @@ const DailyChallengePerformance = () => {
                   {getSortedStudents().length === 0 ? (
                     <Empty description="No student data" style={{ padding: '40px 20px' }} />
                   ) : (
-                    <div className="dcpr-table-scroll">
-                      <div className="dcpr-table">
-                        <div className="dcpr-table__head" style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}>
-                          <div>Rank</div>
-                          <div>Student</div>
-                          <div>Score</div>
-                        </div>
-                        {getSortedStudents().slice(0, 5).map((student, index) => {
-                          const isTopScore = index === 0;
-                          const rank = index + 1;
-                          
-                          return (
-                            <div 
-                              key={student.id || student.userId || index}
-                              className={`dcpr-table__row ${isTopScore ? 'dcpr-table__row--top' : ''}`}
-                              style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}
-                            >
-                              <div style={{ 
-                                fontWeight: 700, 
-                                color: isTopScore ? '#1890ff' : '#6366f1',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4
-                              }}>
-                                {isTopScore && <TrophyOutlined style={{ color: '#f59e0b' }} />}
-                                #{rank}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <Avatar 
-                                  size={36} 
-                                  src={student.avatar} 
-                                  icon={<UserOutlined />} 
-                                  style={{ backgroundColor: '#6366f1' }} 
-                                />
-                                <div>
-                                  <div style={{ fontWeight: 600, color: '#1f2937' }}>{student.name || student.email}</div>
-                                  <div style={{ fontSize: 12, color: '#6b7280' }}>{student.email}</div>
-                                </div>
-                              </div>
-                              <div style={{ fontWeight: 700, color: '#1f2937', fontSize: 16 }}>
-                                {Number(student.score || 0).toFixed(2)}/10
+                    <div className="dcpr-table">
+                      <div className="dcpr-table__head" style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}>
+                        <div>Rank</div>
+                        <div>Student</div>
+                        <div>Score</div>
+                      </div>
+                      {getSortedStudents().slice(0, 5).map((student, index) => {
+                        const isTopScore = index === 0;
+                        const rank = index + 1;
+                        
+                        return (
+                          <div 
+                            key={student.id || student.userId || index}
+                            className={`dcpr-table__row ${isTopScore ? 'dcpr-table__row--top' : ''}`}
+                            style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}
+                          >
+                            <div style={{ 
+                              fontWeight: 700, 
+                              color: isTopScore ? '#1890ff' : '#6366f1',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}>
+                              {isTopScore && <TrophyOutlined style={{ color: '#f59e0b' }} />}
+                              #{rank}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <Avatar 
+                                size={36} 
+                                src={student.avatar} 
+                                icon={<UserOutlined />} 
+                                style={{ backgroundColor: '#6366f1' }} 
+                              />
+                              <div>
+                                <div style={{ fontWeight: 600, color: '#1f2937' }}>{student.name || student.email}</div>
+                                <div style={{ fontSize: 12, color: '#6b7280' }}>{student.email}</div>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
+                            <div style={{ fontWeight: 700, color: '#1f2937', fontSize: 16 }}>
+                              {Number(student.score || 0).toFixed(2)}/10
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </Card>
@@ -837,15 +1019,14 @@ const DailyChallengePerformance = () => {
                       <ResponsiveContainer>
                         <ComposedChart 
                           data={chartData}
-                          margin={{ top: 20, right: 30, left: 0, bottom: 60 }}
+                          margin={{ top: 20, right: 30, left: 0, bottom: 80 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                           <XAxis 
                             dataKey="name" 
-                            tick={{ fontSize: 11 }}
-                            angle={-45}
-                            textAnchor="end"
+                            tick={<CustomXAxisTick />}
                             height={80}
+                            tickMargin={12}
                             interval={0}
                           />
                           <YAxis 
@@ -853,6 +1034,7 @@ const DailyChallengePerformance = () => {
                             label={{ value: 'Score', angle: -90, position: 'insideLeft', style: { fontSize: '14px' } }}
                             tick={{ fontSize: 12 }}
                             domain={[0, 10]}
+                            ticks={[0, 2, 4, 6, 8, 10]}
                           />
                           <YAxis 
                             yAxisId="right"
@@ -886,6 +1068,92 @@ const DailyChallengePerformance = () => {
                 </Card>
               </Col>
             </Row>
+
+            {/* ========== 1. QUESTION ANALYSIS SECTION ========== */}
+            <Row gutter={[16, 16]} style={{ marginTop: 32, marginBottom: 32 }}>
+              <Col xs={24}>
+                <Card
+                  style={{
+                    backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                    border: 'none',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                    padding: '16px 16px 32px',
+                    minHeight: 360,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                    <BookOutlined style={{ color: '#10b981', fontSize: 20 }} />
+                    <div className="manager-dashboard-v2__title">
+                      Question-Level Analysis
+                      {questionStatsMeta.challengeName && (
+                        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 400, marginTop: 2 }}>
+                          {questionStatsMeta.challengeName}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ width: '100%', height: 320 }}>
+                    <LoadingWithEffect loading={questionStatsLoading} message={t('dailyChallenge.loadingQuestionStats', 'Loading question statistics...')}>
+                      {questionStats.length === 0 ? (
+                        <Empty
+                          description={
+                            questionStatsError
+                              ? t('dailyChallenge.questionStatsError', 'Unable to load question statistics')
+                              : t('dailyChallenge.noQuestionStats', 'No question statistics available')
+                          }
+                          style={{ padding: '40px 0' }}
+                        />
+                      ) : (
+                        <ResponsiveContainer>
+                          <ComposedChart
+                            data={questionStats}
+                            margin={{ top: 10, right: 32, left: 0, bottom: 30 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis
+                              dataKey="questionKey"
+                              tick={{ fontSize: 11 }}
+                              interval={0}
+                            />
+                            <YAxis
+                              yAxisId="accuracy"
+                              domain={[0, 100]}
+                              tick={{ fontSize: 12 }}
+                              label={{ value: 'Accuracy (%)', angle: -90, position: 'insideLeft' }}
+                            />
+                            <Tooltip content={<QuestionAnalysisTooltip />} />
+                            <Legend />
+                            <Bar
+                              yAxisId="accuracy"
+                              dataKey="accuracy"
+                              name={t('dailyChallenge.correctRate', 'Correct rate (%)')}
+                              radius={[6, 6, 0, 0]}
+                              fill="#10b981"
+                            >
+                              {questionStats.map((entry, index) => (
+                                <Cell
+                                  key={`accuracy-${entry.key}`}
+                                  fill={
+                                    entry.accuracy >= 70
+                                      ? '#10b981'
+                                      : entry.accuracy >= 40
+                                        ? '#f59e0b'
+                                        : '#ef4444'
+                                  }
+                                />
+                              ))}
+                              <LabelList content={renderAccuracyLabel} />
+                            </Bar>
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      )}
+                    </LoadingWithEffect>
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+
           </LoadingWithEffect>
         </div>
       </div>
