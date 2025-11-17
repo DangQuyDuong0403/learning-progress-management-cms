@@ -117,7 +117,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 							]}
 						>
 							<Input 
-								placeholder={t('teacherManagement.fullNamePlaceholder')}
+								
 								className={`form-input ${theme}-form-input`}
 							/>
 						</Form.Item>
@@ -141,7 +141,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 							]}
 						>
 							<Input 
-								placeholder={t('teacherManagement.emailPlaceholder')}
+								
 								className={`form-input ${theme}-form-input`}
 							/>
 						</Form.Item>
@@ -161,7 +161,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 							]}
 						>
 							<Input 
-								placeholder={t('teacherManagement.phoneNumberPlaceholder')}
+								
 								className={`form-input ${theme}-form-input`}
 							/>
 						</Form.Item>
@@ -249,7 +249,7 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 				>
 					<TextArea 
 						rows={3}
-						placeholder={t('teacherManagement.addressPlaceholder')}
+					
 						className={`form-input ${theme}-form-input`}
 					/>
 				</Form.Item>

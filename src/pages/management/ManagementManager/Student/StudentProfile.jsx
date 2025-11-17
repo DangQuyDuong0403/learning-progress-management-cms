@@ -54,7 +54,23 @@ const StudentProfile = () => {
 	const isTeacher = userRole === 'teacher' || selectedRole === 'teacher';
 	const isTeachingAssistant =
 		userRole === 'teaching_assistant' || selectedRole === 'teaching_assistant';
-	const shouldHideSidebar = isTeacher || isTeachingAssistant;
+	
+	// Only hide sidebar for Teacher and Teaching Assistant
+	// Manager should always show sidebar (shouldHideSidebar = false)
+	// Explicitly ensure Manager always shows sidebar
+	const shouldHideSidebar = isManager ? false : (isTeacher || isTeachingAssistant);
+	
+	// Debug log to verify role detection
+	useEffect(() => {
+		console.log('StudentProfile - Role Detection:', {
+			userRole,
+			selectedRole,
+			isManager,
+			isTeacher,
+			isTeachingAssistant,
+			shouldHideSidebar
+		});
+	}, [userRole, selectedRole, isManager, isTeacher, isTeachingAssistant, shouldHideSidebar]);
 	const [editModalVisible, setEditModalVisible] = useState(false);
 	const [editEmailModalVisible, setEditEmailModalVisible] = useState(false);
 	const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
@@ -849,7 +865,7 @@ const StudentProfile = () => {
 								]}
 							>
 								<Input 
-									placeholder={t('studentManagement.enterPhone')}
+									
 									className={`form-input ${theme}-form-input`}
 								/>
 							</Form.Item>
@@ -872,7 +888,6 @@ const StudentProfile = () => {
 								]}
 							>
 								<Input 
-									placeholder={t('studentManagement.enterFullName')}
 									className={`form-input ${theme}-form-input`}
 								/>
 							</Form.Item>
@@ -921,7 +936,6 @@ const StudentProfile = () => {
 								label={t('studentManagement.address')}
 							>
 								<Input 
-									placeholder={t('studentManagement.enterAddress')}
 									className={`form-input ${theme}-form-input`}
 								/>
 							</Form.Item>
@@ -987,7 +1001,6 @@ const StudentProfile = () => {
 										label={t('studentManagement.parentName')}
 									>
 										<Input 
-											placeholder={t('studentManagement.enterParentName')}
 											className={`form-input ${theme}-form-input`}
 										/>
 									</Form.Item>
@@ -998,7 +1011,6 @@ const StudentProfile = () => {
 										label={t('studentManagement.parentPhone')}
 									>
 										<Input 
-											placeholder={t('studentManagement.enterParentPhone')}
 											className={`form-input ${theme}-form-input`}
 										/>
 									</Form.Item>
@@ -1009,7 +1021,6 @@ const StudentProfile = () => {
 										label={t('studentManagement.parentEmail')}
 									>
 										<Input 
-											placeholder={t('studentManagement.enterParentEmail')}
 											className={`form-input ${theme}-form-input`}
 										/>
 									</Form.Item>
@@ -1020,7 +1031,6 @@ const StudentProfile = () => {
 										label={t('studentManagement.relationship')}
 									>
 										<Input 
-											placeholder="Enter relationship"
 											className={`form-input ${theme}-form-input`}
 										/>
 									</Form.Item>

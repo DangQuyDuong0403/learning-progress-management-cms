@@ -105,6 +105,7 @@ const StudentList = () => {
   const [assignClassModal, setAssignClassModal] = useState({
     visible: false,
     student: null,
+    students: null, // For bulk assignment
   });
   const [filterDropdown, setFilterDropdown] = useState({
     visible: false,
@@ -507,9 +508,12 @@ const StudentList = () => {
       return;
     }
     
-    // For bulk assign, we'll show a message to use individual assign for now
-    // since bulk assign requires selecting a specific class
-    spaceToast.info('Please use individual "Assign to Class" button for each student to select a specific class');
+    // Open modal with multiple students
+    setAssignClassModal({
+      visible: true,
+      student: null,
+      students: selectedStudents,
+    });
   };
 
   // Table columns
@@ -1051,6 +1055,7 @@ const StudentList = () => {
     setAssignClassModal({
       visible: false,
       student: null,
+      students: null,
     });
   };
 
@@ -2011,9 +2016,10 @@ const StudentList = () => {
           width={800}
           centered
         >
-          {assignClassModal.student && (
+          {(assignClassModal.student || assignClassModal.students) && (
             <AssignStudentToClass
               student={assignClassModal.student}
+              students={assignClassModal.students}
               onClose={handleAssignClassClose}
               onSuccess={handleAssignStudentSuccess}
             />
