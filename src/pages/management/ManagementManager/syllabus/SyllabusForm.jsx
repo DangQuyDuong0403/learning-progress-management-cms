@@ -241,9 +241,11 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 			>
 				<TextArea
 					rows={3}
+					autoSize={{ minRows: 4, maxRows: 8 }}
 					placeholder={t('syllabusManagement.descriptionPlaceholder')}
 					maxLength={500}
 					showCount
+					style={{ resize: 'none' ,marginBottom: '10px'}}
 				/>
 			</Form.Item>
 
