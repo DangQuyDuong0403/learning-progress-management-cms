@@ -206,10 +206,15 @@ const studentManagementApi = {
 	},
 
 	// Lấy tổng quan của học sinh: thời gian bắt đầu học, level hiện tại, lớp hiện tại, tỷ lệ làm DC (reports API)
-	// Endpoint: GET /reports/student/overview
-	getStudentOverview: () => {
-		const url = `/reports/student/overview`;
+	// Endpoint: GET /reports/student/overview?userId={userId}
+	getStudentOverview: (userId) => {
+		const queryParams = new URLSearchParams();
+		if (userId) {
+			queryParams.append('userId', userId);
+		}
+		const url = `/reports/student/overview${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 		console.log('GetStudentOverview API - URL:', url);
+		console.log('GetStudentOverview API - Params:', { userId });
 		
 		return axiosClient.get(url, {
 			headers: {
@@ -242,10 +247,15 @@ const studentManagementApi = {
 	},
 
 	// Chi tiết DC của học sinh trong 1 lớp: list DC kèm điểm, type, status, tỷ lệ hoàn thành đúng hạn (reports API)
-	// Endpoint: GET /reports/student/class/{classId}/challenges
-	getStudentClassChallengeDetail: (classId) => {
-		const url = `/reports/student/class/${classId}/challenges`;
+	// Endpoint: GET /reports/student/class/{classId}/challenges?userId={userId}
+	getStudentClassChallengeDetail: (classId, userId) => {
+		const queryParams = new URLSearchParams();
+		if (userId) {
+			queryParams.append('userId', userId);
+		}
+		const url = `/reports/student/class/${classId}/challenges${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 		console.log('GetStudentClassChallengeDetail API - URL:', url);
+		console.log('GetStudentClassChallengeDetail API - Params:', { classId, userId });
 		
 		return axiosClient.get(url, {
 			headers: {

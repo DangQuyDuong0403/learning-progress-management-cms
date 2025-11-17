@@ -9,6 +9,7 @@ import {
   BarChartOutlined,
   FileTextOutlined,
   CheckCircleOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import {
   PieChart,
@@ -30,6 +31,7 @@ import { useTheme } from '../../../../contexts/ThemeContext';
 import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
 import { classManagementApi } from '../../../../apis/apis';
+import axiosClient from '../../../../apis';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
@@ -39,6 +41,29 @@ import usePageTitle from '../../../../hooks/usePageTitle';
 import './ClassReportV2.css';
 
 const ROLE_COLORS = ['#c0aaff', '#80b9ff', '#7dd3b8', '#ffc98a', '#f79ac0', '#9aa7ff'];
+
+// Mapping skill name to skill code for API
+const SKILL_CODE_MAP = {
+  'VOCABULARY': 'GV',
+  'READING': 'RE',
+  'LISTENING': 'LI',
+  'WRITING': 'WR',
+  'SPEAKING': 'SP',
+};
+
+// Human-readable labels for skill codes (used in charts)
+const SKILL_LABEL_MAP = {
+  GV: 'Grammar & Vocabulary',
+  RE: 'Reading',
+  LI: 'Listening',
+  WR: 'Writing',
+  SP: 'Speaking',
+};
+
+// Convert skill name to skill code
+const getSkillCode = (skillName) => {
+  return SKILL_CODE_MAP[skillName] || skillName;
+};
 
 const ClassReport = () => {
   const { t } = useTranslation();
@@ -64,80 +89,12 @@ const ClassReport = () => {
   const [teacherActivityData, setTeacherActivityData] = useState([]);
   const [studentRankings, setStudentRankings] = useState([]);
   const [selectedSkill, setSelectedSkill] = useState('VOCABULARY');
-  const [sortBy, setSortBy] = useState('score');
+  // Sorting for Top Students table (FE only). Default: Average Score
+  const [sortBy, setSortBy] = useState('averageScore');
   const [challengeStatsBySkill, setChallengeStatsBySkill] = useState([]);
   const [challengeProgress, setChallengeProgress] = useState([]);
-
-  const fakeChallengeProgress = useMemo(
-    () => [
-      {
-        skill: 'VOCABULARY',
-        statusBreakdown: {
-          draft: 2,
-          draftPercentage: 8,
-          published: 4,
-          publishedPercentage: 16,
-          inProgress: 9,
-          inProgressPercentage: 36,
-          finished: 10,
-          finishedPercentage: 40,
-        },
-      },
-      {
-        skill: 'READING',
-        statusBreakdown: {
-          draft: 1,
-          draftPercentage: 6,
-          published: 3,
-          publishedPercentage: 12,
-          inProgress: 8,
-          inProgressPercentage: 38,
-          finished: 7,
-          finishedPercentage: 34,
-        },
-      },
-      {
-        skill: 'LISTENING',
-        statusBreakdown: {
-          draft: 3,
-          draftPercentage: 12,
-          published: 5,
-          publishedPercentage: 20,
-          inProgress: 7,
-          inProgressPercentage: 28,
-          finished: 10,
-          finishedPercentage: 40,
-        },
-      },
-      {
-        skill: 'WRITING',
-        statusBreakdown: {
-          draft: 4,
-          draftPercentage: 16,
-          published: 3,
-          publishedPercentage: 14,
-          inProgress: 6,
-          inProgressPercentage: 32,
-          finished: 6,
-          finishedPercentage: 31,
-        },
-      },
-      {
-        skill: 'SPEAKING',
-        statusBreakdown: {
-          draft: 2,
-          draftPercentage: 10,
-          published: 4,
-          publishedPercentage: 20,
-          inProgress: 5,
-          inProgressPercentage: 25,
-          finished: 9,
-          finishedPercentage: 45,
-        },
-      },
-    ],
-    []
-  );
+  const [atRiskSummary, setAtRiskSummary] = useState(null);
+  const [atRiskStudents, setAtRiskStudents] = useState([]);
 
   // Load class detail and report data
   useEffect(() => {
@@ -150,7 +107,8 @@ const ClassReport = () => {
         const [classResponse, overviewResponse, membersResponse] = await Promise.all([
           classManagementApi.getClassDetail(id),
           classManagementApi.getClassReportOverview(id),
-          classManagementApi.getClassReportMembers(id, sortBy),
+          // Get members once; sorting of students is handled on FE
+          classManagementApi.getClassReportMembers(id),
         ]);
 
         // Process class detail
@@ -223,9 +181,9 @@ const ClassReport = () => {
         setLoading(false);
       }
     };
-    
+
     loadAllData();
-  }, [id, sortBy]);
+  }, [id]);
 
   // Load challenge progress by all skills
   useEffect(() => {
@@ -252,7 +210,9 @@ const ClassReport = () => {
     
     const loadChallengeStats = async () => {
       try {
-        const response = await classManagementApi.getClassChallengeStatsBySkill(id, selectedSkill);
+        // Convert skill name to skill code for API
+        const skillCode = getSkillCode(selectedSkill);
+        const response = await classManagementApi.getClassChallengeStatsBySkill(id, skillCode);
         if (response?.data?.challenges) {
           setChallengeStatsBySkill(response.data.challenges);
         } else {
@@ -267,6 +227,42 @@ const ClassReport = () => {
     
     loadChallengeStats();
   }, [id, selectedSkill]);
+
+  // Load at-risk students data
+  useEffect(() => {
+    if (!id) return;
+
+    const loadAtRiskStudents = async () => {
+      try {
+        const fetchFn =
+          typeof classManagementApi.getClassAtRiskStudents === 'function'
+            ? classManagementApi.getClassAtRiskStudents
+            : (classId) => axiosClient.get(`/reports/class/${classId}/at-risk`);
+
+        const response = await fetchFn(id);
+        const apiData = response?.data?.data || response?.data || {};
+
+        setAtRiskSummary({
+          classId: apiData.classId,
+          className: apiData.className,
+          minChallengesRequired: apiData.minChallengesRequired ?? 0,
+          totalStudents: Array.isArray(apiData.students) ? apiData.students.length : 0,
+        });
+
+        if (Array.isArray(apiData.students)) {
+          setAtRiskStudents(apiData.students);
+        } else {
+          setAtRiskStudents([]);
+        }
+      } catch (err) {
+        console.error('Error loading at-risk students:', err);
+        spaceToast.error(err.response?.data?.message || 'Failed to load at-risk students');
+        setAtRiskStudents([]);
+      }
+    };
+
+    loadAtRiskStudents();
+  }, [id]);
 
   // Track if we've already entered class menu to prevent infinite loops
   const hasEnteredClassMenu = useRef(false);
@@ -321,47 +317,18 @@ const ClassReport = () => {
   // Top students by score (from API data)
   const topStudentsByScore = useMemo(() => {
     if (!studentRankings || studentRankings.length === 0) return [];
-    
-    // If sortBy is 'score', use the rankings as-is (already sorted by API)
-    if (sortBy === 'score') {
-      return studentRankings
-        .slice(0, 10)
-        .map((s, idx) => ({
-          ...s,
-          id: s.userId,
-          name: s.fullName || s.email,
-          email: s.email,
-          averageScore: s.averageScore ?? 0,
-          totalSubmissions: s.totalSubmissions ?? 0,
-          lateSubmissions: s.lateSubmissions ?? 0,
-          onTimeSubmissions: s.onTimeSubmissions ?? 0,
-          diligenceScore: s.diligenceScore ?? 0,
-          rank: idx + 1,
-        }));
+
+    const rankings = [...studentRankings];
+
+    // FE-only sorting
+    if (sortBy === 'improvementScore') {
+      rankings.sort((a, b) => (b.improvementScore ?? 0) - (a.improvementScore ?? 0));
+    } else {
+      // Default: sort by Average Score
+      rankings.sort((a, b) => (b.averageScore ?? 0) - (a.averageScore ?? 0));
     }
-    
-    // If sortBy is 'diligence', sort by diligenceScore
-    if (sortBy === 'diligence') {
-      return [...studentRankings]
-        .sort((a, b) => (b.diligenceScore ?? 0) - (a.diligenceScore ?? 0))
-        .slice(0, 10)
-        .map((s, idx) => ({
-          ...s,
-          id: s.userId,
-          name: s.fullName || s.email,
-          email: s.email,
-          averageScore: s.averageScore ?? 0,
-          totalSubmissions: s.totalSubmissions ?? 0,
-          lateSubmissions: s.lateSubmissions ?? 0,
-          onTimeSubmissions: s.onTimeSubmissions ?? 0,
-          diligenceScore: s.diligenceScore ?? 0,
-          rank: idx + 1,
-        }));
-    }
-    
-    // Otherwise, sort by score
-    return [...studentRankings]
-      .sort((a, b) => (b.averageScore ?? 0) - (a.averageScore ?? 0))
+
+    return rankings
       .slice(0, 10)
       .map((s, idx) => ({
         ...s,
@@ -372,69 +339,17 @@ const ClassReport = () => {
         totalSubmissions: s.totalSubmissions ?? 0,
         lateSubmissions: s.lateSubmissions ?? 0,
         onTimeSubmissions: s.onTimeSubmissions ?? 0,
-        diligenceScore: s.diligenceScore ?? 0,
+        improvementScore: s.improvementScore ?? 0,
         rank: idx + 1,
       }));
   }, [studentRankings, sortBy]);
 
 
-  // Mock data for challenge stats (temporary until API has data)
-  const mockChallengeStats = useMemo(() => {
-    const skillName = selectedSkill || 'VOCABULARY';
-    return [
-      {
-        challengeId: 1,
-        challengeName: `${skillName} Challenge 1`,
-        onTimeCount: 18,
-        lateCount: 3,
-        notSubmittedCount: 4,
-        averageScore: 7.5,
-      },
-      {
-        challengeId: 2,
-        challengeName: `${skillName} Challenge 2`,
-        onTimeCount: 20,
-        lateCount: 2,
-        notSubmittedCount: 3,
-        averageScore: 8.2,
-      },
-      {
-        challengeId: 3,
-        challengeName: `${skillName} Challenge 3`,
-        onTimeCount: 15,
-        lateCount: 5,
-        notSubmittedCount: 5,
-        averageScore: 6.8,
-      },
-      {
-        challengeId: 4,
-        challengeName: `${skillName} Challenge 4`,
-        onTimeCount: 22,
-        lateCount: 1,
-        notSubmittedCount: 2,
-        averageScore: 8.9,
-      },
-      {
-        challengeId: 5,
-        challengeName: `${skillName} Challenge 5`,
-        onTimeCount: 19,
-        lateCount: 4,
-        notSubmittedCount: 2,
-        averageScore: 7.3,
-      },
-    ];
-  }, [selectedSkill]);
-
   // Daily challenges chart data from API (challenge stats by skill)
   const dailyChallengesChartData = useMemo(() => {
-    // Use API data if available, otherwise use mock data
-    const dataSource = (challengeStatsBySkill && challengeStatsBySkill.length > 0) 
-      ? challengeStatsBySkill 
-      : mockChallengeStats;
+    if (!challengeStatsBySkill || challengeStatsBySkill.length === 0) return [];
     
-    if (!dataSource || dataSource.length === 0) return [];
-    
-    return dataSource.map((challenge, index) => ({
+    return challengeStatsBySkill.map((challenge, index) => ({
       name: challenge.challengeName || `DC ${challenge.challengeId}`,
       dcName: challenge.challengeName || `DC ${challenge.challengeId}`,
       averageScore: challenge.averageScore ?? 0,
@@ -443,7 +358,7 @@ const ClassReport = () => {
       notSubmitted: challenge.notSubmittedCount ?? 0,
       totalSubmissions: (challenge.onTimeCount ?? 0) + (challenge.lateCount ?? 0) + (challenge.notSubmittedCount ?? 0),
     }));
-  }, [challengeStatsBySkill, mockChallengeStats]);
+  }, [challengeStatsBySkill]);
 
 
   const availableSkills = useMemo(() => {
@@ -453,36 +368,11 @@ const ClassReport = () => {
 
   // Challenge progress chart data by selected skill
   const challengeProgressSource = useMemo(() => {
-    const isAllZeroBreakdown = (arr = []) => {
-      if (!Array.isArray(arr) || arr.length === 0) return true;
-      const totals = arr.map((s) => {
-        const b = s?.statusBreakdown || {};
-        const counts = [
-          Number(b.draft ?? 0),
-          Number(b.published ?? 0),
-          Number(b.inProgress ?? 0),
-          Number(b.finished ?? 0),
-        ];
-        const sumCounts = counts.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-        const percentages = [
-          Number(b.draftPercentage ?? 0),
-          Number(b.publishedPercentage ?? 0),
-          Number(b.inProgressPercentage ?? 0),
-          Number(b.finishedPercentage ?? 0),
-        ];
-        const sumPercent = percentages.reduce((a, p) => a + (Number.isFinite(p) ? p : 0), 0);
-        return { sumCounts, sumPercent };
-      });
-      const anyCounts = totals.some((t) => t.sumCounts > 0);
-      const anyPercent = totals.some((t) => t.sumPercent > 0);
-      return !(anyCounts || anyPercent);
-    };
-    
-    if (challengeProgress && challengeProgress.length > 0 && !isAllZeroBreakdown(challengeProgress)) {
-      return challengeProgress;
+    if (!challengeProgress || challengeProgress.length === 0) {
+      return [];
     }
-    return fakeChallengeProgress;
-  }, [challengeProgress, fakeChallengeProgress]);
+    return challengeProgress;
+  }, [challengeProgress]);
 
   const formatSkillName = (skill) => {
     if (!skill) return '';
@@ -503,7 +393,8 @@ const ClassReport = () => {
     };
 
     return challengeProgressSource.map((skillData) => {
-      const skillKey = skillData.skill || skillData.skillName || '';
+      const rawSkillKey = skillData.skill || skillData.skillName || '';
+      const skillKey = (rawSkillKey || '').toString().toUpperCase();
       const breakdown = skillData.statusBreakdown || {};
       const draftCount = breakdown.draft ?? 0;
       const publishedCount = breakdown.published ?? 0;
@@ -516,8 +407,13 @@ const ClassReport = () => {
       const inProgressValue = calculatePercentage(breakdown.inProgressPercentage, inProgressCount, totalCount);
       const finishedValue = calculatePercentage(breakdown.finishedPercentage, finishedCount, totalCount);
 
+      const skillLabel = SKILL_LABEL_MAP[skillKey] || formatSkillName(skillKey);
+
       return {
-        skill: formatSkillName(skillKey),
+        // skillCode can be useful later if needed
+        skillCode: skillKey,
+        // This is what we show on Y-axis
+        skill: skillLabel,
         draftValue,
         draftCount,
         draftLabel: draftCount ? `Draft (${draftCount})` : '',
@@ -570,6 +466,134 @@ const ClassReport = () => {
     return [`${percentage}% (${count} challenges)`, name];
   };
 
+  const CHALLENGE_PROGRESS_ORDER = ['finishedValue', 'publishedValue', 'inProgressValue', 'draftValue'];
+  const CHALLENGE_PROGRESS_COLOR_MAP = {
+    finishedValue: '#7dd3b8',
+    publishedValue: '#ffcc80',
+    inProgressValue: '#80b9ff',
+    draftValue: '#898e99',
+  };
+
+  // Legend payload for "Challenge Progress by All Skills"
+  // Keep pastel colors and fixed order: Finished, Published, In Progress, Draft
+  const challengeProgressLegendPayload = useMemo(
+    () => [
+      // Use green & blue tones similar to Role Distribution
+      { value: 'Finished', type: 'square', dataKey: 'finishedValue', color: '#7dd3b8' }, // green
+      { value: 'Published', type: 'square', dataKey: 'publishedValue', color: '#ffcc80' }, // pastel yellow-orange
+      { value: 'In Progress', type: 'square', dataKey: 'inProgressValue', color: '#80b9ff' }, // blue
+      { value: 'Draft', type: 'square', dataKey: 'draftValue', color: '#898e99' }, // neutral darker gray
+    ],
+    []
+  );
+
+  // Custom legend for "Challenge Progress by All Skills"
+  // Fixed order + consistent colors with bars
+  const renderChallengeProgressLegend = () => {
+    return (
+      <ul
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 24,
+          listStyle: 'none',
+          marginTop: 16,
+          marginBottom: 0,
+          padding: 0,
+          flexWrap: 'wrap',
+          fontSize: 12,
+        }}
+      >
+        {challengeProgressLegendPayload.map((entry) => (
+          <li
+            key={entry.dataKey}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 2,
+                backgroundColor: entry.color,
+              }}
+            />
+            <span
+              style={{
+                color: entry.color,
+                fontSize: '14px',
+                fontWeight: 400,
+              }}
+            >
+              {entry.value}
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  // Custom tooltip for "Challenge Progress by All Skills"
+  // Order + colors: Finished, Published, In Progress, Draft
+  const renderChallengeProgressTooltip = ({ active, payload, label }) => {
+    if (!active || !payload || !payload.length) return null;
+
+    const orderedItems = payload
+      .filter((item) => item && item.dataKey && CHALLENGE_PROGRESS_ORDER.includes(item.dataKey))
+      .sort(
+        (a, b) =>
+          CHALLENGE_PROGRESS_ORDER.indexOf(a.dataKey) -
+          CHALLENGE_PROGRESS_ORDER.indexOf(b.dataKey)
+      );
+
+    if (!orderedItems.length) return null;
+
+    return (
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          padding: 10,
+          boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
+          fontSize: 12,
+        }}
+      >
+        {label && (
+          <div style={{ fontWeight: 600, marginBottom: 6, color: '#111827' }}>
+            {label}
+          </div>
+        )}
+        {orderedItems.map((item) => {
+          const [valueLabel] = challengeProgressTooltipFormatter(
+            item.value,
+            item.name,
+            item
+          );
+          const color = CHALLENGE_PROGRESS_COLOR_MAP[item.dataKey] || item.color;
+
+          return (
+            <div
+              key={item.dataKey}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  backgroundColor: color,
+                }}
+              />
+              <span style={{ color: '#374151' }}>
+                <span style={{ fontWeight: 500 }}>{item.name}</span>: {valueLabel}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Render summary cards
   const renderSummaryCards = (cards = []) => (
     <Row gutter={[12, 16]} style={{ marginBottom: 24 }}>
@@ -608,7 +632,7 @@ const ClassReport = () => {
               </div>
               <div style={{ fontWeight: 600, fontSize: 18, color: '#5b6b83', lineHeight: 1.1 }}>{stat.title}</div>
             </div>
-            <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+            <div style={{ fontSize: 40, fontWeight: 400, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
               {stat.value}
             </div>
             <div style={{ color: '#6b7280', fontSize: 14 }}>
@@ -649,22 +673,6 @@ const ClassReport = () => {
         bg: '#eef2ff',
       },
       {
-        key: 'activeTeachers',
-        title: t('classReport.activeTeachers', 'Active Teachers'),
-        value: overviewData.totalActiveTeachers ?? 0,
-        subtitle: 'Currently active',
-        icon: <TeamOutlined style={{ color: '#8b5cf6' }} />,
-        bg: '#f5f3ff',
-      },
-      {
-        key: 'activeStudents',
-        title: t('classReport.activeStudents', 'Active Students'),
-        value: overviewData.totalActiveStudents ?? 0,
-        subtitle: 'Currently active',
-        icon: <UserOutlined style={{ color: '#0ea5e9' }} />,
-        bg: '#e0f2fe',
-      },
-      {
         key: 'dailyChallenges',
         title: t('classReport.totalDailyChallenges', 'Daily Challenges'),
         value: overviewData.totalDailyChallenges ?? 0,
@@ -674,6 +682,9 @@ const ClassReport = () => {
       },
     ];
   }, [overviewData, t]);
+
+  // Layout helpers
+  const isAtRiskScrollable = atRiskStudents && atRiskStudents.length > 2;
 
   if (loading) {
     return (
@@ -723,6 +734,8 @@ const ClassReport = () => {
                         cx="50%"
                         cy="46%"
                         outerRadius={110}
+                        startAngle={90}
+                        endAngle={-270}
                         label={({ name, percentage }) => `${name} (${Number(percentage).toFixed(2)}%)`}
                       >
                         {roleDistributionData.map((entry, index) => (
@@ -804,8 +817,8 @@ const ClassReport = () => {
                   style={{ width: 150 }}
                   size="small"
                 >
-                  <Select.Option value="score">By Score</Select.Option>
-                  <Select.Option value="diligence">By Diligence</Select.Option>
+                  <Select.Option value="averageScore">Average Score</Select.Option>
+                  <Select.Option value="improvementScore">Improvement Score</Select.Option>
                 </Select>
               </div>
               {topStudentsByScore.length === 0 ? (
@@ -819,7 +832,7 @@ const ClassReport = () => {
                     <div>Total Submissions</div>
                     <div>On Time</div>
                     <div>Late</div>
-                    <div>Diligence Score</div>
+                    <div>Improvement Score</div>
                   </div>
                   {topStudentsByScore.map((student, idx) => (
                     <div className="crv2-table__row" key={student.id || student.userId || idx} style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1fr' }}>
@@ -840,7 +853,7 @@ const ClassReport = () => {
                       <div style={{ color: '#1f2937' }}>{student.totalSubmissions ?? 0}</div>
                       <div style={{ color: '#22c55e', fontWeight: 500 }}>{student.onTimeSubmissions ?? 0}</div>
                       <div style={{ color: '#ef4444', fontWeight: 500 }}>{student.lateSubmissions ?? 0}</div>
-                      <div style={{ fontWeight: 600, color: '#6366f1' }}>{Number(student.diligenceScore ?? 0).toFixed(1)}</div>
+                      <div style={{ fontWeight: 600, color: '#6366f1' }}>{Number(student.improvementScore ?? 0).toFixed(1)}</div>
                     </div>
                   ))}
                 </div>
@@ -891,8 +904,8 @@ const ClassReport = () => {
                       <XAxis 
                         dataKey="name" 
                         tick={{ fontSize: 12 }} 
-                        angle={-20} 
-                        textAnchor="end" 
+                        angle={0}
+                        textAnchor="middle"
                         height={60}
                         label={{ value: 'Daily Challenges', position: 'insideBottom', offset: 10 }}
                       />
@@ -900,7 +913,7 @@ const ClassReport = () => {
                         yAxisId="left"
                         allowDecimals={false}
                         tick={{ fontSize: 12 }}
-                        label={{ value: 'Số lượng', angle: -90, position: 'insideLeft' }}
+                        label={{ value: 'Quantity', angle: -90, position: 'insideLeft' }}
                       />
                       <YAxis 
                         yAxisId="right"
@@ -908,29 +921,29 @@ const ClassReport = () => {
                         domain={[0, 'dataMax']}
                         tick={{ fontSize: 12 }}
                         tickFormatter={(v) => `${Number(v).toFixed(1)}`}
-                        label={{ value: 'Điểm TB', angle: 90, position: 'insideRight' }}
+                        label={{ value: 'Average Score', angle: 90, position: 'insideRight' }}
                       />
                       <ReTooltip 
                         formatter={(value, name) => {
                           if (name === 'averageScore') {
-                            return [`${Number(value).toFixed(2)}`, 'Điểm TB'];
+                            return [`${Number(value).toFixed(2)}`, 'Average Score'];
                           }
                           if (name === 'onTimeSubmissions') {
-                            return [value, 'Nộp đúng hạn'];
+                            return [value, 'On Time'];
                           }
                           if (name === 'lateSubmissions') {
-                            return [value, 'Nộp muộn'];
+                            return [value, 'Late'];
                           }
                           if (name === 'notSubmitted') {
-                            return [value, 'Chưa nộp'];
+                            return [value, 'Not Submitted'];
                           }
                           return [value, name];
                         }}
                       />
                       <Legend wrapperStyle={{ marginTop: 20 }} />
-                      <Bar yAxisId="left" dataKey="onTimeSubmissions" stackId="submissions" fill="#a5d6a7" name="Nộp đúng hạn" />
-                      <Bar yAxisId="left" dataKey="lateSubmissions" stackId="submissions" fill="#ef9a9a" name="Nộp muộn" />
-                      <Bar yAxisId="left" dataKey="notSubmitted" stackId="submissions" fill="#ffccbc" name="Chưa nộp" />
+                      <Bar yAxisId="left" dataKey="onTimeSubmissions" stackId="submissions" fill="#a5d6a7" name="On Time" />
+                      <Bar yAxisId="left" dataKey="lateSubmissions" stackId="submissions" fill="#ef9a9a" name="Late" />
+                      <Bar yAxisId="left" dataKey="notSubmitted" stackId="submissions" fill="#fbbf24" name="Not Submitted" />
                       <Line 
                         yAxisId="right"
                         type="monotone" 
@@ -939,7 +952,7 @@ const ClassReport = () => {
                         strokeWidth={2.5}
                         dot={{ r: 4, fill: '#81d4fa' }}
                         activeDot={{ r: 6, fill: '#4fc3f7' }}
-                        name="Điểm TB"
+                        name="Average Score"
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
@@ -949,9 +962,9 @@ const ClassReport = () => {
           </Col>
         </Row>
 
-        {/* Challenge Progress by All Skills */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24}>
+        {/* Challenge Progress & At-risk Students */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 40 }}>
+          <Col xs={24} xl={12}>
             <Card
               style={{
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
@@ -960,6 +973,7 @@ const ClassReport = () => {
                 boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
                 paddingTop: 8,
                 minHeight: 300,
+                height: '100%',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -973,21 +987,26 @@ const ClassReport = () => {
                   <ResponsiveContainer>
                     <ReBarChart data={challengeProgressData} layout="vertical" margin={{ top: 10, right: 24, bottom: 10, left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${Number(v).toFixed(0)}%`} />
+                      <XAxis
+                        type="number"
+                        domain={[0, 100]}
+                        ticks={[0, 20, 40, 60, 80, 100]}
+                        tickFormatter={(v) => `${Number(v).toFixed(0)}%`}
+                      />
                       <YAxis type="category" dataKey="skill" tick={{ fontSize: 12, fontWeight: 600 }} width={140} />
-                      <ReTooltip formatter={challengeProgressTooltipFormatter} />
-                      <Legend wrapperStyle={{ marginTop: 12 }} />
-                      <Bar dataKey="draftValue" name="Draft" stackId="progress" fill="#e5e7fb">
-                        <LabelList content={renderStackLabel('draftLabel')} />
+                      <ReTooltip content={renderChallengeProgressTooltip} />
+                      <Legend wrapperStyle={{ marginTop: 12 }} content={renderChallengeProgressLegend} />
+                      <Bar dataKey="finishedValue" name="Finished" stackId="progress" fill="#7dd3b8">
+                        <LabelList content={renderStackLabel('finishedLabel')} />
                       </Bar>
-                      <Bar dataKey="publishedValue" name="Published" stackId="progress" fill="#a7d3ff">
+                      <Bar dataKey="publishedValue" name="Published" stackId="progress" fill="#ffcc80">
                         <LabelList content={renderStackLabel('publishedLabel')} />
                       </Bar>
-                      <Bar dataKey="inProgressValue" name="In Progress" stackId="progress" fill="#ffd8a8">
+                      <Bar dataKey="inProgressValue" name="In Progress" stackId="progress" fill="#80b9ff">
                         <LabelList content={renderStackLabel('inProgressLabel')} />
                       </Bar>
-                      <Bar dataKey="finishedValue" name="Finished" stackId="progress" fill="#b7eed0">
-                        <LabelList content={renderStackLabel('finishedLabel')} />
+                      <Bar dataKey="draftValue" name="Draft" stackId="progress" fill="#898e99">
+                        <LabelList content={renderStackLabel('draftLabel')} />
                       </Bar>
                     </ReBarChart>
                   </ResponsiveContainer>
@@ -995,9 +1014,195 @@ const ClassReport = () => {
               )}
             </Card>
           </Col>
+          <Col xs={24} xl={12}>
+            <Card
+              style={{
+                backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
+                border: 'none',
+                borderRadius: 16,
+                boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                paddingTop: 8,
+                minHeight: 400,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <WarningOutlined style={{ color: '#ef4444', fontSize: 20 }} />
+                <div className="crv2-title">At-risk Students</div>
+                <div style={{ 
+                  marginLeft: 'auto', 
+                  padding: '4px 12px', 
+                  backgroundColor: '#fee2e2', 
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#dc2626'
+                }}>
+                  {atRiskSummary?.totalStudents ?? 0} student(s) need attention
+                </div>
+              </div>
+              {(!atRiskStudents || atRiskStudents.length === 0) ? (
+                <Empty description="No at-risk students" />
+              ) : (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 16,
+                    maxHeight: isAtRiskScrollable ? 360 : 'none',
+                    overflowY: isAtRiskScrollable ? 'auto' : 'visible',
+                    paddingRight: isAtRiskScrollable ? 4 : 0,
+                  }}
+                >
+                  {atRiskStudents.map((student, idx) => {
+                    const riskScore = Number(student.riskScore ?? 0);
+
+                    const scoreRisks = [];
+                    const submissionRisks = [];
+                    const skillRisks = [];
+                    let hasCheatingFlag = false;
+
+                    if (Array.isArray(student.riskTypes)) {
+                      student.riskTypes.forEach((type) => {
+                        switch (type) {
+                          case 'LOW_SCORES':
+                            scoreRisks.push('3 consecutive challenges < 6 points');
+                            break;
+                          case 'FREQUENT_LATE_SUBMISSIONS':
+                            submissionRisks.push('≥ 50% challenges submitted late');
+                            break;
+                          case 'SUSPECTED_CHEATING':
+                            hasCheatingFlag = true;
+                            break;
+                          case 'DECLINING_VOCABULARY':
+                            skillRisks.push('Grammar & Vocabulary score dropping');
+                            break;
+                          case 'DECLINING_READING':
+                            skillRisks.push('Reading score dropping');
+                            break;
+                          case 'DECLINING_LISTENING':
+                            skillRisks.push('Listening score dropping');
+                            break;
+                          case 'DECLINING_WRITING':
+                            skillRisks.push('Writing score dropping');
+                            break;
+                          case 'DECLINING_SPEAKING':
+                            skillRisks.push('Speaking score dropping');
+                            break;
+                          default:
+                            break;
+                        }
+                      });
+                    }
+
+                    const tabSwitches = student.totalTabSwitches ?? 0;
+                    const copyAttempts = student.totalCopyAttempts ?? 0;
+                    const hasCheatingSignals = tabSwitches > 0 || copyAttempts > 0;
+
+                    return (
+                      <div
+                        key={student.id || student.userId || idx}
+                        style={{
+                          padding: '16px 20px',
+                          borderRadius: 16,
+                          border: '1px solid #e5e7eb',
+                          background:
+                            idx % 2 === 0 ? 'rgba(15,118,110,0.03)' : 'rgba(15,118,110,0.06)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 16 }}>#{idx + 1}</span>
+                            <span style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>
+                              {student.fullName || student.name}
+                            </span>
+                            {student.recentChallengesAnalyzed ? (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  color: '#0f766e',
+                                  background: '#d1fae5',
+                                  padding: '2px 8px',
+                                  borderRadius: 999,
+                                  fontWeight: 600,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: 0.4,
+                                }}
+                              >
+                                Analyzed last {student.recentChallengesAnalyzed} challenges
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                          <div style={{ minWidth: 110 }}>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>Risk Score</div>
+                            <div style={{ fontWeight: 700, fontSize: 20, color: '#0f172a' }}>
+                              {Number(riskScore).toFixed(0)}
+                            </div>
+                          </div>
+                          <div style={{ minWidth: 140 }}>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>Recent Avg Score</div>
+                            <div style={{ fontWeight: 600, fontSize: 18, color: '#0f172a' }}>
+                              {Number(student.recentAverageScore ?? 0).toFixed(2)}
+                            </div>
+                          </div>
+                          <div style={{ minWidth: 120 }}>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>Late Submissions</div>
+                            <div style={{ fontWeight: 600, fontSize: 18, color: '#dc2626' }}>
+                              {student.lateSubmissionsCount ?? 0}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: 13, color: '#111827', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {scoreRisks.length > 0 && (
+                            <div>
+                              <span style={{ fontWeight: 600 }}>Score pattern: </span>
+                              <span>{scoreRisks.join('; ')}</span>
+                            </div>
+                          )}
+                          {submissionRisks.length > 0 && (
+                            <div>
+                              <span style={{ fontWeight: 600 }}>Submission behavior: </span>
+                              <span>{submissionRisks.join('; ')}</span>
+                            </div>
+                          )}
+                          {skillRisks.length > 0 && (
+                            <div>
+                              <span style={{ fontWeight: 600 }}>Skill trends: </span>
+                              <span>{skillRisks.join('; ')}</span>
+                            </div>
+                          )}
+                          {(hasCheatingFlag || hasCheatingSignals) && (
+                            <div>
+                              <span style={{ fontWeight: 600 }}>Cheating signals: </span>
+                              <span>
+                                {hasCheatingFlag ? 'Suspicious behavior detected' : ''}
+                                {hasCheatingFlag && hasCheatingSignals ? ' • ' : ''}
+                                {hasCheatingSignals
+                                  ? `${tabSwitches} tab switches, ${copyAttempts} copy attempts`
+                                  : ''}
+                              </span>
+                            </div>
+                          )}
+                          {!scoreRisks.length &&
+                            !submissionRisks.length &&
+                            !skillRisks.length &&
+                            !hasCheatingFlag &&
+                            !hasCheatingSignals && <span>—</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </Col>
         </Row>
-
-
       </div>
     </ThemedLayout>
   );
