@@ -1,0 +1,7 @@
+.admin-dashboard .recharts-wrapper:focus,
+.admin-dashboard svg:focus,
+.admin-dashboard [tabindex]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+

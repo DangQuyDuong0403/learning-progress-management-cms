@@ -1,0 +1,72 @@
+/* ===== IMPORT GLOBAL VARIABLES ===== */
+@import '../../../styles/variables.css';
+
+/* ===== STUDENT DASHBOARD STYLES ===== */
+.student-dashboard-container {
+  padding: 24px;
+  margin: 24px;
+  min-height: 100vh;
+  border-radius: 12px;
+  transition: background 0.3s ease;
+}
+
+/* Light theme styles */
+.student-dashboard-container.light-theme {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Dark theme styles */
+.student-dashboard-container.dark-theme {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+/* ===== PAGE TITLE ===== */
+.student-dashboard-container .page-title {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+/* Light theme title - black */
+.student-dashboard-container.light-theme .page-title {
+  color: #000000;
+}
+
+/* Dark theme title - white */
+.student-dashboard-container.dark-theme .page-title {
+  color: #ffffff;
+}
+
+/* ===== MENU CARDS ===== */
+.student-dashboard-container .menu-cards-section {
+  margin-bottom: 24px;
+}
+
+.student-dashboard-container .menu-card {
+  height: 100%;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+/* Light theme menu card */
+.student-dashboard-container.light-theme .menu-card {
+  background: #ffffff !important;
+}
+
+.student-dashboard-container.light-theme .menu-card .ant-card-body {
+  background: #ffffff !important;
+}
+
+.student-dashboard-container .menu-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+

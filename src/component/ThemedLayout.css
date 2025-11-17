@@ -1,0 +1,2353 @@
+/* ===== THEMED LAYOUT BASE STYLES ===== */
+.themed-layout {
+	transition: all 0.3s ease;
+	overflow: hidden;
+}
+
+/* Hide scrollbar for themed-layout */
+.themed-layout::-webkit-scrollbar {
+	display: none;
+}
+
+.themed-layout {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+/* ===== CUSTOM SCROLLBAR FOR CONTENT ===== */
+/* Force show scrollbar in themed-content */
+.space-theme .themed-content::-webkit-scrollbar,
+.sun-theme .themed-content::-webkit-scrollbar {
+	width: 12px !important;
+	display: block !important;
+}
+
+.space-theme .themed-content::-webkit-scrollbar-track,
+.sun-theme .themed-content::-webkit-scrollbar-track {
+	background: rgba(0, 0, 0, 0.1) !important;
+	border-radius: 6px;
+}
+
+.space-theme .themed-content::-webkit-scrollbar-thumb,
+.sun-theme .themed-content::-webkit-scrollbar-thumb {
+	background: #888 !important;
+	border-radius: 6px;
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+.space-theme .themed-content::-webkit-scrollbar-thumb:hover,
+.sun-theme .themed-content::-webkit-scrollbar-thumb:hover {
+	background: #555 !important;
+	background-clip: padding-box;
+}
+
+.space-theme .themed-content,
+.sun-theme .themed-content {
+	scrollbar-width: auto !important;
+	scrollbar-color: #888 rgba(0, 0, 0, 0.1) !important;
+	-ms-overflow-style: scrollbar !important;
+}
+
+.space-theme .themed-main-layout,
+.sun-theme .themed-main-layout {
+	scrollbar-width: auto !important;
+	scrollbar-color: #888 rgba(0, 0, 0, 0.1) !important;
+	-ms-overflow-style: scrollbar !important;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+
+/* ===== FLOATING ANIMATION FOR SPACE THEME ===== */
+@keyframes floatingUpDown {
+	0%, 100% {
+		transform: translateY(0px);
+	}
+	50% {
+		transform: translateY(-20px);
+	}
+}
+
+@keyframes floatingUpDownCentered {
+	0%, 100% {
+		transform: translate(-50%, -50%) translateY(0px);
+	}
+	50% {
+		transform: translate(-50%, -50%) translateY(-20px);
+	}
+}
+
+.themed-sidebar-header {
+	padding: 16px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	margin-bottom: 8px;
+	position: relative;
+	overflow: hidden;
+}
+
+.themed-logo {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	position: relative;
+	z-index: 2;
+}
+
+.themed-logo-img {
+	width: 60px;
+	height: 60px;
+	object-fit: contain;
+	transition: all 0.3s ease;
+}
+
+.themed-logo-icon {
+	font-size: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.3s ease;
+	filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+}
+
+.themed-logo-text {
+	font-family: 'Inter', sans-serif;
+	font-size: 36px;
+	font-weight: 700;
+	text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+	transition: all 0.3s ease;
+	text-transform: uppercase;
+}
+
+/* ===== SUN THEME STYLES ===== */
+.sun-theme .themed-sider {
+	background: rgba(0, 0, 0, 0.05);
+	backdrop-filter: blur(1px);
+	position: relative;
+	overflow: hidden;
+	border-right: 1px solid rgba(109, 95, 143, 0.3);
+}
+
+.sun-theme .themed-sider::before {
+	display: none;
+}
+
+.sun-theme .themed-sider::after {
+	display: none;
+}
+
+@keyframes sunSparkle {
+	0% {
+		opacity: 0.3;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.7;
+		transform: scale(1.1);
+	}
+	100% {
+		opacity: 0.4;
+		transform: scale(1);
+	}
+}
+
+.sun-theme .themed-logo-img {
+	filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6));
+	animation: sunLogoGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes sunLogoGlow {
+	0% {
+		filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.4));
+	}
+	100% {
+		filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+	}
+}
+
+.sun-theme .sun-logo-text {
+	color: #1E40AF;
+}
+
+@keyframes sunTextShimmer {
+	0% {
+		background-position: 0% 50%;
+	}
+	100% {
+		background-position: 100% 50%;
+	}
+}
+
+.sun-theme .themed-main-layout {
+	background: transparent;
+	backdrop-filter: none;
+}
+
+.sun-theme .themed-content {
+	background: transparent;
+	backdrop-filter: none;
+	border: none;
+	box-shadow: none;
+}
+/* Ảnh img-bg-1.png - căn giữa */
+.space-theme .themed-main-layout::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 700px; /* Custom size */
+	height: 700px;
+	background-image: url('/public/img/img-bg-1.png');
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	z-index: 1;
+	pointer-events: none;
+	animation: floatingUpDownCentered 6s ease-in-out infinite;
+}
+
+/* Ảnh img-bg.png - góc trên trái */
+.space-theme .themed-main-layout::after {
+	content: '';
+	position: absolute;
+	bottom: 10%;
+	right: 10%;
+	width: 300px; /* Custom size */
+	height: 300px;
+	background-image: url('/public/img/img-bg.png');
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	z-index: 0;
+	pointer-events: none;
+	animation: floatingUpDown 8s ease-in-out infinite reverse;
+}
+
+/* Ảnh img-bg-2.png - góc trên phải */
+.space-theme .themed-main-layout .bg-element-1 {
+	content: '';
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 200px; /* Custom size */
+	height: 200px;
+	background-image: url('/public/img/img-bg-2.png');
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	z-index: 1;
+	pointer-events: none;
+	animation: floatingUpDown 7s ease-in-out infinite;
+}
+
+/* Ảnh img-bg-3.png - góc dưới trái - đè lên sidebar */
+.space-theme .bg-element-2-overlay {
+	content: '';
+	position: fixed;
+	bottom: 5%;
+	left: 5%;
+	width: 120px; /* Custom size */
+	height: 120px;
+	background-image: url('/public/img/img-bg-3.png');
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	z-index: 9999;
+	pointer-events: none;
+	animation: floatingUpDown 9s ease-in-out infinite reverse;
+}
+
+/* Ảnh img-bg-3.png - góc dưới trái */
+.space-theme .themed-main-layout .bg-element-2 {
+	content: '';
+	position: absolute;
+	bottom: 5%;
+	left: -10%;
+	width: 120px; /* Custom size */
+	height: 120px;
+	background-image: url('/public/img/img-bg-3.png');
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	z-index: 1;
+	pointer-events: none;
+	animation: floatingUpDown 9s ease-in-out infinite reverse;
+}
+
+/* Ảnh img-bg.png - góc trên trái */
+.space-theme .themed-main-layout .bg-element-4 {
+	content: '';
+	position: absolute;
+	top: 10%;
+	left: 10%;
+	width: 200px; /* Custom size */
+	height: 200px;
+	background-image: url('/public/img/img-bg.png');
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	z-index: 1;
+	pointer-events: none;
+	animation: floatingUpDown 6.5s ease-in-out infinite reverse;
+}
+
+/* Ảnh img-bg-1.png - căn giữa */
+.space-theme .themed-main-layout .bg-element-5 {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 800px; /* Custom size */
+	height: 800px;
+	background-image: url('/public/img/img-bg-1.png');
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	z-index: 1;
+	pointer-events: none;
+	animation: floatingUpDownCentered 7.5s ease-in-out infinite;
+}
+
+/* ===== SPACE THEME STYLES ===== */
+.space-theme .themed-sider {
+	background: rgba(0, 0, 0, 0.05);
+	backdrop-filter: blur(1px);
+	position: relative;
+	overflow: hidden;
+	border-right: 1px solid rgba(109, 95, 143, 0.3);
+}
+
+.space-theme .themed-sider::before {
+	display: none;
+}
+
+.space-theme .themed-sider::after {
+	display: none;
+}
+
+@keyframes starTwinkle {
+	0% {
+		opacity: 0.2;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.6;
+		transform: scale(1.1);
+	}
+	100% {
+		opacity: 0.3;
+		transform: scale(1);
+	}
+}
+
+.space-theme .themed-logo-img {
+	filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+	animation: spaceLogoGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes spaceLogoGlow {
+	0% {
+		filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+	}
+	100% {
+		filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.8));
+	}
+}
+
+.space-theme .space-logo-text {
+	color: #FFFFFF;
+	text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+}
+
+@keyframes spaceTextShimmer {
+	0% {
+		background-position: 0% 50%;
+	}
+	100% {
+		background-position: 100% 50%;
+	}
+}
+
+.space-theme .themed-main-layout {
+	background: transparent;
+	backdrop-filter: none;
+	position: relative;
+	overflow: hidden;
+}
+
+.space-theme .themed-main-layout::before {
+	display: none;
+}
+
+.space-theme .themed-main-layout::after {
+	display: none;
+}
+
+.space-theme .themed-content {
+	background: transparent;
+	backdrop-filter: none;
+	border: none;
+	box-shadow: none;
+	color: #fff;
+	position: relative;
+	z-index: 2;
+}
+
+/* ===== MAIN CONTENT PANEL GLOBAL STYLES ===== */
+.main-content-panel {
+	background: rgba(45, 27, 105, 0.75);
+	backdrop-filter: none;
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	position: relative;
+	z-index: 2;
+	min-height: calc(100vh - 120px);
+}
+
+/* Sun theme main content panel */
+.sun-theme .main-content-panel,
+.sun-main-panel {
+	position: relative;
+	background: #E6F5FF;
+	backdrop-filter: blur(1px);
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+	z-index: 2;
+}
+
+/* Space theme main content panel */
+.space-theme .main-content-panel,
+.space-main-panel {
+	position: relative;
+	background: rgba(110, 92, 172, 0.5);
+	backdrop-filter: blur(7px);
+	border-radius: 16px;
+	padding: 24px;
+	margin: 24px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	z-index: 2;
+}
+
+/* ===== MOON ICON STYLES ===== */
+.themed-sidebar-container {
+	position: relative;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.moon-icon {
+	display: none;
+}
+
+.moon-face {
+	display: none;
+}
+
+/* ===== SIDEBAR SCROLL INDICATOR ===== */
+.themed-sidebar-container {
+	position: relative;
+}
+
+/* Bottom fade indicator when there's more content to scroll */
+.themed-sidebar-container::after {
+	content: '';
+	position: absolute;
+	bottom: 80px; /* Above toggle button */
+	left: 0;
+	right: 0;
+	height: 80px;
+	background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.08) 50%, rgba(0, 0, 0, 0.15) 100%);
+	pointer-events: none;
+	z-index: 4;
+	opacity: 0;
+	transition: opacity 0.4s ease;
+}
+
+.themed-sidebar-container.has-scroll::after {
+	opacity: 1;
+}
+
+/* Sun theme scroll indicator */
+.sun-theme .themed-sidebar-container::after {
+	background: linear-gradient(to bottom, transparent 0%, rgba(67, 152, 248, 0.12) 50%, rgba(67, 152, 248, 0.25) 100%);
+}
+
+/* Space theme scroll indicator */
+.space-theme .themed-sidebar-container::after {
+	background: linear-gradient(to bottom, transparent 0%, rgba(109, 95, 143, 0.15) 50%, rgba(109, 95, 143, 0.35) 100%);
+}
+
+/* Top fade to prevent abrupt start */
+.themed-sidebar-container::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 20px;
+	background: linear-gradient(to top, transparent, rgba(0, 0, 0, 0.05));
+	pointer-events: none;
+	z-index: 4;
+	opacity: 0;
+	transition: opacity 0.4s ease;
+}
+
+.themed-sidebar-container.has-scroll::before {
+	opacity: 1;
+}
+
+/* Sun theme top fade */
+.sun-theme .themed-sidebar-container::before {
+	background: linear-gradient(to top, transparent, rgba(67, 152, 248, 0.1));
+}
+
+/* Space theme top fade */
+.space-theme .themed-sidebar-container::before {
+	background: linear-gradient(to top, transparent, rgba(109, 95, 143, 0.15));
+}
+
+/* ===== SIDEBAR BACKGROUND ELEMENTS ===== */
+.sidebar-bg-elements {
+	display: none;
+}
+
+.bg-planet {
+	display: none;
+}
+
+.bg-satellite {
+	display: none;
+}
+
+.bg-meteor {
+	display: none;
+}
+
+/* ===== SIDEBAR SCROLLBAR STYLES (OverlayScrollbars) ===== */
+.themed-sidebar-scrollbar {
+	border-right: none;
+	background: transparent;
+	position: relative;
+	z-index: 2;
+}
+
+/* OverlayScrollbars custom styling */
+.themed-sidebar-scrollbar .os-scrollbar {
+	--os-size: 8px;
+	--os-padding-perpendicular: 0px;
+	--os-padding-axis: 0px;
+	padding: 6px 0;
+	transition: opacity 0.6s ease-in-out;
+	opacity: 1;
+}
+
+/* Fade out effect when auto-hiding */
+.themed-sidebar-scrollbar .os-scrollbar.os-scrollbar-auto-hide {
+	transition: opacity 0.8s ease-in-out;
+}
+
+/* When scrollbar is hiding */
+.themed-sidebar-scrollbar .os-scrollbar.os-scrollbar-auto-hide-hidden {
+	opacity: 0;
+	transition: opacity 0.8s ease-in-out;
+}
+
+/* When scrollbar is visible */
+.themed-sidebar-scrollbar .os-scrollbar:not(.os-scrollbar-auto-hide-hidden) {
+	opacity: 1;
+	transition: opacity 0.4s ease-in-out;
+}
+
+.themed-sidebar-scrollbar .os-scrollbar-vertical {
+	right: 4px;
+	width: var(--os-size);
+}
+
+/* Scrollbar track */
+.themed-sidebar-scrollbar .os-scrollbar-track {
+	background: rgba(0, 0, 0, 0.05);
+	border-radius: 4px;
+	transition: all 0.4s ease-in-out;
+	opacity: 1;
+}
+
+.themed-sidebar-scrollbar .os-scrollbar-track:hover {
+	background: rgba(0, 0, 0, 0.08);
+}
+
+/* Track fade out with scrollbar */
+.themed-sidebar-scrollbar .os-scrollbar.os-scrollbar-auto-hide-hidden .os-scrollbar-track {
+	opacity: 0;
+	transition: opacity 0.8s ease-in-out;
+}
+
+/* Scrollbar handle - Space theme (default) */
+.themed-sidebar-scrollbar .os-scrollbar-handle {
+	background: rgba(255, 255, 255, 0.35);
+	border-radius: 4px;
+	transition: all 0.4s ease-in-out;
+	min-height: 50px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	opacity: 1;
+}
+
+.themed-sidebar-scrollbar .os-scrollbar-handle:hover {
+	background: rgba(255, 255, 255, 0.55);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+	transform: scaleX(1.1);
+}
+
+.themed-sidebar-scrollbar .os-scrollbar-handle:active {
+	background: rgba(255, 255, 255, 0.65);
+	transform: scaleX(1.2);
+}
+
+/* Handle fade out with scrollbar */
+.themed-sidebar-scrollbar .os-scrollbar.os-scrollbar-auto-hide-hidden .os-scrollbar-handle {
+	opacity: 0;
+	transition: opacity 0.8s ease-in-out;
+}
+
+/* Sun theme scrollbar */
+.sun-theme .themed-sidebar-scrollbar .os-scrollbar-track {
+	background: rgba(67, 152, 248, 0.08);
+	transition: all 0.4s ease-in-out;
+}
+
+.sun-theme .themed-sidebar-scrollbar .os-scrollbar-track:hover {
+	background: rgba(67, 152, 248, 0.12);
+}
+
+.sun-theme .themed-sidebar-scrollbar .os-scrollbar-handle {
+	background: rgba(67, 152, 248, 0.45);
+	box-shadow: 0 2px 4px rgba(67, 152, 248, 0.2);
+	transition: all 0.4s ease-in-out;
+}
+
+.sun-theme .themed-sidebar-scrollbar .os-scrollbar-handle:hover {
+	background: rgba(67, 152, 248, 0.65);
+	box-shadow: 0 2px 6px rgba(67, 152, 248, 0.3);
+	transform: scaleX(1.1);
+}
+
+.sun-theme .themed-sidebar-scrollbar .os-scrollbar-handle:active {
+	background: rgba(67, 152, 248, 0.75);
+	transform: scaleX(1.2);
+}
+
+/* Space theme scrollbar track */
+.space-theme .themed-sidebar-scrollbar .os-scrollbar-track {
+	background: rgba(109, 95, 143, 0.08);
+	transition: all 0.4s ease-in-out;
+}
+
+.space-theme .themed-sidebar-scrollbar .os-scrollbar-track:hover {
+	background: rgba(109, 95, 143, 0.12);
+}
+
+/* Menu styles */
+.themed-sidebar-menu {
+	border-right: none;
+	background: transparent;
+	position: relative;
+	z-index: 2;
+}
+
+.themed-sidebar-menu .ant-menu-item {
+	margin: 12px 12px;
+	border-radius: 20px;
+	height: 72px;
+	line-height: 72px;
+	font-size: 20px;
+	font-weight: 600;
+	position: relative;
+	overflow: hidden;
+	transition: all 0.3s ease;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	padding: 0 20px;
+}
+
+.themed-sidebar-menu .ant-menu-item::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		rgba(255, 255, 255, 0.2),
+		transparent
+	);
+	transition: left 0.5s ease;
+}
+
+.themed-sidebar-menu .ant-menu-item:hover::before {
+	left: 100%;
+}
+
+/* Sun theme menu items */
+.sun-theme .themed-sidebar-menu .ant-menu-item {
+	color: #4398f8;
+	background: transparent; /* Bỏ nền xám */
+	font-size: 20px;
+}
+
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover {
+	background: #b5cef7 !important;
+	color: #4398f8 !important;
+	font-weight: 700 !important;
+	transform: none;
+	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
+	border-color: rgba(109, 95, 143, 0.3);
+}
+
+.sun-theme .themed-sidebar-menu .ant-menu-item-selected {
+	background: #C2E6FF;
+	color: #1f6ac1;
+	font-weight: 600;
+	box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+	border-color: rgba(30, 58, 138, 0.5);
+	transform: none;
+}
+
+/* Space theme menu items */
+.space-theme .themed-sidebar-menu .ant-menu-item {
+	color: rgba(255, 255, 255, 0.9);
+	background: transparent; /* Bỏ nền xám */
+}
+
+.space-theme .themed-sidebar-menu .ant-menu-item:hover {
+	background: rgba(109, 95, 143, 0.2);
+	color: #fff !important;
+	font-weight: 700 !important;
+	transform: none;
+	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
+	border-color: rgba(109, 95, 143, 0.3);
+}
+
+.space-theme .themed-sidebar-menu .ant-menu-item-selected {
+	background: #6D5F8F;
+	color: #fff;
+	font-weight: 600;
+	box-shadow: 0 4px 12px rgba(101, 93, 121, 0.2);
+	border-color: rgba(109, 95, 143, 0.4);
+	transform: none;
+}
+
+.themed-sidebar-menu .ant-menu-item-selected::after {
+	display: none;
+}
+
+.themed-sidebar-menu .ant-menu-item .anticon {
+	font-size: 20px;
+	margin-right: 20px;
+	transition: all 0.3s ease;
+}
+
+.sun-theme .themed-sidebar-menu .ant-menu-item .anticon {
+	filter: drop-shadow(0 0 5px rgba(113, 179, 255, 0.4));
+	color: #71B3FF;
+}
+
+.sun-theme .themed-sidebar-menu .ant-menu-item-selected .anticon {
+	filter: drop-shadow(0 0 5px rgba(17, 129, 255, 0.4));
+	color: #1181FF;
+}
+
+.space-theme .themed-sidebar-menu .ant-menu-item .anticon {
+	filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+
+.themed-sidebar-menu .ant-menu-item:hover .anticon {
+	transform: scale(1.1);
+}
+
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover .anticon {
+	filter: drop-shadow(0 0 10px rgba(17, 129, 255, 0.8));
+	color: #1181FF;
+}
+
+/* Force override for sun theme hover text color */
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover,
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover a,
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content,
+.sun-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content a {
+	color: #4398f8 !important;
+	font-weight: 700 !important;
+}
+
+/* Force override for space theme hover text color */
+.space-theme .themed-sidebar-menu .ant-menu-item:hover,
+.space-theme .themed-sidebar-menu .ant-menu-item:hover a,
+.space-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content,
+.space-theme .themed-sidebar-menu .ant-menu-item:hover .ant-menu-title-content a {
+	color: #fff !important;
+	font-weight: 700 !important;
+}
+
+.space-theme .themed-sidebar-menu .ant-menu-item:hover .anticon {
+	filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
+}
+
+.themed-sidebar-menu .ant-menu-item a {
+	color: inherit;
+	text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+}
+
+.themed-sidebar-menu .ant-menu-item a:hover {
+	color: inherit;
+}
+
+/* ===== TOGGLE BUTTON STYLES ===== */
+.themed-sidebar-toggle {
+	position: absolute;
+	bottom: 16px;
+	left: 0;
+	right: 0;
+	margin: 0 auto;
+	width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10;
+	pointer-events: auto;
+	cursor: pointer;
+}
+
+.themed-toggle-button {
+	width: 40px;
+	height: 40px;
+	min-width: 40px;
+	min-height: 40px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.3s ease;
+	backdrop-filter: none;
+	box-shadow: none;
+	position: relative;
+	z-index: 10;
+}
+
+.sun-theme .themed-toggle-button {
+	background: rgba(109, 95, 143, 0.2);
+	border: 1px solid rgba(109, 95, 143, 0.3);
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.space-theme .themed-toggle-button {
+	background: rgba(109, 95, 143, 0.2);
+	border: 1px solid rgba(109, 95, 143, 0.3);
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.sun-theme .themed-toggle-button:hover {
+	background: rgba(109, 95, 143, 0.3);
+	border-color: rgba(109, 95, 143, 0.5);
+	color: #fff;
+	transform: none;
+	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
+}
+
+.space-theme .themed-toggle-button:hover {
+	background: rgba(109, 95, 143, 0.3);
+	border-color: rgba(109, 95, 143, 0.5);
+	color: #fff;
+	transform: none;
+	box-shadow: 0 4px 12px rgba(109, 95, 143, 0.15);
+}
+
+.themed-toggle-button .anticon {
+	font-size: 16px;
+	transition: all 0.3s ease;
+}
+
+.sun-theme .themed-toggle-button .anticon {
+	filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+}
+
+.space-theme .themed-toggle-button .anticon {
+	filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+}
+
+.sun-theme .themed-toggle-button:hover .anticon {
+	filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+}
+
+.space-theme .themed-toggle-button:hover .anticon {
+	filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
+}
+
+/* ===== COLLAPSED SIDEBAR STYLES ===== */
+.themed-layout .ant-layout-sider-collapsed .themed-logo-text {
+	display: none;
+}
+
+/* Chỉ ẩn text, giữ nguyên icon và styling */
+.themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu .ant-menu-item {
+	padding: 0 20px;
+	text-align: center;
+	height: 72px;
+	line-height: 72px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 12px 12px;
+	/* Giữ nguyên tất cả styling khác */
+	border-radius: 20px;
+	font-size: 18px;
+	font-weight: 600;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Ẩn text content khi collapsed nhưng giữ Link clickable */
+.themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu .ant-menu-item .ant-menu-title-content {
+	visibility: hidden;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0;
+	left: 0;
+	z-index: 10;
+}
+
+.themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu .ant-menu-item .ant-menu-title-content a {
+	display: block;
+	width: 100%;
+	height: 100%;
+	pointer-events: auto;
+}
+
+/* Đảm bảo menu items có thể click được khi collapsed */
+.themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu .ant-menu-item {
+	pointer-events: auto;
+	cursor: pointer;
+}
+
+.themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu .ant-menu-item:hover {
+	pointer-events: auto;
+}
+
+/* Ngăn chặn auto-expansion khi click menu items */
+.themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu {
+	transition: none !important;
+}
+
+.themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu .ant-menu-item {
+	transition: none !important;
+}
+
+.themed-layout .ant-layout-sider-collapsed .themed-sidebar-menu .ant-menu-item:hover {
+	transition: none !important;
+}
+
+/* Ngăn chặn sidebar tự động expand */
+.themed-layout .ant-layout-sider-collapsed {
+	transition: none !important;
+}
+
+.themed-layout .ant-layout-sider-collapsed .ant-layout-sider-trigger {
+	display: none !important;
+}
+
+/* Ngăn chặn Ant Design Menu từ auto-expanding sidebar */
+.themed-layout .ant-layout-sider-collapsed .ant-menu-inline-collapsed {
+	transition: none !important;
+}
+
+/* Ngăn chặn hoàn toàn auto-expansion của Sider */
+.themed-layout .ant-layout-sider {
+	transition: none !important;
+}
+
+.themed-layout .ant-layout-sider-collapsed {
+	transition: none !important;
+}
+
+/* Ngăn chặn Menu auto-expand khi có selectedKey */
+.themed-layout .ant-menu-inline-collapsed {
+	transition: none !important;
+}
+
+.themed-layout .ant-menu-inline-collapsed .ant-menu-item {
+	transition: none !important;
+}
+
+/* Giữ nguyên icon styling */
+.themed-layout
+	.ant-layout-sider-collapsed
+	.themed-sidebar-menu
+	.ant-menu-item
+	.anticon {
+	margin-right: 0;
+	margin-left: 0;
+	font-size: 20px; /* Giữ nguyên kích thước icon */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* ===== CONTENT ELEMENTS STYLES ===== */
+.themed-content .ant-table {
+	background: rgba(109, 95, 143, 0.05);
+	border-radius: 12px;
+	overflow: hidden;
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+/* Table rounded corners for header */
+.themed-content .ant-table-thead > tr:first-child > th:first-child {
+	border-top-left-radius: 12px !important;
+}
+
+.themed-content .ant-table-thead > tr:first-child > th:last-child {
+	border-top-right-radius: 12px !important;
+}
+
+/* Table rounded corners for body last row */
+.themed-content .ant-table-tbody > tr:last-child > td:first-child {
+	border-bottom-left-radius: 12px !important;
+}
+
+.themed-content .ant-table-tbody > tr:last-child > td:last-child {
+	border-bottom-right-radius: 12px !important;
+}
+
+/* Table wrapper padding */
+.themed-content .ant-table-wrapper {
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+/* Space theme table background */
+.space-theme .themed-content .ant-table {
+	background: rgba(109, 95, 143, 0.05);
+	border-radius: 12px;
+	overflow: hidden;
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+/* Space theme table rounded corners for header */
+.space-theme .themed-content .ant-table-thead > tr:first-child > th:first-child {
+	border-top-left-radius: 12px !important;
+}
+
+.space-theme .themed-content .ant-table-thead > tr:first-child > th:last-child {
+	border-top-right-radius: 12px !important;
+}
+
+/* Space theme table rounded corners for body last row */
+.space-theme .themed-content .ant-table-tbody > tr:last-child > td:first-child {
+	border-bottom-left-radius: 12px !important;
+}
+
+.space-theme .themed-content .ant-table-tbody > tr:last-child > td:last-child {
+	border-bottom-right-radius: 12px !important;
+}
+
+/* Space theme table wrapper */
+.space-theme .themed-content .ant-table-wrapper {
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+/* Global table font size settings */
+.themed-content .ant-table-thead > tr > th,
+.ant-table-thead > tr > th {
+	font-size: 20px;
+	font-weight: 600;
+}
+
+.themed-content .ant-table-tbody > tr > td,
+.ant-table-tbody > tr > td {
+	font-size: 20px;
+}
+
+
+
+.themed-content .ant-table-thead > tr > th {
+	background: rgb(75, 65, 119) !important;
+	border-bottom: none;
+	color: #fff !important;
+	font-weight: 600;
+	font-size: 20px;
+	backdrop-filter: blur(10px);
+}
+
+/* Space theme table header icons - white */
+.space-theme .themed-content .ant-table-thead > tr > th .anticon {
+	color: #ffffff;
+}
+
+.space-theme .themed-content .ant-table-thead > tr > th .ant-table-column-sorter {
+	color: #ffffff;
+}
+
+.space-theme .themed-content .ant-table-thead > tr > th .ant-table-filter-trigger {
+	color: #ffffff;
+}
+
+/* Fix for sorted columns in space theme */
+.space-theme .themed-content .ant-table-thead > tr > th.ant-table-column-sort {
+	background: rgb(75, 65, 119) !important;
+	color: #fff !important;
+}
+
+/* Fix for sortable columns */
+.space-theme .themed-content .ant-table-thead > tr > th.ant-table-column-has-sorters {
+	background: rgb(75, 65, 119) !important;
+	color: #fff !important;
+}
+
+/* Fix for pseudo-elements in sortable columns */
+.space-theme .themed-content .ant-table-thead > tr > th .ant-table-column-sorters::after {
+	border-top-color: #fff !important;
+}
+
+.space-theme .themed-content .ant-table-thead > tr > th .ant-table-column-sorters::before {
+	border-bottom-color: #fff !important;
+}
+
+/* Force override for any Ant Design default styles that might interfere */
+.space-theme .themed-content .ant-table-thead > tr > th * {
+	color: #fff !important;
+}
+
+/* Ensure sort icons are visible in space theme */
+.space-theme .themed-content .ant-table-thead > tr > th .ant-table-column-sorters {
+	color: #fff !important;
+}
+
+.space-theme .themed-content .ant-table-thead > tr > th .ant-table-column-sorters .ant-table-column-sorter {
+	color: #fff !important;
+}
+
+.space-theme .themed-content .ant-table-tbody > tr > td {
+	background: rgb(224 217 255 / 90%) !important;
+	border: 1px solid #7c6d90 !important;
+	color: #000;
+	font-size: 20px;
+	backdrop-filter: blur(5px);
+}
+
+.space-theme .themed-content .ant-table-tbody > tr:hover > td {
+	background: rgb(224 217 255 / 95%) !important;
+}
+
+/* Override Ant Design table styles with higher specificity */
+.space-theme .themed-content .ant-table .ant-table-tbody > tr > td {
+	background: rgb(224 217 255 / 90%) !important;
+	color: #000;
+	font-size: 18px;
+	backdrop-filter: blur(5px);
+	border: 1px solid #7c6d90 !important;
+}
+
+.space-theme .themed-content .ant-table .ant-table-tbody > tr:hover > td {
+	background: rgb(224 217 255 / 95%) !important;
+}
+
+.themed-content .ant-card {
+	background: rgba(109, 95, 143, 0.4);
+	border: 1px solid rgba(109, 95, 143, 0.2);
+	border-radius: 8px;
+}
+
+.themed-content .ant-card-head {
+	background: rgba(135, 206, 250, 0.6);
+	border-bottom: 1px solid rgba(135, 206, 250, 0.3);
+}
+
+.themed-content .ant-card-head-title {
+	color: #000;
+	font-weight: 600;
+}
+
+.themed-content .ant-card-body {
+	color: #fff;
+}
+
+.themed-content .ant-form-item-label > label {
+	color: #fff;
+}
+
+.themed-content .ant-input {
+	background: rgba(109, 95, 143, 0.1);
+	border: 1px solid rgba(109, 95, 143, 0.3);
+	color: #fff;
+}
+
+.themed-content .ant-input:focus {
+	background: rgba(109, 95, 143, 0.15);
+	border-color: rgba(109, 95, 143, 0.5);
+	box-shadow: 0 0 0 2px rgba(109, 95, 143, 0.2);
+}
+
+.themed-content .ant-select-selector {
+	background: rgba(109, 95, 143, 0.1);
+	border: 1px solid rgba(109, 95, 143, 0.3);
+	color: black;
+}
+
+/* Sun theme select selector */
+.sun-theme .themed-content .ant-select-selector {
+	background: #A4CFFF;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	color: #000;
+}
+
+.themed-content .ant-select-selection-item {
+	color: black;
+}
+
+/* Sun theme select selection item */
+.sun-theme .themed-content .ant-select-selection-item {
+	color: #000;
+}
+
+/* Space theme select selection item */
+/* .space-theme .themed-content .ant-select-selection-item {
+	color: #fff;
+} */
+
+
+
+.themed-content .ant-btn:hover {
+	background: rgba(109, 95, 143, 0.3);
+	border-color: rgba(109, 95, 143, 0.5);
+	color: #fff;
+}
+
+.themed-content .ant-btn-primary {
+	background: rgba(109, 95, 143, 0.4);
+	border-color: rgba(109, 95, 143, 0.5);
+}
+
+.themed-content .ant-btn-primary:hover {
+	background: rgba(109, 95, 143, 0.5);
+	border-color: rgba(109, 95, 143, 0.6);
+}
+
+/* Sun theme button styles for account page */
+.sun-theme .themed-content .export-button {
+	background: linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5);
+	border: none;
+	color: #000;
+}
+
+.sun-theme .themed-content .export-button:hover {
+	background: linear-gradient(135deg, #E0E0E0, #A0C0E0 77%, #80A0D0);
+	border: none;
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sun-theme .themed-content .import-button {
+	background: linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5);
+	border: none;
+	color: #000;
+}
+
+.sun-theme .themed-content .import-button:hover {
+	background: linear-gradient(135deg, #E0E0E0, #A0C0E0 77%, #80A0D0);
+	border: none;
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sun-theme .themed-content .create-button {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border: none;
+	color: #000;
+}
+
+.sun-theme .themed-content .create-button:hover {
+	background: linear-gradient(135deg, #5A9EFF, #2B89FF);
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Space theme export button */
+.space-theme .themed-content .export-button {
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	border: none;
+	color: #000;
+	border-radius: 8px;
+	font-weight: 600;
+	box-shadow: 0 2px 8px rgba(96, 75, 158, 0.3);
+	transition: all 0.3s ease;
+}
+
+.space-theme .themed-content .export-button:hover {
+	background: linear-gradient(135deg, #E0E0E0 0%, #8A81A1 46%, #9289A6 64%, #9790AB 75%, #584A7A 100%);
+	border: none;
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 16px rgba(96, 75, 158, 0.4);
+}
+
+/* Space theme import button */
+.space-theme .themed-content .import-button {
+	background: linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%);
+	border: none;
+	color: #000;
+	border-radius: 8px;
+	font-weight: 600;
+	box-shadow: 0 2px 8px rgba(96, 75, 158, 0.3);
+	transition: all 0.3s ease;
+}
+
+.space-theme .themed-content .import-button:hover {
+	background: linear-gradient(135deg, #E0E0E0 0%, #8A81A1 46%, #9289A6 64%, #9790AB 75%, #584A7A 100%);
+	border: none;
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 16px rgba(96, 75, 158, 0.4);
+}
+
+/* Sun theme edit buttons - green for edit action */
+.sun-theme .themed-content .ant-btn:has(.anticon-edit) .anticon {
+	color: #000;
+}
+/* Space theme create button */
+.space-theme .themed-content .create-button {
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+	border: none;
+	color: #000;
+	border-radius: 8px;
+	font-weight: 600;
+	box-shadow: 0 2px 8px rgba(170, 139, 249, 0.3);
+	transition: all 0.3s ease;
+}
+
+.space-theme .themed-content .create-button:hover {
+	background: linear-gradient(135deg, #A09BAA 19%, #9289A6 64%, #6E628B 75%, #9790AB 97%, #584A7A 100%);
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 16px rgba(170, 139, 249, 0.4);
+}
+
+/* Sun theme action buttons (edit, deactivate) */
+.sun-theme .themed-content .ant-btn .anticon {
+	color: #000000;
+}
+
+.sun-theme .themed-content .ant-btn:has(.anticon-edit):hover .anticon {
+	color: #7228d9;
+}
+
+/* Sun theme deactivate buttons - red for deactivate action (StopOutlined) */
+.sun-theme .themed-content .ant-btn:has(.anticon-stop) .anticon {
+	color: #ff4d4f;
+}
+
+.sun-theme .themed-content .ant-btn:has(.anticon-stop):hover .anticon {
+	color: #d9363e;
+}
+
+/* Sun theme activate buttons - green for activate action (CheckOutlined) */
+.sun-theme .themed-content .ant-btn:has(.anticon-check) .anticon {
+	color: #52c41a;
+}
+
+.sun-theme .themed-content .ant-btn:has(.anticon-check):hover .anticon {
+	color: #389e0d;
+}
+
+
+/* Sun theme edit buttons - green for edit action */
+/* .space-theme .themed-content .ant-btn:has(.anticon-edit) .anticon {
+	color: #412070;
+}
+
+.space-theme .themed-content .ant-btn:has(.anticon-edit):hover .anticon {
+	color: #412070;
+} */
+
+/* Sun theme deactivate buttons - red for deactivate action (StopOutlined) */
+.space-theme .themed-content .ant-btn:has(.anticon-stop) .anticon {
+	color: #ff4d4f;
+}
+
+.space-theme .themed-content .ant-btn:has(.anticon-stop):hover .anticon {
+	color: #d9363e;
+}
+
+/* Sun theme activate buttons - green for activate action (CheckOutlined) */
+.space-theme .themed-content .ant-btn:has(.anticon-check) .anticon {
+	color: #52c41a;
+}
+
+.space-theme .themed-content .ant-btn:has(.anticon-check):hover .anticon {
+	color: #389e0d;
+}
+
+
+/* General anticon colors for themes */
+.sun-theme .themed-content .anticon {
+	color: #000;
+}
+
+/* .space-theme .themed-content .anticon {
+	color: #000000;
+} */
+
+
+
+/* .space-theme .themed-content .export-button .anticon,
+.space-theme .themed-content .import-button .anticon,
+.space-theme .themed-content .create-button .anticon {
+	color: #ffffff;
+} */
+
+.space-theme .themed-content .export-button:hover .anticon,
+.space-theme .themed-content .import-button:hover .anticon,
+.space-theme .themed-content .create-button:hover .anticon {
+	color: #ffffff;
+}
+/* Sun theme button icons - black for import/export/add buttons */
+.sun-theme .themed-content .export-button .anticon,
+.sun-theme .themed-content .import-button .anticon,
+.sun-theme .themed-content .create-button .anticon {
+	color: #000;
+}
+
+.sun-theme .themed-content .export-button:hover .anticon,
+.sun-theme .themed-content .import-button:hover .anticon,
+.sun-theme .themed-content .create-button:hover .anticon {
+	color: #000;
+}
+
+
+
+/* Space theme search icon exception - black color */
+.space-theme .themed-content .ant-input-search .anticon {
+	color: #000;
+}
+
+/* Sun theme table background */
+.sun-theme .themed-content .ant-table {
+	background: #E6F5FF;
+	backdrop-filter: blur(8px);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 12px;
+	overflow: hidden;
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+/* Sun theme table rounded corners for header */
+.sun-theme .themed-content .ant-table-thead > tr:first-child > th:first-child {
+	border-top-left-radius: 12px !important;
+}
+
+.sun-theme .themed-content .ant-table-thead > tr:first-child > th:last-child {
+	border-top-right-radius: 12px !important;
+}
+
+/* Sun theme table rounded corners for body last row */
+.sun-theme .themed-content .ant-table-tbody > tr:last-child > td:first-child {
+	border-bottom-left-radius: 12px !important;
+}
+
+.sun-theme .themed-content .ant-table-tbody > tr:last-child > td:last-child {
+	border-bottom-right-radius: 12px !important;
+}
+
+/* Sun theme table wrapper */
+.sun-theme .themed-content .ant-table-wrapper {
+	margin: 16px auto !important;
+	padding: 0 !important;
+	width: calc(100% - 32px) !important;
+	max-width: calc(100% - 32px) !important;
+}
+
+.sun-theme .themed-content .ant-table-thead > tr > th {
+	background: #C2E6FF !important;
+	color: #000000 !important;
+	font-weight: 600;
+	font-size: 20px;
+	border-bottom: none;
+	backdrop-filter: blur(10px);
+}
+
+.sun-theme .themed-content .ant-table-tbody > tr > td {
+	background: #E6F5FF;
+	color: #000;
+	font-size: 20px;
+	border: 1px solid #a8d7f8 !important;
+}
+
+.sun-theme .themed-content .ant-table-tbody > tr:hover > td {
+	background: rgba(194, 230, 255, 0.8) !important;
+}
+
+/* Sun theme table body - glass effect */
+.sun-theme .themed-content .ant-table-tbody {
+	background: #E6F5FF;
+	backdrop-filter: blur(10px);
+}
+
+/* Override Ant Design table styles with higher specificity */
+.sun-theme .themed-content .ant-table .ant-table-tbody > tr > td {
+	background: #E6F5FF;
+	color: #000;
+	font-size: 20px;
+	border: 1px solid #a8d7f8 !important;
+}
+
+.sun-theme .themed-content .ant-table .ant-table-tbody > tr:hover > td {
+	background: rgba(194, 230, 255, 0.8) !important;
+}
+
+/* Sun theme search input */
+.sun-theme .themed-content .ant-input {
+	background: #fefffe;
+	border: none;
+	color: #666;
+}
+
+.sun-theme .themed-content .ant-input:focus {
+	background: #fefffe;
+	border: none;
+	box-shadow: none;
+}
+
+.sun-theme .themed-content .ant-input::placeholder {
+	color: #999;
+}
+
+/* Space theme search input - with background */
+.space-theme .themed-content .ant-input {
+	outline: none;
+	box-shadow: none;
+	backdrop-filter: none;
+	color: #000;
+}
+
+.space-theme .themed-content .ant-input:focus {
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.space-theme .themed-content .ant-input-search .ant-input {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.space-theme .themed-content .ant-input-search .ant-input:focus {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.space-theme .themed-content .ant-input::placeholder {
+	color: rgba(0, 0, 0, 0.7);
+}
+
+/* Space theme search icon - black color */
+.space-theme .themed-content .ant-input-search .ant-input-search-icon,
+.space-theme .themed-content .ant-input-search .ant-input-search-icon .anticon,
+.space-theme .themed-content .ant-input-search .ant-input-search-icon .anticon-search {
+	color: #000;
+}
+
+.space-theme .themed-content .ant-input-search .ant-input-search-icon:hover,
+.space-theme .themed-content .ant-input-search .ant-input-search-icon:hover .anticon,
+.space-theme .themed-content .ant-input-search .ant-input-search-icon:hover .anticon-search {
+	color: #000;
+}
+
+/* ===== SEARCH INPUT STYLES ===== */
+/* General search input styles */
+.themed-content .search-input {
+	height: 40px;
+	border-radius: 20px;
+	border: 1px solid rgb(47, 27, 105);
+	color: #000;
+}
+
+/* Space theme search input */
+.space-theme .themed-content .search-input {
+	background: rgb(224 217 255 / 90%) !important;
+	border: 1px solid #604B9E;
+	outline: none !important;
+	box-shadow: none !important;
+	backdrop-filter: none;
+}
+
+.space-theme .themed-content .search-input .ant-input {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.space-theme .themed-content .search-input .ant-input:focus {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.space-theme .themed-content .search-input .ant-input::placeholder {
+	color: transparent;
+}
+
+/* Sun theme search input */
+.sun-theme .themed-content .search-input {
+	background: #fefffe;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	color: #666;
+	border-radius: 20px;
+}
+
+.sun-theme .themed-content .search-input .ant-input {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.sun-theme .themed-content .search-input .ant-input:focus {
+	background: transparent;
+	border: none;
+	outline: none;
+	box-shadow: none;
+	color: #000;
+}
+
+.sun-theme .themed-content .search-input .ant-input::placeholder {
+	color: #999;
+}
+
+/* ===== FILTER SELECT STYLES ===== */
+/* General filter select styles */
+.themed-content .filter-select {
+	border-radius: 8px;
+	transition: all 0.3s ease;
+}
+
+/* Space theme filter styles */
+.space-theme .themed-content .filter-select .ant-select-selector {
+	background: rgb(224 217 255 / 90%) !important;
+	border: none !important;
+	color: #000 !important;
+	font-size: 16px !important;
+}
+
+.space-theme .themed-content .filter-select:hover .ant-select-selector {
+	background: rgb(224 217 255 / 90%) !important;
+	border: none !important;
+}
+
+.space-theme .themed-content .filter-select.ant-select-focused .ant-select-selector {
+	background: rgb(224 217 255 / 90%) !important;
+	border: none !important;
+	box-shadow: none !important;
+}
+
+.space-theme .themed-content .filter-select .ant-select-selection-item {
+	color: #000 !important;
+	font-size: 16px !important;
+}
+
+/* Sun theme filter styles */
+.sun-theme .themed-content .filter-select {
+	background: #C2E6FF;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	color: #333;
+	font-size: 16px;
+}
+
+.sun-theme .themed-content .filter-select:hover {
+	background: #B8E0FF;
+	border-color: rgba(0, 0, 0, 0.2);
+}
+
+.sun-theme .themed-content .filter-select.ant-select-focused {
+	background: #A8D8FF;
+	border-color: rgba(0, 0, 0, 0.3);
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.sun-theme .themed-content .filter-select .ant-select-selector {
+	background: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
+}
+
+.sun-theme .themed-content .filter-select .ant-select-selection-item {
+	color: #000;
+	font-size: 16px;
+}
+
+/* Pagination styles for space theme */
+.themed-content .ant-pagination .ant-pagination-total-text {
+	color: #fff !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-item {
+	background: #fff !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-item a {
+	color: #000 !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-item:hover {
+	background: #f0f0f0 !important;
+	border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-item-active {
+	background: #8f81d7 !important;
+	border-color: #8f81d7 !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-item-active a {
+	color: #000 !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-item-active:hover {
+	background: #8f81d7 !important;
+	border-color: #8f81d7 !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-prev,
+.themed-content .ant-pagination .ant-pagination-next {
+	background: #fff !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-prev a,
+.themed-content .ant-pagination .ant-pagination-next a {
+	color: #000 !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-prev:hover,
+.themed-content .ant-pagination .ant-pagination-next:hover {
+	background: #f0f0f0 !important;
+	border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-options {
+	color: #fff !important;
+}
+
+.themed-content .ant-pagination .ant-pagination-options .ant-select-selector {
+	background: #fff !important;
+	color: #000 !important;
+}
+
+/* Sun theme pagination - using account table body color */
+.sun-theme .themed-content .ant-pagination .ant-pagination-total-text {
+	color: #000 !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-item {
+	background: #E6F5FF !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-item a {
+	color: #000 !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-item:hover {
+	background: #E6F5FF !important;
+	border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-item-active {
+	background: #C2E6FF !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-item-active a {
+	color: black !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-item-active:hover {
+	background: #C2E6FF !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-prev,
+.sun-theme .themed-content .ant-pagination .ant-pagination-next {
+	background: #E6F5FF!important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-prev a,
+.sun-theme .themed-content .ant-pagination .ant-pagination-next a {
+	color: #000 !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-prev:hover,
+.sun-theme .themed-content .ant-pagination .ant-pagination-next:hover {
+	background: #E6F5FF !important;
+	border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-options {
+	color: #000 !important;
+}
+
+.sun-theme .themed-content .ant-pagination .ant-pagination-options .ant-select-selector {
+	background: #E6F5FF !important;
+	color: #000 !important;
+}
+
+/* Space theme pagination - using AccountList style */
+.space-theme .themed-content .ant-pagination .ant-pagination-total-text {
+	color: #fff !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-item {
+	background: #fff !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-item a {
+	color: #000 !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-item:hover {
+	background: #f0f0f0 !important;
+	border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-item-active {
+	background: #8f81d7 !important;
+	border-color: #8f81d7 !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-item-active a {
+	color: #000 !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-item-active:hover {
+	background: #8f81d7 !important;
+	border-color: #8f81d7 !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-prev,
+.space-theme .themed-content .ant-pagination .ant-pagination-next {
+	background: #fff !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-prev a,
+.space-theme .themed-content .ant-pagination .ant-pagination-next a {
+	color: #000 !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-prev:hover,
+.space-theme .themed-content .ant-pagination .ant-pagination-next:hover {
+	background: #f0f0f0 !important;
+	border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-options {
+	color: #fff !important;
+}
+
+.space-theme .themed-content .ant-pagination .ant-pagination-options .ant-select-selector {
+	background: #fff !important;
+	color: #000 !important;
+}
+
+/* ===== SUN THEME BACKGROUND DECORATIONS ===== */
+.sun-theme .sun-decoration-icon {
+	position: fixed;
+	bottom: 5%;
+	left: 4%;
+	z-index: -1;
+	pointer-events: none;
+}
+
+.sun-theme .sun-icon-image {
+	width: 120px;
+	height: 120px;
+	opacity: 0.8;
+	filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8)) brightness(1.2)
+		contrast(1.1);
+	transition: all 0.3s ease;
+	animation: floatingUpDown 9s ease-in-out infinite reverse;
+}
+
+.sun-theme .sun-decoration-icon:hover .sun-icon-image {
+	opacity: 1;
+	transform: scale(1.1);
+	filter: drop-shadow(0 0 25px rgba(255, 215, 0, 1)) brightness(1.3)
+		contrast(1.2);
+}
+
+.sun-theme .astronaut-decoration-icon {
+	position: fixed;
+	bottom: 20px;
+	right: 10%;
+	z-index: -1;
+	pointer-events: none;
+	animation: astronautFloat 8s ease-in-out infinite;
+}
+
+.sun-theme .astronaut-icon-image {
+	width: 100px;
+	height: 100px;
+	opacity: 0.8;
+	filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.8)) brightness(1.3)
+		contrast(1.2);
+	transition: all 0.3s ease;
+}
+
+.sun-theme .astronaut-decoration-icon:hover .astronaut-icon-image {
+	opacity: 1;
+	transform: scale(1.1);
+	filter: drop-shadow(0 0 18px rgba(255, 255, 255, 1)) brightness(1.4)
+		contrast(1.3);
+}
+
+@keyframes sunFloat {
+	0%, 100% {
+		transform: translateY(0px);
+	}
+	50% {
+		transform: translateY(-8px);
+	}
+}
+
+
+@keyframes astronautFloat {
+	0%,
+	100% {
+		transform: translateY(0px) rotate(0deg);
+	}
+	25% {
+		transform: translateY(-8px) rotate(-1deg);
+	}
+	50% {
+		transform: translateY(-15px) rotate(0deg);
+	}
+	75% {
+		transform: translateY(-8px) rotate(1deg);
+	}
+}
+
+/* ===== GLOBAL FILTER TITLE STYLES ===== */
+.filter-title {
+	color: #000 !important;
+	font-weight: 600 !important;
+	font-size: 16px !important;
+	margin-bottom: 12px !important;
+}
+
+/* Apply to both themes */
+.sun-theme .filter-title,
+.space-theme .filter-title {
+	color: #000 !important;
+}
+
+/* Override Typography.Title level={5} in filter dropdowns */
+.filter-dropdown-panel .ant-typography h5,
+.filter-dropdown-panel .ant-typography-title {
+	color: #000 !important;
+	font-weight: 600 !important;
+	font-size: 16px !important;
+	margin-bottom: 12px !important;
+}
+
+/* Apply to both themes */
+.sun-theme .filter-dropdown-panel .ant-typography h5,
+.sun-theme .filter-dropdown-panel .ant-typography-title,
+.space-theme .filter-dropdown-panel .ant-typography h5,
+.space-theme .filter-dropdown-panel .ant-typography-title {
+	color: #000 !important;
+}
+
+/* ===== GLOBAL FILTER OPTION STYLES ===== */
+.filter-option {
+	height: 28px !important;
+	font-size: 13px !important;
+	font-weight: 500 !important;
+	border-radius: 6px !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+	background: #fff !important;
+	color: #000 !important;
+	transition: all 0.3s ease !important;
+}
+
+.filter-option.selected {
+	background: #298EFE !important;
+	color: #fff !important;
+	border-color: #298EFE !important;
+}
+
+/* Sun theme filter option hover */
+.sun-theme .filter-option:hover {
+	background: #C2E6FF !important;
+	color: #000 !important;
+	border-color: #298EFE !important;
+}
+
+.sun-theme .filter-option.selected {
+	background: #C2E6FF  !important;
+	color: #000 !important;
+	border-color: #298EFE !important;
+}
+
+/* Space theme filter option hover */
+.space-theme .filter-option:hover {
+	background: rgba(77, 208, 255, 0.3) !important;
+	color: #fff !important;
+	border-color: rgba(77, 208, 255, 0.6) !important;
+}
+
+.space-theme .filter-option.selected {
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%) !important;
+	color: #fff !important;
+	border-color: #7228d9 !important;
+}
+
+.space-theme .filter-option.selected:hover {
+	background: linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%) !important;
+	color: #fff !important;
+	border-color: #5a1fb8 !important;
+}
+
+/* ===== GLOBAL FILTER SUBMIT BUTTON STYLES ===== */
+.filter-submit-button {
+	height: 36px !important;
+	font-size: 15px !important;
+	font-weight: 500 !important;
+	min-width: 110px !important;
+	border-radius: 8px !important;
+	border: none !important;
+}
+
+/* Sun theme filter submit button */
+.sun-theme .filter-submit-button {
+	background: rgb(113, 179, 253) !important;
+	color: #000 !important;
+}
+
+.sun-theme .filter-submit-button:hover {
+	background: rgb(95, 160, 240) !important;
+	border: none !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 4px 12px rgba(113, 179, 253, 0.4) !important;
+}
+
+/* Space theme filter submit button */
+.space-theme .filter-submit-button {
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%) !important;
+	color: #fff !important;
+}
+
+.space-theme .filter-submit-button:hover {
+	background: linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%) !important;
+	border: none !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 4px 12px rgba(114, 40, 217, 0.4) !important;
+}
+
+/* ===== PAGE TITLE STYLES ===== */
+.page-title-container {
+	text-align: center;
+}
+
+.page-title {
+	margin: 0;
+	font-size: 30px;
+	font-weight: 600;
+	display: inline-block;
+}
+
+/* Student count styling */
+.page-title .student-count {
+	font-size: 20px !important;
+	font-weight: 400;
+	font-style: italic;
+	margin-left: 8px;
+	display: inline;
+}
+
+/* Sun theme student count */
+.sun-theme .page-title .student-count {
+	color: #666666;
+}
+
+/* Space theme student count */
+.space-theme .page-title .student-count {
+	color: #d9d9d9;
+}
+
+/* Sun theme page title */
+.sun-theme .page-title {
+	color: #000000;
+	font-size: 32px;
+}
+
+/* Space theme page title */
+.space-theme .page-title {
+	color: #ffffff;
+	font-size: 32px;
+}
+
+/* ===== TOGGLE SWITCH STYLES ===== */
+/* Sun theme toggle switch */
+.sun-theme .ant-switch-checked {
+	background: linear-gradient(135deg, #4dd0ff 0%, #7bb3ff 50%, #4dd0ff 100%) !important;
+	border-color: #4dd0ff !important;
+}
+
+.sun-theme .ant-switch:not(.ant-switch-checked) {
+	background: #d9d9d9 !important;
+	border-color: #d9d9d9 !important;
+}
+
+/* Space theme toggle switch */
+.space-theme .ant-switch-checked {
+	background: linear-gradient(135deg, #7228d9 0%, #9c88ff 100%) !important;
+	border-color: #7228d9 !important;
+}
+
+.space-theme .ant-switch:not(.ant-switch-checked) {
+	background: #d9d9d9 !important;
+	border-color: #d9d9d9 !important;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+	.themed-sider {
+		position: fixed;
+		z-index: 1000;
+	}
+
+	.themed-layout {
+		margin-left: 0;
+	}
+
+	.themed-sidebar-toggle {
+		bottom: 20px;
+	}
+
+	.sun-theme .sun-decoration-icon {
+		bottom: 10px;
+		left: 5px;
+	}
+
+	.sun-theme .sun-icon-image {
+		width: 120px;
+		height: 120px;
+		opacity: 0.8;
+		filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.8)) brightness(1.2)
+			contrast(1.1);
+		animation: floatingUpDown 9s ease-in-out infinite reverse;
+	}
+
+
+
+	.sun-theme .astronaut-icon-image {
+		width: 80px;
+		height: 80px;
+		opacity: 0.8;
+		filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)) brightness(1.3)
+			contrast(1.2);
+	}
+}
+
+/* Checkbox column styling - Sun theme (default) */
+.sun-theme .ant-table-thead > tr > th:first-child,
+.sun-theme .ant-table-thead > tr > th:nth-child(2) {
+	background-color: #C2E6FF !important;
+	border: none !important;
+	padding: 8px 12px !important;
+	text-align: center !important;
+	color: #000000 !important;
+	font-weight: 600;
+}
+
+.sun-theme .ant-table-tbody > tr > td:first-child,
+.sun-theme .ant-table-tbody > tr > td:nth-child(2) {
+	background-color: #E6F5FF !important;
+	border: 1px solid #a8d7f8 !important;
+	padding: 8px 12px !important;
+	text-align: center !important;
+}
+
+/* Ensure checkbox column follows table border-radius */
+.ant-table-thead > tr:first-child > th:first-child {
+	border-top-left-radius: 12px !important;
+}
+
+.ant-table-tbody > tr:last-child > td:first-child {
+	border-bottom-left-radius: 12px !important;
+}
+
+/* Space theme checkbox column and STT column */
+.space-theme .ant-table-thead > tr > th:first-child,
+.space-theme .ant-table-thead > tr > th:nth-child(2) {
+	background-color: rgb(75, 65, 119) !important;
+	border: none !important;
+	padding: 8px 12px !important;
+	text-align: center !important;
+	color: #fff !important;
+	font-weight: 600;
+}
+
+.space-theme .ant-table-tbody > tr > td:first-child,
+.space-theme .ant-table-tbody > tr > td:nth-child(2) {
+	background-color: rgb(224 217 255 / 90%) !important;
+	border: 1px solid #7c6d90 !important;
+	padding: 8px 12px !important;
+	text-align: center !important;
+}
+
+/* Checkbox styling to match Jira */
+.ant-checkbox-wrapper {
+	margin: 0 !important;
+}
+
+.ant-checkbox {
+	transform: scale(1.2) !important;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+	background-color: #1890ff !important;
+	border-color: #1890ff !important;
+}
+
+.ant-checkbox-indeterminate .ant-checkbox-inner {
+	background-color: #1890ff !important;
+	border-color: #1890ff !important;
+}
+
+/* Bulk action buttons styling - giống hệt create-button */
+.space-theme .themed-content .bulk-delete-button,
+.space-theme .themed-content .bulk-export-button {
+	background: linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%);
+	border: none;
+	color: #000;
+	border-radius: 8px;
+	font-weight: 600;
+	font-size: 16px;
+	box-shadow: 0 2px 8px rgba(170, 139, 249, 0.3);
+	transition: all 0.3s ease;
+	margin-right: 8px !important;
+}
+
+.space-theme .themed-content .bulk-delete-button:hover,
+.space-theme .themed-content .bulk-export-button:hover {
+	background: linear-gradient(135deg, #A09BAA 19%, #9289A6 64%, #6E628B 75%, #9790AB 97%, #584A7A 100%);
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 16px rgba(170, 139, 249, 0.4);
+}
+
+.sun-theme .themed-content .bulk-delete-button,
+.sun-theme .themed-content .bulk-export-button {
+	background: linear-gradient(135deg, #66AEFF, #3C99FF);
+	border: none;
+	color: #000;
+	border-radius: 8px;
+	font-weight: 600;
+	font-size: 16px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	transition: all 0.3s ease;
+	margin-right: 8px !important;
+}
+
+.sun-theme .themed-content .bulk-delete-button:hover,
+.sun-theme .themed-content .bulk-export-button:hover {
+	background: linear-gradient(135deg, #5A9EFF, #2B89FF);
+	color: #000;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Bulk action button icons */
+.space-theme .themed-content .bulk-delete-button .anticon,
+.space-theme .themed-content .bulk-export-button .anticon {
+	color: #000;
+	font-size: 16px;
+}
+
+.sun-theme .themed-content .bulk-delete-button .anticon,
+.sun-theme .themed-content .bulk-export-button .anticon {
+	color: #000;
+	font-size: 16px;
+}
+
+/* Space Theme Astronaut Decoration - Bottom Right */
+.space-astronaut-decoration-icon {
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	z-index: 0;
+	pointer-events: none;
+	animation: floatAstronaut 4s ease-in-out infinite;
+}
+
+.space-astronaut-icon-image {
+	width: 120px;
+	height: 120px;
+	object-fit: contain;
+	filter: drop-shadow(0 0 15px rgba(125, 211, 252, 0.5));
+	animation: glowAstronaut 3s ease-in-out infinite alternate;
+}
+
+@keyframes floatAstronaut {
+	0%, 100% {
+		transform: translateY(0px);
+	}
+	50% {
+		transform: translateY(-15px);
+	}
+}
+
+@keyframes glowAstronaut {
+	from {
+		filter: drop-shadow(0 0 15px rgba(125, 211, 252, 0.5));
+	}
+	to {
+		filter: drop-shadow(0 0 25px rgba(125, 211, 252, 0.8));
+	}
+}

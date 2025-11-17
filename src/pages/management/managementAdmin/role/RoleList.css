@@ -1,0 +1,120 @@
+/* Role List Styles */
+
+/* ===== PANEL HEADER ===== */
+.panel-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24px;
+	gap: 16px;
+}
+
+.search-section {
+	flex: 1;
+	max-width: 300px;
+}
+
+
+.action-buttons {
+	display: flex;
+	gap: 12px;
+}
+
+.export-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.create-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	border: 1px solid rgba(170, 139, 249, 0.3);
+	background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.export-button:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.create-button:hover {
+	background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+	border-color: rgba(170, 139, 249, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(170, 139, 249, 0.4);
+	filter: brightness(1.1);
+}
+
+/* ===== TABLE SECTION ===== */
+.table-section {
+	background: rgba(26, 26, 46, 0.6);
+	border-radius: 12px;
+	overflow: hidden;
+	backdrop-filter: blur(10px);
+}
+
+.space-theme .table-section {
+	background: rgba(26, 26, 46, 0.6);
+}
+
+/* Sun theme table section */
+.sun-theme .table-section {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05); /* Rất trong suốt để nhìn xuyên qua */
+  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+/* ===== TABLE STYLES ===== */
+.role-table {
+	background: transparent;
+}
+
+.space-theme .role-table .ant-table {
+	background: transparent;
+	color: #fff;
+}
+
+
+
+/* Role name text */
+.role-name-text {
+  color: #000;
+}
+
+.space-theme .role-name-text {
+  color: #000000 !important;
+}
+
+/* Permission text */
+.permission-text {
+  color: #000;
+}
+
+.space-theme .permission-text {
+  color: #000000 !important;
+}
+
+/* Action button icons */
+.role-table .ant-btn .anticon {
+  color: #000 !important;
+}
+
+.role-table .ant-btn:hover .anticon {
+  color: #000 !important;
+}

@@ -1,0 +1,56 @@
+/* ===== GLOBAL CSS VARIABLES ===== */
+:root {
+  /* Primary Color Palette - 4 Main Colors */
+  --primary-color: #4d9de0;      /* Blue - Primary actions */
+  --secondary-color: #52c41a;     /* Green - Success/positive */
+  --accent-color: #fa8c16;        /* Orange - Highlights */
+  --neutral-color: #64748b;       /* Gray - Text/secondary */
+  
+  /* Color Variations */
+  --primary-light: rgba(77, 157, 224, 0.1);
+  --primary-medium: rgba(77, 157, 224, 0.2);
+  --primary-dark: rgba(77, 157, 224, 0.3);
+  
+  --secondary-light: rgba(82, 196, 26, 0.1);
+  --secondary-medium: rgba(82, 196, 26, 0.2);
+  --secondary-dark: rgba(82, 196, 26, 0.3);
+  
+  --accent-light: rgba(250, 140, 22, 0.1);
+  --accent-medium: rgba(250, 140, 22, 0.2);
+  --accent-dark: rgba(250, 140, 22, 0.3);
+  
+  --neutral-light: rgba(100, 116, 139, 0.1);
+  --neutral-medium: rgba(100, 116, 139, 0.2);
+  --neutral-dark: rgba(100, 116, 139, 0.3);
+  
+  /* Theme Colors */
+  --space-bg-primary: rgba(26, 26, 46, 0.95);
+  --space-bg-secondary: rgba(45, 45, 75, 0.9);
+  --space-bg-tertiary: rgba(45, 45, 75, 0.8);
+  
+  --sun-bg-primary: rgba(255, 255, 255, 0.95);
+  --sun-bg-secondary: rgba(248, 250, 252, 0.9);
+  --sun-bg-tertiary: rgba(248, 250, 252, 0.8);
+  
+  /* Text Colors */
+  --text-primary: #000;
+  --text-secondary: var(--neutral-color);
+  --text-white: #fff;
+  
+  /* Border Radius */
+  --border-radius-small: 8px;
+  --border-radius-medium: 12px;
+  --border-radius-large: 16px;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Transitions */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}

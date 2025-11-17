@@ -1,0 +1,321 @@
+/* Class Overview Styles - Based on StudentProfile.css */
+
+/* ===== CLASS OVERVIEW CONTAINER ===== */
+.class-overview {
+  padding: 24px;
+}
+
+.space-theme .class-overview {
+  background: transparent;
+}
+
+.sun-theme .class-overview {
+  background: transparent;
+}
+
+/* Overview Container */
+.overview-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* ===== OVERVIEW MAIN CONTAINER ===== */
+.overview-main-container {
+  background: #E6F5FF;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+.space-theme .overview-main-container {
+  background: rgba(110, 92, 172, 0.5) !important;
+  backdrop-filter: blur(7px);
+  border: 1px solid rgba(77, 208, 255, 0.3) !important;
+}
+
+.sun-theme .overview-main-container {
+  background: #E6F5FF !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ===== OVERVIEW HEADER ===== */
+.overview-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.space-theme .overview-header {
+  border-bottom: 1px solid rgba(77, 208, 255, 0.3);
+}
+
+/* ===== PAGE TITLE ===== */
+.page-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
+  transition: all 0.3s ease;
+}
+
+
+
+.sun-theme .page-title {
+  color: #333;
+}
+
+/* ===== BACK BUTTON STYLES ===== */
+.back-button {
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  min-width: 120px;
+}
+
+.space-theme .back-button {
+  background: linear-gradient(135deg, #B5B0C0, #A79EBB);
+  border: 1px solid #8377A0;
+  color: #000;
+}
+
+.space-theme .back-button:hover {
+  background: linear-gradient(135deg, #ACA5C0, #6D5F8F);
+  border-color: #8377A0;
+  color: #000;
+}
+
+.sun-theme .back-button {
+  background: rgba(164, 207, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #000;
+}
+
+.sun-theme .back-button:hover {
+  background: rgba(148, 191, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #000;
+}
+
+/* ===== OVERVIEW CONTENT ===== */
+.overview-content {
+  margin-top: 0;
+}
+
+/* ===== INFO SECTIONS ===== */
+.info-section {
+  padding: 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.info-section:last-child {
+  border-bottom: none;
+}
+
+/* ===== SECTION TITLES ===== */
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1890ff;
+  text-align: center;
+  margin: 0 0 16px 0;
+  padding: 0;
+  text-transform: capitalize;
+}
+
+.space-theme .section-title {
+  color: white;
+}
+
+.sun-theme .section-title {
+  color: black;
+}
+
+/* ===== SECTION CONTENT ===== */
+.section-content {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  text-align: center;
+}
+
+.space-theme .section-content {
+  background: #e0d9ffe6 ;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(77, 208, 255, 0.2);
+  color: #000;
+}
+
+.sun-theme .section-content {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #000;
+}
+
+/* ===== INFO TEXT ===== */
+.info-text {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+  width: 100%;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #000;
+  font-size: 16px;
+}
+
+.info-value {
+  font-weight: 400;
+  color: #000;
+  font-size: 16px;
+}
+
+.space-theme .info-label,
+.space-theme .info-value {
+  color: #000;
+}
+
+.sun-theme .info-label,
+.sun-theme .info-value {
+  color: #000;
+}
+
+/* ===== PERSONAL INFO GRID ===== */
+.personal-info-grid-new {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 80%;
+  margin-top: 8px;
+}
+
+.info-item-new {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-label-new {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.info-value-new {
+  font-size: 16px;
+  font-weight: 400;
+  color: #000;
+  word-wrap: break-word;
+}
+
+.space-theme .info-label-new {
+  color: #666;
+}
+
+.space-theme .info-value-new {
+  color: #000;
+}
+
+.sun-theme .info-label-new {
+  color: #666;
+}
+
+.sun-theme .info-value-new {
+  color: #000;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .overview-header {
+    padding: 12px 0;
+  }
+  
+  .page-title {
+    font-size: 20px !important;
+  }
+  
+  .class-overview {
+    padding: 16px;
+  }
+
+  .overview-main-container {
+    padding: 16px;
+  }
+
+  .info-section {
+    padding: 16px;
+  }
+
+  .section-title {
+    font-size: 18px;
+  }
+
+  .info-label,
+  .info-value {
+    font-size: 14px;
+  }
+
+  .personal-info-grid-new {
+    gap: 16px;
+  }
+
+  .info-label-new {
+    font-size: 13px;
+  }
+
+  .info-value-new {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 18px !important;
+  }
+  
+  .section-title {
+    font-size: 16px;
+  }
+
+  .info-label,
+  .info-value {
+    font-size: 13px;
+  }
+
+  .info-section {
+    padding: 12px;
+  }
+
+  .overview-main-container {
+    padding: 12px;
+  }
+
+  .personal-info-grid-new {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .info-label-new {
+    font-size: 12px;
+  }
+
+  .info-value-new {
+    font-size: 13px;
+  }
+}
