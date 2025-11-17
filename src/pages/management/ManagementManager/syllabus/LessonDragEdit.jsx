@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Button, message, Typography, Modal } from 'antd';
+import { Button, Typography, Modal } from 'antd';
 import {
 	PlusOutlined,
 	DeleteOutlined,
@@ -353,7 +353,7 @@ const LessonDragEdit = () => {
 		return () => {
 			exitSyllabusMenu();
 		};
-	}, [syllabusId, chapterInfo, enterSyllabusMenu, exitSyllabusMenu]);
+	}, [syllabusId, chapterId, chapterInfo, enterSyllabusMenu, exitSyllabusMenu]);
 
 	const handleAddLessonAtPosition = useCallback((index) => {
 		setEditingLesson(null);
@@ -519,18 +519,66 @@ const LessonDragEdit = () => {
 
 	const handleSave = useCallback(async () => {
 		const visibleLessons = lessons.filter((lesson) => !lesson.toBeDeleted);
+		const lessonLabel = t('lessonManagement.lessonLabel', 'Lesson');
 		const invalidLessons = visibleLessons.filter(
-			(lesson) => !lesson.name.trim()
+			(lesson) => !lesson.name || !lesson.name.trim()
 		);
 		if (invalidLessons.length > 0) {
-			message.error(t('lessonManagement.lessonNameRequired'));
+			const invalidNames = invalidLessons
+				.map((lesson) =>
+					lesson.name && lesson.name.trim()
+						? `"${lesson.name.trim()}"`
+						: `${lessonLabel} #${lesson.position}`
+				)
+				.join(', ');
+			spaceToast.error(`${t('lessonManagement.lessonNameRequired')} (${invalidNames})`);
+			return;
+		}
+
+		// Kiểm tra trùng tên lesson (không phân biệt hoa thường và khoảng trắng)
+		const duplicateMap = new Map();
+		visibleLessons.forEach((lesson) => {
+			if (!lesson.name) return;
+			const normalized = lesson.name.trim().toLowerCase();
+			if (!normalized) return;
+
+			if (!duplicateMap.has(normalized)) {
+				duplicateMap.set(normalized, []);
+			}
+			duplicateMap.get(normalized).push(lesson);
+		});
+
+		const duplicateInfo = Array.from(duplicateMap.values())
+			.filter((lessonsWithSameName) => lessonsWithSameName.length > 1)
+			.map((lessonsWithSameName) => ({
+				name:
+					lessonsWithSameName[0].name?.trim() ||
+					`${lessonLabel} #${lessonsWithSameName[0].position}`,
+			}));
+
+		if (duplicateInfo.length > 0) {
+			const duplicateMessages = duplicateInfo.map((info) => `${info.name}`).join('; ');
+			spaceToast.error(
+				`${t('lessonManagement.duplicateLessonName', 'Lesson names must be unique:')} ${duplicateMessages}`
+			);
 			return;
 		}
 
 		// Kiểm tra độ dài tên lesson
-		const longNameLessons = visibleLessons.filter((lesson) => lesson.name.length > 100);
+		const longNameLessons = visibleLessons.filter(
+			(lesson) => lesson.name && lesson.name.length > 100
+		);
 		if (longNameLessons.length > 0) {
-			message.error(t('lessonManagement.lessonNameTooLong'));
+			const longNameLabels = longNameLessons
+				.map((lesson) =>
+					lesson.name && lesson.name.trim()
+						? `"${lesson.name.trim()}"`
+						: `${lessonLabel} #${lesson.position}`
+				)
+				.join(', ');
+			spaceToast.error(
+				`${t('lessonManagement.lessonNameTooLong', 'Lesson name is too long!')} (${longNameLabels})`
+			);
 			return;
 		}
 

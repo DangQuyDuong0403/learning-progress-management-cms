@@ -316,7 +316,7 @@ const ChapterDragEdit = () => {
 		return () => {
 			exitSyllabusMenu();
 		};
-	}, [syllabusInfo, enterSyllabusMenu, exitSyllabusMenu]);
+	}, [syllabusInfo, enterSyllabusMenu, exitSyllabusMenu, syllabusId]);
 
 	const handleAddChapterAtPosition = useCallback((index) => {
 		setEditingChapter(null);
@@ -565,6 +565,40 @@ const ChapterDragEdit = () => {
 				` (${invalidPositions})`
 			);
 			console.log('Validation failed - blocking save');
+			return; // Ngăn không cho save
+		}
+
+		// Kiểm tra trùng tên chapter (không phân biệt hoa thường và khoảng trắng)
+		const duplicateMap = new Map();
+		visibleChapters.forEach((chapter) => {
+			if (!chapter.name) return;
+			const normalized = chapter.name.trim().toLowerCase();
+			if (!normalized) return;
+
+			if (!duplicateMap.has(normalized)) {
+				duplicateMap.set(normalized, []);
+			}
+			duplicateMap.get(normalized).push(chapter);
+		});
+
+		const duplicateInfo = Array.from(duplicateMap.values())
+			.filter((chaptersWithSameName) => chaptersWithSameName.length > 1)
+			.map((chaptersWithSameName) => ({
+				name: chaptersWithSameName[0].name?.trim() || `${t('chapterManagement.chapterLabel', 'Chapter')} #${chaptersWithSameName[0].position}`,
+				positions: chaptersWithSameName.map((chapter) => `#${chapter.position}`),
+			}));
+
+		if (duplicateInfo.length > 0) {
+			const duplicateMessages = duplicateInfo
+				.map(
+					(info) =>
+						`${info.name}`
+				)
+				.join('; ');
+			spaceToast.error(
+				t('chapterManagement.duplicateChapterName', 'Chapter names must be unique:') +
+				` ${duplicateMessages}`
+			);
 			return; // Ngăn không cho save
 		}
 
