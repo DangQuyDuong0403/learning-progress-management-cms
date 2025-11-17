@@ -10,6 +10,7 @@ import {
   FileTextOutlined,
   CheckCircleOutlined,
   WarningOutlined,
+  ArrowDownOutlined,
 } from '@ant-design/icons';
 import {
   PieChart,
@@ -467,22 +468,22 @@ const ClassReport = () => {
   };
 
   const CHALLENGE_PROGRESS_ORDER = ['finishedValue', 'publishedValue', 'inProgressValue', 'draftValue'];
-  const CHALLENGE_PROGRESS_COLOR_MAP = {
-    finishedValue: '#7dd3b8',
-    publishedValue: '#ffcc80',
-    inProgressValue: '#80b9ff',
-    draftValue: '#898e99',
-  };
+const CHALLENGE_PROGRESS_COLOR_MAP = {
+  finishedValue: '#34d399',
+  publishedValue: '#ffcc80',
+  inProgressValue: '#80b9ff',
+  draftValue: '#d4d4d8',
+};
 
   // Legend payload for "Challenge Progress by All Skills"
   // Keep pastel colors and fixed order: Finished, Published, In Progress, Draft
   const challengeProgressLegendPayload = useMemo(
     () => [
       // Use green & blue tones similar to Role Distribution
-      { value: 'Finished', type: 'square', dataKey: 'finishedValue', color: '#7dd3b8' }, // green
+      { value: 'Finished', type: 'square', dataKey: 'finishedValue', color: '#34d399' }, // green
       { value: 'Published', type: 'square', dataKey: 'publishedValue', color: '#ffcc80' }, // pastel yellow-orange
       { value: 'In Progress', type: 'square', dataKey: 'inProgressValue', color: '#80b9ff' }, // blue
-      { value: 'Draft', type: 'square', dataKey: 'draftValue', color: '#898e99' }, // neutral darker gray
+      { value: 'Draft', type: 'square', dataKey: 'draftValue', color: '#d4d4d8' }, // neutral lighter gray
     ],
     []
   );
@@ -596,7 +597,7 @@ const ClassReport = () => {
 
   // Render summary cards
   const renderSummaryCards = (cards = []) => (
-    <Row gutter={[12, 16]} style={{ marginBottom: 24 }}>
+    <Row gutter={[12, 16]} style={{ marginBottom: 24, marginTop: 32 }}>
       {cards.map((stat) => (
         <Col
           key={stat.key}
@@ -632,10 +633,10 @@ const ClassReport = () => {
               </div>
               <div style={{ fontWeight: 600, fontSize: 18, color: '#5b6b83', lineHeight: 1.1 }}>{stat.title}</div>
             </div>
-            <div style={{ fontSize: 40, fontWeight: 400, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
+            <div style={{ fontSize: 40, fontWeight: 600, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
               {stat.value}
             </div>
-            <div style={{ color: '#6b7280', fontSize: 14 }}>
+            <div style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
               {stat.subtitle}
             </div>
           </Card>
@@ -983,9 +984,9 @@ const ClassReport = () => {
               {challengeProgressData.length === 0 ? (
                 <Empty description="No challenge progress data" />
               ) : (
-                <div style={{ width: '100%', height: 280 }}>
+                <div style={{ width: '100%', height: 320, padding: '0 16px 0 12px' }}>
                   <ResponsiveContainer>
-                    <ReBarChart data={challengeProgressData} layout="vertical" margin={{ top: 10, right: 24, bottom: 10, left: 20 }}>
+                    <ReBarChart data={challengeProgressData} layout="vertical" margin={{ top: 24, right: 16, bottom: 10, left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis
                         type="number"
@@ -996,7 +997,7 @@ const ClassReport = () => {
                       <YAxis type="category" dataKey="skill" tick={{ fontSize: 12, fontWeight: 600 }} width={140} />
                       <ReTooltip content={renderChallengeProgressTooltip} />
                       <Legend wrapperStyle={{ marginTop: 12 }} content={renderChallengeProgressLegend} />
-                      <Bar dataKey="finishedValue" name="Finished" stackId="progress" fill="#7dd3b8">
+                      <Bar dataKey="finishedValue" name="Finished" stackId="progress" fill="#34d399">
                         <LabelList content={renderStackLabel('finishedLabel')} />
                       </Bar>
                       <Bar dataKey="publishedValue" name="Published" stackId="progress" fill="#ffcc80">
@@ -1005,7 +1006,7 @@ const ClassReport = () => {
                       <Bar dataKey="inProgressValue" name="In Progress" stackId="progress" fill="#80b9ff">
                         <LabelList content={renderStackLabel('inProgressLabel')} />
                       </Bar>
-                      <Bar dataKey="draftValue" name="Draft" stackId="progress" fill="#898e99">
+                      <Bar dataKey="draftValue" name="Draft" stackId="progress" fill="#d4d4d8">
                         <LabelList content={renderStackLabel('draftLabel')} />
                       </Bar>
                     </ReBarChart>
@@ -1044,18 +1045,14 @@ const ClassReport = () => {
                 <Empty description="No at-risk students" />
               ) : (
                 <div
+                  className={isAtRiskScrollable ? 'crv2-at-risk-scroll' : ''}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 16,
-                    maxHeight: isAtRiskScrollable ? 360 : 'none',
-                    overflowY: isAtRiskScrollable ? 'auto' : 'visible',
-                    paddingRight: isAtRiskScrollable ? 4 : 0,
                   }}
                 >
                   {atRiskStudents.map((student, idx) => {
-                    const riskScore = Number(student.riskScore ?? 0);
-
                     const scoreRisks = [];
                     const submissionRisks = [];
                     const skillRisks = [];
@@ -1093,6 +1090,9 @@ const ClassReport = () => {
                         }
                       });
                     }
+
+                    // Get declining skills from API data
+                    const decliningSkills = Array.isArray(student.decliningSkills) ? student.decliningSkills : [];
 
                     const tabSwitches = student.totalTabSwitches ?? 0;
                     const copyAttempts = student.totalCopyAttempts ?? 0;
@@ -1138,12 +1138,6 @@ const ClassReport = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                          <div style={{ minWidth: 110 }}>
-                            <div style={{ fontSize: 12, color: '#6b7280' }}>Risk Score</div>
-                            <div style={{ fontWeight: 700, fontSize: 20, color: '#0f172a' }}>
-                              {Number(riskScore).toFixed(0)}
-                            </div>
-                          </div>
                           <div style={{ minWidth: 140 }}>
                             <div style={{ fontSize: 12, color: '#6b7280' }}>Recent Avg Score</div>
                             <div style={{ fontWeight: 600, fontSize: 18, color: '#0f172a' }}>
@@ -1171,27 +1165,112 @@ const ClassReport = () => {
                               <span>{submissionRisks.join('; ')}</span>
                             </div>
                           )}
-                          {skillRisks.length > 0 && (
-                            <div>
-                              <span style={{ fontWeight: 600 }}>Skill trends: </span>
-                              <span>{skillRisks.join('; ')}</span>
+                          {((decliningSkills.length > 0) || skillRisks.length > 0) && (
+                            <div style={{ 
+                              display: 'flex', 
+                              flexDirection: 'column', 
+                              gap: 10,
+                              padding: '14px 16px',
+                              borderRadius: 8,
+                              border: '1px solid #e5e7eb',
+                              backgroundColor: '#fafafa',
+                            }}>
+                              <div>
+                                <span style={{ fontWeight: 600 }}>Skill trends: </span>
+                                {skillRisks.length > 0 && (
+                                  <span>{skillRisks.join('; ')}</span>
+                                )}
+                                {decliningSkills.length > 0 && skillRisks.length === 0 && (
+                                  <span>
+                                    {decliningSkills.map((skill, idx) => skill.skillName || 'Unknown Skill').join('; ')} score dropping
+                                  </span>
+                                )}
+                              </div>
+                              {decliningSkills.length > 0 && (
+                                <div style={{ 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  gap: 10, 
+                                  marginLeft: 16,
+                                  marginTop: 4,
+                                  paddingLeft: 16,
+                                  borderLeft: '3px solid #fecaca',
+                                  position: 'relative'
+                                }}>
+                                  <div style={{
+                                    position: 'absolute',
+                                    left: -6,
+                                    top: -2,
+                                    width: 9,
+                                    height: 9,
+                                    borderRadius: '50%',
+                                    backgroundColor: '#fecaca',
+                                    border: '2px solid #ffffff'
+                                  }} />
+                                  {decliningSkills.map((skill, skillIdx) => {
+                                    const latestScore = Number(skill.latestScore ?? 0);
+                                    const averageScore = Number(skill.averageScore ?? 0);
+                                    const scoreDrop = Number(skill.scoreDrop ?? 0);
+                                    const isSevere = scoreDrop >= 3 || latestScore < 4;
+                                    
+                                    return (
+                                      <div
+                                        key={skillIdx}
+                                        style={{
+                                          display: 'flex',
+                                          gap: 16,
+                                          flexWrap: 'wrap',
+                                        }}
+                                      >
+                                        <div style={{ minWidth: 140 }}>
+                                          <div style={{ fontSize: 12, color: '#6b7280' }}>Latest Score</div>
+                                          <div style={{ fontWeight: 600, fontSize: 18, color: isSevere ? '#dc2626' : '#f59e0b' }}>
+                                            {latestScore.toFixed(2)}
+                                          </div>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                            <ArrowDownOutlined style={{ fontSize: 12, color: '#dc2626' }} />
+                                            <span style={{ fontWeight: 600, fontSize: 14, color: '#dc2626' }}>
+                                              {scoreDrop.toFixed(2)}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div style={{ minWidth: 120 }}>
+                                          <div style={{ fontSize: 12, color: '#6b7280' }}>Average Score</div>
+                                          <div style={{ fontWeight: 600, fontSize: 18, color: '#0f172a' }}>
+                                            {averageScore.toFixed(2)}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           )}
                           {(hasCheatingFlag || hasCheatingSignals) && (
-                            <div>
-                              <span style={{ fontWeight: 600 }}>Cheating signals: </span>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: 10,
+                                alignItems: 'center',
+                              }}
+                            >
+                              <span style={{ fontWeight: 600 }}>Cheating signals:</span>
                               <span>
-                                {hasCheatingFlag ? 'Suspicious behavior detected' : ''}
-                                {hasCheatingFlag && hasCheatingSignals ? ' • ' : ''}
-                                {hasCheatingSignals
-                                  ? `${tabSwitches} tab switches, ${copyAttempts} copy attempts`
-                                  : ''}
+                                {[
+                                  hasCheatingFlag ? 'Suspicious behavior detected' : null,
+                                  hasCheatingSignals ? 'Activity anomalies recorded' : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
                               </span>
                             </div>
                           )}
                           {!scoreRisks.length &&
                             !submissionRisks.length &&
                             !skillRisks.length &&
+                            !decliningSkills.length &&
                             !hasCheatingFlag &&
                             !hasCheatingSignals && <span>—</span>}
                         </div>
