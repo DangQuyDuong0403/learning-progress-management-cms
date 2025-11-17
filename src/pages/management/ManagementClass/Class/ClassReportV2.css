@@ -73,6 +73,36 @@
   background: #a8b3c2;
 }
 
+/* Scrollbar for At-risk Students section */
+.crv2-at-risk-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;           /* Firefox */
+  scrollbar-color: #a8b3c2 #f9fafb;
+}
+
+.crv2-at-risk-scroll::-webkit-scrollbar {
+  width: 10px;                      /* Chrome/Safari - slightly wider for visibility */
+}
+
+.crv2-at-risk-scroll::-webkit-scrollbar-track {
+  background: #f9fafb;
+  border-radius: 10px;
+}
+
+.crv2-at-risk-scroll::-webkit-scrollbar-thumb {
+  background: #cfd8e3;
+  border-radius: 10px;
+  border: 2px solid #f9fafb;
+}
+
+.crv2-at-risk-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a8b3c2;
+}
+
 .crv2-error {
   padding: 12px 16px;
   border-radius: 12px;
