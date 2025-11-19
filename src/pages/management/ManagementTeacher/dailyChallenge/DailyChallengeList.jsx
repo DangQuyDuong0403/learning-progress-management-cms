@@ -1288,14 +1288,16 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   className="action-btn-edit"
                   style={{ color: '#1890ff' }}
                 />
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
-                  onClick={() => handleDeleteClick(record)}
-                  title={t('dailyChallenge.deleteChallenge')}
-                  className="action-btn-delete"
-                  style={{ color: '#ff4d4f' }}
-                />
+                {record.status === 'DRAFT' && (
+                  <Button
+                    type="text"
+                    icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
+                    onClick={() => handleDeleteClick(record)}
+                    title={t('dailyChallenge.deleteChallenge')}
+                    className="action-btn-delete"
+                    style={{ color: '#ff4d4f' }}
+                  />
+                )}
               </>
             )}
           </Space>
