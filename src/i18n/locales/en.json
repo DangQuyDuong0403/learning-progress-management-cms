@@ -113,7 +113,10 @@
     "clickToUpload": "Click to upload",
     "maxFileSize": "Max file size",
     "index": "No",
-    "copy": "Copy"
+    "copy": "Copy",
+    "parentInformation": "Parent Information",
+    "parentPhone": "Parent Phone",
+    "parentEmail": "Parent Email"
   },
   "sidebar": {
     "title": "Learning CMS",

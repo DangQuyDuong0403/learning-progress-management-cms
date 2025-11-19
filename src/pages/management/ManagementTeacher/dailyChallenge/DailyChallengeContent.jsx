@@ -43,6 +43,7 @@ import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuCo
 import usePageTitle from "../../../../hooks/usePageTitle";
 import ChallengeSettingsModal from "./ChallengeSettingsModal";
 import { dailyChallengeApi } from "../../../../apis/apis";
+import { FILE_NAME_PREFIXES } from "../../../../constants/fileNames";
 import { useSelector } from "react-redux";
 import {
   DndContext,
@@ -4071,8 +4072,19 @@ const DailyChallengeContent = () => {
       setExportLoading(true);
       const res = await dailyChallengeApi.exportWorksheet(id);
       const blob = res?.data instanceof Blob ? res.data : new Blob([res?.data ?? ''], { type: res?.headers?.['content-type'] || 'application/octet-stream' });
+      const rawChallengeName = challengeDetails?.challengeName || `challenge_${id}`;
+      const normalizedChallengeName = rawChallengeName
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_-]/g, '');
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const formattedDate = `${mm}_${dd}_${yyyy}`;
+      const defaultFilename = `${FILE_NAME_PREFIXES.DAILY_CHALLENGE}${normalizedChallengeName}_${formattedDate}.docx`;
       const contentDisposition = res?.headers?.['content-disposition'] || '';
-      let filename = `daily_challenge_${id}.docx`;
+      let filename = defaultFilename;
       const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition);
       if (match) {
         const raw = decodeURIComponent(match[1] || match[2] || '').trim();
