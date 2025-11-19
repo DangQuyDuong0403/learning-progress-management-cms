@@ -2,23 +2,28 @@
 
 /* ===== CURSOR SELECTION STYLES ===== */
 .cursor-selection-container {
-  display: flex;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
   margin-top: 16px;
-  flex-wrap: wrap;
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
 }
 
 .cursor-option {
-  flex: 1;
-  min-width: 150px;
-  max-width: 200px;
-  padding: 20px;
+  padding: 12px;
   border: 2px solid transparent;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
   background: rgba(255, 255, 255, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .cursor-option:hover {
@@ -66,19 +71,45 @@
 
 .cursor-preview {
   position: relative;
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 12px;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 8px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .cursor-preview-image {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   position: absolute;
+}
+
+.cursor-preview-default {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.default-cursor-icon {
+  font-size: 36px;
+  line-height: 1;
+  color: #666;
+  font-weight: bold;
+  transform: rotate(-45deg);
+}
+
+.sun-theme .default-cursor-icon {
+  color: #1a1a1a;
+}
+
+.space-theme .default-cursor-icon {
+  color: #e8ecff;
 }
 
 .cursor-preview-rocket {
@@ -89,9 +120,10 @@
 }
 
 .cursor-option-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   display: block;
+  margin-top: 4px;
 }
 
 .sun-theme .sun-cursor-option-label {
@@ -100,6 +132,94 @@
 
 .space-theme .space-cursor-option-label {
   color: #e8ecff;
+}
+
+/* ===== CURSOR SELECTION SCROLLBAR ===== */
+.cursor-selection-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cursor-selection-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.cursor-selection-container::-webkit-scrollbar-thumb {
+  background: rgba(24, 144, 255, 0.3);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.cursor-selection-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 144, 255, 0.5);
+}
+
+.space-theme .cursor-selection-container::-webkit-scrollbar-thumb {
+  background: rgba(77, 208, 255, 0.3);
+}
+
+.space-theme .cursor-selection-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(77, 208, 255, 0.5);
+}
+
+.sun-theme .cursor-selection-container::-webkit-scrollbar-thumb {
+  background: rgba(30, 64, 175, 0.3);
+}
+
+.sun-theme .cursor-selection-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 64, 175, 0.5);
+}
+
+/* ===== RESPONSIVE CURSOR SELECTION ===== */
+@media (max-width: 992px) {
+  .cursor-selection-container {
+    grid-template-columns: repeat(2, 1fr);
+    max-height: 600px;
+  }
+}
+
+@media (max-width: 768px) {
+  .cursor-selection-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    max-height: 500px;
+  }
+  
+  .cursor-option {
+    padding: 10px;
+  }
+  
+  .cursor-preview {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 6px;
+  }
+  
+  .cursor-preview-image {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .cursor-preview-default {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 6px;
+  }
+  
+  .default-cursor-icon {
+    font-size: 30px;
+  }
+  
+  .cursor-option-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cursor-selection-container {
+    grid-template-columns: 1fr;
+    max-height: 400px;
+  }
 }
 
 /* ===== RESPONSIVE DESIGN FOR 125% SCALE ===== */

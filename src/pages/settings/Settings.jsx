@@ -55,7 +55,7 @@ const Settings = () => {
 
 	// Cursor selection state
 	const getCurrentCursor = () => {
-		return localStorage.getItem('customCursorType') || 'space'; // 'space', 'wood', 'cosmic', 'celestial'
+		return localStorage.getItem('customCursorType') || 'default'; // 'default', 'space', 'wood', 'cosmic', 'celestial', 'anh7', 'blue_crystal', 'diamond', 'icy', 'm10', 'moon'
 	};
 
 	const [selectedCursor, setSelectedCursor] = useState(getCurrentCursor());
@@ -303,6 +303,21 @@ const Settings = () => {
 									</Text>
 									<div className="cursor-selection-container">
 										<div 
+											className={`cursor-option ${selectedCursor === 'default' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('default')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/default_cursor.png" 
+													alt="Default Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.defaultCursor') || 'Default Cursor'}
+											</Text>
+										</div>
+										<div 
 											className={`cursor-option ${selectedCursor === 'space' ? 'selected' : ''} ${theme}-cursor-option`}
 											onClick={() => handleCursorChange('space')}
 										>
@@ -360,6 +375,96 @@ const Settings = () => {
 											</div>
 											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
 												 {t('settings.celestialCursor') || 'Celestial Cursor'}
+											</Text>
+										</div>
+										<div 
+											className={`cursor-option ${selectedCursor === 'anh7' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('anh7')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/anh7_pointer.png" 
+													alt="Anh7 Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.anh7Cursor') || 'Anh7 Cursor'}
+											</Text>
+										</div>
+										<div 
+											className={`cursor-option ${selectedCursor === 'blue_crystal' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('blue_crystal')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/blue_crystal_pointer.png" 
+													alt="Blue Crystal Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.blueCrystalCursor') || 'Blue Crystal Cursor'}
+											</Text>
+										</div>
+										<div 
+											className={`cursor-option ${selectedCursor === 'diamond' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('diamond')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/diamond_pointer.png" 
+													alt="Diamond Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.diamondCursor') || 'Diamond Cursor'}
+											</Text>
+										</div>
+										<div 
+											className={`cursor-option ${selectedCursor === 'icy' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('icy')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/icy_pointer.png" 
+													alt="Icy Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.icyCursor') || 'Icy Cursor'}
+											</Text>
+										</div>
+										<div 
+											className={`cursor-option ${selectedCursor === 'm10' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('m10')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/m10_pointer.png" 
+													alt="M10 Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.m10Cursor') || 'M10 Cursor'}
+											</Text>
+										</div>
+										<div 
+											className={`cursor-option ${selectedCursor === 'moon' ? 'selected' : ''} ${theme}-cursor-option`}
+											onClick={() => handleCursorChange('moon')}
+										>
+											<div className="cursor-preview">
+												<img 
+													src="/img/moon_pointer.png" 
+													alt="Moon Cursor" 
+													className="cursor-preview-image"
+												/>
+											</div>
+											<Text className={`cursor-option-label ${theme}-cursor-option-label`}>
+												 {t('settings.moonCursor') || 'Moon Cursor'}
 											</Text>
 										</div>
 									</div>
