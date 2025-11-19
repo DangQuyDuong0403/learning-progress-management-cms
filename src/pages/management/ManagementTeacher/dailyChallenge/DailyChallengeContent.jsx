@@ -4960,7 +4960,14 @@ const DailyChallengeContent = () => {
                           {t('dailyChallenge.startDate')}
                                   </Typography.Text>
                         <Typography.Text strong style={{ fontSize: '14px' }}>
-                          {startDate ? new Date(startDate).toLocaleDateString('vi-VN') : t('common.notSet')}
+                          {startDate ? new Date(startDate).toLocaleString('vi-VN', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                          }) : t('common.notSet')}
                                   </Typography.Text>
                             </div>
 
@@ -4970,7 +4977,14 @@ const DailyChallengeContent = () => {
                           {t('dailyChallenge.endDate')}
                                 </Typography.Text>
                         <Typography.Text strong style={{ fontSize: '14px' }}>
-                          {endDate ? new Date(endDate).toLocaleDateString('vi-VN') : t('common.notSet')}
+                          {endDate ? new Date(endDate).toLocaleString('vi-VN', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                          }) : t('common.notSet')}
                                 </Typography.Text>
                               </div>
                             </div>
