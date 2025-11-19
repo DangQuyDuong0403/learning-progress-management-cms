@@ -13,6 +13,7 @@ import {
   ClockCircleOutlined,
   CheckOutlined,
   ExclamationCircleOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -7662,6 +7663,11 @@ const StudentDailyChallengeTake = () => {
   // Prevent auto-save immediately after manual save
   const isManualSavingRef = useRef(false);
   const lastManualSaveTimeRef = useRef(0);
+  
+  // Save queue mechanism to prevent concurrent saves
+  const isAutoSavingRef = useRef(false);
+  const saveQueueRef = useRef(Promise.resolve());
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // Device fingerprint state
   const deviceFingerprintHashRef = useRef(null);
@@ -8697,9 +8703,25 @@ const StudentDailyChallengeTake = () => {
       return;
     }
     
-    try {
-      setAutoSaveStatus('saving');
-      const questionAnswers = collectAllAnswers();
+    // Wait for any pending save operations to complete
+    await saveQueueRef.current;
+    
+    // Check again after waiting
+    if (isManualSavingRef.current || isAutoSavingRef.current) {
+      return;
+    }
+    
+    // Add to queue
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      // Check one more time after waiting
+      if (isManualSavingRef.current || isAutoSavingRef.current) {
+        return;
+      }
+      
+      try {
+        isAutoSavingRef.current = true;
+        setAutoSaveStatus('saving');
+        const questionAnswers = collectAllAnswers();
 
       // Check if we have any answers with actual data
       const hasAnswers = questionAnswers.some(qa => 
@@ -8708,6 +8730,7 @@ const StudentDailyChallengeTake = () => {
 
       if (!hasAnswers) {
         setAutoSaveStatus('idle');
+        isAutoSavingRef.current = false;
         return;
       }
 
@@ -8778,14 +8801,20 @@ const StudentDailyChallengeTake = () => {
         }
       }
 
-      setAutoSaveStatus('saved');
-      // Revert to idle after short delay
-      // Keep showing "Saved" to make status visible next to timer
-      // (do not auto-hide)
-    } catch (e) {
-      setAutoSaveStatus('idle');
-      console.error('❌ [Auto-save] Error in autoSaveDraftSilently:', e);
-    }
+        setAutoSaveStatus('saved');
+        // Revert to idle after short delay
+        // Keep showing "Saved" to make status visible next to timer
+        // (do not auto-hide)
+      } catch (e) {
+        setAutoSaveStatus('idle');
+        console.error('❌ [Auto-save] Error in autoSaveDraftSilently:', e);
+      } finally {
+        isAutoSavingRef.current = false;
+      }
+    });
+    
+    // Wait for this save operation to complete
+    await saveQueueRef.current;
   };
 
   // Auto-save interval every 70 seconds
@@ -9459,110 +9488,143 @@ const StudentDailyChallengeTake = () => {
 
   // Handle save (save as draft)
   const handleSave = async () => {
-    // Set flag to prevent auto-save during manual save
-    isManualSavingRef.current = true;
-    lastManualSaveTimeRef.current = Date.now();
-    
-    setAutoSaveStatus('saving');
-    // If submissionId is not available, try to get it first
-    let currentSubmissionId = submissionId;
-    
-    if (!currentSubmissionId) {
-      try {
-        const submissionMeta = await fetchSubmissionMeta(id);
-        if (submissionMeta?.id) {
-          currentSubmissionId = submissionMeta.id;
-          setSubmissionId(currentSubmissionId);
-        }
-      } catch (error) {
-        console.error('Error fetching submission:', error);
-      }
-      
-      // If still no submission ID, show error with more context
-      if (!currentSubmissionId) {
-        isManualSavingRef.current = false;
-        spaceToast.error('Không tìm thấy submission. Vui lòng refresh trang hoặc liên hệ admin nếu vấn đề vẫn tiếp tục.');
-        console.error('No submissionId found after retry. ChallengeId:', id);
-        return;
-      }
+    // Prevent multiple simultaneous saves
+    if (isSavingDraft || isManualSavingRef.current || isAutoSavingRef.current || autoSaveStatus === 'saving' || loading) {
+      return;
     }
-
+    
+    setIsSavingDraft(true);
+    
+    // Wait for any pending save operations to complete
     try {
-      const questionAnswers = collectAllAnswers();
-      const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
-      
-      const submitData = {
-        saveAsDraft: true,
-        questionAnswers: processedAnswers
-      };
-
-      setLoading(true);
-      const response = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
-      
-      if (response && response.success) {
-        spaceToast.success('Progress saved successfully');
-        setAutoSaveStatus('saved');
+      await saveQueueRef.current;
+    } catch (e) {
+      // Ignore errors from previous saves
+    }
+    
+    // Add this save operation to the queue
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      try {
+        // Set flag to prevent auto-save during manual save
+        isManualSavingRef.current = true;
+        lastManualSaveTimeRef.current = Date.now();
         
-        // Get submissionId from response and update state
-        const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
-        if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
-          setSubmissionId(responseSubmissionId);
-          currentSubmissionId = responseSubmissionId;
-        }
+        setAutoSaveStatus('saving');
+        // If submissionId is not available, try to get it first
+        let currentSubmissionId = submissionId;
         
-        // Reload draft data from API to ensure sync with server
-        if (currentSubmissionId) {
+        if (!currentSubmissionId) {
           try {
-            console.log('🔄 Reloading draft data after save...');
-            const draftResponse = await dailyChallengeApi.getDraftSubmission(currentSubmissionId);
-            if (draftResponse && draftResponse.success && draftResponse.data) {
-              // Restore answers from fresh draft data
-              setTimeout(() => {
-                restoreAnswersFromResult(draftResponse.data);
-                // Clear manual saving flag after restore completes
-                setTimeout(() => {
-                  isManualSavingRef.current = false;
-                }, 500);
-              }, 300);
-              console.log('✅ Draft data reloaded after save');
-            } else {
-              // Clear flag if reload fails
-              isManualSavingRef.current = false;
+            const submissionMeta = await fetchSubmissionMeta(id);
+            if (submissionMeta?.id) {
+              currentSubmissionId = submissionMeta.id;
+              setSubmissionId(currentSubmissionId);
             }
           } catch (error) {
-            console.error('Error reloading draft data after save:', error);
-            // Clear flag on error
+            console.error('Error fetching submission:', error);
+          }
+          
+          // If still no submission ID, show error with more context
+          if (!currentSubmissionId) {
             isManualSavingRef.current = false;
-            // Don't show error to user - save was successful
+            spaceToast.error('Không tìm thấy submission. Vui lòng refresh trang hoặc liên hệ admin nếu vấn đề vẫn tiếp tục.');
+            console.error('No submissionId found after retry. ChallengeId:', id);
+            return;
+          }
+        }
+
+        const questionAnswers = collectAllAnswers();
+        const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
+        
+        const submitData = {
+          saveAsDraft: true,
+          questionAnswers: processedAnswers
+        };
+
+        setLoading(true);
+        const response = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+        
+        if (response && response.success) {
+          spaceToast.success('Progress saved successfully');
+          setAutoSaveStatus('saved');
+          
+          // Get submissionId from response and update state
+          const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
+          if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
+            setSubmissionId(responseSubmissionId);
+            currentSubmissionId = responseSubmissionId;
+          }
+          
+          // Reload draft data from API to ensure sync with server
+          if (currentSubmissionId) {
+            try {
+              console.log('🔄 Reloading draft data after save...');
+              const draftResponse = await dailyChallengeApi.getDraftSubmission(currentSubmissionId);
+              if (draftResponse && draftResponse.success && draftResponse.data) {
+                // Restore answers from fresh draft data
+                setTimeout(() => {
+                  restoreAnswersFromResult(draftResponse.data);
+                  // Clear manual saving flag after restore completes
+                  setTimeout(() => {
+                    isManualSavingRef.current = false;
+                  }, 500);
+                }, 300);
+                console.log('✅ Draft data reloaded after save');
+              } else {
+                // Clear flag if reload fails
+                isManualSavingRef.current = false;
+              }
+            } catch (error) {
+              console.error('Error reloading draft data after save:', error);
+              // Clear flag on error
+              isManualSavingRef.current = false;
+              // Don't show error to user - save was successful
+            }
+          } else {
+            isManualSavingRef.current = false;
           }
         } else {
           isManualSavingRef.current = false;
         }
-      } else {
+      } catch (error) {
+        console.error('Error saving progress:', error);
         isManualSavingRef.current = false;
+        const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to save progress';
+        spaceToast.error(errorMessage);
+      } finally {
+        setLoading(false);
+        setIsSavingDraft(false);
+        // Clear flag after a delay to ensure restore completes
+        setTimeout(() => {
+          isManualSavingRef.current = false;
+        }, 2000);
       }
-    } catch (error) {
-      console.error('Error saving progress:', error);
-      isManualSavingRef.current = false;
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to save progress';
-      spaceToast.error(errorMessage);
-    } finally {
-      setLoading(false);
-      // Clear flag after a delay to ensure restore completes
-      setTimeout(() => {
-        isManualSavingRef.current = false;
-      }, 2000);
-    }
+    });
+    
+    // Wait for this save operation to complete
+    await saveQueueRef.current;
   };
 
   // Handle submit - show confirmation modal
   const handleSubmit = () => {
+    // Prevent submit when saving is in progress
+    if (isSavingDraft || isManualSavingRef.current || isAutoSavingRef.current || autoSaveStatus === 'saving' || loading || submitConfirmLoading) {
+      return;
+    }
     setSubmitModalVisible(true);
   };
 
   // Confirm submit - handle actual submission
   const handleConfirmSubmit = async () => {
     setSubmitConfirmLoading(true);
+    
+    // Wait for any pending save operations to complete before submitting
+    try {
+      await saveQueueRef.current;
+    } catch (e) {
+      // Ignore errors from previous saves
+    }
+    
     // If submissionId is not available, try to get it first
     let currentSubmissionId = submissionId;
     
@@ -9581,6 +9643,7 @@ const StudentDailyChallengeTake = () => {
       if (!currentSubmissionId) {
         spaceToast.error('Submission ID is missing. Please refresh and try again.');
         setSubmitModalVisible(false);
+        setSubmitConfirmLoading(false);
         return;
       }
     }
@@ -9792,6 +9855,15 @@ const StudentDailyChallengeTake = () => {
           {/* Timer and Save Button */}
           {!isViewOnly && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Auto-save status (always show) */}
+            <span style={{
+              fontSize: '12px',
+              color: autoSaveStatus === 'saving' ? '#555' : '#2b8a3e',
+              fontStyle: 'italic',
+            }}>
+              {autoSaveStatus === 'saving' ? 'Saving…' : 'Saved'}
+            </span>
+            
             {/* Timer (show only if duration exists) */}
             {isTimedChallenge && (
             <div style={{
@@ -9799,15 +9871,6 @@ const StudentDailyChallengeTake = () => {
               alignItems: 'center',
               gap: '10px',
             }}>
-             {/* Auto-save status */}
-             <span style={{
-                fontSize: '12px',
-                color: autoSaveStatus === 'saving' ? '#555' : '#2b8a3e',
-                fontStyle: 'italic',
-                marginLeft: '6px'
-              }}>
-                {autoSaveStatus === 'saving' ? 'Saving…' : 'Saved'}
-              </span>
               {latestCheatEvent && (
                 <span style={{
                   display: 'inline-flex',
@@ -9843,8 +9906,10 @@ const StudentDailyChallengeTake = () => {
             
             {/* Save Button */}
             <Button
-              icon={<SaveOutlined />}
+              icon={(isSavingDraft || autoSaveStatus === 'saving' || loading) ? <LoadingOutlined /> : <SaveOutlined />}
               onClick={handleSave}
+              loading={isSavingDraft || autoSaveStatus === 'saving' || loading}
+              disabled={isSavingDraft || autoSaveStatus === 'saving' || loading}
               style={{
                 height: '36px',
                 borderRadius: '8px',
@@ -9862,8 +9927,11 @@ const StudentDailyChallengeTake = () => {
                 color: '#000',
                 border: 'none',
                 padding: '0 20px',
+                opacity: (isSavingDraft || autoSaveStatus === 'saving' || loading) ? 0.7 : 1,
+                cursor: (isSavingDraft || autoSaveStatus === 'saving' || loading) ? 'not-allowed' : 'pointer',
               }}
               onMouseEnter={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading) return;
                 if (theme === 'sun') {
                   e.currentTarget.style.background = 'rgb(255, 140, 0)';
                 } else {
@@ -9871,6 +9939,7 @@ const StudentDailyChallengeTake = () => {
                 }
               }}
               onMouseLeave={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading) return;
                 if (theme === 'sun') {
                   e.currentTarget.style.background = 'rgb(255, 165, 0)';
                 } else {
@@ -9883,8 +9952,10 @@ const StudentDailyChallengeTake = () => {
             
             {/* Submit Button */}
             <Button
-              icon={<CheckOutlined />}
+              icon={(isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) ? <LoadingOutlined /> : <CheckOutlined />}
               onClick={handleSubmit}
+              loading={isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading}
+              disabled={isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading}
               style={{
                 height: '36px',
                 borderRadius: '8px',
@@ -9902,8 +9973,11 @@ const StudentDailyChallengeTake = () => {
                 color: '#000',
                 border: 'none',
                 padding: '0 20px',
+                opacity: (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) ? 0.7 : 1,
+                cursor: (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) ? 'not-allowed' : 'pointer',
               }}
               onMouseEnter={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) return;
                 if (theme === 'sun') {
                   e.currentTarget.style.background = 'rgb(93, 159, 233)';
                 } else {
@@ -9911,6 +9985,7 @@ const StudentDailyChallengeTake = () => {
                 }
               }}
               onMouseLeave={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) return;
                 if (theme === 'sun') {
                   e.currentTarget.style.background = 'rgb(113, 179, 253)';
                 } else {
