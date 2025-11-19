@@ -13,6 +13,7 @@ import {
   ClockCircleOutlined,
   CheckOutlined,
   ExclamationCircleOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -3783,7 +3784,8 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
           const tempUrl = URL.createObjectURL(audioBlob);
           setAudioUrl(tempUrl);
           
-          // Immediately upload to server and replace with server URL
+          // Immediately upload to server and replace blob URL with server URL
+          // Keep in audioUrl (recording section), don't move to uploadedFiles
           try {
             const ext = 'webm';
             const file = new File([audioBlob], `speaking-${Date.now()}.${ext}`, { 
@@ -3796,7 +3798,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             const serverUrl = extractUrlFromResponse(uploadRes);
             
             if (serverUrl && typeof serverUrl === 'string') {
-              // Replace temp blob URL with server URL
+              // Replace temp blob URL with server URL, keep in audioUrl
               URL.revokeObjectURL(tempUrl);
               setAudioUrl(serverUrl);
             } else {
@@ -3828,21 +3830,29 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
 
   const handleFileUpload = async (event) => {
     if (isViewOnly) return;
+    // Disable upload if recording exists
+    if (audioUrl || isRecording) {
+      spaceToast.error('Vui lòng xóa bản ghi âm trước khi upload file');
+      event.target.value = '';
+      return;
+    }
     const files = Array.from(event.target.files);
     
-    // Validate only MP3 audio and max size 3MB
+    // Validate MP3 or WebM audio and max size 3MB
     const maxSizeBytes = 3 * 1024 * 1024;
-    const isMp3 = (file) => {
+    const isAudioFile = (file) => {
       const name = (file?.name || '').toLowerCase();
       const ext = '.' + name.split('.').pop();
       const type = (file?.type || '').toLowerCase();
-      return type === 'audio/mpeg' || ext === '.mp3';
+      return type === 'audio/mpeg' || ext === '.mp3' || 
+             type === 'audio/webm' || ext === '.webm' ||
+             type.startsWith('audio/');
     };
     const oversizeFiles = files.filter(f => f.size > maxSizeBytes);
-    const invalidTypeFiles = files.filter(f => !isMp3(f));
+    const invalidTypeFiles = files.filter(f => !isAudioFile(f));
     if (invalidTypeFiles.length > 0) {
       const names = invalidTypeFiles.map(f => f.name).join(', ');
-      spaceToast.error(`Only MP3 audio files are allowed. Invalid file(s): ${names}`);
+      spaceToast.error(`Chỉ chấp nhận file audio MP3 hoặc WebM. File không hợp lệ: ${names}`);
       event.target.value = '';
       return;
     }
@@ -3879,6 +3889,10 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
       const successful = uploadedFilesData.filter(Boolean);
       if (successful.length > 0) {
         setUploadedFiles(prev => [...prev, ...successful]);
+        // Clear audioUrl if files are uploaded
+        if (audioUrl) {
+          setAudioUrl(null);
+        }
       }
     } finally {
       // Reset input
@@ -3903,7 +3917,8 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     const getAnswer = () => {
       if (isViewOnly) return null;
       
-      // Prefer recorded audio URL, else any uploaded file URLs/names
+      // Prefer recorded audio (audioUrl), then uploaded files
+      // Recorded audio should be saved as string, uploaded files as array
       if (audioUrl) {
         return { answer: audioUrl, questionType: 'SPEAKING' };
       }
@@ -3921,7 +3936,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
           .filter(Boolean);
         if (fileUrls.length > 0) {
           return { answer: fileUrls, questionType: 'SPEAKING' };
-      }
+        }
       }
       return null;
     };
@@ -4126,8 +4141,8 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
             textAlign: 'center'
           }}>
-            {/* Recorded Audio Display */}
-            {audioUrl && (
+            {/* Recorded Audio Display - Only show if no uploaded files */}
+            {audioUrl && uploadedFiles.length === 0 && (
               <div style={{ marginBottom: '20px' }}>
                 <audio 
                   controls 
@@ -4175,28 +4190,34 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
               </div>
             )}
 
-            {/* Mic Button - Large and Centered */}
-            {!isViewOnly && (
+            {/* Mic Button - Large and Centered - Hide if uploaded files exist */}
+            {!isViewOnly && uploadedFiles.length === 0 && (
             <button
               onClick={isRecording ? stopRecording : startRecording}
+              disabled={uploadedFiles.length > 0}
               style={{
                 width: '120px',
                 height: '120px',
                 borderRadius: '50%',
                 border: 'none',
-                background: isRecording 
-                  ? '#ff4d4f'
-                  : 'rgb(227, 244, 255)',
+                background: uploadedFiles.length > 0
+                  ? '#d9d9d9'
+                  : (isRecording 
+                    ? '#ff4d4f'
+                    : 'rgb(227, 244, 255)'),
                 color: 'white',
-                cursor: 'pointer',
+                cursor: uploadedFiles.length > 0 ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 16px',
-                boxShadow: isRecording
-                  ? '0 0 20px rgba(255, 77, 79, 0.5)'
-                  : '0 4px 12px rgba(24, 144, 255, 0.3)',
-                transition: 'all 0.3s ease'
+                boxShadow: uploadedFiles.length > 0
+                  ? 'none'
+                  : (isRecording
+                    ? '0 0 20px rgba(255, 77, 79, 0.5)'
+                    : '0 4px 12px rgba(24, 144, 255, 0.3)'),
+                transition: 'all 0.3s ease',
+                opacity: uploadedFiles.length > 0 ? 0.6 : 1
               }}
               onMouseEnter={(e) => {
                 if (!isRecording) {
@@ -4223,20 +4244,24 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
             </button>
             )}
 
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
-              marginBottom: '8px'
-            }}>
-              {isViewOnly ? 'Submitted answer' : (isRecording ? 'Recording...' : 'Click to start recording')}
-            </div>
-            <div style={{
-              fontSize: '12px',
-              color: theme === 'sun' ? '#666' : '#999'
-            }}>
-              {isViewOnly ? '' : (isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response')}
-            </div>
+            {uploadedFiles.length === 0 && (
+              <>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
+                  marginBottom: '8px'
+                }}>
+                  {isViewOnly ? 'Submitted answer' : (isRecording ? 'Recording...' : 'Click to start recording')}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: theme === 'sun' ? '#666' : '#999'
+                }}>
+                  {isViewOnly ? '' : (isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response')}
+                </div>
+              </>
+            )}
 
             {/* Upload Section - Similar to Writing */}
             {!isViewOnly && (
@@ -4265,16 +4290,22 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                   style={{
                     display: 'block',
                     padding: '20px',
-                    background: theme === 'sun' 
-                      ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
-                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
-                    border: `2px solid ${theme === 'sun' 
-                      ? 'rgba(82, 196, 26, 0.3)' 
-                      : 'rgba(138, 122, 255, 0.3)'}`,
+                    background: (audioUrl || isRecording) 
+                      ? (theme === 'sun' ? '#f5f5f5' : 'rgba(255, 255, 255, 0.1)')
+                      : (theme === 'sun' 
+                        ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)'),
+                    border: `2px solid ${(audioUrl || isRecording)
+                      ? (theme === 'sun' ? '#d9d9d9' : 'rgba(255, 255, 255, 0.1)')
+                      : (theme === 'sun' 
+                        ? 'rgba(82, 196, 26, 0.3)' 
+                        : 'rgba(138, 122, 255, 0.3)')}`,
                     borderRadius: '12px',
-                    cursor: 'pointer',
+                    cursor: (audioUrl || isRecording) ? 'not-allowed' : 'pointer',
                     textAlign: 'center',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    opacity: (audioUrl || isRecording) ? 0.6 : 1,
+                    pointerEvents: (audioUrl || isRecording) ? 'none' : 'auto'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
@@ -4300,7 +4331,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                     fontSize: '13px',
                     color: theme === 'sun' ? '#666' : '#999'
                   }}>
-                    Upload MP3 audio file (Max 3MB)
+                    Upload MP3 hoặc WebM audio file (Max 3MB)
                   </div>
                 </label>
               </div>
@@ -4479,7 +4510,8 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           const tempUrl = URL.createObjectURL(audioBlob);
           setAudioUrl(tempUrl);
           
-          // Immediately upload to server and replace with server URL
+          // Immediately upload to server and replace blob URL with server URL
+          // Keep in audioUrl (recording section), don't move to uploadedFiles
           try {
             const ext = 'webm';
             const file = new File([audioBlob], `speaking-${Date.now()}.${ext}`, { 
@@ -4492,7 +4524,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             const serverUrl = extractUrlFromResponse(uploadRes);
             
             if (serverUrl && typeof serverUrl === 'string') {
-              // Replace temp blob URL with server URL
+              // Replace temp blob URL with server URL, keep in audioUrl
               URL.revokeObjectURL(tempUrl);
               setAudioUrl(serverUrl);
             } else {
@@ -4524,21 +4556,29 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
 
   const handleFileUpload = async (event) => {
     if (isViewOnly) return;
+    // Disable upload if recording exists
+    if (audioUrl || isRecording) {
+      spaceToast.error('Vui lòng xóa bản ghi âm trước khi upload file');
+      event.target.value = '';
+      return;
+    }
     const files = Array.from(event.target.files);
     
-    // Validate only MP3 audio and max size 3MB
+    // Validate MP3 or WebM audio and max size 3MB
     const maxSizeBytes = 3 * 1024 * 1024;
-    const isMp3 = (file) => {
+    const isAudioFile = (file) => {
       const name = (file?.name || '').toLowerCase();
       const ext = '.' + name.split('.').pop();
       const type = (file?.type || '').toLowerCase();
-      return type === 'audio/mpeg' || ext === '.mp3';
+      return type === 'audio/mpeg' || ext === '.mp3' || 
+             type === 'audio/webm' || ext === '.webm' ||
+             type.startsWith('audio/');
     };
     const oversizeFiles = files.filter(f => f.size > maxSizeBytes);
-    const invalidTypeFiles = files.filter(f => !isMp3(f));
+    const invalidTypeFiles = files.filter(f => !isAudioFile(f));
     if (invalidTypeFiles.length > 0) {
       const names = invalidTypeFiles.map(f => f.name).join(', ');
-      spaceToast.error(`Chỉ chấp nhận tệp âm thanh MP3. Không hợp lệ: ${names}`);
+      spaceToast.error(`Chỉ chấp nhận file audio MP3 hoặc WebM. File không hợp lệ: ${names}`);
       event.target.value = '';
       return;
     }
@@ -4578,6 +4618,10 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
       const successful = uploadedFilesData.filter(Boolean);
       if (successful.length > 0) {
         setUploadedFiles(prev => [...prev, ...successful]);
+        // Clear audioUrl if files are uploaded
+        if (audioUrl) {
+          setAudioUrl(null);
+        }
       }
     } finally {
       // Reset input
@@ -4634,7 +4678,8 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
 
     const setAnswer = (answer) => {
       if (typeof answer === 'string') {
-        // String URL - could be recorded audio
+        // String URL - always treated as recorded audio (from web recording)
+        // Display in recording section, not upload section
         setAudioUrl(answer);
         return;
       }
@@ -5007,8 +5052,8 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
             textAlign: 'center'
           }}>
-            {/* Recorded Audio Display */}
-            {audioUrl && (
+            {/* Recorded Audio Display - Only show if no uploaded files */}
+            {audioUrl && uploadedFiles.length === 0 && (
               <div style={{ marginBottom: '20px' }}>
                 <audio 
                   controls 
@@ -5056,28 +5101,34 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
               </div>
             )}
 
-            {/* Mic Button - Large and Centered */}
-            {!isViewOnly && (
+            {/* Mic Button - Large and Centered - Hide if uploaded files exist */}
+            {!isViewOnly && uploadedFiles.length === 0 && (
             <button
               onClick={isRecording ? stopRecording : startRecording}
+              disabled={uploadedFiles.length > 0}
               style={{
                 width: '120px',
                 height: '120px',
                 borderRadius: '50%',
                 border: 'none',
-                background: isRecording 
-                  ? '#ff4d4f'
-                  : 'rgb(227, 244, 255)',
+                background: uploadedFiles.length > 0
+                  ? '#d9d9d9'
+                  : (isRecording 
+                    ? '#ff4d4f'
+                    : 'rgb(227, 244, 255)'),
                 color: 'white',
-                cursor: 'pointer',
+                cursor: uploadedFiles.length > 0 ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 16px',
-                boxShadow: isRecording
-                  ? '0 0 20px rgba(255, 77, 79, 0.5)'
-                  : '0 4px 12px rgba(24, 144, 255, 0.3)',
-                transition: 'all 0.3s ease'
+                boxShadow: uploadedFiles.length > 0
+                  ? 'none'
+                  : (isRecording
+                    ? '0 0 20px rgba(255, 77, 79, 0.5)'
+                    : '0 4px 12px rgba(24, 144, 255, 0.3)'),
+                transition: 'all 0.3s ease',
+                opacity: uploadedFiles.length > 0 ? 0.6 : 1
               }}
               onMouseEnter={(e) => {
                 if (!isRecording) {
@@ -5104,20 +5155,24 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
             </button>
             )}
 
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
-              marginBottom: '8px'
-            }}>
-              {isViewOnly ? 'Submitted answer' : (isRecording ? 'Recording...' : 'Click to start recording')}
-            </div>
-            <div style={{
-              fontSize: '12px',
-              color: theme === 'sun' ? '#666' : '#999'
-            }}>
-              {isViewOnly ? '' : (isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response')}
-            </div>
+            {uploadedFiles.length === 0 && (
+              <>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
+                  marginBottom: '8px'
+                }}>
+                  {isViewOnly ? 'Submitted answer' : (isRecording ? 'Recording...' : 'Click to start recording')}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: theme === 'sun' ? '#666' : '#999'
+                }}>
+                  {isViewOnly ? '' : (isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response')}
+                </div>
+              </>
+            )}
 
             {/* Upload Section - Similar to Writing */}
             {!isViewOnly && (
@@ -7608,6 +7663,11 @@ const StudentDailyChallengeTake = () => {
   // Prevent auto-save immediately after manual save
   const isManualSavingRef = useRef(false);
   const lastManualSaveTimeRef = useRef(0);
+  
+  // Save queue mechanism to prevent concurrent saves
+  const isAutoSavingRef = useRef(false);
+  const saveQueueRef = useRef(Promise.resolve());
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // Device fingerprint state
   const deviceFingerprintHashRef = useRef(null);
@@ -8643,9 +8703,25 @@ const StudentDailyChallengeTake = () => {
       return;
     }
     
-    try {
-      setAutoSaveStatus('saving');
-      const questionAnswers = collectAllAnswers();
+    // Wait for any pending save operations to complete
+    await saveQueueRef.current;
+    
+    // Check again after waiting
+    if (isManualSavingRef.current || isAutoSavingRef.current) {
+      return;
+    }
+    
+    // Add to queue
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      // Check one more time after waiting
+      if (isManualSavingRef.current || isAutoSavingRef.current) {
+        return;
+      }
+      
+      try {
+        isAutoSavingRef.current = true;
+        setAutoSaveStatus('saving');
+        const questionAnswers = collectAllAnswers();
 
       // Check if we have any answers with actual data
       const hasAnswers = questionAnswers.some(qa => 
@@ -8654,6 +8730,7 @@ const StudentDailyChallengeTake = () => {
 
       if (!hasAnswers) {
         setAutoSaveStatus('idle');
+        isAutoSavingRef.current = false;
         return;
       }
 
@@ -8724,17 +8801,23 @@ const StudentDailyChallengeTake = () => {
         }
       }
 
-      setAutoSaveStatus('saved');
-      // Revert to idle after short delay
-      // Keep showing "Saved" to make status visible next to timer
-      // (do not auto-hide)
-    } catch (e) {
-      setAutoSaveStatus('idle');
-      console.error('❌ [Auto-save] Error in autoSaveDraftSilently:', e);
-    }
+        setAutoSaveStatus('saved');
+        // Revert to idle after short delay
+        // Keep showing "Saved" to make status visible next to timer
+        // (do not auto-hide)
+      } catch (e) {
+        setAutoSaveStatus('idle');
+        console.error('❌ [Auto-save] Error in autoSaveDraftSilently:', e);
+      } finally {
+        isAutoSavingRef.current = false;
+      }
+    });
+    
+    // Wait for this save operation to complete
+    await saveQueueRef.current;
   };
 
-  // Auto-save interval every 90 seconds
+  // Auto-save interval every 70 seconds
   useEffect(() => {
     if (loading || isViewOnly) return;
     const intervalId = setInterval(() => {
@@ -9033,18 +9116,19 @@ const StudentDailyChallengeTake = () => {
         });
       } else if (Array.isArray(answer)) {
         // File uploads or multiple parts
+        // Use positionId starting from '1' to distinguish from recorded audio (positionId='0')
         answer.forEach((item, index) => {
           if (typeof item === 'string') {
             contentData.push({
               id: item, // Use URL as id
               value: item, // Use URL as value
-              positionId: String(index)
+              positionId: String(index + 1) // Start from '1' to distinguish from recorded audio
             });
           } else if (item && item.value) {
             contentData.push({
               id: item.id || item.value,
               value: item.value,
-              positionId: item.positionId || String(index)
+              positionId: item.positionId || String(index + 1) // Start from '1' to distinguish from recorded audio
             });
           }
         });
@@ -9158,11 +9242,18 @@ const StudentDailyChallengeTake = () => {
             
             if (answerData.length === 0) return;
             
-            // Special handling for WRITING and SPEAKING types - pass array of objects/URLs directly
+            // Special handling for WRITING and SPEAKING types
             if (questionType === 'WRITING' || questionType === 'SPEAKING') {
-              // For WRITING/SPEAKING, pass the entire answerData array (contains objects with id/value/url)
-              // This allows setAnswer to extract URLs from id/value properties
-              restoredAnswer = answerData;
+              // Distinguish between recorded audio (single item with positionId='0') and uploaded files (multiple items or different positionId)
+              // Recorded audio: [{id: url, value: url, positionId: '0'}] → pass as string
+              // Uploaded files: [{id: url, value: url, positionId: '1'}, ...] or multiple items → pass as array
+              if (answerData.length === 1 && answerData[0].positionId === '0' && answerData[0].value) {
+                // Single item with positionId='0' means recorded audio → pass as string
+                restoredAnswer = answerData[0].value;
+              } else {
+                // Multiple items or different positionId means uploaded files → pass as array
+                restoredAnswer = answerData;
+              }
             } else if (answerData.length === 1 && !answerData[0].positionId) {
               // Single answer (MULTIPLE_CHOICE, TRUE_OR_FALSE, etc.)
               restoredAnswer = answerData[0].value;
@@ -9397,110 +9488,143 @@ const StudentDailyChallengeTake = () => {
 
   // Handle save (save as draft)
   const handleSave = async () => {
-    // Set flag to prevent auto-save during manual save
-    isManualSavingRef.current = true;
-    lastManualSaveTimeRef.current = Date.now();
-    
-    setAutoSaveStatus('saving');
-    // If submissionId is not available, try to get it first
-    let currentSubmissionId = submissionId;
-    
-    if (!currentSubmissionId) {
-      try {
-        const submissionMeta = await fetchSubmissionMeta(id);
-        if (submissionMeta?.id) {
-          currentSubmissionId = submissionMeta.id;
-          setSubmissionId(currentSubmissionId);
-        }
-      } catch (error) {
-        console.error('Error fetching submission:', error);
-      }
-      
-      // If still no submission ID, show error with more context
-      if (!currentSubmissionId) {
-        isManualSavingRef.current = false;
-        spaceToast.error('Không tìm thấy submission. Vui lòng refresh trang hoặc liên hệ admin nếu vấn đề vẫn tiếp tục.');
-        console.error('No submissionId found after retry. ChallengeId:', id);
-        return;
-      }
+    // Prevent multiple simultaneous saves
+    if (isSavingDraft || isManualSavingRef.current || isAutoSavingRef.current || autoSaveStatus === 'saving' || loading) {
+      return;
     }
-
+    
+    setIsSavingDraft(true);
+    
+    // Wait for any pending save operations to complete
     try {
-      const questionAnswers = collectAllAnswers();
-      const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
-      
-      const submitData = {
-        saveAsDraft: true,
-        questionAnswers: processedAnswers
-      };
-
-      setLoading(true);
-      const response = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
-      
-      if (response && response.success) {
-        spaceToast.success('Progress saved successfully');
-        setAutoSaveStatus('saved');
+      await saveQueueRef.current;
+    } catch (e) {
+      // Ignore errors from previous saves
+    }
+    
+    // Add this save operation to the queue
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      try {
+        // Set flag to prevent auto-save during manual save
+        isManualSavingRef.current = true;
+        lastManualSaveTimeRef.current = Date.now();
         
-        // Get submissionId from response and update state
-        const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
-        if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
-          setSubmissionId(responseSubmissionId);
-          currentSubmissionId = responseSubmissionId;
-        }
+        setAutoSaveStatus('saving');
+        // If submissionId is not available, try to get it first
+        let currentSubmissionId = submissionId;
         
-        // Reload draft data from API to ensure sync with server
-        if (currentSubmissionId) {
+        if (!currentSubmissionId) {
           try {
-            console.log('🔄 Reloading draft data after save...');
-            const draftResponse = await dailyChallengeApi.getDraftSubmission(currentSubmissionId);
-            if (draftResponse && draftResponse.success && draftResponse.data) {
-              // Restore answers from fresh draft data
-              setTimeout(() => {
-                restoreAnswersFromResult(draftResponse.data);
-                // Clear manual saving flag after restore completes
-                setTimeout(() => {
-                  isManualSavingRef.current = false;
-                }, 500);
-              }, 300);
-              console.log('✅ Draft data reloaded after save');
-            } else {
-              // Clear flag if reload fails
-              isManualSavingRef.current = false;
+            const submissionMeta = await fetchSubmissionMeta(id);
+            if (submissionMeta?.id) {
+              currentSubmissionId = submissionMeta.id;
+              setSubmissionId(currentSubmissionId);
             }
           } catch (error) {
-            console.error('Error reloading draft data after save:', error);
-            // Clear flag on error
+            console.error('Error fetching submission:', error);
+          }
+          
+          // If still no submission ID, show error with more context
+          if (!currentSubmissionId) {
             isManualSavingRef.current = false;
-            // Don't show error to user - save was successful
+            spaceToast.error('Không tìm thấy submission. Vui lòng refresh trang hoặc liên hệ admin nếu vấn đề vẫn tiếp tục.');
+            console.error('No submissionId found after retry. ChallengeId:', id);
+            return;
+          }
+        }
+
+        const questionAnswers = collectAllAnswers();
+        const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
+        
+        const submitData = {
+          saveAsDraft: true,
+          questionAnswers: processedAnswers
+        };
+
+        setLoading(true);
+        const response = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+        
+        if (response && response.success) {
+          spaceToast.success('Progress saved successfully');
+          setAutoSaveStatus('saved');
+          
+          // Get submissionId from response and update state
+          const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
+          if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
+            setSubmissionId(responseSubmissionId);
+            currentSubmissionId = responseSubmissionId;
+          }
+          
+          // Reload draft data from API to ensure sync with server
+          if (currentSubmissionId) {
+            try {
+              console.log('🔄 Reloading draft data after save...');
+              const draftResponse = await dailyChallengeApi.getDraftSubmission(currentSubmissionId);
+              if (draftResponse && draftResponse.success && draftResponse.data) {
+                // Restore answers from fresh draft data
+                setTimeout(() => {
+                  restoreAnswersFromResult(draftResponse.data);
+                  // Clear manual saving flag after restore completes
+                  setTimeout(() => {
+                    isManualSavingRef.current = false;
+                  }, 500);
+                }, 300);
+                console.log('✅ Draft data reloaded after save');
+              } else {
+                // Clear flag if reload fails
+                isManualSavingRef.current = false;
+              }
+            } catch (error) {
+              console.error('Error reloading draft data after save:', error);
+              // Clear flag on error
+              isManualSavingRef.current = false;
+              // Don't show error to user - save was successful
+            }
+          } else {
+            isManualSavingRef.current = false;
           }
         } else {
           isManualSavingRef.current = false;
         }
-      } else {
+      } catch (error) {
+        console.error('Error saving progress:', error);
         isManualSavingRef.current = false;
+        const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to save progress';
+        spaceToast.error(errorMessage);
+      } finally {
+        setLoading(false);
+        setIsSavingDraft(false);
+        // Clear flag after a delay to ensure restore completes
+        setTimeout(() => {
+          isManualSavingRef.current = false;
+        }, 2000);
       }
-    } catch (error) {
-      console.error('Error saving progress:', error);
-      isManualSavingRef.current = false;
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to save progress';
-      spaceToast.error(errorMessage);
-    } finally {
-      setLoading(false);
-      // Clear flag after a delay to ensure restore completes
-      setTimeout(() => {
-        isManualSavingRef.current = false;
-      }, 2000);
-    }
+    });
+    
+    // Wait for this save operation to complete
+    await saveQueueRef.current;
   };
 
   // Handle submit - show confirmation modal
   const handleSubmit = () => {
+    // Prevent submit when saving is in progress
+    if (isSavingDraft || isManualSavingRef.current || isAutoSavingRef.current || autoSaveStatus === 'saving' || loading || submitConfirmLoading) {
+      return;
+    }
     setSubmitModalVisible(true);
   };
 
   // Confirm submit - handle actual submission
   const handleConfirmSubmit = async () => {
     setSubmitConfirmLoading(true);
+    
+    // Wait for any pending save operations to complete before submitting
+    try {
+      await saveQueueRef.current;
+    } catch (e) {
+      // Ignore errors from previous saves
+    }
+    
     // If submissionId is not available, try to get it first
     let currentSubmissionId = submissionId;
     
@@ -9519,6 +9643,7 @@ const StudentDailyChallengeTake = () => {
       if (!currentSubmissionId) {
         spaceToast.error('Submission ID is missing. Please refresh and try again.');
         setSubmitModalVisible(false);
+        setSubmitConfirmLoading(false);
         return;
       }
     }
@@ -9730,6 +9855,15 @@ const StudentDailyChallengeTake = () => {
           {/* Timer and Save Button */}
           {!isViewOnly && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Auto-save status (always show) */}
+            <span style={{
+              fontSize: '12px',
+              color: autoSaveStatus === 'saving' ? '#555' : '#2b8a3e',
+              fontStyle: 'italic',
+            }}>
+              {autoSaveStatus === 'saving' ? 'Saving…' : 'Saved'}
+            </span>
+            
             {/* Timer (show only if duration exists) */}
             {isTimedChallenge && (
             <div style={{
@@ -9737,15 +9871,6 @@ const StudentDailyChallengeTake = () => {
               alignItems: 'center',
               gap: '10px',
             }}>
-             {/* Auto-save status */}
-             <span style={{
-                fontSize: '12px',
-                color: autoSaveStatus === 'saving' ? '#555' : '#2b8a3e',
-                fontStyle: 'italic',
-                marginLeft: '6px'
-              }}>
-                {autoSaveStatus === 'saving' ? 'Saving…' : 'Saved'}
-              </span>
               {latestCheatEvent && (
                 <span style={{
                   display: 'inline-flex',
@@ -9781,8 +9906,10 @@ const StudentDailyChallengeTake = () => {
             
             {/* Save Button */}
             <Button
-              icon={<SaveOutlined />}
+              icon={(isSavingDraft || autoSaveStatus === 'saving' || loading) ? <LoadingOutlined /> : <SaveOutlined />}
               onClick={handleSave}
+              loading={isSavingDraft || autoSaveStatus === 'saving' || loading}
+              disabled={isSavingDraft || autoSaveStatus === 'saving' || loading}
               style={{
                 height: '36px',
                 borderRadius: '8px',
@@ -9800,8 +9927,11 @@ const StudentDailyChallengeTake = () => {
                 color: '#000',
                 border: 'none',
                 padding: '0 20px',
+                opacity: (isSavingDraft || autoSaveStatus === 'saving' || loading) ? 0.7 : 1,
+                cursor: (isSavingDraft || autoSaveStatus === 'saving' || loading) ? 'not-allowed' : 'pointer',
               }}
               onMouseEnter={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading) return;
                 if (theme === 'sun') {
                   e.currentTarget.style.background = 'rgb(255, 140, 0)';
                 } else {
@@ -9809,6 +9939,7 @@ const StudentDailyChallengeTake = () => {
                 }
               }}
               onMouseLeave={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading) return;
                 if (theme === 'sun') {
                   e.currentTarget.style.background = 'rgb(255, 165, 0)';
                 } else {
@@ -9821,8 +9952,10 @@ const StudentDailyChallengeTake = () => {
             
             {/* Submit Button */}
             <Button
-              icon={<CheckOutlined />}
+              icon={(isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) ? <LoadingOutlined /> : <CheckOutlined />}
               onClick={handleSubmit}
+              loading={isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading}
+              disabled={isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading}
               style={{
                 height: '36px',
                 borderRadius: '8px',
@@ -9840,8 +9973,11 @@ const StudentDailyChallengeTake = () => {
                 color: '#000',
                 border: 'none',
                 padding: '0 20px',
+                opacity: (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) ? 0.7 : 1,
+                cursor: (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) ? 'not-allowed' : 'pointer',
               }}
               onMouseEnter={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) return;
                 if (theme === 'sun') {
                   e.currentTarget.style.background = 'rgb(93, 159, 233)';
                 } else {
@@ -9849,6 +9985,7 @@ const StudentDailyChallengeTake = () => {
                 }
               }}
               onMouseLeave={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) return;
                 if (theme === 'sun') {
                   e.currentTarget.style.background = 'rgb(113, 179, 253)';
                 } else {

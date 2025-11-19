@@ -450,7 +450,7 @@ Good luck with your writing!`,
 
 
 // Section Question Component for Reading/Listening sections
-const SectionQuestionItem = ({ question, index, theme }) => {
+const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }) => {
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
   const [availableItems, setAvailableItems] = useState({});
@@ -644,7 +644,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                           color: '#000000'
                         }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                            Question {qIndex + 1}:
+                            Question {startQuestionNumber + qIndex}:
                           </div>
                           <div 
                             className="question-text-content"
@@ -702,7 +702,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                       color: '#000000'
                     }}>
                       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                        Question {qIndex + 1}:
+                        Question {startQuestionNumber + qIndex}:
                       </div>
                       <div>
                         {(() => {
@@ -918,7 +918,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                                 marginBottom: '12px'
                               }}>
                                 <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                                  Question {qIndex + 1}:
+                                  Question {startQuestionNumber + qIndex}:
                                 </div>
                                 <div>
                                   {parts.map((part, pIdx) => (
@@ -1084,7 +1084,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                       color: '#000000'
                     }}>
                       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                        Question {qIndex + 1}:
+                        Question {startQuestionNumber + qIndex}:
                       </div>
                       <div>
                         {(() => {
@@ -1237,7 +1237,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                       return (
                         <div style={{ marginBottom: '16px' }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                            Question {qIndex + 1}:
+                            Question {startQuestionNumber + qIndex}:
                           </div>
                           <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
                             <div 
@@ -1400,7 +1400,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
                           display: 'block',
                           marginBottom: '8px'
                         }}>
-                          Question {qIndex + 1}:
+                          Question {startQuestionNumber + qIndex}:
                         </Typography.Text>
                         <Typography.Text style={{ 
                           fontSize: '15px', 
@@ -1589,7 +1589,7 @@ const SectionQuestionItem = ({ question, index, theme }) => {
 };
 
 // Listening Section Component
-const ListeningSectionItem = ({ question, index, theme }) => {
+const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 }) => {
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
   const [availableItems, setAvailableItems] = useState({});
@@ -2005,7 +2005,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                         color: '#000000'
                       }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                          Question {qIndex + 1}:
+                          Question {startQuestionNumber + qIndex}:
                         </div>
                         <div>
                           {(() => {
@@ -2139,7 +2139,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                           <div style={{ marginBottom: '16px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '200px' }}>
                               <div style={{ padding: '16px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255,255,255,0.02)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255,255,255,0.1)'}` }}>
-                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {startQuestionNumber + qIndex}:</div>
                                 <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>
                                   {parts.map((part, pIdx) => (
                                     <React.Fragment key={pIdx}>
@@ -2194,7 +2194,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                         color: '#000000'
                       }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                          Question {qIndex + 1}:
+                          Question {startQuestionNumber + qIndex}:
                         </div>
                         <div>
                           {(() => {
@@ -2204,7 +2204,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                             let last = 0; let match; let idx = 0;
                             while ((match = regex.exec(text)) !== null) {
                               if (match.index > last) parts.push(text.slice(last, match.index));
-                            parts.push(
+                              parts.push(
                               <span key={`fib_${q.id}_${idx++}`} className="paragraph-input" contentEditable suppressContentEditableWarning style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'120px', maxWidth:'200px', minHeight:'32px', padding:'4px 12px', margin:'4px 8px 6px 8px', background: theme==='sun'?'#E9EEFF94':'rgba(255,255,255,0.1)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', cursor:'text', outline:'none', verticalAlign:'top', lineHeight:'1.4', fontSize:'14px', boxSizing:'border-box', color:'#000000', textAlign:'center' }} />
                               );
                               last = match.index + match[0].length;
@@ -2275,7 +2275,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
 
                         return (
                           <div style={{ marginBottom: '16px' }}>
-                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {qIndex + 1}:</div>
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {startQuestionNumber + qIndex}:</div>
                             <div 
                               className="question-text-content"
                               style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}
@@ -2320,7 +2320,7 @@ const ListeningSectionItem = ({ question, index, theme }) => {
                             display: 'block',
                             marginBottom: '8px'
                           }}>
-                            Question {qIndex + 1}:
+                            Question {startQuestionNumber + qIndex}:
                           </Typography.Text>
                           <div 
                             className="question-text-content"
@@ -4002,7 +4002,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
 };
 
 // Multiple Choice Container Component
-const MultipleChoiceContainer = ({ theme, data }) => {
+const MultipleChoiceContainer = ({ theme, data, questionNumber = 1 }) => {
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'What is the capital city of Vietnam?';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0
@@ -4047,7 +4047,7 @@ const MultipleChoiceContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 1
+          Question {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4159,7 +4159,7 @@ const MultipleChoiceContainer = ({ theme, data }) => {
 };
 
 // Multiple Select Container Component
-const MultipleSelectContainer = ({ theme, data }) => {
+const MultipleSelectContainer = ({ theme, data, questionNumber = 2 }) => {
   const [selectedAnswers, setSelectedAnswers] = React.useState([]);
   const questionText = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
@@ -4210,7 +4210,7 @@ const MultipleSelectContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 2
+          Question {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4321,7 +4321,7 @@ const MultipleSelectContainer = ({ theme, data }) => {
 };
 
 // True/False Container Component
-const TrueFalseContainer = ({ theme, data }) => {
+const TrueFalseContainer = ({ theme, data, questionNumber = 3 }) => {
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
 
@@ -4363,7 +4363,7 @@ const TrueFalseContainer = ({ theme, data }) => {
             fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 3
+          Question {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4471,7 +4471,7 @@ const TrueFalseContainer = ({ theme, data }) => {
 };
 
 // Dropdown Container Component
-const DropdownContainer = ({ theme, data }) => {
+const DropdownContainer = ({ theme, data, questionNumber = 5 }) => {
   const [selectedAnswers, setSelectedAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
   const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
@@ -4521,7 +4521,7 @@ const DropdownContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 5
+          Question {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4568,7 +4568,7 @@ const DropdownContainer = ({ theme, data }) => {
 };
 
 // Drag and Drop Container Component
-const DragDropContainer = ({ theme, data }) => {
+const DragDropContainer = ({ theme, data, questionNumber = 6 }) => {
   const [droppedItems, setDroppedItems] = React.useState({});
   // Use ALL values from API (including duplicates) as draggable options; fallback to a simple list
   const [availableItems, setAvailableItems] = React.useState(() => {
@@ -4695,7 +4695,7 @@ const DragDropContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 6
+          Question {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4885,7 +4885,7 @@ const DragDropContainer = ({ theme, data }) => {
 };
 
 // Reorder Container Component
-const ReorderContainer = ({ theme, data }) => {
+const ReorderContainer = ({ theme, data, questionNumber = 7 }) => {
   const [sourceItems, setSourceItems] = React.useState(() => {
     const words = (data?.content?.data || [])
       .map(it => it.value)
@@ -5037,7 +5037,7 @@ const ReorderContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 7
+          Question {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5261,7 +5261,7 @@ const ReorderContainer = ({ theme, data }) => {
 };
 
 // Rewrite Container Component
-const RewriteContainer = ({ theme, data }) => {
+const RewriteContainer = ({ theme, data, questionNumber = 8 }) => {
   const [answer, setAnswer] = React.useState('');
   // Remove placeholder tokens but keep HTML formatting
   const questionText = (data?.questionText || data?.question || 'Rewrite the following sentence using different words:')
@@ -5305,7 +5305,7 @@ const RewriteContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 8
+          Question {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5362,7 +5362,7 @@ const RewriteContainer = ({ theme, data }) => {
 
 
 // Fill in the Blank Container Component
-const FillBlankContainer = ({ theme, data }) => {
+const FillBlankContainer = ({ theme, data, questionNumber = 4 }) => {
   const questionText = data?.questionText || data?.question || 'Fill in the blanks';
   // Parse questionText and render editable spans where [[pos_x]] appears
   const renderWithInputs = () => {
@@ -5467,7 +5467,7 @@ const FillBlankContainer = ({ theme, data }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question 4
+          Question {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5839,6 +5839,42 @@ const StudentPreview = () => {
 
   const questionNav = getQuestionNavigation();
 
+  // Calculate starting question number for each section
+  const getStartQuestionNumber = (sectionType, sectionIndex) => {
+    let questionNumber = 1;
+    
+    // Count questions from reading sections before this one
+    if (challengeType === 'RE' && sectionType === 'reading') {
+      for (let i = 0; i < sectionIndex; i++) {
+        questionNumber += readingSections[i]?.questions?.length || 0;
+      }
+    }
+    
+    // Count questions from listening sections before this one
+    if (challengeType === 'LI' && sectionType === 'listening') {
+      for (let i = 0; i < sectionIndex; i++) {
+        questionNumber += listeningSections[i]?.questions?.length || 0;
+      }
+    }
+    
+    // For standalone questions, count all section questions first
+    if (sectionType === 'standalone') {
+      if (challengeType === 'RE') {
+        readingSections.forEach(section => {
+          questionNumber += section?.questions?.length || 0;
+        });
+      } else if (challengeType === 'LI') {
+        listeningSections.forEach(section => {
+          questionNumber += section?.questions?.length || 0;
+        });
+      }
+      // Add the index of the current standalone question
+      questionNumber += sectionIndex;
+    }
+    
+    return questionNumber;
+  };
+
   // Block rendering if user is not authorized (check after all hooks are called)
   if (!isAuthorized || (normalizedRole && normalizedRole !== 'teacher')) {
     return null;
@@ -5898,11 +5934,14 @@ const StudentPreview = () => {
               <div className="questions-list">
                 {/* Render Reading sections when challenge type is RE */}
                 {challengeType === 'RE' && readingSections.length > 0 && (
-                  readingSections.map((section, index) => (
-                    <div key={`reading-wrap-${section.id || index}`} ref={el => (questionRefs.current[`reading-${index + 1}`] = el)}>
-                      <SectionQuestionItem key={section.id || `section_${index}`} question={section} index={index} theme={theme} />
-                </div>
-                  ))
+                  readingSections.map((section, index) => {
+                    const startQuestionNumber = getStartQuestionNumber('reading', index);
+                    return (
+                      <div key={`reading-wrap-${section.id || index}`} ref={el => (questionRefs.current[`reading-${index + 1}`] = el)}>
+                        <SectionQuestionItem key={section.id || `section_${index}`} question={section} index={index} theme={theme} startQuestionNumber={startQuestionNumber} />
+                      </div>
+                    );
+                  })
                 )}
                 {/* Render Writing sections when challenge type is WR */}
                 {challengeType === 'WR' && writingSections.length > 0 && (
@@ -5925,40 +5964,46 @@ const StudentPreview = () => {
                   ))
                 )}
                 {/* Dynamic questions preview (hide complex sections) */}
-                {questions.map((q, idx) => (
-                  <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
-                    {q.type === 'MULTIPLE_CHOICE' && (
-                      <MultipleChoiceContainer theme={theme} data={q} />
-                    )}
-                    {q.type === 'MULTIPLE_SELECT' && (
-                      <MultipleSelectContainer theme={theme} data={q} />
-                    )}
-                    {q.type === 'TRUE_OR_FALSE' && (
-                      <TrueFalseContainer theme={theme} data={q} />
-                    )}
-                    {q.type === 'FILL_IN_THE_BLANK' && (
-                      <FillBlankContainer theme={theme} data={q} />
-                    )}
-                    {q.type === 'DROPDOWN' && (
-                      <DropdownContainer theme={theme} data={q} />
-                    )}
-                    {q.type === 'DRAG_AND_DROP' && (
-                      <DragDropContainer theme={theme} data={q} />
-                    )}
-                    {q.type === 'REARRANGE' && (
-                      <ReorderContainer theme={theme} data={q} />
-                    )}
-                    {q.type === 'REWRITE' && (
-                      <RewriteContainer theme={theme} data={q} />
-                    )}
-                </div>
-                ))}
-                {challengeType === 'LI' && listeningSections.length > 0 && (
-                  listeningSections.map((section, index) => (
-                    <div key={`listening-wrap-${section.id || index}`} ref={el => (questionRefs.current[`listening-${index + 1}`] = el)}>
-                      <ListeningSectionItem key={section.id || `listening_${index}`} question={section} index={index} theme={theme} />
+                {questions.map((q, idx) => {
+                  const questionNumber = getStartQuestionNumber('standalone', idx);
+                  return (
+                    <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
+                      {q.type === 'MULTIPLE_CHOICE' && (
+                        <MultipleChoiceContainer theme={theme} data={q} questionNumber={questionNumber} />
+                      )}
+                      {q.type === 'MULTIPLE_SELECT' && (
+                        <MultipleSelectContainer theme={theme} data={q} questionNumber={questionNumber} />
+                      )}
+                      {q.type === 'TRUE_OR_FALSE' && (
+                        <TrueFalseContainer theme={theme} data={q} questionNumber={questionNumber} />
+                      )}
+                      {q.type === 'FILL_IN_THE_BLANK' && (
+                        <FillBlankContainer theme={theme} data={q} questionNumber={questionNumber} />
+                      )}
+                      {q.type === 'DROPDOWN' && (
+                        <DropdownContainer theme={theme} data={q} questionNumber={questionNumber} />
+                      )}
+                      {q.type === 'DRAG_AND_DROP' && (
+                        <DragDropContainer theme={theme} data={q} questionNumber={questionNumber} />
+                      )}
+                      {q.type === 'REARRANGE' && (
+                        <ReorderContainer theme={theme} data={q} questionNumber={questionNumber} />
+                      )}
+                      {q.type === 'REWRITE' && (
+                        <RewriteContainer theme={theme} data={q} questionNumber={questionNumber} />
+                      )}
                     </div>
-                  ))
+                  );
+                })}
+                {challengeType === 'LI' && listeningSections.length > 0 && (
+                  listeningSections.map((section, index) => {
+                    const startQuestionNumber = getStartQuestionNumber('listening', index);
+                    return (
+                      <div key={`listening-wrap-${section.id || index}`} ref={el => (questionRefs.current[`listening-${index + 1}`] = el)}>
+                        <ListeningSectionItem key={section.id || `listening_${index}`} question={section} index={index} theme={theme} startQuestionNumber={startQuestionNumber} />
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </LoadingWithEffect>
