@@ -460,20 +460,48 @@ const ClassChapterLesson = () => {
 		setTemplateDownloadLoading(true);
 		try {
 			const response = await teacherManagementApi.downloadClassLessonTemplate();
-			
-			// API returns SAS URL directly (due to axios interceptor returning response.data)
-			let downloadUrl;
-			if (typeof response === 'string') {
+
+			let downloadUrl = null;
+			let blobToDownload = null;
+
+			if (response instanceof Blob) {
+				blobToDownload = response;
+			} else if (response?.data instanceof Blob) {
+				const blobType = response.data.type || '';
+				const isJsonLike =
+					blobType.includes('application/json') ||
+					blobType.includes('text/plain') ||
+					blobType.includes('text/html');
+
+				if (isJsonLike) {
+					try {
+						const blobText = await response.data.text();
+						const parsed = JSON.parse(blobText);
+						downloadUrl = parsed?.url || parsed?.data || parsed;
+					} catch {
+						downloadUrl = await response.data.text();
+					}
+				} else {
+					blobToDownload = response.data;
+				}
+			} else if (typeof response === 'string') {
 				downloadUrl = response;
-			} else if (response && typeof response.data === 'string') {
+			} else if (typeof response?.data === 'string') {
 				downloadUrl = response.data;
-			} else if (response && response.data && response.data.url) {
+			} else if (response?.data?.url) {
 				downloadUrl = response.data.url;
 			} else {
-				console.error('Unexpected response format:', response);
+				throw new Error('Unexpected response format when downloading template');
 			}
-			
-			// Create download link directly from SAS URL
+
+			if (!downloadUrl && blobToDownload) {
+				downloadUrl = window.URL.createObjectURL(blobToDownload);
+			}
+
+			if (!downloadUrl) {
+				throw new Error('Failed to resolve template download URL');
+			}
+
 			const link = document.createElement('a');
 			link.setAttribute('href', downloadUrl);
 			link.setAttribute('download', 'class_lesson_import_template.xlsx');
@@ -482,7 +510,11 @@ const ClassChapterLesson = () => {
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
-			
+
+			if (downloadUrl.startsWith('blob:')) {
+				window.URL.revokeObjectURL(downloadUrl);
+			}
+
 			spaceToast.success('Template downloaded successfully');
 		} catch (error) {
 			console.error('Error downloading template:', error);
