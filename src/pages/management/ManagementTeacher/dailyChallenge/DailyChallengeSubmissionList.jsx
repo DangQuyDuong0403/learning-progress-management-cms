@@ -15,7 +15,6 @@ import {
 } from "antd";
 import {
   SearchOutlined,
-  EyeOutlined,
   ClockCircleOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
@@ -31,6 +30,9 @@ import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuCo
 import usePageTitle from "../../../../hooks/usePageTitle";
 import { dailyChallengeApi } from "../../../../apis/apis";
 import { useSelector } from "react-redux";
+
+const EXTEND_ELIGIBLE_STATUSES = new Set(["PENDING", "DRAFT"]);
+const RESET_ELIGIBLE_STATUSES = new Set(["SUBMITTED", "GRADED", "MISSED"]);
 
 const DailyChallengeSubmissionList = () => {
   const { RangePicker } = DatePicker;
@@ -58,6 +60,64 @@ const DailyChallengeSubmissionList = () => {
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [resetSelectedSubmissionIds, setResetSelectedSubmissionIds] = useState([]);
   const [resetDateRange, setResetDateRange] = useState([]);
+
+  const extendEligibleRows = useMemo(() => {
+    return rows.filter((item) => {
+      const status = (item?.submissionStatus || "")
+        .toString()
+        .trim()
+        .toUpperCase();
+      return EXTEND_ELIGIBLE_STATUSES.has(status);
+    });
+  }, [rows]);
+
+  const extendEligibleIds = useMemo(
+    () =>
+      extendEligibleRows
+        .map((item) => item?.submissionId)
+        .filter((idValue) => idValue !== null && idValue !== undefined),
+    [extendEligibleRows]
+  );
+
+  const extendEligibleIdSet = useMemo(
+    () => new Set(extendEligibleIds),
+    [extendEligibleIds]
+  );
+
+  useEffect(() => {
+    setExtendSelectedSubmissionIds((prev) =>
+      prev.filter((id) => extendEligibleIdSet.has(id))
+    );
+  }, [extendEligibleIdSet]);
+
+  const resetEligibleRows = useMemo(() => {
+    return rows.filter((item) => {
+      const status = (item?.submissionStatus || "")
+        .toString()
+        .trim()
+        .toUpperCase();
+      return RESET_ELIGIBLE_STATUSES.has(status);
+    });
+  }, [rows]);
+
+  const resetEligibleIds = useMemo(
+    () =>
+      resetEligibleRows
+        .map((item) => item?.submissionId)
+        .filter((idValue) => idValue !== null && idValue !== undefined),
+    [resetEligibleRows]
+  );
+
+  const resetEligibleIdSet = useMemo(
+    () => new Set(resetEligibleIds),
+    [resetEligibleIds]
+  );
+
+  useEffect(() => {
+    setResetSelectedSubmissionIds((prev) =>
+      prev.filter((id) => resetEligibleIdSet.has(id))
+    );
+  }, [resetEligibleIdSet]);
 
   // Debounce search text
   useEffect(() => {
@@ -219,6 +279,17 @@ const DailyChallengeSubmissionList = () => {
       return;
     }
 
+    const invalidSelectedIds = extendSelectedSubmissionIds.filter(
+      (id) => !extendEligibleIdSet.has(id)
+    );
+    if (invalidSelectedIds.length > 0) {
+      spaceToast.error('Some selected submissions are no longer eligible for extension.');
+      setExtendSelectedSubmissionIds((prev) =>
+        prev.filter((id) => extendEligibleIdSet.has(id))
+      );
+      return;
+    }
+
     try {
       setExtendSubmitting(true);
       await dailyChallengeApi.extendSubmissionDeadline(
@@ -277,6 +348,17 @@ const DailyChallengeSubmissionList = () => {
       return;
     }
 
+    const invalidResetSelection = resetSelectedSubmissionIds.filter(
+      (id) => !resetEligibleIdSet.has(id)
+    );
+    if (invalidResetSelection.length > 0) {
+      spaceToast.error('Some selected submissions are no longer eligible for reset.');
+      setResetSelectedSubmissionIds((prev) =>
+        prev.filter((id) => resetEligibleIdSet.has(id))
+      );
+      return;
+    }
+
     try {
       setResetSubmitting(true);
       await dailyChallengeApi.resetSubmissions(
@@ -301,10 +383,11 @@ const DailyChallengeSubmissionList = () => {
   };
 
   const handleSelectAllReset = () => {
-    const allIds = rows
-      .map((item) => item?.submissionId)
-      .filter((idValue) => idValue !== null && idValue !== undefined);
-    setResetSelectedSubmissionIds(allIds);
+    if (resetEligibleIds.length === 0) {
+      spaceToast.info('No eligible submissions to reset right now.');
+      return;
+    }
+    setResetSelectedSubmissionIds([...resetEligibleIds]);
   };
 
   const handleClearResetSelection = () => {
@@ -313,6 +396,10 @@ const DailyChallengeSubmissionList = () => {
 
   const toggleResetSelection = (submissionId, forceValue = null) => {
     if (!submissionId) return;
+    if (!resetEligibleIdSet.has(submissionId)) {
+      spaceToast.error('Only submitted, graded or missed submissions can be reset.');
+      return;
+    }
     setResetSelectedSubmissionIds((prev) => {
       const alreadySelected = prev.includes(submissionId);
       const shouldSelect =
@@ -332,25 +419,18 @@ const DailyChallengeSubmissionList = () => {
 
   const resetSelectedSubmissions = useMemo(
     () =>
-      rows.filter((item) =>
+      resetEligibleRows.filter((item) =>
         resetSelectedSubmissionIds.includes(item.submissionId)
       ),
-    [rows, resetSelectedSubmissionIds]
-  );
-
-  const extendSelectedSubmissions = useMemo(
-    () =>
-      rows.filter((item) =>
-        extendSelectedSubmissionIds.includes(item.submissionId)
-      ),
-    [rows, extendSelectedSubmissionIds]
+    [resetEligibleRows, resetSelectedSubmissionIds]
   );
 
   const handleSelectAllExtend = () => {
-    const allIds = rows
-      .map((item) => item?.submissionId)
-      .filter((idValue) => idValue !== null && idValue !== undefined);
-    setExtendSelectedSubmissionIds(allIds);
+    if (extendEligibleIds.length === 0) {
+      spaceToast.info('No eligible submissions to extend right now.');
+      return;
+    }
+    setExtendSelectedSubmissionIds([...extendEligibleIds]);
   };
 
   const handleClearExtendSelection = () => {
@@ -359,6 +439,10 @@ const DailyChallengeSubmissionList = () => {
 
   const toggleExtendSelection = (submissionId, forceValue = null) => {
     if (!submissionId) return;
+    if (!extendEligibleIdSet.has(submissionId)) {
+      spaceToast.error("Only submissions in Pending or Draft can be extended.");
+      return;
+    }
     setExtendSelectedSubmissionIds((prev) => {
       const alreadySelected = prev.includes(submissionId);
       const shouldSelect =
@@ -736,55 +820,9 @@ const DailyChallengeSubmissionList = () => {
                 </Space>
               </div>
               <Typography.Text type="secondary" style={{ display: 'block' }}>
-                Note: The new deadline must be in the future.
+                Only submissions in Pending or Draft can be extended. The new deadline must be in the future.
               </Typography.Text>
             </div>
-
-            <div
-              style={{
-                background: '#fafafa',
-                borderRadius: 12,
-                border: '1px solid #e8e8e8',
-                padding: '16px',
-                minHeight: 165,
-              }}
-            >
-              <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
-                Selected submissions
-              </Typography.Text>
-              {extendSelectedSubmissions.length === 0 ? (
-                <Alert
-                  type="warning"
-                  showIcon
-                  message="No submissions selected."
-                  description="Please use the list below to choose the students whose deadlines you want to extend."
-                />
-              ) : (
-                <Space size={[8, 8]} wrap>
-                  {extendSelectedSubmissions.slice(0, 8).map((item) => {
-                    const displayName = item.studentName || `ID ${item.submissionId}`;
-                    const codeSuffix = item.studentCode ? ` (${item.studentCode})` : '';
-                    return (
-                      <Tag
-                        key={item.submissionId}
-                        color="blue"
-                        style={{ padding: '6px 10px', borderRadius: 999 }}
-                      >
-                        {displayName}
-                        {codeSuffix}
-                      </Tag>
-                    );
-                  })}
-                  {extendSelectedSubmissions.length > 8 && (
-                    <Tag color="blue">
-                      +{extendSelectedSubmissions.length - 8} other students
-                    </Tag>
-                  )}
-                </Space>
-              )}
-            </div>
-
-            <Divider style={{ margin: '8px 0' }} />
 
             <div>
               <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
@@ -804,16 +842,8 @@ const DailyChallengeSubmissionList = () => {
                     gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
                   }}
                 >
-                  {rows.map((item) => {
+                  {extendEligibleRows.map((item) => {
                     const checked = extendSelectedSubmissionIds.includes(item.submissionId);
-                    const statusText =
-                      typeof item.submissionStatus === 'string'
-                        ? item.submissionStatus.charAt(0).toUpperCase() +
-                          item.submissionStatus.slice(1).toLowerCase()
-                        : '-';
-                    const submittedAtText = formatDateTimeVi(item.submittedAt);
-                    const startAtText = formatDateTimeVi(item.startDate);
-                    const endAtText = formatDateTimeVi(item.endDate);
                     return (
                       <div
                         key={item.submissionId}
@@ -843,35 +873,19 @@ const DailyChallengeSubmissionList = () => {
                             <Typography.Text strong style={{ fontSize: 16 }}>
                               {item.studentName || `ID ${item.submissionId}`}
                             </Typography.Text>
-                            {item.studentCode && (
-                              <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                                Student code: {item.studentCode}
-                              </Typography.Text>
-                            )}
-                            <div style={{ marginTop: 8 }}>
-                              <Tag color="blue" style={{ borderRadius: 999 }}>
-                                {statusText}
-                              </Tag>
-                            </div>
-                            <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-                              Start: {startAtText}
-                            </Typography.Text>
                             <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                              End: {endAtText}
-                            </Typography.Text>
-                            <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                              Submitted at: {submittedAtText}
+                              {item.studentCode ? `Code: ${item.studentCode}` : 'No student code'}
                             </Typography.Text>
                           </div>
                         </div>
                       </div>
                     );
                   })}
-                  {rows.length === 0 && (
+                  {extendEligibleRows.length === 0 && (
                     <Alert
                       type="info"
                       showIcon
-                      message={t('dailyChallenge.noData')}
+                      message="No submissions are currently pending or in draft."
                       style={{ gridColumn: '1 / -1' }}
                     />
                   )}
@@ -926,7 +940,7 @@ const DailyChallengeSubmissionList = () => {
                   </Space>
                 </div>
                 <Typography.Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
-                  You can extend the window beyond 24 hours if the class needs it.
+                  Only submissions that were submitted, graded, or missed can be reset.
                 </Typography.Text>
               </div>
             </div>
@@ -995,7 +1009,7 @@ const DailyChallengeSubmissionList = () => {
                     gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
                   }}
                 >
-                  {rows.map((item) => {
+                  {resetEligibleRows.map((item) => {
                     const checked = resetSelectedSubmissionIds.includes(item.submissionId);
                     const statusText =
                       typeof item.submissionStatus === 'string'
@@ -1058,11 +1072,11 @@ const DailyChallengeSubmissionList = () => {
                       </div>
                     );
                   })}
-                  {rows.length === 0 && (
+                  {resetEligibleRows.length === 0 && (
                     <Alert
                       type="info"
                       showIcon
-                      message={t('dailyChallenge.noData')}
+                      message="No submissions are currently eligible for reset."
                       style={{ gridColumn: '1 / -1' }}
                     />
                   )}

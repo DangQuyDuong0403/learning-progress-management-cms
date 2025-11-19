@@ -112,7 +112,10 @@
     "clickToUpload": "Nhấp để tải lên",
     "maxFileSize": "Kích thước file tối đa",
     "index": "STT",
-    "copy": "Sao chép"
+    "copy": "Sao chép",
+    "parentInformation": "Thông tin phụ huynh",
+    "parentPhone": "Số điện thoại phụ huynh",
+    "parentEmail": "Email phụ huynh"
   },
   "sidebar": {
     "title": "Learning CMS",

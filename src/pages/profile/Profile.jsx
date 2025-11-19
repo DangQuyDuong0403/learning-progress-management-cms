@@ -145,6 +145,14 @@ export default function Profile() {
     return '/img/avatar_1.png';
   };
 
+  // Helper function to safely display parent info values (handles null, undefined, and empty strings)
+  const getParentInfoValue = (value) => {
+    if (value === null || value === undefined || value === '' || (typeof value === 'string' && value.trim() === '')) {
+      return '-';
+    }
+    return value;
+  };
+
   
 
   // Show TableSpinner while fetching profile data or during fade animation
@@ -347,10 +355,10 @@ export default function Profile() {
                   {/* Parent Name and Relationship */}
                   <div className={`parent-name-section-new ${theme}-parent-name-section-new`}>
                     <div className={`parent-name-new ${theme}-parent-name-new`}>
-                      {profileData?.parentInfo?.parentName || '-'}
+                      {getParentInfoValue(profileData?.parentInfo?.parentName)}
                     </div>
                     <div className={`parent-relationship-new ${theme}-parent-relationship-new`}>
-                      {profileData?.parentInfo?.relationship || '-'}
+                      {getParentInfoValue(profileData?.parentInfo?.relationship)}
                     </div>
                   </div>
                 </div>
@@ -363,7 +371,7 @@ export default function Profile() {
                       {t('common.parentPhone')}
                     </div>
                     <div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
-                      {profileData?.parentInfo?.parentPhone || '-'}
+                      {getParentInfoValue(profileData?.parentInfo?.parentPhone)}
                     </div>
                   </div>
                   
@@ -373,7 +381,7 @@ export default function Profile() {
                       {t('common.parentEmail')}
                     </div>
                     <div className={`parent-contact-value-new ${theme}-parent-contact-value-new`}>
-                      {profileData?.parentInfo?.parentEmail || '-'}
+                      {getParentInfoValue(profileData?.parentInfo?.parentEmail)}
                     </div>
                   </div>
                 </div>
