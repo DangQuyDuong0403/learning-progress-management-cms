@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import usePageTitle from '../../hooks/usePageTitle';
 import {
 	Card,
@@ -22,7 +21,6 @@ import ThemedLayoutWithSidebar from '../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../component/teacherlayout/ThemedLayout';
 import { useTheme } from '../../contexts/ThemeContext';
 import { spaceToast } from '../../component/SpaceToastify';
-import { logout } from '../../redux/auth';
 import authApi from '../../apis/backend/auth';
 import CustomCursor from '../../component/cursor/CustomCursor';
 import './Settings.css';
@@ -32,8 +30,6 @@ const { Text } = Typography;
 const Settings = () => {
 	const { t, i18n } = useTranslation();
 	const { theme, toggleTheme } = useTheme();
-	const dispatch = useDispatch();
-	const navigate = useNavigate();
 	const { user } = useSelector((state) => state.auth);
 	
 	// Set page title
@@ -103,24 +99,21 @@ const Settings = () => {
 			// Call API directly like ChangePassword.jsx instead of through Redux
 			const response = await authApi.changePassword(passwordData);
 			
-			// Success - show toast and close modal
+			// Success - update tokens, show toast and close modal
+			const tokenPayload = response?.data || {};
+			const { accessToken: newAccessToken, refreshToken: newRefreshToken } = tokenPayload;
+			
+			if (newAccessToken) {
+				localStorage.setItem('accessToken', newAccessToken);
+			}
+			
+			if (newRefreshToken) {
+				localStorage.setItem('refreshToken', newRefreshToken);
+			}
+
 			spaceToast.success(response.message);
 			setModals(prev => ({ ...prev, password: false }));
 			passwordForm.resetFields();
-			
-			// Clear accessToken from localStorage and Redux state (like ChangePassword.jsx)
-			localStorage.removeItem('accessToken');
-			localStorage.removeItem('refreshToken');
-			localStorage.removeItem('user');
-			localStorage.removeItem('mustChangePassword');
-			localStorage.removeItem('mustUpdateProfile');
-			dispatch(logout());
-			
-			// Show message that user needs to login again and redirect
-			setTimeout(() => {
-				spaceToast.info('Please login again with your new password');
-				navigate('/choose-login');
-			}, 2000);
 			
 		} catch (error) {
 			console.error('Change password error:', error);

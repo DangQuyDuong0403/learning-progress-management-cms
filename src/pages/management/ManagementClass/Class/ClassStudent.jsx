@@ -32,6 +32,7 @@ import classManagementApi from "../../../../apis/backend/classManagement";
 import studentManagementApi from "../../../../apis/backend/StudentManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import ROUTER_PAGE from "../../../../constants/router";
+import { FILE_NAME_PREFIXES, formatDateForFilename } from "../../../../constants/fileNames";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -1032,7 +1033,11 @@ const ClassStudent = () => {
       const url = window.URL.createObjectURL(response.data);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `class_${id}_students_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const formattedDate = formatDateForFilename();
+      const normalizedClassName = (classData?.name || `class_${id}`)
+        .trim()
+        .replace(/\s+/g, '_');
+      link.download = `${FILE_NAME_PREFIXES.STUDENT_LIST}${normalizedClassName}_${formattedDate}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

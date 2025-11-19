@@ -38,6 +38,8 @@ import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import BottomActionBar from '../../../../component/BottomActionBar';
 import syllabusManagementApi from '../../../../apis/backend/syllabusManagement';
+import classManagementApi from '../../../../apis/backend/classManagement';
+import { FILE_NAME_PREFIXES } from '../../../../constants/fileNames';
 
 const SyllabusList = () => {
 	const { t } = useTranslation();
@@ -79,6 +81,9 @@ const SyllabusList = () => {
 	const [exportAllLoading, setExportAllLoading] = useState(false);
 	const [validateLoading, setValidateLoading] = useState(false);
 
+	// Track which syllabuses are already attached to classes
+	const [syllabusUsageMap, setSyllabusUsageMap] = useState({});
+
 	// Pagination state
 	const [pagination, setPagination] = useState({
 		current: 1,
@@ -87,6 +92,34 @@ const SyllabusList = () => {
 		showSizeChanger: true,
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
+
+	// Fetch class list to determine which syllabuses are already used
+	const fetchSyllabusUsage = useCallback(async () => {
+		try {
+			const response = await classManagementApi.getClasses({
+				page: 0,
+				size: 100,
+				sortBy: 'createdAt',
+				sortDir: 'desc',
+				include: 'syllabus',
+			});
+
+			if (response?.success && Array.isArray(response.data)) {
+				const usageMap = response.data.reduce((acc, classItem) => {
+					const code = classItem.syllabus?.syllabusCode;
+					if (code) {
+						acc[code] = (acc[code] || 0) + 1;
+					}
+					return acc;
+				}, {});
+				setSyllabusUsageMap(usageMap);
+			} else {
+				setSyllabusUsageMap({});
+			}
+		} catch (error) {
+			console.error('Error fetching classes for syllabus usage:', error);
+		}
+	}, []);
 
 	// Fetch syllabuses from API
 	const fetchSyllabuses = useCallback(async (page = 1, size = 10, search = '', sortField = 'createdAt', sortDirection = 'desc') => {
@@ -148,6 +181,10 @@ const SyllabusList = () => {
 			setLoading(false);
 		}
 	}, []);
+
+	useEffect(() => {
+		fetchSyllabusUsage();
+	}, [fetchSyllabusUsage]);
 
 
 	useEffect(() => {
@@ -223,6 +260,7 @@ const SyllabusList = () => {
 			
 			setIsDeleteModalVisible(false);
 			setDeleteSyllabus(null);
+			fetchSyllabusUsage();
 		} catch (error) {
 			console.error('Error deleting syllabus:', error);
 			
@@ -253,6 +291,7 @@ const SyllabusList = () => {
 
 	const handleRefresh = () => {
 		fetchSyllabuses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+		fetchSyllabusUsage();
 	};
 
 	const handleSearch = (value) => {
@@ -635,6 +674,7 @@ const SyllabusList = () => {
 			
 			setIsBulkDeleteModalVisible(false);
 			setSelectedRowKeys([]);
+			fetchSyllabusUsage();
 		} catch (error) {
 			console.error('Error bulk deleting syllabuses:', error);
 			
@@ -679,7 +719,7 @@ const SyllabusList = () => {
 			
 			// Generate filename with timestamp and count
 			const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-			const filename = `selected_syllabuses_${selectedRowKeys.length}_${timestamp}.xlsx`;
+			const filename = `${FILE_NAME_PREFIXES.SELECTED_SYLLABUSES}${selectedRowKeys.length}_${timestamp}.xlsx`;
 			
 			link.download = filename;
 			link.style.display = 'none';
@@ -969,12 +1009,16 @@ const SyllabusList = () => {
 							onClick={() => handleEdit(record)}
 						/>
 					</Tooltip>
-				<Button
-					type="text"
-					size="small"
-					icon={<DeleteOutlined style={{ fontSize: '25px', color: '#ff4d4f' }} />}
-					onClick={() => handleDeleteClick(record)}
-				/>
+				{!syllabusUsageMap[record.syllabusCode] && (
+					<Tooltip title={t('common.delete')}>
+						<Button
+							type="text"
+							size="small"
+							icon={<DeleteOutlined style={{ fontSize: '25px', color: '#ff4d4f' }} />}
+							onClick={() => handleDeleteClick(record)}
+						/>
+					</Tooltip>
+				)}
 				</Space>
 			),
 		},
