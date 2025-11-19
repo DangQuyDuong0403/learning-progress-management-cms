@@ -2246,7 +2246,7 @@ const AIGenerateFeedback = () => {
                     if (className) parts.push(className);
                     if (challengeName) parts.push(challengeName);
                     if (studentName) parts.push(studentName);
-                    return parts.length > 0 ? parts.join(' / ') : (t('dailyChallenge.feedbackAndGrading') || 'Feedback & Grading');
+                    return parts.length > 0 ? parts.join(' / ') : (t('dailyChallenge.feedbackAndGrading') !== 'dailyChallenge.feedbackAndGrading' ? t('dailyChallenge.feedbackAndGrading') : 'Feedback & Grading');
                   })()}
                 </h2>
               </div>
