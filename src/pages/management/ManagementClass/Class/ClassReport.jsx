@@ -475,6 +475,32 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
   draftValue: '#d4d4d8',
 };
 
+  const ChallengeProgressSkillTick = ({ payload, x, y }) => {
+    const value = payload?.value || '';
+    const lines =
+      value === 'Grammar & Vocabulary'
+        ? ['Grammar &', 'Vocabulary']
+        : [value];
+
+    return (
+      <text
+        x={x - 4}
+        y={y}
+        textAnchor="end"
+        dominantBaseline="central"
+        fontSize={12}
+        fontWeight={600}
+        fill="#111827"
+      >
+        {lines.map((line, index) => (
+          <tspan key={`${value}-${index}`} x={x - 4} dy={index === 0 ? 0 : 14}>
+            {line}
+          </tspan>
+        ))}
+      </text>
+    );
+  };
+
   // Legend payload for "Challenge Progress by All Skills"
   // Keep pastel colors and fixed order: Finished, Published, In Progress, Draft
   const challengeProgressLegendPayload = useMemo(
@@ -984,9 +1010,17 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
               {challengeProgressData.length === 0 ? (
                 <Empty description="No challenge progress data" />
               ) : (
-                <div style={{ width: '100%', height: 320, padding: '0 16px 0 12px' }}>
+                <div
+                  style={{
+                    width: 'calc(100% + 64px)',
+                    margin: '0 -40px',
+                    paddingLeft: 10,
+                    paddingRight: 32,
+                    height: 320,
+                  }}
+                >
                   <ResponsiveContainer>
-                    <ReBarChart data={challengeProgressData} layout="vertical" margin={{ top: 24, right: 16, bottom: 10, left: 20 }}>
+                    <ReBarChart data={challengeProgressData} layout="vertical" margin={{ top: 24, right: 16, bottom: 10, left: -14 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis
                         type="number"
@@ -994,7 +1028,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                         ticks={[0, 20, 40, 60, 80, 100]}
                         tickFormatter={(v) => `${Number(v).toFixed(0)}%`}
                       />
-                      <YAxis type="category" dataKey="skill" tick={{ fontSize: 12, fontWeight: 600 }} width={140} />
+                      <YAxis type="category" dataKey="skill" tick={<ChallengeProgressSkillTick />} width={130} />
                       <ReTooltip content={renderChallengeProgressTooltip} />
                       <Legend wrapperStyle={{ marginTop: 12 }} content={renderChallengeProgressLegend} />
                       <Bar dataKey="finishedValue" name="Finished" stackId="progress" fill="#34d399">

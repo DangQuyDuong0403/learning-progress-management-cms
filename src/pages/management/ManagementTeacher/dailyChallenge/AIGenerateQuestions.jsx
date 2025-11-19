@@ -142,6 +142,7 @@ const AIGenerateQuestions = () => {
   
   const [saving, setSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   // Local selections for interactive preview of Dropdown type
   const [dropdownSelections, setDropdownSelections] = useState({});
@@ -767,6 +768,7 @@ const AIGenerateQuestions = () => {
     
     try {
       setIsGenerating(true);
+      setGenerationProgress(0);
       setShowPreview(false);
       // Prepare level value: for Camkey levels, send ID as string; for others, send the value directly
       const levelValue = selectedLevel ? String(selectedLevel) : '';
@@ -810,6 +812,9 @@ const AIGenerateQuestions = () => {
         rawList = res.payload.questions;
       }
       const normalized = normalizeQuestionsFromAI(rawList);
+      setGenerationProgress(100);
+      // Small delay to show 100% before closing
+      await new Promise(resolve => setTimeout(resolve, 300));
       if (!normalized.length) {
         spaceToast.warning('AI did not return any questions');
         setQuestions([]);
@@ -826,6 +831,7 @@ const AIGenerateQuestions = () => {
       spaceToast.error(beErr || error?.response?.data?.error || 'Failed to generate AI questions');
     } finally {
       setIsGenerating(false);
+      setGenerationProgress(0);
     }
   }, [promptDescription, t, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, getBackendMessage]);
 
@@ -837,6 +843,7 @@ const AIGenerateQuestions = () => {
     }
     try {
       setIsGenerating(true);
+      setGenerationProgress(0);
       setShowPreview(false);
       const res = await dailyChallengeApi.parseQuestionsFromFile(uploadedFile, promptDescription || '');
       let rawList = [];
@@ -846,6 +853,9 @@ const AIGenerateQuestions = () => {
       else if (Array.isArray(res?.data)) rawList = res.data;
       else if (Array.isArray(res?.result?.questions)) rawList = res.result.questions;
       const normalized = normalizeQuestionsFromAI(rawList);
+      setGenerationProgress(100);
+      // Small delay to show 100% before closing
+      await new Promise(resolve => setTimeout(resolve, 300));
       if (!normalized.length) {
         spaceToast.warning('No questions parsed from file');
         setQuestions([]);
@@ -861,8 +871,30 @@ const AIGenerateQuestions = () => {
       spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate from file');
     } finally {
       setIsGenerating(false);
+      setGenerationProgress(0);
     }
   }, [uploadedFile, promptDescription, normalizeQuestionsFromAI, getBackendMessage]);
+
+  // Simulate progress when generating
+  useEffect(() => {
+    let progressInterval = null;
+    if (isGenerating) {
+      setGenerationProgress(0);
+      progressInterval = setInterval(() => {
+        setGenerationProgress((prev) => {
+          if (prev >= 90) {
+            return prev; // Stop at 90% until API call completes
+          }
+          // Increment progress with decreasing speed
+          const increment = prev < 30 ? 3 : prev < 60 ? 2 : 1;
+          return Math.min(prev + increment, 90);
+        });
+      }, 200);
+    }
+    return () => {
+      if (progressInterval) clearInterval(progressInterval);
+    };
+  }, [isGenerating]);
 
   // Handle save
   const handleSave = useCallback(async () => {
@@ -1450,6 +1482,18 @@ const AIGenerateQuestions = () => {
   
   return (
     <ThemedLayout customHeader={customHeader}>
+      <style>
+        {`
+          @keyframes astroBounce {
+            0%, 100% {
+              transform: translateY(-50%) translateY(0);
+            }
+            50% {
+              transform: translateY(-50%) translateY(-8px);
+            }
+          }
+        `}
+      </style>
       <div className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}>
         <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
           {/* Hierarchy info moved inside the main container */}
@@ -2567,6 +2611,19 @@ const AIGenerateQuestions = () => {
                     >
                       Generate From File
                     </Button>
+                    <Typography.Text
+                      style={{
+                        display: 'block',
+                        marginTop: '8px',
+                        fontSize: '12px',
+                        fontStyle: 'italic',
+                        color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.6)',
+                        textAlign: 'center',
+                        width: '100%'
+                      }}
+                    >
+                      The generated content is for reference only.
+                    </Typography.Text>
                   </div>
                 )}
 
@@ -2640,7 +2697,7 @@ const AIGenerateQuestions = () => {
                     </div>
 
                     {/* Generate Questions button below Question Settings */}
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', marginTop: 16, justifyContent: 'center' }}>
                       <Button
                         type="primary"
                         icon={<ThunderboltOutlined />}
@@ -2665,6 +2722,16 @@ const AIGenerateQuestions = () => {
                       >
                         {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Questions'}
                       </Button>
+                      <Typography.Text
+                        style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.6)',
+                          textAlign: 'center'
+                        }}
+                      >
+                        The generated content is for reference only.
+                      </Typography.Text>
                     </div>
                   </>
                 )}
@@ -2683,71 +2750,160 @@ const AIGenerateQuestions = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 background: theme === 'sun'
-                  ? 'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(240,249,255,0.85))'
-                  : 'linear-gradient(135deg, rgba(18, 18, 27, 0.85), rgba(34, 27, 60, 0.85))',
-                backdropFilter: 'blur(6px)'
+                  ? 'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(240,249,255,0.92))'
+                  : 'linear-gradient(135deg, rgba(18, 18, 27, 0.92), rgba(34, 27, 60, 0.92))',
+                backdropFilter: 'blur(8px)',
+                transition: 'none',
+                animation: 'none'
               }}
             >
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  position: 'relative',
-                  width: '140px',
-                  height: '140px',
-                  marginBottom: '24px'
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '140px',
-                    height: '140px',
-                    border: `4px solid ${primaryColor}20`,
-                    borderRadius: '50%',
-                    borderTop: `4px solid ${primaryColor}`,
-                    animation: 'spin 1.8s linear infinite'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    top: '26px',
-                    left: '26px',
-                    width: '88px',
-                    height: '88px',
-                    background: `radial-gradient(circle, ${primaryColor}30, ${primaryColor}10)`,
-                    borderRadius: '50%',
-                    animation: 'pulse 1.6s ease-in-out infinite'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    fontSize: '36px',
-                    color: primaryColor,
-                    animation: 'bounce 1.1s ease-in-out infinite'
-                  }}>🤖</div>
+              <Card
+                style={{
+                  width: '520px',
+                  maxWidth: '90vw',
+                  borderRadius: '24px',
+                  border: theme === 'sun'
+                    ? `2px solid ${primaryColor}40`
+                    : `2px solid ${primaryColor}50`,
+                  background: theme === 'sun'
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                  boxShadow: theme === 'sun'
+                    ? '0 12px 48px rgba(24, 144, 255, 0.2)'
+                    : '0 12px 48px rgba(139, 92, 246, 0.3)',
+                  padding: '32px',
+                  transition: 'none',
+                  animation: 'none',
+                  transform: 'none'
+                }}
+                bodyStyle={{ padding: 0 }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '24px' }}>
+                  {/* AI Icon */}
+                  <div
+                    style={{
+                      width: '100px',
+                      height: '100px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: theme === 'sun'
+                        ? `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}10)`
+                        : `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}15)`,
+                      border: `3px solid ${primaryColor}40`,
+                      boxShadow: theme === 'sun'
+                        ? `0 8px 24px ${primaryColor}20`
+                        : `0 8px 24px ${primaryColor}30`,
+                      animation: 'none',
+                      transition: 'none',
+                      transform: 'none'
+                    }}
+                  >
+                    <span style={{ fontSize: '48px' }}>🤖</span>
+                  </div>
+
+                  {/* Title */}
+                  <div>
+                    <Title level={3} style={{ margin: 0, marginBottom: '8px', fontSize: '24px', fontWeight: 700, color: primaryColor }}>
+                      {t('dailyChallenge.aiThinking') || 'AI is thinking...'}
+                    </Title>
+                    <div style={{ fontSize: '15px', color: theme === 'sun' ? '#64748b' : '#94a3b8', fontWeight: 500 }}>
+                      {t('dailyChallenge.generatingQuestions') || 'Generating questions based on your prompt'}
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div style={{ width: '100%', padding: '0 8px' }}>
+                    <div style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
+                      {/* Progress Bar Background */}
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '32px',
+                          borderRadius: '16px',
+                          background: theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.15)',
+                          position: 'relative',
+                          overflow: 'visible',
+                          border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(139, 92, 246, 0.2)'}`
+                        }}
+                      >
+                        {/* Progress Fill with Gradient */}
+                        <div
+                          style={{
+                            width: `${generationProgress}%`,
+                            height: '100%',
+                            background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)',
+                            borderRadius: '14px',
+                            transition: 'width 0.3s ease',
+                            position: 'relative',
+                            boxShadow: '0 2px 8px rgba(255, 165, 0, 0.3)',
+                            overflow: 'visible'
+                          }}
+                        >
+                          {/* Astro Image on Progress Bar */}
+                          {generationProgress > 0 && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                right: '-20px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '48px',
+                                height: '48px',
+                                zIndex: 10,
+                                animation: 'astroBounce 1s ease-in-out infinite'
+                              }}
+                            >
+                              <img
+                                src="/img/astro.png"
+                                alt="Astro"
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain',
+                                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Percentage Text */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          color: theme === 'sun' ? '#0F172A' : '#FFFFFF',
+                          textShadow: theme === 'sun'
+                            ? '0 1px 2px rgba(255, 255, 255, 0.9)'
+                            : '0 1px 2px rgba(0, 0, 0, 0.6)',
+                          zIndex: 5,
+                          pointerEvents: 'none'
+                        }}
+                      >
+                        {generationProgress}%
+                      </div>
+                    </div>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      color: theme === 'sun' ? '#94a3b8' : '#64748b', 
+                      fontWeight: 400,
+                      marginTop: '4px',
+                      textAlign: 'center'
+                    }}>
+                      {generationProgress < 30 ? 'Analyzing prompt...' :
+                       generationProgress < 60 ? 'Creating questions...' :
+                       generationProgress < 90 ? 'Finalizing content...' :
+                       'Almost done...'}
+                    </div>
+                  </div>
                 </div>
-                <Title level={3} style={{
-                  marginTop: 0,
-                  marginBottom: '12px',
-                  fontSize: '26px',
-                  fontWeight: 700,
-                  color: primaryColor
-                }}>
-                  {t('dailyChallenge.aiThinking') || 'AI is thinking...'}
-                </Title>
-                <div style={{
-                  fontSize: '16px',
-                  color: theme === 'sun' ? '#334155' : '#cbd5e1',
-                  fontWeight: 500
-                }}>
-                  {t('dailyChallenge.generatingQuestions') || 'Generating questions based on your prompt'}
-                </div>
-              </div>
+              </Card>
             </div>
           )}
 
@@ -3158,6 +3314,8 @@ const AIGenerateQuestions = () => {
                                         .replace(/[a-zA-Z0-9]{6,}/g, '') // Remove long alphanumeric strings like "a1b2c3"
                                         .replace(/[a-zA-Z]{3,}[0-9]{3,}/g, '') // Remove patterns like "abc123"
                                         .replace(/[0-9]{3,}[a-zA-Z]{3,}/g, '') // Remove patterns like "123abc"
+                                        .replace(/[a-zA-Z0-9]*[a-zA-Z][0-9][a-zA-Z][0-9][a-zA-Z0-9]*/g, '') // Remove patterns like "a1b2at", "1b2at"
+                                        .replace(/[0-9][a-zA-Z][0-9][a-zA-Z][0-9]*/g, '') // Remove patterns like "1b2at"
                                         .trim();
                                       return <React.Fragment key={idx}>{cleanPart}</React.Fragment>;
                                     }

@@ -283,6 +283,7 @@ const AIGenerateFeedback = () => {
     return prefill?.questionWeight || 10;
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [saving, setSaving] = useState(false);
   // Speaking-specific controls
   const [speakingReferenceText, setSpeakingReferenceText] = useState('');
@@ -1920,9 +1921,31 @@ const AIGenerateFeedback = () => {
     });
   }, [navigate, user, challengeId, submissionId, location.state, location.search, classId, className, challengeName, studentName]);
 
+  // Simulate progress when generating
+  useEffect(() => {
+    let progressInterval = null;
+    if (isGenerating) {
+      setGenerationProgress(0);
+      progressInterval = setInterval(() => {
+        setGenerationProgress((prev) => {
+          if (prev >= 90) {
+            return prev; // Stop at 90% until API call completes
+          }
+          // Increment progress with decreasing speed
+          const increment = prev < 30 ? 3 : prev < 60 ? 2 : 1;
+          return Math.min(prev + increment, 90);
+        });
+      }, 200);
+    }
+    return () => {
+      if (progressInterval) clearInterval(progressInterval);
+    };
+  }, [isGenerating]);
+
   const handleGenerateAI = useCallback(async () => {
     try {
       setIsGenerating(true);
+      setGenerationProgress(0);
       if (sectionType === 'writing') {
         // Writing grading via submissionQuestionId
         const writingSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
@@ -1966,6 +1989,9 @@ const AIGenerateFeedback = () => {
           hasAIGenerated: true,
           sectionType: 'writing',
         });
+        setGenerationProgress(100);
+        // Small delay to show 100% before closing
+        await new Promise(resolve => setTimeout(resolve, 300));
         spaceToast.success(getBackendMessage(res) || 'AI feedback generated');
       } else if (sectionType === 'speaking') {
         // Speaking pronunciation assessment
@@ -2075,6 +2101,9 @@ const AIGenerateFeedback = () => {
             sectionType: 'speaking',
           });
         }
+        setGenerationProgress(100);
+        // Small delay to show 100% before closing
+        await new Promise(resolve => setTimeout(resolve, 300));
         spaceToast.success(getBackendMessage(res) || 'Pronunciation assessed');
       } else {
         spaceToast.error('AI grading hiện chỉ hỗ trợ cho Writing và Speaking');
@@ -2098,6 +2127,7 @@ const AIGenerateFeedback = () => {
       spaceToast.error(beErr || e?.message || 'Failed to generate AI feedback');
     } finally {
       setIsGenerating(false);
+      setGenerationProgress(0);
     }
   }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, studentAnswer, section, speakingReferenceText, getBackendMessage, stripHtmlToText, parseFeedbackFromResponse, buildPromptFromContent, isOnlyImageUrl]);
 
@@ -3173,7 +3203,7 @@ const AIGenerateFeedback = () => {
                           <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                             Assess pronunciation accuracy and fluency from the student's recording
                           </div>
-                          <div>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                             <Button
                               type="primary"
                               icon={<ThunderboltOutlined />}
@@ -3193,6 +3223,17 @@ const AIGenerateFeedback = () => {
                             >
                               Generate with AI
                             </Button>
+                            <Typography.Text style={{
+                              fontSize: '12px',
+                              fontStyle: 'italic',
+                              color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                              marginTop: '8px',
+                              textAlign: 'center',
+                              display: 'block',
+                              width: '100%'
+                            }}>
+                              The generated content is for reference only.
+                            </Typography.Text>
                           </div>
                         </div>
                       )}
@@ -3476,7 +3517,7 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         Get comprehensive feedback on your writing with detailed analysis and suggestions
                       </div>
-                      <div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -3496,6 +3537,17 @@ const AIGenerateFeedback = () => {
                         >
                           Generate with AI
                         </Button>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '8px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          The generated content is for reference only.
+                        </Typography.Text>
                       </div>
                     </div>
                   )}
@@ -3656,8 +3708,7 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         Regenerate pronunciation analysis for another take
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                       
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -3677,6 +3728,17 @@ const AIGenerateFeedback = () => {
                         >
                           Regenerate with AI
                         </Button>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '8px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          The generated content is for reference only.
+                        </Typography.Text>
                       </div>
                     </div>
                   )}
@@ -3717,7 +3779,7 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         You can regenerate suggestions if you want a different take.
                       </div>
-                      <div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -3737,6 +3799,17 @@ const AIGenerateFeedback = () => {
                         >
                           Regenerate with AI
                         </Button>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '8px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          The generated content is for reference only.
+                        </Typography.Text>
                       </div>
                     </div>
                     ) : null
@@ -4177,6 +4250,192 @@ const AIGenerateFeedback = () => {
           )}
         </div>
       </Modal>
+
+      {/* Full-screen loading overlay */}
+      {isGenerating && (
+        <>
+          <style>
+            {`
+              @keyframes astroBounce {
+                0%, 100% {
+                  transform: translateY(-50%) translateY(0);
+                }
+                50% {
+                  transform: translateY(-50%) translateY(-8px);
+                }
+              }
+            `}
+          </style>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 2000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: theme === 'sun'
+                ? 'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(240,249,255,0.92))'
+                : 'linear-gradient(135deg, rgba(18, 18, 27, 0.92), rgba(34, 27, 60, 0.92))',
+              backdropFilter: 'blur(8px)',
+              transition: 'none',
+              animation: 'none'
+            }}
+          >
+            <Card
+              style={{
+                width: '520px',
+                maxWidth: '90vw',
+                borderRadius: '24px',
+                border: theme === 'sun'
+                  ? `2px solid ${primaryColor}40`
+                  : `2px solid ${primaryColor}50`,
+                background: theme === 'sun'
+                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
+                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                boxShadow: theme === 'sun'
+                  ? '0 12px 48px rgba(24, 144, 255, 0.2)'
+                  : '0 12px 48px rgba(139, 92, 246, 0.3)',
+                padding: '32px',
+                transition: 'none',
+                animation: 'none',
+                transform: 'none'
+              }}
+              bodyStyle={{ padding: 0 }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '24px' }}>
+                {/* AI Icon */}
+                <div
+                  style={{
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: theme === 'sun'
+                      ? `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}10)`
+                      : `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}15)`,
+                    border: `3px solid ${primaryColor}40`,
+                    boxShadow: theme === 'sun'
+                      ? `0 8px 24px ${primaryColor}20`
+                      : `0 8px 24px ${primaryColor}30`,
+                    animation: 'none',
+                    transition: 'none',
+                    transform: 'none'
+                  }}
+                >
+                  <span style={{ fontSize: '48px' }}>🤖</span>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <Title level={3} style={{ margin: 0, marginBottom: '8px', fontSize: '24px', fontWeight: 700, color: primaryColor }}>
+                    {t('dailyChallenge.aiThinking') || 'AI is thinking...'}
+                  </Title>
+                  <div style={{ fontSize: '15px', color: theme === 'sun' ? '#64748b' : '#94a3b8', fontWeight: 500 }}>
+                    {sectionType === 'speaking' 
+                      ? 'Analyzing pronunciation and generating feedback...'
+                      : 'Analyzing writing and generating comprehensive feedback...'}
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div style={{ width: '100%', padding: '0 8px' }}>
+                  <div style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
+                    {/* Progress Bar Background */}
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '32px',
+                        borderRadius: '16px',
+                        background: theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.15)',
+                        position: 'relative',
+                        overflow: 'visible',
+                        border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(139, 92, 246, 0.2)'}`
+                      }}
+                    >
+                      {/* Progress Fill with Gradient */}
+                      <div
+                        style={{
+                          width: `${generationProgress}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)',
+                          borderRadius: '14px',
+                          transition: 'width 0.3s ease',
+                          position: 'relative',
+                          boxShadow: '0 2px 8px rgba(255, 165, 0, 0.3)',
+                          overflow: 'visible'
+                        }}
+                      >
+                        {/* Astro Image on Progress Bar */}
+                        {generationProgress > 0 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              right: '-20px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              width: '48px',
+                              height: '48px',
+                              zIndex: 10,
+                              animation: 'astroBounce 1s ease-in-out infinite'
+                            }}
+                          >
+                            <img
+                              src="/img/astro.png"
+                              alt="Astro"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                                filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Percentage Text */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        color: theme === 'sun' ? '#0F172A' : '#FFFFFF',
+                        textShadow: theme === 'sun' ? '0 1px 2px rgba(255, 255, 255, 0.8)' : '0 1px 2px rgba(0, 0, 0, 0.5)',
+                        zIndex: 5,
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      {generationProgress}%
+                    </div>
+                  </div>
+                  <div style={{ 
+                    fontSize: '13px', 
+                    color: theme === 'sun' ? '#94a3b8' : '#64748b', 
+                    fontWeight: 400,
+                    marginTop: '4px',
+                    textAlign: 'center',
+                    minHeight: '18px'
+                  }}>
+                    {generationProgress < 30 
+                      ? (sectionType === 'speaking' ? 'Processing audio...' : 'Analyzing text...') :
+                     generationProgress < 60 
+                      ? (sectionType === 'speaking' ? 'Assessing pronunciation...' : 'Evaluating criteria...') :
+                     generationProgress < 90 
+                      ? 'Generating feedback...' :
+                     'Almost done...'}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </>
+      )}
     </ThemedLayout>
   );
 };

@@ -1816,63 +1816,6 @@ useEffect(() => {
                 {t('dailyChallenge.dailyChallengeManagement')}
               </h2>
             </div>
-            <div
-              style={{
-                marginTop: 20,
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                gap: 12
-              }}
-            >
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: 12,
-                  background: theme === 'sun' ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${theme === 'sun' ? 'rgba(148,163,184,0.35)' : 'rgba(148,163,184,0.2)'}`,
-                  textAlign: 'center'
-                }}
-              >
-                <Typography.Text style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: theme === 'sun' ? '#64748B' : '#CBD5F5' }}>
-                  Saved Score
-                </Typography.Text>
-                <Typography.Text
-                  strong
-                  style={{
-                    display: 'block',
-                    marginTop: 4,
-                    fontSize: 24,
-                    color: theme === 'sun' ? '#1D4ED8' : '#A78BFA'
-                  }}
-                >
-                  {submissionData?.submission?.score != null ? submissionData.submission.score : '--'}
-                </Typography.Text>
-              </div>
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: 12,
-                  background: theme === 'sun' ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${theme === 'sun' ? 'rgba(148,163,184,0.35)' : 'rgba(148,163,184,0.2)'}`,
-                  textAlign: 'center'
-                }}
-              >
-                <Typography.Text style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: theme === 'sun' ? '#64748B' : '#CBD5F5' }}>
-                  Accuracy
-                </Typography.Text>
-                <Typography.Text
-                  strong
-                  style={{
-                    display: 'block',
-                    marginTop: 4,
-                    fontSize: 24,
-                    color: theme === 'sun' ? '#059669' : '#34D399'
-                  }}
-                >
-                  {submissionData?.submission?.accuracy != null ? `${submissionData.submission.accuracy}%` : '--'}
-                </Typography.Text>
-              </div>
-            </div>
           </div>
         </nav>
       </header>
@@ -5023,7 +4966,7 @@ useEffect(() => {
                       <>
                         {/* Score Circle */}
                         <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          <div style={{ position: 'relative', display: 'inline-block' }}>
+                          <div style={{ position: 'relative', display: 'inline-block', paddingTop: '12px' }}>
                             {/* Circular Score Display */}
                             <div
                               style={{
@@ -5050,26 +4993,41 @@ useEffect(() => {
                                   const finalScore = submission.score;
                                   const penaltyApplied = submission.penaltyApplied ?? 0;
                                   // Display only the numeric score without unit or penalty percentage
-                                  scoreDisplay = `${finalScore}`;
+                                  const formattedScore = Number.isFinite(Number(finalScore))
+                                    ? Number(finalScore).toFixed(2).replace(/\.?0+$/, '')
+                                    : finalScore;
+                                  scoreDisplay = `${formattedScore}`;
                                 }
                                 
                                 const dynamicFontSize = scoreDisplay.length > 8 ? 24 : scoreDisplay.length > 5 ? 28 : 36; // prevent wrapping for long scores
                                 
                                 return shouldShowScore ? (
                                   <>
-                                    <Typography.Text
-                                      strong
-                                      style={{
-                                        fontSize: `${dynamicFontSize}px`,
-                                        fontWeight: 700,
-                                        color: '#4CAF50',
-                                        lineHeight: '1',
-                                        marginBottom: '4px',
-                                        whiteSpace: 'nowrap'
-                                      }}
-                                    >
-                                      {scoreDisplay}
-                                    </Typography.Text>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '4px' }}>
+                                      <Typography.Text
+                                        strong
+                                        style={{
+                                          fontSize: `${dynamicFontSize}px`,
+                                          fontWeight: 700,
+                                          color: '#4CAF50',
+                                          lineHeight: '1',
+                                          whiteSpace: 'nowrap'
+                                        }}
+                                      >
+                                        {scoreDisplay}
+                                      </Typography.Text>
+                                      <Typography.Text
+                                        strong
+                                        style={{
+                                          fontSize: '18px',
+                                          fontWeight: 600,
+                                          color: theme === 'sun' ? '#4a5568' : '#CBD5F5',
+                                          lineHeight: '1'
+                                        }}
+                                      >
+                                        /10
+                                      </Typography.Text>
+                                    </div>
                                     <Typography.Text
                                       style={{
                                         fontSize: '12px',
@@ -5108,259 +5066,87 @@ useEffect(() => {
                                 );
                               })()}
                             </div>
+                            {(() => {
+                              const penaltyApplied = submission.penaltyApplied ?? 0;
+                              if (penaltyApplied > 0) {
+                                return (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      top: '24px',
+                                      right: '13px',
+                                      background: theme === 'sun' ? '#FFE0E0' : 'rgba(255, 224, 224, 0.9)',
+                                      color: '#c53030',
+                                      padding: '2px 8px',
+                                      borderRadius: '999px',
+                                      fontSize: '11px',
+                                      fontWeight: 600,
+                                      boxShadow: theme === 'sun'
+                                        ? '0 2px 6px rgba(229, 62, 62, 0.25)'
+                                        : '0 2px 6px rgba(229, 62, 62, 0.35)'
+                                    }}
+                                  >
+                                    -{Math.round(penaltyApplied * 100)}%
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                             {/* Edit score button removed as requested */}
                           </div>
                         </div>
 
-                        {/* Raw Score and Penalty Info */}
-                        {(() => {
-                          const hasScore = submission.score != null && submission.score !== undefined;
-                          const rawScore = submission.rawScore;
-                          const penaltyApplied = submission.penaltyApplied ?? 0;
-                          
-                          if (hasScore && rawScore != null) {
-                            return (
-                              <div style={{ 
-                                marginBottom: '20px', 
-                                padding: '12px',
-                                background: theme === 'sun' ? '#FFF9E6' : 'rgba(255, 249, 230, 0.1)',
-                                borderRadius: '8px',
-                                border: `1px solid ${theme === 'sun' ? '#FFE58F' : 'rgba(255, 229, 143, 0.3)'}`
-                              }}>
-                                <div style={{ marginBottom: penaltyApplied > 0 ? '8px' : '0' }}>
-                                  <Typography.Text style={{ 
-                                    fontSize: '13px', 
-                                    color: theme === 'sun' ? '#666' : '#999',
-                                    display: 'block',
-                                    marginBottom: '4px'
-                                  }}>
-                                    Raw Score:
-                                  </Typography.Text>
-                                  <Typography.Text strong style={{ 
-                                    fontSize: '16px', 
-                                    color: theme === 'sun' ? '#333' : '#fff'
-                                  }}>
-                                    {rawScore}
-                                  </Typography.Text>
-                                </div>
-                                {penaltyApplied > 0 && (
-                                  <div>
-                                    <Typography.Text style={{ 
-                                      fontSize: '13px', 
-                                      color: theme === 'sun' ? '#666' : '#999',
-                                      display: 'block',
-                                      marginBottom: '4px'
-                                    }}>
-                                      Penalty Applied:
-                                    </Typography.Text>
-                                    <Typography.Text strong style={{ 
-                                      fontSize: '16px', 
-                                      color: '#ff4d4f'
-                                    }}>
-                                      {Math.round(penaltyApplied * 100)}%
-                                    </Typography.Text>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-
                         {/* Question Breakdown Grid (hidden for Writing/Speaking submissions) */}
                         {!hasWritingOrSpeaking && (
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '12px',
-                            marginBottom: '20px'
-                          }}>
-                          {/* Total Card */}
-                          <div style={{
-                            padding: '16px',
-                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: '8px',                                
-                            height: '50px',
-                            textAlign: 'center',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
-                          }}>
-                            <Typography.Text
-                              strong
-                              style={{
-                                fontSize: '24px',
-                                fontWeight: 700,
-                                color: '#1890ff',
-                                display: 'block',
-                                marginBottom: '0px',
-                                lineHeight: '1'
-                              }}
-                            >
-                              {(submission.correctCount != null && submission.incorrectCount != null && submission.unansweredCount != null) 
-                                ? (submission.correctCount + submission.incorrectCount + submission.unansweredCount)
-                                : '-'}
-                            </Typography.Text>
-                            <Typography.Text
-                              style={{
-                                fontSize: '12px',
-                                color: theme === 'sun' ? '#666' : '#999',
-                                display: 'block'
-                              }}
-                            >
-                              Total
-                            </Typography.Text>
-                          </div>
-
-                          {/* Correct Card */}
-                          <div style={{
-                            padding: '16px',
-                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: '8px',
-                            textAlign: 'center',
-                            height: '50px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
-                          }}>
-                            <Typography.Text
-                              strong
-                              style={{
-                                fontSize: '24px',
-                                fontWeight: 700,
-                                color: '#1890ff',
-                                display: 'block',
-                                marginBottom: '0px',
-                                lineHeight: '1'
-                              }}
-                            >
-                              {submission.correctCount != null ? submission.correctCount : '-'}
-                            </Typography.Text>
-                            <Typography.Text
-                              style={{
-                                fontSize: '12px',
-                                color: theme === 'sun' ? '#666' : '#999',
-                                display: 'block'
-                              }}
-                            >
-                              Correct
-                            </Typography.Text>
-                          </div>
-
-                          {/* Incorrect Card */}
-                          <div style={{
-                            padding: '16px',
-                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: '8px',
-                            textAlign: 'center',
-                            height: '50px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
-                          }}>
-                            <Typography.Text
-                              strong
-                              style={{
-                                fontSize: '24px',
-                                fontWeight: 700,
-                                color: '#1890ff',
-                                display: 'block',
-                                marginBottom: '0px',
-                                lineHeight: '1'
-                              }}
-                            >
-                              {submission.incorrectCount != null ? submission.incorrectCount : '-'}
-                            </Typography.Text>
-                            <Typography.Text
-                              style={{
-                                fontSize: '12px',
-                                color: theme === 'sun' ? '#666' : '#999',
-                                display: 'block'
-                              }}
-                            >
-                              Incorrect
-                            </Typography.Text>
-                          </div>
-
-                          {/* Unanswered Card */}
-                          <div style={{
-                            padding: '16px',
-                            background: theme === 'sun' ? '#F5F5F5' : 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: '8px',
-                            textAlign: 'center',
-                            height: '50px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
-                          }}>
-                            <Typography.Text
-                              strong
-                              style={{
-                                fontSize: '24px',
-                                fontWeight: 700,
-                                color: '#1890ff',
-                                display: 'block',
-                                marginBottom: '0px',
-                                lineHeight: '1'
-                              }}
-                            >
-                              {submission.unansweredCount != null ? submission.unansweredCount : '-'}
-                            </Typography.Text>
-                            <Typography.Text
-                              style={{
-                                fontSize: '12px',
-                                color: theme === 'sun' ? '#666' : '#999',
-                                display: 'block'
-                              }}
-                            >
-                              Unanswered
-                            </Typography.Text>
-                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                            {/* Total Weight - separated from other items */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                              <Typography.Text style={{ fontSize: '16px', fontWeight: 600, color: '#2563EB' }}>
+                                Total Weight
+                              </Typography.Text>
+                              <Typography.Text style={{ fontSize: '16px', fontWeight: 600, color: theme === 'sun' ? '#111827' : '#e2e8f0' }}>
+                                {(() => {
+                                  const totalWeight = submissionData.challenge?.totalWeight != null ? submissionData.challenge.totalWeight : '-';
+                                  const maxPossibleWeight = submissionData.challenge?.maxPossibleWeight != null ? submissionData.challenge.maxPossibleWeight : '-';
+                                  return `${totalWeight} / ${maxPossibleWeight}`;
+                                })()}
+                              </Typography.Text>
+                            </div>
+                            
+                            {/* Other items grouped together */}
+                            {[
+                              {
+                                label: 'Total Questions',
+                                value: submissionData.challenge?.totalQuestions != null ? submissionData.challenge.totalQuestions : '-',
+                                color: '#f97316'
+                              },
+                              {
+                                label: 'Correct',
+                                value: submission.correctCount != null ? submission.correctCount : '-',
+                                color: '#22c55e'
+                              },
+                              {
+                                label: 'Incorrect',
+                                value: submission.incorrectCount != null ? submission.incorrectCount : '-',
+                                color: '#ef4444'
+                              },
+                              {
+                                label: 'Unanswered',
+                                value: submission.unansweredCount != null ? submission.unansweredCount : '-',
+                                color: '#9ca3af'
+                              }
+                            ].map((item) => (
+                              <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography.Text style={{ fontSize: '14px', fontWeight: 600, color: item.color }}>
+                                  {item.label}
+                                </Typography.Text>
+                                <Typography.Text style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? '#111827' : '#e2e8f0' }}>
+                                  {item.value}
+                                </Typography.Text>
+                              </div>
+                            ))}
                           </div>
                         )}
-
-                        {/* Submission Details */}
-                        <div style={{
-                          padding: '12px 0',
-                          borderTop: `1px solid ${theme === 'sun' ? '#E0E0E0' : 'rgba(255, 255, 255, 0.1)'}`
-                        }}>
-                          <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                            
-                            {/* New fields from grading summary */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Total Weight:
-                              </Typography.Text>
-                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submissionData.challenge?.totalWeight != null ? submissionData.challenge.totalWeight : '-'}
-                              </Typography.Text>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Max Possible Weight:
-                              </Typography.Text>
-                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submissionData.challenge?.maxPossibleWeight != null ? submissionData.challenge.maxPossibleWeight : '-'}
-                              </Typography.Text>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography.Text style={{ fontSize: '12px', color: theme === 'sun' ? '#666' : '#999' }}>
-                                Total Questions:
-                              </Typography.Text>
-                              <Typography.Text style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#000' : '#fff' }}>
-                                {submissionData.challenge?.totalQuestions != null ? submissionData.challenge.totalQuestions : '-'}
-                              </Typography.Text>
-                            </div>
-                          </Space>
-                        </div>
                       </>
                       )}
                       </div>

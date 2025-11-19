@@ -463,7 +463,7 @@ const StudentProfile = () => {
 		} else if (isTeachingAssistant) {
 			path = ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROGRESS.replace(':id', String(student.id));
 		}
-		navigate(path, { state: { student, classId, returnTo } });
+		navigate(path, { state: { student, classId, returnTo, profilePath: location.pathname } });
 	};
 
 	// Handle delete for PENDING students (trash button)

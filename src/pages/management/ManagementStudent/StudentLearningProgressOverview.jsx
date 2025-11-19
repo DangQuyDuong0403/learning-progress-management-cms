@@ -25,7 +25,7 @@ import ThemedLayout from '../../../component/teacherlayout/ThemedLayout';
 import ThemedHeader from '../../../component/ThemedHeader';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import usePageTitle from '../../../hooks/usePageTitle';
 import { spaceToast } from '../../../component/SpaceToastify';
 import { studentManagementApi } from '../../../apis/apis';
@@ -37,9 +37,37 @@ const StudentLearningProgressOverview = () => {
   const { theme } = useTheme();
   const { user, accessToken } = useSelector((state) => state.auth);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { id: routeStudentId } = useParams();
   const userRole = user?.role;
-  const isTestTaker = userRole === 'TEST_TAKER' || userRole === 'test_taker';
-  const routePrefix = isTestTaker ? '/test-taker' : '/student';
+  const normalizedRole = (userRole || '').toLowerCase();
+  const routePrefixMap = {
+    manager: '/manager',
+    teacher: '/teacher',
+    teaching_assistant: '/teaching-assistant',
+    test_taker: '/test-taker',
+    student: '/student',
+  };
+  const routePrefix = routePrefixMap[normalizedRole] || '/student';
+  const locationState = location.state || {};
+  const locationStudent = locationState?.student;
+  const backToProfilePath = locationState?.profilePath || locationState?.fromProfile || null;
+  const backToProfileState = locationState?.profileState || null;
+  const fallbackReturnTo = locationState?.returnTo || null;
+  const queryParams = useMemo(() => new URLSearchParams(location.search || ''), [location.search]);
+  const queryStudentId = queryParams.get('studentId') || queryParams.get('userId');
+  const stateStudentId =
+    locationStudent?.userId ||
+    locationStudent?.id ||
+    locationState?.studentId ||
+    locationState?.userId;
+  const externalStudentId =
+    (routeStudentId ? String(routeStudentId) : null) ||
+    (stateStudentId ? String(stateStudentId) : null) ||
+    (queryStudentId ? String(queryStudentId) : null) ||
+    null;
+  const tokenUserId = useMemo(() => (accessToken ? getUserIdFromToken(accessToken) : null), [accessToken]);
+  const effectiveUserId = externalStudentId || tokenUserId || user?.userId || user?.id || null;
 
   // Set page title
   usePageTitle(t('studentDashboard.learningProgressOverview', 'View Student Learning Progress Overview'));
@@ -53,44 +81,35 @@ const StudentLearningProgressOverview = () => {
   const [studentClasses, setStudentClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [selectedLevelClassId, setSelectedLevelClassId] = useState(null);
-  const [studentProfile, setStudentProfile] = useState(null);
+  const [studentProfile, setStudentProfile] = useState(locationStudent || null);
+
+  // Prefill with student info passed from previous screen (if any)
+  useEffect(() => {
+    if (locationStudent) {
+      setStudentProfile(locationStudent);
+    }
+  }, [locationStudent]);
 
   // Load student learning progress data
   useEffect(() => {
-    if (!user && !accessToken) {
-      setLoading(false);
-      setOverviewData(null);
-      setLevelChartData([]);
-      setStudentClasses([]);
+    if (!effectiveUserId) {
+      if (!user && !accessToken && !externalStudentId) {
+        setLoading(false);
+        setOverviewData(null);
+        setLevelChartData([]);
+        setStudentClasses([]);
+      }
       return;
     }
 
     const loadData = async () => {
       setLoading(true);
       try {
-        // Get userId from JWT token or user object
-        let userId = null;
-        if (accessToken) {
-          userId = getUserIdFromToken(accessToken);
-        }
-        // Fallback to user object or profileData if token doesn't have userId
-        if (!userId) {
-          userId = user?.userId || user?.id;
-        }
-        if (!userId) {
-          console.error('No userId found in token or user object');
-          if (user || accessToken) {
-            spaceToast.error('User ID not found');
-          }
-          setLoading(false);
-          return;
-        }
-        
         // Call APIs in parallel
         const [overviewResponse, levelHistoryResponse, profileResponse] = await Promise.all([
-          studentManagementApi.getStudentOverview(userId),
-          studentManagementApi.getStudentLevelHistory(),
-          studentManagementApi.getStudentProfile(userId).catch(err => {
+          studentManagementApi.getStudentOverview(effectiveUserId),
+          studentManagementApi.getStudentLevelHistory(effectiveUserId),
+          studentManagementApi.getStudentProfile(effectiveUserId).catch(err => {
             console.warn('Failed to load student profile:', err);
             return null;
           }),
@@ -266,7 +285,7 @@ const StudentLearningProgressOverview = () => {
     };
 
     loadData();
-  }, [user, accessToken]);
+  }, [effectiveUserId, user, accessToken, externalStudentId]);
 
   // Sync selectedLevelClassId with selectedClassId when class is selected
   useEffect(() => {
@@ -280,31 +299,14 @@ const StudentLearningProgressOverview = () => {
 
   // Load challenge detail when selectedClassId is available
   useEffect(() => {
-    if (!selectedClassId || (!user && !accessToken)) {
+    if (!selectedClassId || !effectiveUserId) {
       setChallengeDetailData(null);
       return;
     }
 
     const loadChallengeDetail = async () => {
       try {
-        // Get userId from JWT token or user object
-        let userId = null;
-        if (accessToken) {
-          userId = getUserIdFromToken(accessToken);
-        }
-        // Fallback to user object if token doesn't have userId
-        if (!userId) {
-          userId = user?.userId || user?.id;
-        }
-        if (!userId) {
-          console.error('No userId found for challenge detail');
-          if (user || accessToken) {
-            spaceToast.error('User ID not found');
-          }
-          return;
-        }
-
-        const response = await studentManagementApi.getStudentClassChallengeDetail(selectedClassId, userId);
+        const response = await studentManagementApi.getStudentClassChallengeDetail(selectedClassId, effectiveUserId);
         console.log('Student Class Challenge Detail Response:', response);
         
         const challengeData = response?.data?.data || response?.data;
@@ -316,15 +318,13 @@ const StudentLearningProgressOverview = () => {
         }
       } catch (err) {
         console.error('Error loading challenge detail:', err);
-        if (user || accessToken) {
-          spaceToast.error(err.response?.data?.message || 'Failed to load challenge detail');
-        }
+        spaceToast.error(err.response?.data?.message || 'Failed to load challenge detail');
         setChallengeDetailData(null);
       }
     };
 
     loadChallengeDetail();
-  }, [selectedClassId, user, accessToken]);
+  }, [selectedClassId, effectiveUserId]);
 
   const formatDateValue = useCallback((value, withTime = false) => {
     if (!value) return 'N/A';
@@ -417,6 +417,17 @@ const StudentLearningProgressOverview = () => {
     if (!previous || previous === 0) return null;
     const change = ((current - previous) / previous) * 100;
     return change;
+  }, []);
+
+  // Get color based on score
+  const getScoreColor = useCallback((score) => {
+    if (score >= 0 && score < 5) {
+      return '#dc2626'; // Red for 0-4.9
+    } else if (score >= 5 && score < 7) {
+      return '#f59e0b'; // Orange/yellow for 5-6.9
+    } else {
+      return '#16a34a'; // Green for 7 and above
+    }
   }, []);
 
   const skillComparison = useMemo(() => {
@@ -618,6 +629,21 @@ const StudentLearningProgressOverview = () => {
 
   const headerExtraLeft = useCallback(({ theme: headerTheme }) => {
     const handleBack = () => {
+      if (backToProfilePath) {
+        navigate(
+          backToProfilePath,
+          backToProfileState ? { state: backToProfileState } : undefined
+        );
+        return;
+      }
+      if (fallbackReturnTo) {
+        navigate(fallbackReturnTo);
+        return;
+      }
+      if (typeof window !== 'undefined' && window.history.length > 1) {
+        navigate(-1);
+        return;
+      }
       navigate(`${routePrefix}/dashboard`);
     };
 
@@ -667,7 +693,7 @@ const StudentLearningProgressOverview = () => {
         </h2>
       </div>
     );
-  }, [navigate, routePrefix, t]);
+  }, [navigate, routePrefix, t, backToProfilePath, backToProfileState, fallbackReturnTo]);
 
   const customHeader = <ThemedHeader extraLeftContent={headerExtraLeft} />;
 
@@ -857,7 +883,7 @@ const StudentLearningProgressOverview = () => {
                         <div style={{ 
                           fontSize: 18, 
                           fontWeight: 600, 
-                          color: '#dc2626',
+                          color: getScoreColor(skill.currentScore),
                         }}>
                           {skill.currentScore.toFixed(1)}
                         </div>
@@ -1086,7 +1112,7 @@ const StudentLearningProgressOverview = () => {
                           >
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                               <span style={{ 
-                                fontSize: 14, 
+                                fontSize: row.key === 'ranking' ? 16 : 14, 
                                 color: row.labelColor || '#000000', 
                                 fontWeight: 500 
                               }}>
@@ -1103,7 +1129,7 @@ const StudentLearningProgressOverview = () => {
                               )}
                             </div>
                             <span style={{ 
-                              fontSize: 18, 
+                              fontSize: row.key === 'ranking' ? 20 : 18, 
                               fontWeight: row.valueWeight || 600, 
                               color: row.valueColor || '#000000' 
                             }}>
