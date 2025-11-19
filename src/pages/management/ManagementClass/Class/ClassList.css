@@ -1469,6 +1469,22 @@
   border-radius: 16px !important;
 }
 
+/* Remove background for table-section in ClassList.jsx only */
+.class-list-view .table-section,
+.class-list-view .space-theme .table-section,
+.class-list-view .sun-theme .table-section {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+/* Remove background for table-section in StudentClassList.jsx only */
+.student-class-list-view .table-section,
+.student-class-list-view .space-theme .table-section,
+.student-class-list-view .sun-theme .table-section {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
 /* ===== CLASS CARD THEME OVERRIDES ===== */
 .space-theme .class-card,
 .class-page.space-theme .class-card {
