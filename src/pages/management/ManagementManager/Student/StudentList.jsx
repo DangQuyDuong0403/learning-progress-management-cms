@@ -41,6 +41,7 @@ import accountManagementApi from "../../../../apis/backend/accountManagement";
 import AssignStudentToClass from "./AssignStudentToClass";
 import levelManagementApi from "../../../../apis/backend/levelManagement";
 import StudentBottomActionBar from "../../../../component/StudentBottomActionBar";
+import { FILE_NAME_PREFIXES, formatDateForFilename } from "../../../../constants/fileNames";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -1174,7 +1175,8 @@ const StudentList = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `all_students_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const formattedDate = formatDateForFilename();
+      link.download = `${FILE_NAME_PREFIXES.STUDENT_LIST}${formattedDate}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

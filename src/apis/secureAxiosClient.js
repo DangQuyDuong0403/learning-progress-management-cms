@@ -212,6 +212,7 @@ axiosClient.interceptors.response.use(
 		const errorMessage = error.response?.data?.message || error.response?.data?.error || '';
 		const errorData = error.response?.data?.data || error.response?.data || {};
 		const statusCode = error.response?.status;
+		const requestUrl = originalRequest?.url || '';
 		
 		// Kiểm tra các trường hợp cho thấy tài khoản bị inactive:
 		// 1. Error message chứa "inactive" hoặc "INACTIVE"
@@ -247,6 +248,32 @@ axiosClient.interceptors.response.use(
 			}
 			
 			return Promise.reject(new Error('Account has been deactivated'));
+		}
+
+		// Nếu server trả về 401 sau khi đã refresh token (hoặc không thể refresh), coi như session không còn hợp lệ
+		const isUnauthorizedAfterRetry = 
+			statusCode === 401 &&
+			originalRequest?._retry &&
+			!requestUrl.includes('/auth/login') &&
+			!requestUrl.includes('/auth/refresh-token');
+
+		if (isUnauthorizedAfterRetry) {
+			console.warn('⚠️ UNAUTHORIZED AFTER RETRY: Forcing logout to avoid stuck state.');
+			spaceToast.error('Your session is no longer valid. Please log in again.');
+
+			localStorage.removeItem('accessToken');
+			localStorage.removeItem('refreshToken');
+			localStorage.removeItem('user');
+			localStorage.removeItem('mustChangePassword');
+			localStorage.removeItem('mustUpdateProfile');
+
+			store.dispatch(logout());
+
+			if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/choose-login')) {
+				window.location.href = '/choose-login';
+			}
+
+			return Promise.reject(new Error('Session is no longer valid'));
 		}
 
 		// Xử lý các lỗi khác
