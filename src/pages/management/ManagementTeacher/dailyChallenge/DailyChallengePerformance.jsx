@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, Row, Col, Button, Avatar, Empty } from "antd";
 import { TrophyOutlined, BarChartOutlined, UserOutlined, TeamOutlined, BookOutlined } from "@ant-design/icons";
@@ -144,6 +144,58 @@ const DailyChallengePerformance = () => {
     students: [],
     matrix: {} // { questionId: { userId: receivedWeight } }
   });
+  const getQuestionTotalWeight = useCallback((question) => {
+    if (!question) return 0;
+    if (typeof question.totalWeight === 'number') {
+      return question.totalWeight;
+    }
+    if (Array.isArray(question.studentPerformances)) {
+      const perfWithWeight = question.studentPerformances.find(
+        (perf) => typeof perf.totalWeight === 'number'
+      );
+      if (perfWithWeight) {
+        return perfWithWeight.totalWeight;
+      }
+    }
+    return 0;
+  }, []);
+  const totalQuestionWeight = useMemo(() => {
+    if (!questionMatrixData.questions.length) return 0;
+    return questionMatrixData.questions.reduce(
+      (sum, question) => sum + getQuestionTotalWeight(question),
+      0
+    );
+  }, [questionMatrixData.questions, getQuestionTotalWeight]);
+  const studentTotalScoreMap = useMemo(() => {
+    if (!questionMatrixData.students.length || !questionMatrixData.questions.length) {
+      return {};
+    }
+    return questionMatrixData.students.reduce((acc, student) => {
+      let receivedSum = 0;
+      let hasScore = false;
+      questionMatrixData.questions.forEach((question) => {
+        const cell = questionMatrixData.matrix[question.questionId]?.[student.userId];
+        if (cell && typeof cell.receivedWeight === 'number') {
+          receivedSum += cell.receivedWeight;
+          hasScore = true;
+        }
+      });
+      const score10 =
+        hasScore && totalQuestionWeight > 0
+          ? parseFloat(((receivedSum / totalQuestionWeight) * 10).toFixed(2))
+          : null;
+      acc[student.userId] = {
+        raw: hasScore ? receivedSum : null,
+        score10
+      };
+      return acc;
+    }, {});
+  }, [
+    questionMatrixData.students,
+    questionMatrixData.questions,
+    questionMatrixData.matrix,
+    totalQuestionWeight
+  ]);
 
   // Fetch challenge info from API if not available in state
   const fetchChallengeInfo = useCallback(async () => {
@@ -517,9 +569,9 @@ const DailyChallengePerformance = () => {
             question.studentPerformances.forEach(perf => {
               if (perf.userId) {
                 matrix[question.questionId][perf.userId] = {
-                  receivedWeight: perf.receivedWeight || 0,
-                  totalWeight: perf.totalWeight || 0,
-                  isCorrect: perf.isCorrect || false
+                  receivedWeight: typeof perf.receivedWeight === 'number' ? perf.receivedWeight : null,
+                  totalWeight: typeof perf.totalWeight === 'number' ? perf.totalWeight : null,
+                  isCorrect: typeof perf.isCorrect === 'boolean' ? perf.isCorrect : null
                 };
               }
             });
@@ -905,7 +957,7 @@ const DailyChallengePerformance = () => {
                     <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
                     <div className="manager-dashboard-v2__title">Performance Chart</div>
                   </div>
-                  <div style={{ width: '100%', height: 480 }}>
+                  <div style={{ width: '100%', height: 528 }}>
                     {chartData.length === 0 ? (
                       <div style={{ 
                         display: 'flex', 
@@ -944,7 +996,11 @@ const DailyChallengePerformance = () => {
                             tick={{ fontSize: 12 }}
                           />
                           <Tooltip content={<CustomChartTooltip />} />
-                          <Legend wrapperStyle={{ paddingTop: '8px' }} />
+                          <Legend
+                            verticalAlign="bottom"
+                            align="center"
+                            wrapperStyle={{ paddingTop: 24 }}
+                          />
                           <Bar 
                             yAxisId="left"
                             dataKey="score" 
@@ -1213,10 +1269,83 @@ const DailyChallengePerformance = () => {
                                 </th>
                               ))}
                             </tr>
+                            <tr
+                              style={{
+                                backgroundColor: theme === 'sun' ? '#c8f5d4' : '#1a4d2e'
+                              }}
+                            >
+                              <th
+                                style={{
+                                  padding: '10px 16px',
+                                  fontWeight: 600,
+                                  fontSize: 13,
+                                  color: theme === 'sun' ? '#1f2937' : '#f9fafb',
+                                  border: `1px solid ${theme === 'sun' ? '#86efac' : '#2d5a3e'}`,
+                                  backgroundColor: theme === 'sun' ? '#c8f5d4' : '#1a4d2e',
+                                  position: 'sticky',
+                                  top: 52,
+                                  left: 0,
+                                  zIndex: 11,
+                                  minWidth: 120,
+                                  textAlign: 'left',
+                                  whiteSpace: 'nowrap',
+                                  boxShadow: theme === 'sun'
+                                    ? '0 2px 4px rgba(0,0,0,0.06), 2px 0 4px rgba(0,0,0,0.08)'
+                                    : '0 2px 4px rgba(0,0,0,0.4), 2px 0 4px rgba(0,0,0,0.3)'
+                                }}
+                              >
+                                <div style={{ fontWeight: 600 }}>Total Score</div>
+                                <div style={{ fontSize: 11, color: theme === 'sun' ? '#4b5563' : '#9ca3af' }}>
+                                  Scale 0 – 10
+                                </div>
+                              </th>
+                              {questionMatrixData.students.map((student, idx) => {
+                                const totalScore = studentTotalScoreMap[student.userId];
+                                const displayScore =
+                                  typeof totalScore?.score10 === 'number'
+                                    ? totalScore.score10.toFixed(2)
+                                    : '-';
+                                let textColor = theme === 'sun' ? '#1f2937' : '#f9fafb';
+                                if (typeof totalScore?.score10 === 'number') {
+                                  if (totalScore.score10 < 5) {
+                                    textColor = '#dc2626'; // Red
+                                  } else if (totalScore.score10 < 7) {
+                                    textColor = '#f97316'; // Orange
+                                  } else {
+                                    textColor = '#0f766e'; // Green
+                                  }
+                                }
+                                return (
+                                  <th
+                                    key={`${student.userId}-totals`}
+                                    style={{
+                                      padding: '10px 16px',
+                                      fontWeight: 600,
+                                      fontSize: 13,
+                                      color: textColor,
+                                      border: `1px solid ${theme === 'sun' ? '#86efac' : '#2d5a3e'}`,
+                                      backgroundColor: theme === 'sun' ? '#c8f5d4' : '#1a4d2e',
+                                      position: 'sticky',
+                                      top: 52,
+                                      zIndex: 10,
+                                      minWidth: 120,
+                                      textAlign: 'center',
+                                      whiteSpace: 'nowrap',
+                                      boxShadow: theme === 'sun'
+                                        ? '0 2px 4px rgba(0,0,0,0.08)'
+                                        : '0 2px 4px rgba(0,0,0,0.4)',
+                                      ...(idx === questionMatrixData.students.length - 1 && { borderTopRightRadius: '12px' })
+                                    }}
+                                  >
+                                    {displayScore}
+                                  </th>
+                                );
+                              })}
+                            </tr>
                           </thead>
                           <tbody>
                             {questionMatrixData.questions.map((question, qIdx) => {
-                              const totalWeight = question.studentPerformances?.[0]?.totalWeight || 0;
+                              const totalWeight = getQuestionTotalWeight(question);
                               const questionKey = `Question ${qIdx + 1}`;
                               const isLastRow = qIdx === questionMatrixData.questions.length - 1;
                               return (
@@ -1254,13 +1383,21 @@ const DailyChallengePerformance = () => {
                                   </td>
                                   {questionMatrixData.students.map((student, sIdx) => {
                                     const cellData = questionMatrixData.matrix[question.questionId]?.[student.userId];
-                                    const receivedWeight = cellData?.receivedWeight || 0;
-                                    const cellTotalWeight = cellData?.totalWeight || totalWeight;
-                                    let textColor = '#000000';
-                                    if (receivedWeight === 0) {
-                                      textColor = '#ef4444'; // Đỏ cho điểm 0
-                                    } else if (receivedWeight === cellTotalWeight) {
-                                      textColor = '#10b981'; // Xanh lá cho điểm tối đa
+                                    const receivedWeight = 
+                                      typeof cellData?.receivedWeight === 'number'
+                                        ? cellData.receivedWeight
+                                        : null;
+                                    const cellTotalWeight =
+                                      typeof cellData?.totalWeight === 'number'
+                                        ? cellData.totalWeight
+                                        : totalWeight;
+                                    let textColor = theme === 'sun' ? '#1f2937' : '#f9fafb';
+                                    if (typeof receivedWeight === 'number') {
+                                      if (receivedWeight === 0) {
+                                        textColor = '#ef4444'; // Đỏ cho điểm 0
+                                      } else if (receivedWeight === cellTotalWeight) {
+                                        textColor = '#10b981'; // Xanh lá cho điểm tối đa
+                                      }
                                     }
                                     const isLastCell = sIdx === questionMatrixData.students.length - 1;
                                     
@@ -1279,8 +1416,8 @@ const DailyChallengePerformance = () => {
                                           maxWidth: 120,
                                           ...(isLastRow && isLastCell && { borderBottomRightRadius: '12px' })
                                         }}
-                                      >
-                                        {receivedWeight}
+                                        >
+                                          {typeof receivedWeight === 'number' ? receivedWeight : '-'}
                                       </td>
                                     );
                                   })}

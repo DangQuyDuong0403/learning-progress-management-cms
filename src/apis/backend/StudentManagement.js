@@ -229,10 +229,15 @@ const studentManagementApi = {
 	},
 
 	// Lấy lịch sử các level đã học: thông tin level, các lớp đã học, điểm TB theo từng loại DC (reports API)
-	// Endpoint: GET /reports/student/level-history
-	getStudentLevelHistory: () => {
-		const url = `/reports/student/level-history`;
+	// Endpoint: GET /reports/student/level-history?userId={userId?}
+	getStudentLevelHistory: (userId) => {
+		const queryParams = new URLSearchParams();
+		if (userId) {
+			queryParams.append('userId', userId);
+		}
+		const url = `/reports/student/level-history${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 		console.log('GetStudentLevelHistory API - URL:', url);
+		console.log('GetStudentLevelHistory API - Params:', { userId });
 		
 		return axiosClient.get(url, {
 			headers: {

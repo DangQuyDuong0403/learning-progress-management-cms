@@ -561,13 +561,12 @@ export default function ThemedHeader({
   };
 
   // Check if on teacher/teaching_assistant/student classes list page
+  // Note: Back button is hidden on ClassList page for teacher and teaching_assistant
   const isOnClassesListPage = () => {
     const userRole = user?.role?.toLowerCase();
-    if (userRole === 'teacher') {
-      return location.pathname === '/teacher/classes';
-    }
-    if (userRole === 'teaching_assistant') {
-      return location.pathname === '/teaching-assistant/classes';
+    // Don't show back button on ClassList page for teacher and teaching_assistant
+    if (userRole === 'teacher' || userRole === 'teaching_assistant') {
+      return false; // Hide back button on ClassList page
     }
     if (userRole === 'student') {
       return location.pathname === '/student/classes';
