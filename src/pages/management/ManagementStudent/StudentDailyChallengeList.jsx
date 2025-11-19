@@ -124,6 +124,7 @@ const StudentDailyChallengeList = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [allChallenges, setAllChallenges] = useState([]);
   const [searchDebounce, setSearchDebounce] = useState("");
+  const [loadingChallenges, setLoadingChallenges] = useState(new Set());
 
   // Removed filter dropdown logic per request
 
@@ -376,38 +377,56 @@ const StudentDailyChallengeList = () => {
   // Removed filter handlers per request
 
   const handleViewClick = async (challenge) => {
-    // If status is PENDING and submissionChallengeId exists, call API to mark as started
-    if (challenge.submissionStatus === 'PENDING' && challenge.submissionChallengeId) {
-      try {
-        await dailyChallengeApiBackend.startSubmission(challenge.submissionChallengeId);
-        // Success - continue with navigation
-      } catch (error) {
-        console.error('Error starting submission:', error);
-        const errorMessage = getErrorMessage(error, t('dailyChallenge.errorStartingChallenge', 'Failed to start challenge. Please try again.'));
-        spaceToast.error(errorMessage);
-        return; // Don't navigate if API call fails
+    // Set loading state for this challenge
+    setLoadingChallenges(prev => new Set(prev).add(challenge.id));
+
+    try {
+      // If status is PENDING and submissionChallengeId exists, call API to mark as started
+      if (challenge.submissionStatus === 'PENDING' && challenge.submissionChallengeId) {
+        try {
+          await dailyChallengeApiBackend.startSubmission(challenge.submissionChallengeId);
+          // Success - continue with navigation
+        } catch (error) {
+          console.error('Error starting submission:', error);
+          const errorMessage = getErrorMessage(error, t('dailyChallenge.errorStartingChallenge', 'Failed to start challenge. Please try again.'));
+          spaceToast.error(errorMessage);
+          // Clear loading state on error
+          setLoadingChallenges(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(challenge.id);
+            return newSet;
+          });
+          return; // Don't navigate if API call fails
+        }
       }
+
+      // Resolve classId for return navigation
+      const resolvedClassId = classId || location.state?.classId;
+
+      // Navigate to challenge take view (student/test_taker view)
+      navigate(`${routePrefix}/daily-challenges/take/${challenge.id}`, {
+        state: {
+          challengeId: challenge.id,
+          challengeName: challenge.title,
+          lessonName: challenge.lessonName,
+          challengeType: challenge.type, // Pass challenge type (GV, RE, LI, WR, SP)
+          type: challenge.type, // Also pass as 'type' for compatibility
+          submissionChallengeId: challenge.submissionChallengeId, // Pass submissionChallengeId for saving/submitting
+          submissionStatus: challenge.submissionStatus, // Pass submissionStatus to determine if viewing submitted answer
+          hasAntiCheat: challenge.hasAntiCheat,
+          shuffleQuestion: challenge.shuffleQuestion,
+          translateOnScreen: challenge.translateOnScreen,
+          classId: resolvedClassId, // For redirecting back to the class DC list
+        }
+      });
+    } catch (error) {
+      // Clear loading state on any error
+      setLoadingChallenges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(challenge.id);
+        return newSet;
+      });
     }
-
-    // Resolve classId for return navigation
-    const resolvedClassId = classId || location.state?.classId;
-
-    // Navigate to challenge take view (student/test_taker view)
-    navigate(`${routePrefix}/daily-challenges/take/${challenge.id}`, {
-      state: {
-        challengeId: challenge.id,
-        challengeName: challenge.title,
-        lessonName: challenge.lessonName,
-        challengeType: challenge.type, // Pass challenge type (GV, RE, LI, WR, SP)
-        type: challenge.type, // Also pass as 'type' for compatibility
-        submissionChallengeId: challenge.submissionChallengeId, // Pass submissionChallengeId for saving/submitting
-        submissionStatus: challenge.submissionStatus, // Pass submissionStatus to determine if viewing submitted answer
-        hasAntiCheat: challenge.hasAntiCheat,
-        shuffleQuestion: challenge.shuffleQuestion,
-        translateOnScreen: challenge.translateOnScreen,
-        classId: resolvedClassId, // For redirecting back to the class DC list
-      }
-    });
   };
 
   const handleViewAnswer = (challenge) => {
@@ -790,12 +809,15 @@ const StudentDailyChallengeList = () => {
           const isDoChallenge = label === 'Do challenge';
           const buttonColor = isDoChallenge ? 'rgb(244,127,127)' : 'rgb(244,203,127)';
           const hoverColor = isDoChallenge ? 'rgb(224,107,107)' : 'rgb(224,183,107)';
+          const isLoading = loadingChallenges.has(record.id);
           
           return (
             <Button
               type="primary"
               icon={icon}
               onClick={() => handleViewClick(record)}
+              loading={isLoading}
+              disabled={isLoading}
               className="action-btn-start"
               style={{
                 borderRadius: '6px',
@@ -807,12 +829,17 @@ const StudentDailyChallengeList = () => {
                 borderColor: buttonColor,
                 color: '#000',
                 border: 'none',
+                opacity: isLoading ? 0.7 : 1,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = hoverColor;
+                if (!isLoading) {
+                  e.currentTarget.style.background = hoverColor;
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = buttonColor;
+                if (!isLoading) {
+                  e.currentTarget.style.background = buttonColor;
+                }
               }}
             >
               {label}
