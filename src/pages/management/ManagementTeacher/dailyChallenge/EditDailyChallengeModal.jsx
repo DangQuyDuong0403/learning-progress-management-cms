@@ -174,8 +174,11 @@ const EditDailyChallengeModal = ({
       console.error('Error in handleModalOk:', error);
       setIsButtonDisabled(false);
       setIsUpdating(false);
+      // Don't show toast for validation errors - Ant Design will show field-specific errors
+      // Only show toast for non-validation errors (e.g., API errors)
       if (error.errorFields) {
-        spaceToast.error(t('common.pleaseFillAllRequiredFields'));
+        // Validation errors are handled by Ant Design form validation
+        // No need to show generic toast message
       } else {
         spaceToast.error(t('dailyChallenge.updateChallengeError'));
       }
@@ -559,11 +562,25 @@ const EditDailyChallengeModal = ({
                   </span>
                 }
                 name='startDate'
+                dependencies={['endDate']}
                 rules={[
                   {
                     required: !isInProgress && !isClosed,
                     message: t('dailyChallenge.startDateRequired'),
                   },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (isInProgress || isClosed) {
+                        return Promise.resolve();
+                      }
+                      const endDate = getFieldValue('endDate');
+                      // Valid when startDate is same or before endDate
+                      if (!value || !endDate || !value.isAfter(endDate)) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t('dailyChallenge.startDateMustBeBeforeEndDate') || 'Start date must be on or before end date'));
+                    },
+                  }),
                 ]}>
                 <DatePicker 
                   style={{ width: '100%', height: '40px' }}
@@ -571,6 +588,10 @@ const EditDailyChallengeModal = ({
                   format="YYYY-MM-DD HH:mm"
                   showTime
                   disabled={isInProgress || isClosed}
+                  disabledDate={(current) => {
+                    const endDate = form.getFieldValue('endDate');
+                    return endDate && current && current.isAfter(endDate, 'day');
+                  }}
                 />
               </Form.Item>
             </Col>

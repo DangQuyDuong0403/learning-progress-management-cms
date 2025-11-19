@@ -49,13 +49,45 @@ const ChallengeSettingsModal = ({
     antiCheatModeEnabled: false,
     translateOnScreen: false,
   });
-  const status = (initialValues?.challengeStatus || initialValues?.status || '').toUpperCase();
+  const [challengeStatus, setChallengeStatus] = useState(null);
+  
+  const status = (challengeStatus || initialValues?.challengeStatus || initialValues?.status || '').toUpperCase();
   const isInProgress = status === 'IN_PROGRESS';
   const isClosed = status === 'FINISHED';
 
+  // Fetch latest detail by id when modal opens; fallback to incoming data
   useEffect(() => {
-    if (visible) {
-      // Set form values when modal opens
+    const loadDetail = async () => {
+      try {
+        if (!challengeId) return;
+        const res = await dailyChallengeApi.getDailyChallengeById(challengeId);
+        const data = res?.data?.data ?? res?.data ?? res;
+        if (data) {
+          const currentStatus = data.challengeStatus || data.status || null;
+          setChallengeStatus(currentStatus);
+          console.log('ChallengeSettingsModal - Fetched Status:', currentStatus, 'isInProgress:', currentStatus?.toUpperCase() === 'IN_PROGRESS', 'isClosed:', currentStatus?.toUpperCase() === 'FINISHED');
+          
+          form.setFieldsValue({
+            durationMinutes: data.durationMinutes,
+            startDate: data.startDate ? dayjs(data.startDate) : null,
+            endDate: data.endDate ? dayjs(data.endDate) : null,
+            shuffleQuestion: data.shuffleQuestion !== undefined ? data.shuffleQuestion : (data.shuffleAnswers || false),
+            translateOnScreen: data.translateOnScreen || false,
+            antiCheatModeEnabled: data.antiCheatModeEnabled || data.hasAntiCheat || false,
+          });
+          setChallengeMode(data.challengeMethod === 'TEST' ? 'exam' : (data.challengeMode || 'normal'));
+          return;
+        }
+      } catch (e) {
+        console.error('Error fetching challenge details:', e);
+        // fall back to incoming data
+      }
+
+      // Fallback to initialValues if API call fails or no challengeId
+      const currentStatus = initialValues?.challengeStatus || initialValues?.status || null;
+      setChallengeStatus(currentStatus);
+      console.log('ChallengeSettingsModal - Fallback Status:', currentStatus, 'isInProgress:', currentStatus?.toUpperCase() === 'IN_PROGRESS', 'isClosed:', currentStatus?.toUpperCase() === 'FINISHED');
+      
       form.setFieldsValue({
         durationMinutes: initialValues.durationMinutes,
         startDate: initialValues.startDate ? dayjs(initialValues.startDate) : null,
@@ -65,8 +97,12 @@ const ChallengeSettingsModal = ({
         antiCheatModeEnabled: initialValues.antiCheatModeEnabled || false,
       });
       setChallengeMode(initialValues.challengeMode || 'normal');
+    };
+
+    if (visible) {
+      loadDetail();
     }
-  }, [visible, initialValues, form]);
+  }, [visible, challengeId, initialValues, form]);
 
   // Enforce defaults when switching to exam mode
   useEffect(() => {
@@ -420,24 +456,63 @@ const ChallengeSettingsModal = ({
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                label={t('dailyChallenge.startDate')}
+                label={
+                  <span>
+                    {t('dailyChallenge.startDate')}
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                  </span>
+                }
                 name="startDate"
+                dependencies={['endDate']}
+                rules={[
+                  {
+                    required: true,
+                    message: t('dailyChallenge.startDateRequired') || 'Start date is required',
+                  },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (isInProgress || isClosed) {
+                        return Promise.resolve();
+                      }
+                      const endDate = getFieldValue('endDate');
+                      // Valid when startDate is same or before endDate
+                      if (!value || !endDate || !value.isAfter(endDate)) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error(t('dailyChallenge.startDateMustBeBeforeEndDate') || 'Start date must be on or before end date!'));
+                    },
+                  }),
+                ]}
               >
                 <DatePicker
+                  key={`startDate-${status}`}
                   style={{ width: '100%' }}
                   placeholder={t('dailyChallenge.selectStartDate')}
                   format="DD/MM/YYYY HH:mm"
                   showTime
                   disabled={isInProgress || isClosed}
+                  disabledDate={(current) => {
+                    const endDate = form.getFieldValue('endDate');
+                    return endDate && current && current.isAfter(endDate, 'day');
+                  }}
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                label={t('dailyChallenge.endDate')}
+                label={
+                  <span>
+                    {t('dailyChallenge.endDate')}
+                      <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                  </span>
+                }
                 name="endDate"
                 dependencies={['startDate']}
                 rules={[
+                  {
+                    required: true,
+                    message: t('dailyChallenge.endDateRequired') || 'End date is required',
+                  },
                   ({ getFieldValue }) => ({
                     validator(_, value) {
                       if (isClosed) {
@@ -454,6 +529,7 @@ const ChallengeSettingsModal = ({
                 ]}
               >
                 <DatePicker
+                  key={`endDate-${status}`}
                   style={{ width: '100%' }}
                   placeholder={t('dailyChallenge.selectEndDate')}
                   format="DD/MM/YYYY HH:mm"
