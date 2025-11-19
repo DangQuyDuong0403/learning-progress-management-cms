@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Row, Col, Empty, Select, Button } from 'antd';
+import { Card, Row, Col, Empty, Select, Button, Radio, Avatar } from 'antd';
 import LoadingWithEffect from '../../../component/spinner/LoadingWithEffect';
 import {
-  BookOutlined,
   TrophyOutlined,
   BarChartOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  TeamOutlined,
-  RiseOutlined,
-  FallOutlined,
-  HistoryOutlined,
   ArrowLeftOutlined,
+  DashboardOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import {
   BarChart as ReBarChart,
@@ -25,7 +20,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Tag, Timeline } from 'antd';
 import { useTheme } from '../../../contexts/ThemeContext';
 import ThemedLayout from '../../../component/teacherlayout/ThemedLayout';
 import ThemedHeader from '../../../component/ThemedHeader';
@@ -59,6 +53,7 @@ const StudentLearningProgressOverview = () => {
   const [studentClasses, setStudentClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [selectedLevelClassId, setSelectedLevelClassId] = useState(null);
+  const [studentProfile, setStudentProfile] = useState(null);
 
   // Load student learning progress data
   useEffect(() => {
@@ -91,11 +86,23 @@ const StudentLearningProgressOverview = () => {
           return;
         }
         
-        // Call both APIs in parallel
-        const [overviewResponse, levelHistoryResponse] = await Promise.all([
+        // Call APIs in parallel
+        const [overviewResponse, levelHistoryResponse, profileResponse] = await Promise.all([
           studentManagementApi.getStudentOverview(userId),
           studentManagementApi.getStudentLevelHistory(),
+          studentManagementApi.getStudentProfile(userId).catch(err => {
+            console.warn('Failed to load student profile:', err);
+            return null;
+          }),
         ]);
+        
+        // Process profile data
+        if (profileResponse && (profileResponse?.data?.success !== false)) {
+          const profile = profileResponse?.data?.data || profileResponse?.data;
+          if (profile) {
+            setStudentProfile(profile);
+          }
+        }
         
         console.log('Student Overview Response:', overviewResponse);
         console.log('Student Level History Response:', levelHistoryResponse);
@@ -261,6 +268,16 @@ const StudentLearningProgressOverview = () => {
     loadData();
   }, [user, accessToken]);
 
+  // Sync selectedLevelClassId with selectedClassId when class is selected
+  useEffect(() => {
+    if (selectedClassId && levelChartData.length > 0) {
+      const levelClassData = levelChartData.find(item => item.classId === selectedClassId);
+      if (levelClassData) {
+        setSelectedLevelClassId(selectedClassId);
+      }
+    }
+  }, [selectedClassId, levelChartData]);
+
   // Load challenge detail when selectedClassId is available
   useEffect(() => {
     if (!selectedClassId || (!user && !accessToken)) {
@@ -309,57 +326,7 @@ const StudentLearningProgressOverview = () => {
     loadChallengeDetail();
   }, [selectedClassId, user, accessToken]);
 
-  // Render summary cards
-  const renderSummaryCards = (cards = []) => (
-    <Row gutter={[12, 16]} style={{ marginBottom: 24 }}>
-      {cards.map((stat) => (
-        <Col
-          key={stat.key}
-          xs={24}
-          sm={12}
-          md={8}
-          lg={6}
-          flex="1 1 220px"
-          style={{ display: 'flex' }}
-        >
-          <Card
-            hoverable
-            style={{
-              backgroundColor: stat.bg,
-              border: 'none',
-              borderRadius: 16,
-              boxShadow: theme === 'sun' ? '0 8px 20px rgba(0,0,0,0.08)' : undefined,
-              minHeight: 140,
-              width: '100%',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-              <div style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: 'rgba(255,255,255,0.9)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                {stat.icon}
-              </div>
-              <div style={{ fontWeight: 400, fontSize: 14, color: '#5b6b83', lineHeight: 1.1 }}>{stat.title}</div>
-            </div>
-            <div style={{ fontSize: 25, fontWeight: 600, marginBottom: 6, lineHeight: 1, color: '#1f2937' }}>
-              {stat.value}
-            </div>
-            <div style={{ color: '#6b7280', fontSize: 12 }}>
-              {stat.subtitle}
-            </div>
-          </Card>
-        </Col>
-      ))}
-    </Row>
-  );
-
-  const formatDateValue = (value, withTime = false) => {
+  const formatDateValue = useCallback((value, withTime = false) => {
     if (!value) return 'N/A';
     try {
       const date = new Date(value);
@@ -382,71 +349,20 @@ const StudentLearningProgressOverview = () => {
     } catch (e) {
       return 'N/A';
     }
-  };
+  }, []);
 
-  // Overview cards
-  const overviewCards = useMemo(() => {
-    if (!overviewData) return [];
-    
-    // Format first class joined date
-    const formatDate = (dateString) => {
-      if (!dateString) return 'N/A';
-      try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return 'N/A';
-        return date.toLocaleDateString('vi-VN', { 
-          year: 'numeric', 
-          month: '2-digit', 
-          day: '2-digit'
-        });
-      } catch (e) {
-        return 'N/A';
-      }
-    };
-    
-    return [
-      {
-        key: 'firstClassJoinedAt',
-        title: t('studentProgress.firstClassJoinedAt', 'First class joined at'),
-        value: overviewData.firstClassJoinedAt ? formatDate(overviewData.firstClassJoinedAt) : 'N/A',
-        subtitle: 'First class join date',
-        icon: <BookOutlined style={{ color: '#10b981' }} />,
-        bg: '#d1fae5',
-      },
-      {
-        key: 'currentLevel',
-        title: t('studentProgress.currentLevel', 'Current level'),
-        value: overviewData.currentLevel && overviewData.currentLevel !== 'N/A' ? overviewData.currentLevel : 'N/A',
-        subtitle: overviewData.currentLevelCode ? `${overviewData.currentLevelCode}` : 'No level',
-        icon: <TrophyOutlined style={{ color: '#f59e0b' }} />,
-        bg: '#fff7ed',
-      },
-      {
-        key: 'currentClass',
-        title: t('studentProgress.currentClass', 'Current class'),
-        value: overviewData.currentClass && overviewData.currentClass !== 'N/A' ? overviewData.currentClass : 'N/A',
-        subtitle: overviewData.currentClassCode || 'No class',
-        icon: <TeamOutlined style={{ color: '#0ea5e9' }} />,
-        bg: '#e0f2fe',
-      },
-      {
-        key: 'completionRate',
-        title: t('studentProgress.completionRate', 'Completion rate'),
-        value: `${Number(overviewData.completionRate ?? 0).toFixed(1)}%`,
-        subtitle: `${overviewData.completedChallenges ?? 0}/${overviewData.totalChallenges ?? 0} challenges`,
-        icon: <CheckCircleOutlined style={{ color: '#22c55e' }} />,
-        bg: '#ecfdf5',
-      },
-      {
-        key: 'lateRate',
-        title: t('studentProgress.lateRate', 'Late rate'),
-        value: `${Number(overviewData.lateRate ?? 0).toFixed(1)}%`,
-        subtitle: `${overviewData.lateChallenges ?? 0}/${overviewData.totalChallenges ?? 0} challenges`,
-        icon: <ClockCircleOutlined style={{ color: '#ef4444' }} />,
-        bg: '#fee2e2',
-      },
-    ];
-  }, [overviewData, t]);
+  const studentDisplayName = useMemo(() => {
+    return (
+      studentProfile?.fullName ||
+      studentProfile?.name ||
+      user?.fullName ||
+      user?.name ||
+      user?.displayName ||
+      user?.username ||
+      t('studentProgress.studentName', 'Student')
+    );
+  }, [t, user, studentProfile]);
+
 
   // Level chart data formatted
   const levelChartFormatted = useMemo(() => {
@@ -475,82 +391,143 @@ const StudentLearningProgressOverview = () => {
     return levelChartData.find(item => item.classId === selectedLevelClassId) || null;
   }, [levelChartData, selectedLevelClassId]);
 
-  const selectedLevelSummaryCards = useMemo(() => {
+  // Get current class and previous class for comparison
+  const currentClassData = useMemo(() => {
+    if (!overviewData?.currentClassId || !levelChartData.length) return null;
+    return levelChartData.find(item => item.classId === overviewData.currentClassId) || null;
+  }, [overviewData, levelChartData]);
+
+  const previousClassData = useMemo(() => {
+    if (!currentClassData || !levelChartData.length) return null;
+    // Find previous class by sorting by joinedAt and finding the one before current
+    const sortedClasses = [...levelChartData].sort((a, b) => {
+      const dateA = a.joinedAt ? new Date(a.joinedAt).getTime() : 0;
+      const dateB = b.joinedAt ? new Date(b.joinedAt).getTime() : 0;
+      return dateA - dateB;
+    });
+    const currentIndex = sortedClasses.findIndex(item => item.classId === currentClassData.classId);
+    if (currentIndex > 0) {
+      return sortedClasses[currentIndex - 1];
+    }
+    return null;
+  }, [currentClassData, levelChartData]);
+
+  // Calculate percentage change for skills
+  const calculatePercentageChange = useCallback((current, previous) => {
+    if (!previous || previous === 0) return null;
+    const change = ((current - previous) / previous) * 100;
+    return change;
+  }, []);
+
+  const skillComparison = useMemo(() => {
+    if (!currentClassData) return null;
+    const skills = ['vocabulary', 'reading', 'listening', 'writing', 'speaking'];
+    const skillLabels = {
+      vocabulary: 'Grammar & Vocab',
+      reading: 'Reading',
+      listening: 'Listening',
+      writing: 'Writing',
+      speaking: 'Speaking',
+    };
+    
+    return skills.map(skill => {
+      const currentScore = currentClassData[skill] || 0;
+      const previousScore = previousClassData?.[skill] || 0;
+      const percentageChange = previousClassData ? calculatePercentageChange(currentScore, previousScore) : null;
+      
+      return {
+        name: skillLabels[skill],
+        currentScore,
+        previousScore,
+        percentageChange,
+        hasPrevious: !!previousClassData,
+      };
+    });
+  }, [currentClassData, previousClassData, calculatePercentageChange]);
+
+  const classMetricRows = useMemo(() => {
     if (!selectedLevelClassData) return [];
     const data = selectedLevelClassData;
-    const cards = [];
+    const rows = [];
 
     if (typeof data.ranking === 'number') {
-      cards.push({
+      rows.push({
         key: 'ranking',
-        title: 'Ranking',
+        label: 'Ranking',
         value: `#${data.ranking}`,
-        subtitle: data.classCode ? data.classCode : data.class,
-        bg: '#fff7ed',
-        tag: data.totalChallenges ? `${data.totalChallenges} challenges` : null,
+        description: null,
+        labelColor: '#fbbf24',
+        valueColor: '#f59e0b',
+        valueWeight: 700,
       });
     }
 
     if (data.studentAverageScore !== null || data.classAverageScore !== null) {
-      const studentAvg =
-        data.studentAverageScore !== null ? Number(data.studentAverageScore) : null;
-      const classAvg = data.classAverageScore !== null ? Number(data.classAverageScore) : null;
-      const diff =
-        studentAvg !== null && classAvg !== null ? studentAvg - classAvg : null;
-
-      cards.push({
+      const studentAvg = data.studentAverageScore !== null ? Number(data.studentAverageScore).toFixed(2) : 'N/A';
+      const classAvg =
+        data.classAverageScore !== null ? `Class avg: ${Number(data.classAverageScore).toFixed(2)}` : null;
+      rows.push({
         key: 'averageScore',
-        title: 'Student average score',
-        value: studentAvg !== null ? studentAvg.toFixed(2) : 'N/A',
-        subtitle: classAvg !== null ? `Class avg: ${classAvg.toFixed(2)}` : null,
-        bg: '#ecfdf5',
-        trend:
-          diff !== null
-            ? {
-                positive: diff >= 0,
-                text: `${diff >= 0 ? '+' : ''}${diff.toFixed(2)}`,
-              }
-            : null,
+        label: 'Student average score',
+        value: studentAvg,
+        description: classAvg,
+        labelColor: '#3b82f6',
+        valueColor: '#2563eb',
+        valueWeight: 600,
       });
     }
 
     if (data.completionRate !== null) {
-      const completionRate = Number(data.completionRate);
-      cards.push({
+      rows.push({
         key: 'completionRate',
-        title: 'Completion rate',
-        value: `${completionRate.toFixed(1)}%`,
-        subtitle:
+        label: 'Completion rate',
+        value: `${Number(data.completionRate).toFixed(1)}%`,
+        description:
           data.completedChallenges !== null && data.totalChallenges !== null
             ? `${data.completedChallenges}/${data.totalChallenges} challenges`
             : null,
-        bg: '#eef2ff',
-        trend:
-          data.lateSubmissionRate !== null
-            ? {
-                positive: completionRate >= 0,
-                text: `Late: ${Number(data.lateSubmissionRate).toFixed(1)}%`,
-                neutral: true,
-              }
+        labelColor: '#10b981',
+        valueColor: '#059669',
+        valueWeight: 600,
+      });
+    }
+
+    const lateRateValue =
+      data.lateSubmissionRate !== null && data.lateSubmissionRate !== undefined
+        ? Number(data.lateSubmissionRate)
+        : overviewData?.lateRate ?? null;
+    if (lateRateValue !== null && lateRateValue !== undefined) {
+      rows.push({
+        key: 'lateRate',
+        label: 'Late rate',
+        value: `${Number(lateRateValue).toFixed(1)}%`,
+        description:
+          data.lateChallenges !== null && data.totalChallenges !== null
+            ? `${data.lateChallenges}/${data.totalChallenges} challenges`
             : null,
+        labelColor: '#ef4444',
+        valueColor: '#dc2626',
+        valueWeight: 600,
       });
     }
 
     if (data.notStartedRate !== null) {
-      cards.push({
+      rows.push({
         key: 'notStarted',
-        title: 'Not started rate',
+        label: 'Not started rate',
         value: `${Number(data.notStartedRate).toFixed(1)}%`,
-        subtitle:
+        description:
           data.notStartedChallenges !== null
             ? `${data.notStartedChallenges} pending challenges`
             : null,
-        bg: '#fdf2f8',
+        labelColor: '#6b7280',
+        valueColor: '#4b5563',
+        valueWeight: 600,
       });
     }
 
-    return cards;
-  }, [selectedLevelClassData]);
+    return rows;
+  }, [overviewData?.lateRate, selectedLevelClassData]);
 
   const renderLevelTooltip = useCallback(
     ({ active, payload }) => {
@@ -638,129 +615,6 @@ const StudentLearningProgressOverview = () => {
     return withOrder;
   }, [challengeDetailData, challengeTypeFilter]);
 
-  // ========== FAKE DATA FOR NEW FEATURES ==========
-  
-  // 1. Class Ranking Data
-  const fakeClassRankingData = useMemo(() => {
-    return {
-      studentRank: 8,
-      totalStudents: 25,
-      percentile: 68, // Top 68% = rank 8/25
-      averageScore: 7.2,
-      classAverageScore: 7.8,
-      completionRate: 85.5,
-      classCompletionRate: 78.3,
-      improvementScore: 12.5, // % improvement
-    };
-  }, []);
-
-  // 3. Level Progression Timeline Data (with classes)
-  const fakeLevelProgressionData = useMemo(() => {
-    return [
-      {
-        levelId: 'LE-001',
-        levelName: 'Little Explorers',
-        levelCode: 'LE',
-        startDate: '2023-09-01',
-        endDate: '2023-12-15',
-        durationDays: 105,
-        finalScore: 7.8,
-        status: 'completed',
-        classes: [
-          {
-            classId: 'CL-LE-001',
-            className: 'Little Explorers A1',
-            classCode: 'LE-A1',
-            joinedAt: '2023-09-01',
-            leftAt: '2023-10-20',
-            finalScore: 7.5,
-            syllabus: {
-              syllabusId: 'SYL-LE-001',
-              syllabusName: 'Little Explorers Foundation',
-              syllabusCode: 'LE-FOUNDATION',
-            },
-          },
-          {
-            classId: 'CL-LE-002',
-            className: 'Little Explorers A2',
-            classCode: 'LE-A2',
-            joinedAt: '2023-10-21',
-            leftAt: '2023-12-15',
-            finalScore: 8.0,
-            syllabus: {
-              syllabusId: 'SYL-LE-002',
-              syllabusName: 'Little Explorers Advanced',
-              syllabusCode: 'LE-ADVANCED',
-            },
-          },
-        ],
-      },
-      {
-        levelId: 'ST-001',
-        levelName: 'Starters',
-        levelCode: 'ST',
-        startDate: '2023-12-16',
-        endDate: '2024-03-20',
-        durationDays: 95,
-        finalScore: 8.2,
-        status: 'completed',
-        classes: [
-          {
-            classId: 'CL-ST-001',
-            className: 'Starters B1',
-            classCode: 'ST-B1',
-            joinedAt: '2023-12-16',
-            leftAt: '2024-02-05',
-            finalScore: 8.0,
-            syllabus: {
-              syllabusId: 'SYL-ST-001',
-              syllabusName: 'Starters Basic Course',
-              syllabusCode: 'ST-BASIC',
-            },
-          },
-          {
-            classId: 'CL-ST-002',
-            className: 'Starters B2',
-            classCode: 'ST-B2',
-            joinedAt: '2024-02-06',
-            leftAt: '2024-03-20',
-            finalScore: 8.4,
-            syllabus: {
-              syllabusId: 'SYL-ST-002',
-              syllabusName: 'Starters Intermediate Course',
-              syllabusCode: 'ST-INTERMEDIATE',
-            },
-          },
-        ],
-      },
-      {
-        levelId: 'MO-001',
-        levelName: 'Movers',
-        levelCode: 'MO',
-        startDate: '2024-03-21',
-        endDate: null,
-        durationDays: null,
-        finalScore: null,
-        status: 'current',
-        classes: [
-          {
-            classId: 'CL-MO-001',
-            className: 'Movers C1',
-            classCode: 'MO-C1',
-            joinedAt: '2024-03-21',
-            leftAt: null,
-            finalScore: null,
-            syllabus: {
-              syllabusId: 'SYL-MO-001',
-              syllabusName: 'Movers Comprehensive Course',
-              syllabusCode: 'MO-COMPREHENSIVE',
-            },
-          },
-        ],
-      },
-    ];
-  }, []);
-
 
   const headerExtraLeft = useCallback(({ theme: headerTheme }) => {
     const handleBack = () => {
@@ -830,19 +684,216 @@ const StudentLearningProgressOverview = () => {
     );
   }
 
+  const sidebarWidth = 280;
+
   return (
     <ThemedLayout customHeader={customHeader}>
-      <div className={`slpv-container ${theme}-theme`}>
-        {/* Overview Section */}
-        {renderSummaryCards(overviewCards)}
+      <div
+        className={`slpv-layout ${theme}-theme`}
+        style={{
+          display: 'flex',
+          position: 'relative',
+          padding: '0 20px 20px 0',
+          gap: 24,
+          minHeight: 'calc(100vh - 140px)',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div
+          style={{
+            width: sidebarWidth,
+            minWidth: sidebarWidth,
+            alignSelf: 'flex-start',
+            position: 'sticky',
+            top: 0,
+            zIndex: 2,
+          }}
+        >
+          <Card
+            style={{
+              height: 'auto',
+              background: theme === 'sun'
+                ? 'linear-gradient(145deg, #fdf9ff 0%, #f2fbff 100%)'
+                : 'linear-gradient(145deg, rgba(15,23,42,0.95), rgba(30,41,59,0.85))',
+              border: 'none',
+              padding: 20,
+              borderRadius: 16,
+              boxShadow: theme === 'sun' ? '0 20px 30px rgba(15,23,42,0.08)' : '0 15px 30px rgba(0,0,0,0.45)',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+              {/* Avatar */}
+              <Avatar
+                size={80}
+                src={studentProfile?.avatarUrl || studentProfile?.avatar || user?.avatarUrl || user?.avatar}
+                style={{
+                  backgroundColor: '#6366f1',
+                  fontSize: 32,
+                  marginBottom: 0,
+                }}
+              >
+                {studentDisplayName?.charAt(0)?.toUpperCase() || 'S'}
+              </Avatar>
 
-        {/* Level Comparison Chart */}
+              {/* Student Code */}
+              <div style={{ fontSize: 14, color: theme === 'sun' ? '#64748b' : '#cbd5f5', marginTop: 4 }}>
+                {studentProfile?.studentCode || user?.username || user?.userId || user?.id || 'N/A'}
+              </div>
+
+              {/* Student Name */}
+              <div style={{ fontSize: 20, fontWeight: 600, color: theme === 'sun' ? '#0f172a' : '#f8fafc', textAlign: 'center', marginTop: 2 }}>
+                {studentDisplayName}
+              </div>
+
+              {/* Level Name - Large, Bold, Yellow */}
+              {overviewData?.currentLevel && overviewData.currentLevel !== 'N/A' && (
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  marginTop: 8,
+                  whiteSpace: 'nowrap',
+                  flexWrap: 'nowrap',
+                }}>
+                  <img 
+                    src="/img/pyramid.png" 
+                    alt="Pyramid" 
+                    style={{ 
+                      width: 28, 
+                      height: 28,
+                      objectFit: 'contain',
+                      flexShrink: 0,
+                    }} 
+                  />
+                  <div style={{ 
+                    fontSize: 24, 
+                    fontWeight: 700, 
+                    color: '#fbbf24',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}>
+                    {overviewData.currentLevel}
+                  </div>
+                </div>
+              )}
+
+              {/* Current Class */}
+              {overviewData?.currentClass && overviewData.currentClass !== 'N/A' && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  width: '100%',
+                  marginTop: 12,
+                  gap: 8,
+                }}>
+                  <span style={{ 
+                    fontSize: 14, 
+                    fontWeight: 600,
+                    color: theme === 'sun' ? '#6366f1' : '#a5b4fc',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}>
+                    Current Class
+                  </span>
+                  <span style={{ 
+                    fontSize: 16, 
+                    fontWeight: 700, 
+                    color: theme === 'sun' ? '#4f46e5' : '#c7d2fe',
+                    whiteSpace: 'nowrap',
+                    textAlign: 'right',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {overviewData.currentClass}
+                  </span>
+                </div>
+              )}
+
+              {/* Skills with Scores and Percentage Change */}
+              {skillComparison && skillComparison.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', marginTop: 16 }}>
+                  {skillComparison.map((skill, index) => {
+                    const isPositive = skill.percentageChange !== null && skill.percentageChange > 0;
+                    const isNegative = skill.percentageChange !== null && skill.percentageChange < 0;
+                    const skillColors = [
+                      '#16a34a', // green
+                      '#ec4899', // pink
+                      '#f59e0b', // yellow/amber
+                      '#8b5cf6', // purple
+                      '#ef4444', // red
+                    ];
+                    const skillColor = skillColors[index % skillColors.length];
+                    
+                    return (
+                      <div
+                        key={skill.name}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          width: '100%',
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                          <div style={{ 
+                            fontSize: 14, 
+                            fontWeight: 500, 
+                            color: skillColor,
+                          }}>
+                            {skill.name}
+                          </div>
+                          {skill.hasPrevious && skill.percentageChange !== null && (
+                            <div style={{ 
+                              fontSize: 11, 
+                              color: isPositive ? '#16a34a' : isNegative ? '#dc2626' : '#64748b',
+                              fontWeight: 500,
+                            }}>
+                              {isPositive ? '↑' : isNegative ? '↓' : ''} {Math.abs(skill.percentageChange).toFixed(1)}%
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ 
+                          fontSize: 18, 
+                          fontWeight: 600, 
+                          color: '#dc2626',
+                        }}>
+                          {skill.currentScore.toFixed(1)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            paddingLeft: 16,
+            alignSelf: 'stretch',
+          }}
+        >
+          <div
+            className={`slpv-container ${theme}-theme`}
+            style={{
+              margin: 0,
+              padding: 0,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 24,
+            }}
+          >
+            {/* Level Comparison Chart */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} lg={15} style={{ display: 'flex' }}>
+          <Col xs={24} style={{ display: 'flex' }}>
             <Card
               style={{
                 backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-                border: 'none',
+                border: '2px solid rgba(99, 102, 241, 0.3)',
                 borderRadius: 16,
                 boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
                 paddingTop: 8,
@@ -888,35 +939,50 @@ const StudentLearningProgressOverview = () => {
                         fill="#A5B4FC"
                         radius={[6, 6, 0, 0]}
                         name="Vocabulary"
-                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                        onClick={(data) => {
+                          setSelectedLevelClassId(data?.classId);
+                          setSelectedClassId(data?.classId);
+                        }}
                       />
                       <Bar
                         dataKey="reading"
                         fill="#86EFAC"
                         radius={[6, 6, 0, 0]}
                         name="Reading"
-                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                        onClick={(data) => {
+                          setSelectedLevelClassId(data?.classId);
+                          setSelectedClassId(data?.classId);
+                        }}
                       />
                       <Bar
                         dataKey="listening"
                         fill="#FDE68A"
                         radius={[6, 6, 0, 0]}
                         name="Listening"
-                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                        onClick={(data) => {
+                          setSelectedLevelClassId(data?.classId);
+                          setSelectedClassId(data?.classId);
+                        }}
                       />
                       <Bar
                         dataKey="writing"
                         fill="#C4B5FD"
                         radius={[6, 6, 0, 0]}
                         name="Writing"
-                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                        onClick={(data) => {
+                          setSelectedLevelClassId(data?.classId);
+                          setSelectedClassId(data?.classId);
+                        }}
                       />
                       <Bar
                         dataKey="speaking"
                         fill="#FCA5A5"
                         radius={[6, 6, 0, 0]}
                         name="Speaking"
-                        onClick={(data) => setSelectedLevelClassId(data?.classId)}
+                        onClick={(data) => {
+                          setSelectedLevelClassId(data?.classId);
+                          setSelectedClassId(data?.classId);
+                        }}
                       />
                     </ReBarChart>
                   </ResponsiveContainer>
@@ -924,279 +990,286 @@ const StudentLearningProgressOverview = () => {
               )}
             </Card>
           </Col>
-          <Col xs={24} lg={9} style={{ display: 'flex' }}>
-            <Card
-              style={{
-                backgroundColor: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.05)',
-                border: 'none',
-                borderRadius: 16,
-                boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
-                paddingTop: 8,
-                minHeight: 420,
-                height: '100%',
-                flex: 1,
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  flexWrap: 'wrap',
-                  marginBottom: 16,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <TrophyOutlined style={{ color: '#6366f1', fontSize: 18 }} />
-                  <div className="slpv-title" style={{ marginBottom: 0 }}>
-                    Class metrics
-                  </div>
-                </div>
-                {levelChartData.length > 0 && (
-                  <Select
-                    size="small"
-                    style={{ minWidth: 240, flexShrink: 0 }}
-                    value={selectedLevelClassId}
-                    onChange={setSelectedLevelClassId}
-                    options={levelChartData.map(item => ({
-                      value: item.classId,
-                      label: `${item.level} - ${item.class}`,
-                    }))}
-                  />
-                )}
-              </div>
-              {selectedLevelClassData ? (
-                selectedLevelSummaryCards.length > 0 ? (
-                  <Row gutter={[12, 12]}>
-                    {selectedLevelSummaryCards.map((card) => (
-                      <Col xs={24} sm={12} key={card.key}>
-                        <Card
-                          style={{
-                            backgroundColor: card.bg,
-                            border: 'none',
-                            borderRadius: 12,
-                            textAlign: 'center',
-                            height: '100%',
-                          }}
-                        >
-                          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 6 }}>{card.title}</div>
-                          <div style={{ fontSize: 26, fontWeight: 700, color: '#111827', marginBottom: 6 }}>
-                            {card.value}
-                          </div>
-                          {card.subtitle && (
-                            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>{card.subtitle}</div>
-                          )}
-                          {card.tag && (
-                            <div style={{ marginTop: 4 }}>
-                              <Tag color="orange">{card.tag}</Tag>
-                            </div>
-                          )}
-                          {card.trend && card.trend.text && (
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 4,
-                                fontSize: 12,
-                                color: card.trend.neutral
-                                  ? '#6b7280'
-                                  : card.trend.positive
-                                  ? '#22c55e'
-                                  : '#ef4444',
-                              }}
-                            >
-                              {!card.trend.neutral && (
-                                card.trend.positive ? (
-                                  <RiseOutlined style={{ fontSize: 12 }} />
-                                ) : (
-                                  <FallOutlined style={{ fontSize: 12 }} />
-                                )
-                              )}
-                              <span>{card.trend.text}</span>
-                            </div>
-                          )}
-                        </Card>
-                      </Col>
-                    ))}
-                  </Row>
-                ) : (
-                  <Empty description="No metrics available" />
-                )
-              ) : (
-                <Empty description="No level details" />
-              )}
-            </Card>
-          </Col>
         </Row>
 
-        
-
-        {/* Challenge Detail Section */}
+        {/* Class Metrics and Challenge Details Section */}
         {challengeDetailData && (
-          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-            <Col xs={24}>
-              <Card
-                style={{
-                  backgroundColor: theme === 'sun' ? '#ffffff' : undefined,
-                  border: 'none',
-                  borderRadius: 16,
-                  boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
-                  paddingTop: 8,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <CheckCircleOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                    <div className="slpv-title">
-                      Challenge details - {challengeDetailData.className} ({challengeDetailData.classCode})
+          <Card
+            style={{
+              backgroundColor: theme === 'sun' ? '#ffffff' : 'rgba(15,23,42,0.65)',
+              border: '2px solid rgba(99, 102, 241, 0.3)',
+              borderRadius: 20,
+              boxShadow: theme === 'sun' ? '0 10px 32px rgba(15,23,42,0.1)' : '0 20px 35px rgba(0,0,0,0.55)',
+              padding: 24,
+              marginBottom: 24,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+                flexWrap: 'wrap',
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <DashboardOutlined style={{ color: '#6366f1', fontSize: 22 }} />
+                <div>
+                  <div className="slpv-title" style={{ marginBottom: 4 }}>
+                    Class performance overview
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#6b7280', fontSize: 14 }}>Class:</span>
+                <Select
+                  size="small"
+                  style={{ width: 240 }}
+                  value={selectedClassId}
+                  onChange={(value) => {
+                    setSelectedClassId(value);
+                    const levelClassData = levelChartData.find(item => item.classId === value);
+                    if (levelClassData) {
+                      setSelectedLevelClassId(value);
+                    }
+                  }}
+                  options={studentClasses.map(cls => ({
+                    value: cls.classId,
+                    label: `${cls.className} (${cls.classCode})`,
+                  }))}
+                />
+              </div>
+            </div>
+
+            <Row gutter={[16, 16]}>
+              <Col xs={24} lg={8} style={{ display: 'flex' }}>
+                <Card
+                  style={{
+                    backgroundColor: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.05)',
+                    border: '2px solid rgba(99, 102, 241, 0.3)',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                    paddingTop: 8,
+                    minHeight: 420,
+                    height: '100%',
+                    flex: 1,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <TrophyOutlined style={{ color: '#6366f1', fontSize: 18 }} />
+                    <div style={{ marginBottom: 0, fontSize: 18, color: '#000000', fontWeight: 600 }}>
+                      Performance Summary
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: '#6b7280', fontSize: 14 }}>Class:</span>
-                      <Select
-                        size="small"
-                        style={{ width: 200 }}
-                        value={selectedClassId}
-                        onChange={setSelectedClassId}
-                        options={studentClasses.map(cls => ({
-                          value: cls.classId,
-                          label: `${cls.className} (${cls.classCode})`,
-                        }))}
-                      />
+                  {selectedLevelClassData ? (
+                    classMetricRows.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {classMetricRows.map((row) => (
+                          <div
+                            key={row.key}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '8px 0',
+                              borderBottom: '1px solid rgba(107, 114, 128, 0.15)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ 
+                                fontSize: 14, 
+                                color: row.labelColor || '#000000', 
+                                fontWeight: 500 
+                              }}>
+                                {row.label}
+                              </span>
+                              {row.description && (
+                                <span style={{ 
+                                  fontSize: 12, 
+                                  color: theme === 'sun' ? '#6b7280' : '#9ca3af', 
+                                  fontWeight: 400 
+                                }}>
+                                  {row.description}
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ 
+                              fontSize: 18, 
+                              fontWeight: row.valueWeight || 600, 
+                              color: row.valueColor || '#000000' 
+                            }}>
+                              {row.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <Empty description="No metrics available" />
+                    )
+                  ) : (
+                    <Empty description="No level details" />
+                  )}
+                </Card>
+              </Col>
+              <Col xs={24} lg={16} style={{ display: 'flex' }}>
+                <Card
+                  style={{
+                    backgroundColor: theme === 'sun' ? '#ffffff' : 'rgba(255,255,255,0.05)',
+                    border: '2px solid rgba(99, 102, 241, 0.3)',
+                    borderRadius: 16,
+                    boxShadow: theme === 'sun' ? '0 10px 24px rgba(0,0,0,0.08)' : undefined,
+                    paddingTop: 8,
+                    height: '100%',
+                    flex: 1,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <FileTextOutlined style={{ color: '#6366f1', fontSize: 20 }} />
+                      <div className="slpv-title" style={{ fontSize: 18 }}>
+                        Challenge details
+                      </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ color: '#6b7280', fontSize: 14 }}>Skill:</span>
-                      <Select
-                        size="small"
-                        style={{ width: 160 }}
+                      <Radio.Group
                         value={challengeTypeFilter}
-                        onChange={setChallengeTypeFilter}
-                        options={[
-                          { value: 'GV', label: 'Vocabulary' },
-                          { value: 'RE', label: 'Reading' },
-                          { value: 'LI', label: 'Listening' },
-                          { value: 'WR', label: 'Writing' },
-                          { value: 'SP', label: 'Speaking' },
-                        ]}
-                      />
+                        onChange={(e) => setChallengeTypeFilter(e.target.value)}
+                        size="small"
+                      >
+                        <Radio.Button value="GV">Vocabulary</Radio.Button>
+                        <Radio.Button value="RE">Reading</Radio.Button>
+                        <Radio.Button value="LI">Listening</Radio.Button>
+                        <Radio.Button value="WR">Writing</Radio.Button>
+                        <Radio.Button value="SP">Speaking</Radio.Button>
+                      </Radio.Group>
                     </div>
                   </div>
-                </div>
-                
-                {/* Line chart for class challenges (0-10 scale) */}
-                <div style={{ width: '100%', height: 360, marginBottom: 16 }}>
-                  {challengeLineData.length === 0 ? (
-                    <Empty description="No score data to display" />
-                  ) : (
-                    <>
-                      <ResponsiveContainer>
-                        <LineChart data={challengeLineData} margin={{ top: 20, right: 30, bottom: 60, left: 10 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                          <XAxis 
-                            dataKey="label" 
-                            tick={{ fontSize: 12, dy: 8 }}
-                            label={{ value: 'Challenges over time', position: 'bottom', offset: 18 }}
-                          />
-                          <YAxis 
-                            domain={[0, 10]}
-                            tick={{ fontSize: 12 }}
-                            label={{ value: 'Score (0-10)', angle: -90, position: 'insideLeft' }}
-                          />
-                          <ReTooltip 
-                            formatter={(value, name, props) => {
-                              return [`${Number(value).toFixed(1)}`, 'Score'];
-                            }}
-                            labelFormatter={(label, payload) => {
-                              if (!payload || !payload[0]) return label;
-                              const p = payload[0].payload;
-                              const typeMap = {
-                                GV: 'Vocabulary',
-                                RE: 'Reading',
-                                LI: 'Listening',
-                                WR: 'Writing',
-                                SP: 'Speaking',
-                              };
-                              const dateStr = p.submittedAt
-                                ? new Date(p.submittedAt).toLocaleString('vi-VN', {
-                                    year: 'numeric',
-                                    month: '2-digit',
-                                    day: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
-                                : '-';
-                              return `${label} • ${typeMap[p.challengeType] || p.challengeType} • ${dateStr}`;
-                            }}
-                          />
-                          <Line 
-                            type="monotone"
-                            dataKey="score10"
-                            stroke={
-                              challengeTypeFilter === 'GV' ? '#A5B4FC' :
-                              challengeTypeFilter === 'RE' ? '#86EFAC' :
-                              challengeTypeFilter === 'LI' ? '#FDE68A' :
-                              challengeTypeFilter === 'WR' ? '#C4B5FD' :
-                              '#FCA5A5'
-                            }
-                            strokeWidth={2.5}
-                            dot={{ r: 4, fill: '#3B82F6' }}
-                            activeDot={{ r: 6, fill: '#2563EB' }}
-                            name="Score (0-10)"
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                      {/* Custom legend placed under X-axis label */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
-                        <div style={{ 
-                          display: 'inline-flex', 
-                          alignItems: 'center', 
-                          gap: 8, 
-                          color: (
-                            challengeTypeFilter === 'GV' ? '#A5B4FC' :
-                            challengeTypeFilter === 'RE' ? '#86EFAC' :
-                            challengeTypeFilter === 'LI' ? '#FDE68A' :
-                            challengeTypeFilter === 'WR' ? '#C4B5FD' :
-                            '#FCA5A5'
-                          )
-                        }}>
-                          <span style={{ 
-                            width: 18, 
-                            height: 3, 
-                            backgroundColor: (
-                              challengeTypeFilter === 'GV' ? '#A5B4FC' :
-                              challengeTypeFilter === 'RE' ? '#86EFAC' :
-                              challengeTypeFilter === 'LI' ? '#FDE68A' :
-                              challengeTypeFilter === 'WR' ? '#C4B5FD' :
-                              '#FCA5A5'
-                            ), 
-                            borderRadius: 2 
-                          }} />
-                          <span style={{ 
+                  
+                  {/* Line chart for class challenges (0-10 scale) */}
+                  <div style={{ width: '100%', height: 360, marginBottom: 16 }}>
+                    {challengeLineData.length === 0 ? (
+                      <Empty description="No score data to display" />
+                    ) : (
+                      <>
+                        <ResponsiveContainer>
+                          <LineChart data={challengeLineData} margin={{ top: 20, right: 30, bottom: 60, left: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis 
+                              dataKey="label" 
+                              tick={{ fontSize: 12, dy: 8 }}
+                              label={{ value: 'Challenges over time', position: 'bottom', offset: 18 }}
+                            />
+                            <YAxis 
+                              domain={[0, 10]}
+                              ticks={[0, 2, 4, 6, 8, 10]}
+                              tick={{ fontSize: 12 }}
+                              label={{ value: 'Score (0-10)', angle: -90, position: 'insideLeft' }}
+                            />
+                            <ReTooltip 
+                              formatter={(value, name, props) => {
+                                return [`${Number(value).toFixed(1)}`, 'Score'];
+                              }}
+                              labelFormatter={(label, payload) => {
+                                if (!payload || !payload[0]) return label;
+                                const p = payload[0].payload;
+                                const typeMap = {
+                                  GV: 'Vocabulary',
+                                  RE: 'Reading',
+                                  LI: 'Listening',
+                                  WR: 'Writing',
+                                  SP: 'Speaking',
+                                };
+                                const dateStr = p.submittedAt
+                                  ? new Date(p.submittedAt).toLocaleString('vi-VN', {
+                                      year: 'numeric',
+                                      month: '2-digit',
+                                      day: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : '-';
+                                return `${label} • ${typeMap[p.challengeType] || p.challengeType} • ${dateStr}`;
+                              }}
+                            />
+                            <Line 
+                              type="monotone"
+                              dataKey="score10"
+                              stroke={
+                                challengeTypeFilter === 'GV' ? '#A5B4FC' :
+                                challengeTypeFilter === 'RE' ? '#86EFAC' :
+                                challengeTypeFilter === 'LI' ? '#FDE68A' :
+                                challengeTypeFilter === 'WR' ? '#C4B5FD' :
+                                '#FCA5A5'
+                              }
+                              strokeWidth={2.5}
+                              dot={{ r: 4, fill: '#3B82F6' }}
+                              activeDot={{ r: 6, fill: '#2563EB' }}
+                              name="Score (0-10)"
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                        {/* Custom legend placed under X-axis label */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
+                          <div style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: 8, 
                             color: (
                               challengeTypeFilter === 'GV' ? '#A5B4FC' :
                               challengeTypeFilter === 'RE' ? '#86EFAC' :
                               challengeTypeFilter === 'LI' ? '#FDE68A' :
                               challengeTypeFilter === 'WR' ? '#C4B5FD' :
                               '#FCA5A5'
-                            ), 
-                            fontSize: 14 
-                          }}>Score (0-10)</span>
+                            )
+                          }}>
+                            <span style={{ 
+                              width: 18, 
+                              height: 3, 
+                              backgroundColor: (
+                                challengeTypeFilter === 'GV' ? '#A5B4FC' :
+                                challengeTypeFilter === 'RE' ? '#86EFAC' :
+                                challengeTypeFilter === 'LI' ? '#FDE68A' :
+                                challengeTypeFilter === 'WR' ? '#C4B5FD' :
+                                '#FCA5A5'
+                              ), 
+                              borderRadius: 2 
+                            }} />
+                            <span style={{ 
+                              color: (
+                                challengeTypeFilter === 'GV' ? '#A5B4FC' :
+                                challengeTypeFilter === 'RE' ? '#86EFAC' :
+                                challengeTypeFilter === 'LI' ? '#FDE68A' :
+                                challengeTypeFilter === 'WR' ? '#C4B5FD' :
+                                '#FCA5A5'
+                              ), 
+                              fontSize: 14 
+                            }}>Score (0-10)</span>
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                {/* Table removed as requested */}
-              </Card>
-            </Col>
-          </Row>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* Table removed as requested */}
+                </Card>
+              </Col>
+            </Row>
+          </Card>
         )}
 
 
+      </div>
+        </div>
       </div>
     </ThemedLayout>
   );
