@@ -217,17 +217,8 @@ const ClassMenu = () => {
     },
   ];
 
-  // Append student-specific items (not for test_taker)
-  const studentExtras = (userRole === 'student') ? [
-    {
-      id: "performance-report",
-      title: t('classMenu.myPerformanceReport', 'My Performance Report'),
-      description: t('classMenu.myPerformanceReportDescription', 'View your performance and progress'),
-      icon: <BarChartOutlined style={{ fontSize: '48px', color: '#00bcd4' }} />,
-      path: `${routePrefix}/performance/${id}`,
-      color: "#00bcd4",
-    },
-  ] : [];
+  // Append student-specific items (removed My Performance Report)
+  const studentExtras = [];
 
   // Filter menu items based on user role
   // For test_taker: only show overview and daily challenge
