@@ -130,10 +130,10 @@
   }
 }
 
-/* Smooth animations */
-.ai-generate-wrapper * {
+/* Smooth animations - Removed to prevent container jumping on page load */
+/* .ai-generate-wrapper * {
   transition: all 0.3s ease;
-}
+} */
 
 /* Selection hover effects */
 .sun-prompt-description-card:hover,
@@ -154,10 +154,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Card animations */
-.ai-generate-wrapper .ant-card {
+/* Card animations - Removed to prevent container jumping on page load */
+/* .ai-generate-wrapper .ant-card {
   animation: fadeInUp 0.5s ease-out;
-}
+} */
 
 @keyframes fadeInUp {
   from {

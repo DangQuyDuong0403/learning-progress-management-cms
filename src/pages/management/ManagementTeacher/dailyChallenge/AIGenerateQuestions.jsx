@@ -33,6 +33,7 @@ import DragDropModal from "./questionModals/DragDropModal";
 import ReorderModal from "./questionModals/ReorderModal";
 import RewriteModal from "./questionModals/RewriteModal";
 import "./AIGenerateQuestions.css";
+import TableSpinner from "../../../../component/spinner/TableSpinner";
 import dailyChallengeApi from "../../../../apis/backend/dailyChallengeManagement";
 import levelManagementApi from "../../../../apis/backend/levelManagement";
 
@@ -150,6 +151,9 @@ const AIGenerateQuestions = () => {
   // Modal edit states
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
+  const [showSpinner, setShowSpinner] = useState(true);
+  const [spinnerCompleted, setSpinnerCompleted] = useState(false);
+  const [contentVisible, setContentVisible] = useState(false);
   
   // Question states for the 3 new questions
   const [questions, setQuestions] = useState([
@@ -250,6 +254,16 @@ const AIGenerateQuestions = () => {
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
   const MAX_FILE_MB = 10;
+  useEffect(() => {
+    const spinnerTimer = setTimeout(() => setSpinnerCompleted(true), 1200);
+    return () => clearTimeout(spinnerTimer);
+  }, []);
+
+  const handleSpinnerAnimationEnd = useCallback(() => {
+    setShowSpinner(false);
+    setContentVisible(true);
+  }, []);
+
   
   const availableQuestionTypes = React.useMemo(() => [
     { 
@@ -765,6 +779,14 @@ const AIGenerateQuestions = () => {
 
   // Handle AI generation
   const handleGenerateWithAI = useCallback(async () => {
+    // Validate: Check if at least one question type is selected
+    const selectedConfigs = (questionTypeConfigs || [])
+      .filter(c => Number(c.numberOfQuestions) > 0);
+    
+    if (selectedConfigs.length === 0) {
+      spaceToast.error('At least one question type config is required');
+      return;
+    }
     
     try {
       setIsGenerating(true);
@@ -775,12 +797,10 @@ const AIGenerateQuestions = () => {
       
       const payload = {
         challengeId: challengeInfo.challengeId || id,
-        questionTypeConfigs: (questionTypeConfigs || [])
-          .filter(c => Number(c.numberOfQuestions) > 0)
-          .map((c) => ({
-            questionType: c.questionType,
-            numberOfQuestions: Number(c.numberOfQuestions) || 1,
-          })),
+        questionTypeConfigs: selectedConfigs.map((c) => ({
+          questionType: c.questionType,
+          numberOfQuestions: Number(c.numberOfQuestions) || 1,
+        })),
         description: promptDescription || '',
         level: levelValue,
         ...(lessonFocus.length > 0 && { lessonFocus }),
@@ -838,7 +858,7 @@ const AIGenerateQuestions = () => {
   // Generate questions from uploaded file + optional description
   const handleGenerateFromFile = useCallback(async () => {
     if (!uploadedFile) {
-      spaceToast.error('Please upload a file first');
+      spaceToast.error('Please select a file to generate questions');
       return;
     }
     try {
@@ -1311,7 +1331,15 @@ const AIGenerateQuestions = () => {
 
   // Handle deleting a question
   const handleDeleteQuestion = useCallback((questionId) => {
-    setQuestions(prev => prev.filter(q => q.id !== questionId));
+    setQuestions(prev => {
+      const filtered = prev.filter(q => q.id !== questionId);
+      // Re-index questions after deletion
+      return filtered.map((q, index) => ({
+        ...q,
+        id: index + 1,
+        title: `Question ${index + 1}`
+      }));
+    });
     spaceToast.success('Question deleted successfully');
   }, []);
 
@@ -1480,8 +1508,35 @@ const AIGenerateQuestions = () => {
     </header>
   );
   
+  const mainContentStyle = {
+    opacity: contentVisible ? 1 : 0,
+    transition: 'opacity 0.45s ease',
+    pointerEvents: contentVisible ? 'auto' : 'none'
+  };
+
   return (
     <ThemedLayout customHeader={customHeader}>
+      {showSpinner && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 4000,
+            background: theme === 'sun'
+              ? 'rgba(255, 255, 255, 0.92)'
+              : 'rgba(7, 7, 12, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <TableSpinner
+            message="Loading..."
+            isCompleted={spinnerCompleted}
+            onAnimationEnd={handleSpinnerAnimationEnd}
+          />
+        </div>
+      )}
       <style>
         {`
           @keyframes astroBounce {
@@ -1494,7 +1549,10 @@ const AIGenerateQuestions = () => {
           }
         `}
       </style>
-      <div className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}>
+      <div
+        className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}
+        style={mainContentStyle}
+      >
         <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
           {/* Hierarchy info moved inside the main container */}
           {/* Frosted outer frame around both containers and the button */}
@@ -2469,7 +2527,21 @@ const AIGenerateQuestions = () => {
                   style={{ display: 'none' }}
                   onChange={(e) => {
                     const f = e.target.files && e.target.files[0];
-                    if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+                    if (!f) return;
+                    
+                    // Validate file extension
+                    const fileName = f.name.toLowerCase();
+                    const validExtensions = ['.doc', '.docx'];
+                    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+                    if (!validExtensions.includes(fileExtension)) {
+                      spaceToast.error(`Unsupported file type: ${fileExtension}. Supported types: .doc, .docx`);
+                      e.target.value = '';
+                      setUploadedFile(null);
+                      setUploadedFileName('');
+                      return;
+                    }
+                    
+                    if (f.size > MAX_FILE_MB * 1024 * 1024) {
                       spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
                       e.target.value = '';
                       setUploadedFile(null);
@@ -2574,7 +2646,21 @@ const AIGenerateQuestions = () => {
                         style={{ display: 'none' }}
                         onChange={(e) => {
                           const f = e.target.files && e.target.files[0];
-                          if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+                          if (!f) return;
+                          
+                          // Validate file extension
+                          const fileName = f.name.toLowerCase();
+                          const validExtensions = ['.doc', '.docx'];
+                          const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+                          if (!validExtensions.includes(fileExtension)) {
+                            spaceToast.error(`Unsupported file type: ${fileExtension}. Supported types: .doc, .docx`);
+                            e.target.value = '';
+                            setUploadedFile(null);
+                            setUploadedFileName('');
+                            return;
+                          }
+                          
+                          if (f.size > MAX_FILE_MB * 1024 * 1024) {
                             spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
                             e.target.value = '';
                             setUploadedFile(null);
@@ -2586,14 +2672,49 @@ const AIGenerateQuestions = () => {
                         }}
                       />
                       {uploadedFileName && (
-                        <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#d1cde8' }}>{uploadedFileName}</div>
+                        <div style={{ 
+                          marginTop: 10, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          background: theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.15)',
+                          border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(139, 92, 246, 0.3)'}`
+                        }}>
+                          <Typography.Text style={{ 
+                            fontSize: 13, 
+                            fontWeight: 600, 
+                            color: theme === 'sun' ? '#1E40AF' : '#d1cde8',
+                            flex: 1
+                          }}>
+                            {uploadedFileName}
+                          </Typography.Text>
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<CloseOutlined />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUploadedFile(null);
+                              setUploadedFileName('');
+                              const input = document.getElementById('question-upload-input');
+                              if (input) input.value = '';
+                            }}
+                            style={{
+                              color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+                              padding: '0 4px',
+                              minWidth: 'auto',
+                              height: 'auto'
+                            }}
+                          />
+                        </div>
                       )}
                     </div>
                     <Button
                       type="primary"
                       icon={<ThunderboltOutlined />}
                       loading={isGenerating}
-                      disabled={!uploadedFile}
                       onClick={handleGenerateFromFile}
                       style={{
                         marginTop: 16,
