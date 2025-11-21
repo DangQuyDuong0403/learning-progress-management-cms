@@ -6,7 +6,6 @@ import {
   Typography,
 } from "antd";
 import {
-  HomeOutlined,
   TeamOutlined,
   BarChartOutlined,
 } from "@ant-design/icons";
@@ -35,14 +34,6 @@ const StudentDashboard = () => {
   };
 
   const menuItems = [
-    {
-      id: "english-center-overview",
-      title: t('studentDashboard.englishCenterOverview'),
-      description: t('studentDashboard.englishCenterOverviewDescription'),
-      icon: <HomeOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
-      path: isTestTaker ? '/test-taker/overview' : '/student/overview',
-      color: "#52c41a",
-    },
     {
       id: "class-list",
       title: t('studentDashboard.classList'),

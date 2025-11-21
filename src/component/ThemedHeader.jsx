@@ -12,6 +12,7 @@ import { useDailyChallengeMenu } from '../contexts/DailyChallengeMenuContext';
 import LanguageToggle from './LanguageToggle';
 import { spaceToast } from './SpaceToastify';
 import { notificationApi } from '../apis/apis';
+import ROUTER_PAGE from '../constants/router';
 import './ThemedHeader.css';
 
 export default function ThemedHeader({
@@ -522,11 +523,15 @@ export default function ThemedHeader({
     }
   };
 
-  // Brand click: navigate to dashboard (teacher -> teacher dashboard)
+  // Brand click: navigate to class list (teacher/teaching_assistant -> class list, others -> dashboard)
   const handleBrandClick = () => {
     const role = user?.role?.toLowerCase();
     if (role === 'teacher') {
-      navigate('/teacher/dashboard');
+      navigate(ROUTER_PAGE.TEACHER_CLASSES);
+      return;
+    }
+    if (role === 'teaching_assistant') {
+      navigate(ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES);
       return;
     }
     // Fallback to role-based dashboard
@@ -561,13 +566,12 @@ export default function ThemedHeader({
   };
 
   // Check if on teacher/teaching_assistant/student classes list page
+  // Note: Back button is hidden on ClassList page for teacher and teaching_assistant
   const isOnClassesListPage = () => {
     const userRole = user?.role?.toLowerCase();
-    if (userRole === 'teacher') {
-      return location.pathname === '/teacher/classes';
-    }
-    if (userRole === 'teaching_assistant') {
-      return location.pathname === '/teaching-assistant/classes';
+    // Don't show back button on ClassList page for teacher and teaching_assistant
+    if (userRole === 'teacher' || userRole === 'teaching_assistant') {
+      return false; // Hide back button on ClassList page
     }
     if (userRole === 'student') {
       return location.pathname === '/student/classes';

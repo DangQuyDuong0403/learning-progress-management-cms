@@ -283,6 +283,7 @@ const AIGenerateFeedback = () => {
     return prefill?.questionWeight || 10;
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [saving, setSaving] = useState(false);
   // Speaking-specific controls
   const [speakingReferenceText, setSpeakingReferenceText] = useState('');
@@ -588,6 +589,7 @@ const AIGenerateFeedback = () => {
         pronunciationScores: manualMetrics,
         referenceText: speakingReferenceText || metrics.referenceText || null,
         recognizedText: metrics.recognizedText || null,
+        words: Array.isArray(metrics.words) ? metrics.words : null,
       };
       
       // Convert to JSON string for overallFeedback
@@ -714,6 +716,7 @@ const AIGenerateFeedback = () => {
           pronunciationScores: parsed.pronunciationScores || {},
           referenceText: parsed.referenceText || null,
           recognizedText: parsed.recognizedText || null,
+          words: Array.isArray(parsed.words) ? parsed.words : null,
         };
       }
     } catch {
@@ -1361,6 +1364,7 @@ const AIGenerateFeedback = () => {
               prosodyScore: scores.prosodyScore ?? null,
               referenceText: parsedData.referenceText || null,
               recognizedText: parsedData.recognizedText || null,
+              words: Array.isArray(parsedData.words) ? parsedData.words : null,
             });
             
             // Set reference text if available
@@ -1413,6 +1417,7 @@ const AIGenerateFeedback = () => {
             prosodyScore: scores.prosodyScore ?? null,
             referenceText: parsedData.referenceText || null,
             recognizedText: parsedData.recognizedText || null,
+            words: Array.isArray(parsedData.words) ? parsedData.words : null,
           });
           if (parsedData.referenceText) {
             setSpeakingReferenceText(parsedData.referenceText);
@@ -1612,6 +1617,7 @@ const AIGenerateFeedback = () => {
                     prosodyScore: scores.prosodyScore ?? null,
                     referenceText: parsedData.referenceText || null,
                     recognizedText: parsedData.recognizedText || null,
+                    words: Array.isArray(parsedData.words) ? parsedData.words : null,
                   });
                   if (parsedData.referenceText) {
                     setSpeakingReferenceText(parsedData.referenceText);
@@ -1657,6 +1663,7 @@ const AIGenerateFeedback = () => {
                     prosodyScore: scores.prosodyScore ?? null,
                     referenceText: parsedData.referenceText || null,
                     recognizedText: parsedData.recognizedText || null,
+                    words: Array.isArray(parsedData.words) ? parsedData.words : null,
                   });
                   if (parsedData.referenceText) {
                     setSpeakingReferenceText(parsedData.referenceText);
@@ -1920,9 +1927,31 @@ const AIGenerateFeedback = () => {
     });
   }, [navigate, user, challengeId, submissionId, location.state, location.search, classId, className, challengeName, studentName]);
 
+  // Simulate progress when generating
+  useEffect(() => {
+    let progressInterval = null;
+    if (isGenerating) {
+      setGenerationProgress(0);
+      progressInterval = setInterval(() => {
+        setGenerationProgress((prev) => {
+          if (prev >= 90) {
+            return prev; // Stop at 90% until API call completes
+          }
+          // Increment progress with decreasing speed
+          const increment = prev < 30 ? 3 : prev < 60 ? 2 : 1;
+          return Math.min(prev + increment, 90);
+        });
+      }, 200);
+    }
+    return () => {
+      if (progressInterval) clearInterval(progressInterval);
+    };
+  }, [isGenerating]);
+
   const handleGenerateAI = useCallback(async () => {
     try {
       setIsGenerating(true);
+      setGenerationProgress(0);
       if (sectionType === 'writing') {
         // Writing grading via submissionQuestionId
         const writingSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
@@ -1966,6 +1995,9 @@ const AIGenerateFeedback = () => {
           hasAIGenerated: true,
           sectionType: 'writing',
         });
+        setGenerationProgress(100);
+        // Small delay to show 100% before closing
+        await new Promise(resolve => setTimeout(resolve, 300));
         spaceToast.success(getBackendMessage(res) || 'AI feedback generated');
       } else if (sectionType === 'speaking') {
         // Speaking pronunciation assessment
@@ -2075,6 +2107,9 @@ const AIGenerateFeedback = () => {
             sectionType: 'speaking',
           });
         }
+        setGenerationProgress(100);
+        // Small delay to show 100% before closing
+        await new Promise(resolve => setTimeout(resolve, 300));
         spaceToast.success(getBackendMessage(res) || 'Pronunciation assessed');
       } else {
         spaceToast.error('AI grading hiện chỉ hỗ trợ cho Writing và Speaking');
@@ -2098,6 +2133,7 @@ const AIGenerateFeedback = () => {
       spaceToast.error(beErr || e?.message || 'Failed to generate AI feedback');
     } finally {
       setIsGenerating(false);
+      setGenerationProgress(0);
     }
   }, [sectionType, submissionQuestionId, prefill?.submissionQuestionId, studentAnswer, section, speakingReferenceText, getBackendMessage, stripHtmlToText, parseFeedbackFromResponse, buildPromptFromContent, isOnlyImageUrl]);
 
@@ -2210,7 +2246,7 @@ const AIGenerateFeedback = () => {
                     if (className) parts.push(className);
                     if (challengeName) parts.push(challengeName);
                     if (studentName) parts.push(studentName);
-                    return parts.length > 0 ? parts.join(' / ') : (t('dailyChallenge.feedbackAndGrading') || 'Feedback & Grading');
+                    return parts.length > 0 ? parts.join(' / ') : (t('dailyChallenge.feedbackAndGrading') !== 'dailyChallenge.feedbackAndGrading' ? t('dailyChallenge.feedbackAndGrading') : 'Feedback & Grading');
                   })()}
                 </h2>
               </div>
@@ -2282,6 +2318,26 @@ const AIGenerateFeedback = () => {
             max-height: 200px !important; 
             overflow-y: auto !important; 
             color: #000 !important; 
+          }
+          /* Custom scrollbar for transcript sections */
+          .transcript-scrollable::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+          .transcript-scrollable::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+          }
+          .transcript-scrollable::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+          }
+          .transcript-scrollable::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+          }
+          .transcript-scrollable {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
           }
         `}</style>
         <Card
@@ -2831,54 +2887,35 @@ const AIGenerateFeedback = () => {
                           );
                         })}
                       </div>
-                      {/* Reference Text and Recognized Text - only show if from AI result */}
-                      {speakingResult && (speakingResult?.referenceText || speakingResult?.recognizedText) && (
+                      {/* Polished Transcript */}
+                      {speakingResult && speakingResult?.referenceText && (
                         <div style={{ marginTop: 16 }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            {/* Reference Text */}
-                            {speakingResult?.referenceText && (
-                              <div style={{
-                                borderRadius: 12,
-                                padding: 16,
-                                background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
-                                border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
-                              }}>
-                                <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
-                                  Reference Text
-                                </Text>
-                                <div style={{
-                                  fontSize: 14,
-                                  lineHeight: 1.6,
-                                  color: theme === 'sun' ? '#0f172a' : '#d1cde8',
-                                  whiteSpace: 'pre-wrap',
-                                  wordBreak: 'break-word',
-                                }}>
-                                  {speakingResult.referenceText}
-                                </div>
-                              </div>
-                            )}
-                            {/* Recognized Text */}
-                            {speakingResult?.recognizedText && (
-                              <div style={{
-                                borderRadius: 12,
-                                padding: 16,
-                                background: theme === 'sun' ? '#FFF4E6' : 'rgba(167, 139, 250, 0.12)',
-                                border: theme === 'sun' ? '1px solid rgba(255, 193, 7, 0.25)' : '1px solid rgba(167, 139, 250, 0.25)',
-                              }}>
-                                <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
-                                  Recognized Text
-                                </Text>
-                                <div style={{
-                                  fontSize: 14,
-                                  lineHeight: 1.6,
-                                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                                  whiteSpace: 'pre-wrap',
-                                  wordBreak: 'break-word',
-                                }}>
-                                  {speakingResult.recognizedText}
-                                </div>
-                              </div>
-                            )}
+                          <div 
+                            className="transcript-scrollable"
+                            style={{
+                              borderRadius: 12,
+                              padding: 16,
+                              background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
+                              border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
+                              maxHeight: '300px',
+                              overflowY: 'auto',
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                          >
+                            <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
+                              Polished Transcript
+                            </Text>
+                            <div style={{
+                              fontSize: 14,
+                              lineHeight: 1.6,
+                              color: theme === 'sun' ? '#0f172a' : '#d1cde8',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                              flex: 1
+                            }}>
+                              {speakingResult.referenceText}
+                            </div>
                           </div>
                         </div>
                       )}
@@ -3112,31 +3149,6 @@ const AIGenerateFeedback = () => {
                   )}
                   {sectionType === 'speaking' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {/* Inline form row (top before generation) */}
-                      {!hasAIGenerated && (
-                        <div
-                          style={{
-                            background: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(167,139,250,0.10)',
-                            border: `2px solid ${primaryColor}40`,
-                            borderRadius: 12,
-                            padding: 12
-                          }}
-                        >
-                          {/* Reference Text */}
-                          <div>
-                            <Text strong>Reference text</Text>
-                            <div style={{ marginTop: 6 }}>
-                              <Input.TextArea
-                                rows={3}
-                                value={speakingReferenceText}
-                                onChange={(e) => setSpeakingReferenceText(e.target.value)}
-                                placeholder="Enter text if students were asked to read a passage"
-                                style={{ borderRadius: 8, background: '#fff' }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
                       {/* Speaking pre-generation hero panel */}
                       {!hasAIGenerated && (
                         <div
@@ -3173,7 +3185,7 @@ const AIGenerateFeedback = () => {
                           <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                             Assess pronunciation accuracy and fluency from the student's recording
                           </div>
-                          <div>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                             <Button
                               type="primary"
                               icon={<ThunderboltOutlined />}
@@ -3193,6 +3205,17 @@ const AIGenerateFeedback = () => {
                             >
                               Generate with AI
                             </Button>
+                            <Typography.Text style={{
+                              fontSize: '12px',
+                              fontStyle: 'italic',
+                              color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                              marginTop: '8px',
+                              textAlign: 'center',
+                              display: 'block',
+                              width: '100%'
+                            }}>
+                              The generated content is for reference only.
+                            </Typography.Text>
                           </div>
                         </div>
                       )}
@@ -3245,146 +3268,135 @@ const AIGenerateFeedback = () => {
                               );
                             })}
                           </div>
-                          {/* Reference Text and Recognized Text */}
-                          {(speakingResult?.referenceText || speakingResult?.recognizedText) && (
-                            <div style={{ marginTop: 16 }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                {/* Reference Text */}
-                                {speakingResult?.referenceText && (
-                                  <div style={{
-                                    borderRadius: 12,
-                                    padding: 16,
-                                    background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
-                                    border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
-                                  }}>
-                                    <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
-                                      Reference Text
-                                    </Text>
-                                    <div style={{
-                                      fontSize: 14,
-                                      lineHeight: 1.6,
-                                      color: theme === 'sun' ? '#0f172a' : '#d1cde8',
-                                      whiteSpace: 'pre-wrap',
-                                      wordBreak: 'break-word',
-                                    }}>
-                                      {speakingResult.referenceText}
-                                    </div>
-                                  </div>
-                                )}
-                                {/* Recognized Text */}
-                                {speakingResult?.recognizedText && (
-                                  <div style={{
-                                    borderRadius: 12,
-                                    padding: 16,
-                                    background: theme === 'sun' ? '#FFF4E6' : 'rgba(167, 139, 250, 0.12)',
-                                    border: theme === 'sun' ? '1px solid rgba(255, 193, 7, 0.25)' : '1px solid rgba(167, 139, 250, 0.25)',
-                                  }}>
-                                    <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
-                                      Recognized Text
-                                    </Text>
-                                    <div style={{
-                                      fontSize: 14,
-                                      lineHeight: 1.6,
-                                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                                      whiteSpace: 'pre-wrap',
-                                      wordBreak: 'break-word',
-                                    }}>
-                                      {speakingResult.recognizedText}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                          {Array.isArray(speakingResult?.words) && speakingResult.words.length > 0 && (
-                            <div style={{ marginTop: 16 }}>
-                              <Text strong style={{ fontSize: 16, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 12, display: 'block' }}>
-                                Word Details
-                              </Text>
-                              <div style={{ 
-                                maxHeight: 300, 
-                                overflow: 'auto', 
-                                border: `1px solid ${primaryColor}30`, 
-                                borderRadius: 12, 
-                                padding: 12,
-                                background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)'
-                              }}>
-                                {/* Header */}
+                          {/* Actual Audio Transcript and Polished Transcript - Stacked */}
+                          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {/* Actual Audio Transcript - Top */}
+                            {Array.isArray(speakingResult?.words) && speakingResult.words.length > 0 && (
+                              <div 
+                                className="transcript-scrollable"
+                                style={{
+                                  borderRadius: 12,
+                                  padding: 16,
+                                  background: theme === 'sun' ? '#FFF4E6' : 'rgba(167, 139, 250, 0.12)',
+                                  border: theme === 'sun' ? '1px solid rgba(255, 193, 7, 0.25)' : '1px solid rgba(167, 139, 250, 0.25)',
+                                  maxHeight: '300px',
+                                  overflowY: 'auto',
+                                  display: 'flex',
+                                  flexDirection: 'column'
+                                }}
+                              >
+                                <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
+                                  Actual Audio Transcript
+                                </Text>
                                 <div style={{ 
-                                  display: 'grid', 
-                                  gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr', 
-                                  gap: 12, 
-                                  fontSize: 13, 
-                                  fontWeight: 600,
-                                  padding: '8px 12px',
-                                  borderBottom: `2px solid ${primaryColor}40`,
-                                  marginBottom: 8,
-                                  color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                                  background: theme === 'sun' ? 'rgba(24, 144, 255, 0.06)' : 'rgba(138, 122, 255, 0.1)',
-                                  borderRadius: 8
+                                  lineHeight: 2.5,
+                                  fontSize: 14,
+                                  wordBreak: 'break-word',
+                                  flex: 1
                                 }}>
-                                  <div>Word</div>
-                                  <div>Accuracy</div>
-                                  <div>Error Type</div>
-                                  <div>Position</div>
-                                  <div>Duration (ms)</div>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    flexWrap: 'wrap', 
+                                    gap: '2px 1px',
+                                    alignItems: 'baseline'
+                                  }}>
+                                    {speakingResult.words.map((w, idx) => {
+                                      const accuracyScore = Number.isFinite(Number(w?.accuracyScore)) ? Number(w.accuracyScore) : null;
+                                      const hasError = w?.errorType && w.errorType !== 'None' && w.errorType !== 'none' && w.errorType !== '';
+                                      
+                                      // Determine color based on accuracy score only
+                                      let wordColor = theme === 'sun' ? '#0f172a' : '#F3F4F6';
+                                      let scoreColor = theme === 'sun' ? '#666' : '#999';
+                                      
+                                      if (accuracyScore !== null) {
+                                        if (accuracyScore >= 80) {
+                                          wordColor = theme === 'sun' ? '#22C55E' : '#4ADE80'; // Green
+                                          scoreColor = theme === 'sun' ? '#16A34A' : '#22C55E';
+                                        } else if (accuracyScore >= 60) {
+                                          wordColor = theme === 'sun' ? '#F59E0B' : '#FBBF24'; // Orange
+                                          scoreColor = theme === 'sun' ? '#D97706' : '#F59E0B';
+                                        } else {
+                                          wordColor = theme === 'sun' ? '#EF4444' : '#F87171'; // Red
+                                          scoreColor = theme === 'sun' ? '#DC2626' : '#EF4444';
+                                        }
+                                      }
+                                      
+                                      // Note: errorType is only used for wavy underline, not for color
+                                      
+                                      return (
+                                        <span
+                                          key={`word-inline-${idx}`}
+                                          style={{
+                                            position: 'relative',
+                                            display: 'inline-flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            margin: '0 1px',
+                                            padding: '0 2px',
+                                            verticalAlign: 'baseline'
+                                          }}
+                                        >
+                                          {/* Accuracy Score above word */}
+                                          <span
+                                            style={{
+                                              fontSize: '12px',
+                                              fontWeight: 600,
+                                              color: scoreColor,
+                                              lineHeight: 1.2,
+                                              marginBottom: '2px',
+                                              whiteSpace: 'nowrap'
+                                            }}
+                                          >
+                                            {accuracyScore !== null ? `${Math.round(accuracyScore)}%` : '-'}
+                                          </span>
+                                          {/* Word */}
+                                          <span
+                                            style={{
+                                              color: wordColor,
+                                              fontWeight: hasError ? 700 : (accuracyScore !== null && accuracyScore < 60 ? 600 : 500),
+                                              fontSize: '14px'
+                                            }}
+                                          >
+                                            {w?.word || ''}
+                                          </span>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                                {/* Word rows */}
-                                {speakingResult.words.map((w, idx) => {
-                                  const hasError = w?.errorType && w.errorType !== 'None' && w.errorType !== 'none' && w.errorType !== '';
-                                  const accuracyScore = Number.isFinite(Number(w?.accuracyScore)) ? Number(w.accuracyScore) : null;
-                                  const isLowAccuracy = accuracyScore !== null && accuracyScore < 60;
-                                  return (
-                                    <div 
-                                      key={`${w?.word || 'w'}-${idx}`} 
-                                      style={{ 
-                                        display: 'grid', 
-                                        gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1fr', 
-                                        gap: 12, 
-                                        fontSize: 13, 
-                                        padding: '10px 12px', 
-                                        borderBottom: idx < speakingResult.words.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
-                                        background: hasError || isLowAccuracy 
-                                          ? (theme === 'sun' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.12)')
-                                          : 'transparent',
-                                        borderRadius: 6,
-                                        transition: 'background 0.2s ease'
-                                      }}
-                                    >
-                                      <div style={{ fontWeight: 600, color: theme === 'sun' ? '#0f172a' : '#F3F4F6' }}>
-                                        {w?.word || '-'}
-                                      </div>
-                                      <div style={{ 
-                                        color: accuracyScore !== null 
-                                          ? (accuracyScore >= 80 ? (theme === 'sun' ? '#22C55E' : '#4ADE80') 
-                                            : accuracyScore >= 60 ? (theme === 'sun' ? '#F59E0B' : '#FBBF24') 
-                                            : (theme === 'sun' ? '#EF4444' : '#F87171'))
-                                          : (theme === 'sun' ? '#666' : '#999'),
-                                        fontWeight: 500
-                                      }}>
-                                        {accuracyScore !== null ? `${accuracyScore.toFixed(1)}%` : '-'}
-                                      </div>
-                                      <div style={{ 
-                                        color: hasError 
-                                          ? (theme === 'sun' ? '#EF4444' : '#F87171')
-                                          : (theme === 'sun' ? '#22C55E' : '#4ADE80'),
-                                        fontWeight: hasError ? 600 : 400,
-                                        fontSize: 12
-                                      }}>
-                                        {w?.errorType || 'None'}
-                                      </div>
-                                      <div style={{ color: theme === 'sun' ? '#666' : '#999', fontSize: 12 }}>
-                                        {w?.position !== null && w?.position !== undefined ? w.position : '-'}
-                                      </div>
-                                      <div style={{ color: theme === 'sun' ? '#666' : '#999', fontSize: 12 }}>
-                                        {w?.duration !== null && w?.duration !== undefined ? `${w.duration}ms` : '-'}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
                               </div>
-                            </div>
-                          )}
+                            )}
+                            {/* Polished Transcript - Bottom */}
+                            {speakingResult?.referenceText && (
+                              <div 
+                                className="transcript-scrollable"
+                                style={{
+                                  borderRadius: 12,
+                                  padding: 16,
+                                  background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
+                                  border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
+                                  maxHeight: '300px',
+                                  overflowY: 'auto',
+                                  display: 'flex',
+                                  flexDirection: 'column'
+                                }}
+                              >
+                                <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
+                                  Polished Transcript
+                                </Text>
+                                <div style={{
+                                  fontSize: 14,
+                                  lineHeight: 1.6,
+                                  color: theme === 'sun' ? '#0f172a' : '#d1cde8',
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word',
+                                  flex: 1
+                                }}>
+                                  {speakingResult.referenceText}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                           {/* Score moved to header row next to Back button */}
                           <div style={{ marginTop: 4 }}>
                       <Text strong>Feedback</Text>
@@ -3476,7 +3488,7 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         Get comprehensive feedback on your writing with detailed analysis and suggestions
                       </div>
-                      <div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -3496,6 +3508,17 @@ const AIGenerateFeedback = () => {
                         >
                           Generate with AI
                         </Button>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '8px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          The generated content is for reference only.
+                        </Typography.Text>
                       </div>
                     </div>
                   )}
@@ -3596,31 +3619,6 @@ const AIGenerateFeedback = () => {
                     </>
                   )}
 
-                  {/* Bottom area: after generation, move inputs above the button */}
-                  {sectionType === 'speaking' && hasAIGenerated && (
-                    <div
-                      style={{
-                        background: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(167,139,250,0.10)',
-                        border: `2px solid ${primaryColor}40`,
-                        borderRadius: 12,
-                        padding: 12,
-                        marginTop: 8
-                      }}
-                    >
-                      <div>
-                        <Text strong>Reference text</Text>
-                        <div style={{ marginTop: 6 }}>
-                          <Input.TextArea
-                            rows={3}
-                            value={speakingReferenceText}
-                            onChange={(e) => setSpeakingReferenceText(e.target.value)}
-                            placeholder="Enter text if students were asked to read a passage"
-                            style={{ borderRadius: 8, background: '#fff' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   {sectionType === 'speaking' && hasAIGenerated && (
                     <div
                       style={{
@@ -3656,8 +3654,7 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         Regenerate pronunciation analysis for another take
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                       
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -3677,6 +3674,17 @@ const AIGenerateFeedback = () => {
                         >
                           Regenerate with AI
                         </Button>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '8px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          The generated content is for reference only.
+                        </Typography.Text>
                       </div>
                     </div>
                   )}
@@ -3717,7 +3725,7 @@ const AIGenerateFeedback = () => {
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
                         You can regenerate suggestions if you want a different take.
                       </div>
-                      <div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                         <Button
                           type="primary"
                           icon={<ThunderboltOutlined />}
@@ -3737,6 +3745,17 @@ const AIGenerateFeedback = () => {
                         >
                           Regenerate with AI
                         </Button>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '8px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          The generated content is for reference only.
+                        </Typography.Text>
                       </div>
                     </div>
                     ) : null
@@ -3943,6 +3962,7 @@ const AIGenerateFeedback = () => {
                       fluencyScore: editSpeakingScores.fluencyScore ?? speakingResult?.fluencyScore,
                       completenessScore: editSpeakingScores.completenessScore ?? speakingResult?.completenessScore,
                       prosodyScore: editSpeakingScores.prosodyScore ?? speakingResult?.prosodyScore,
+                      words: Array.isArray(speakingResult?.words) ? speakingResult.words : null,
                     },
                     hasAIGenerated: true,
                     sectionType: 'speaking',
@@ -4177,6 +4197,192 @@ const AIGenerateFeedback = () => {
           )}
         </div>
       </Modal>
+
+      {/* Full-screen loading overlay */}
+      {isGenerating && (
+        <>
+          <style>
+            {`
+              @keyframes astroBounce {
+                0%, 100% {
+                  transform: translateY(-50%) translateY(0);
+                }
+                50% {
+                  transform: translateY(-50%) translateY(-8px);
+                }
+              }
+            `}
+          </style>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 2000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: theme === 'sun'
+                ? 'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(240,249,255,0.92))'
+                : 'linear-gradient(135deg, rgba(18, 18, 27, 0.92), rgba(34, 27, 60, 0.92))',
+              backdropFilter: 'blur(8px)',
+              transition: 'none',
+              animation: 'none'
+            }}
+          >
+            <Card
+              style={{
+                width: '520px',
+                maxWidth: '90vw',
+                borderRadius: '24px',
+                border: theme === 'sun'
+                  ? `2px solid ${primaryColor}40`
+                  : `2px solid ${primaryColor}50`,
+                background: theme === 'sun'
+                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
+                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                boxShadow: theme === 'sun'
+                  ? '0 12px 48px rgba(24, 144, 255, 0.2)'
+                  : '0 12px 48px rgba(139, 92, 246, 0.3)',
+                padding: '32px',
+                transition: 'none',
+                animation: 'none',
+                transform: 'none'
+              }}
+              bodyStyle={{ padding: 0 }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '24px' }}>
+                {/* AI Icon */}
+                <div
+                  style={{
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: theme === 'sun'
+                      ? `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}10)`
+                      : `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}15)`,
+                    border: `3px solid ${primaryColor}40`,
+                    boxShadow: theme === 'sun'
+                      ? `0 8px 24px ${primaryColor}20`
+                      : `0 8px 24px ${primaryColor}30`,
+                    animation: 'none',
+                    transition: 'none',
+                    transform: 'none'
+                  }}
+                >
+                  <span style={{ fontSize: '48px' }}>🤖</span>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <Title level={3} style={{ margin: 0, marginBottom: '8px', fontSize: '24px', fontWeight: 700, color: primaryColor }}>
+                    {t('dailyChallenge.aiThinking') || 'AI is thinking...'}
+                  </Title>
+                  <div style={{ fontSize: '15px', color: theme === 'sun' ? '#64748b' : '#94a3b8', fontWeight: 500 }}>
+                    {sectionType === 'speaking' 
+                      ? 'Analyzing pronunciation and generating feedback...'
+                      : 'Analyzing writing and generating comprehensive feedback...'}
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div style={{ width: '100%', padding: '0 8px' }}>
+                  <div style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
+                    {/* Progress Bar Background */}
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '32px',
+                        borderRadius: '16px',
+                        background: theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.15)',
+                        position: 'relative',
+                        overflow: 'visible',
+                        border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(139, 92, 246, 0.2)'}`
+                      }}
+                    >
+                      {/* Progress Fill with Gradient */}
+                      <div
+                        style={{
+                          width: `${generationProgress}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)',
+                          borderRadius: '14px',
+                          transition: 'width 0.3s ease',
+                          position: 'relative',
+                          boxShadow: '0 2px 8px rgba(255, 165, 0, 0.3)',
+                          overflow: 'visible'
+                        }}
+                      >
+                        {/* Astro Image on Progress Bar */}
+                        {generationProgress > 0 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              right: '-20px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              width: '48px',
+                              height: '48px',
+                              zIndex: 10,
+                              animation: 'astroBounce 1s ease-in-out infinite'
+                            }}
+                          >
+                            <img
+                              src="/img/astro.png"
+                              alt="Astro"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                                filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Percentage Text */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        color: theme === 'sun' ? '#0F172A' : '#FFFFFF',
+                        textShadow: theme === 'sun' ? '0 1px 2px rgba(255, 255, 255, 0.8)' : '0 1px 2px rgba(0, 0, 0, 0.5)',
+                        zIndex: 5,
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      {generationProgress}%
+                    </div>
+                  </div>
+                  <div style={{ 
+                    fontSize: '13px', 
+                    color: theme === 'sun' ? '#94a3b8' : '#64748b', 
+                    fontWeight: 400,
+                    marginTop: '4px',
+                    textAlign: 'center',
+                    minHeight: '18px'
+                  }}>
+                    {generationProgress < 30 
+                      ? (sectionType === 'speaking' ? 'Processing audio...' : 'Analyzing text...') :
+                     generationProgress < 60 
+                      ? (sectionType === 'speaking' ? 'Assessing pronunciation...' : 'Evaluating criteria...') :
+                     generationProgress < 90 
+                      ? 'Generating feedback...' :
+                     'Almost done...'}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </>
+      )}
     </ThemedLayout>
   );
 };

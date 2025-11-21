@@ -3,8 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import usePageTitle from "../../../hooks/usePageTitle";
 import {
-  Input,
-  Space,
   Card,
   Row,
   Col,
@@ -13,7 +11,6 @@ import {
   Tooltip,
 } from "antd";
 import {
-  SearchOutlined,
   CalendarOutlined,
   BookOutlined,
 } from "@ant-design/icons";
@@ -81,24 +78,15 @@ const StudentClassList = () => {
     pageSize: 9,
     total: 0,
   });
-  
-  // Search state
-  const [searchText, setSearchText] = useState("");
-  const [searchValue, setSearchValue] = useState(""); // Actual search value used for API calls
 
   // Fetch student classes from API
-  const fetchStudentClasses = useCallback(async (page = 1, size = 9, search = '') => {
+  const fetchStudentClasses = useCallback(async (page = 1, size = 9) => {
     setLoading(true);
     try {
       const params = {
         page: page - 1, // API uses 0-based indexing
         size: size,
       };
-
-      // Add search parameter if provided
-      if (search && search.trim()) {
-        params.text = search.trim();
-      }
 
       console.log('Fetching student classes with params:', params);
       const response = await classManagementApi.getStudentClasses(params);
@@ -172,22 +160,10 @@ const StudentClassList = () => {
     }
   }, [t]);
 
-  // Fetch classes on component mount and when search changes
+  // Fetch classes on component mount
   useEffect(() => {
-    fetchStudentClasses(1, pagination.pageSize, searchValue);
-  }, [fetchStudentClasses, pagination.pageSize, searchValue]);
-
-  const handleSearch = (value) => {
-    setSearchText(value);
-    
-    // Debounce search to avoid too many API calls
-    const timeout = setTimeout(() => {
-      setSearchValue(value);
-      setPagination(prev => ({ ...prev, current: 1 }));
-    }, 500);
-    
-    return () => clearTimeout(timeout);
-  };
+    fetchStudentClasses(1, pagination.pageSize);
+  }, [fetchStudentClasses, pagination.pageSize]);
 
   const handleCardClick = (classItem) => {
     // Navigate to class menu for student/test_taker
@@ -197,14 +173,14 @@ const StudentClassList = () => {
 
   const handlePaginationChange = (page, pageSize) => {
     setPagination(prev => ({ ...prev, current: page, pageSize }));
-    fetchStudentClasses(page, pageSize, searchValue);
+    fetchStudentClasses(page, pageSize);
   };
 
   return (
     <ThemedLayout>
       <CustomCursor />
       <div
-        className={`class-page main-content-panel ${theme}-main-panel`}
+        className={`class-page student-class-list-view main-content-panel ${theme}-main-panel`}
         style={theme === 'sun'
           ? { background: 'none', border: 'none', boxShadow: 'none', backdropFilter: 'none' }
           : { border: 'none', boxShadow: 'none', backdropFilter: 'none' }}
@@ -220,27 +196,11 @@ const StudentClassList = () => {
           </Typography.Title>
         </div>
 
-        {/* Search Bar */}
-        <div className="action-bar" style={{ marginBottom: '16px' }}>
-          <Space size="middle" style={{ width: '100%', justifyContent: 'space-between' }}>
-            <Space size="middle">
-              <Input
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="search-input"
-                style={{ minWidth: '350px', maxWidth: '500px', height: '40px', fontSize: '16px' }}
-                allowClear
-              />
-            </Space>
-          </Space>
-        </div>
-
         {/* Cards Section */}
         <div 
           className={`table-section ${theme}-table-section`}
           style={{
-            backgroundColor: theme === 'sun' ? '#ffffff' : '#1a1a2e99',
+            background: 'transparent',
             borderRadius: '8px',
             padding: '20px'
           }}
@@ -399,8 +359,8 @@ const StudentClassList = () => {
                   ))}
                 </Row>
                 
-                {/* Pagination */}
-                {pagination.total > 0 && (
+                {/* Pagination - Only show if more than 10 classes */}
+                {pagination.total > 10 && (
                   <div style={{ 
                     display: 'flex', 
                     justifyContent: 'flex-end', 
@@ -419,7 +379,7 @@ const StudentClassList = () => {
                       onChange={handlePaginationChange}
                       onShowSizeChange={(current, size) => {
                         setPagination(prev => ({ ...prev, current: 1, pageSize: size }));
-                        fetchStudentClasses(1, size, searchValue);
+                        fetchStudentClasses(1, size);
                       }}
                       pageSizeOptions={['6', '9', '12', '18']}
                     />

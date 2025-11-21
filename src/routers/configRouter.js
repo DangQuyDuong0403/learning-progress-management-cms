@@ -28,7 +28,6 @@ import LessonDragEdit from '../pages/management/ManagementManager/syllabus/Lesso
 import LessonDragEditBySyllabus from '../pages/management/ManagementManager/syllabus/LessonDragEditBySyllabus.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
 import StudentProfile from '../pages/management/ManagementManager/Student/StudentProfile.jsx';
-import StudentLearningProgressOverview from '../pages/management/ManagementManager/Student/StudentLearningProgressOverview.jsx';
 import TeacherList from '../pages/management/ManagementManager/teacher/TeacherList.jsx';
 import TeacherProfile from '../pages/management/ManagementManager/teacher/TeacherProfile.jsx';
 import SpinnerDemo from '../pages/SpinnerDemo.jsx';
@@ -74,7 +73,7 @@ import StudentClassList from '../pages/management/ManagementStudent/StudentClass
 import StudentDailyChallengeList from '../pages/management/ManagementStudent/StudentDailyChallengeList.jsx';
 import StudentDailyChallengeTake from '../pages/management/ManagementStudent/StudentDailyChallengeTake.jsx';
 import StudentDailyChallengeResult from '../pages/management/ManagementStudent/StudentDailyChallengeResult.jsx';
-import StudentLearningProgressOverviewView from '../pages/management/ManagementStudent/StudentLearningProgressOverview.jsx';
+import StudentLearningProgressOverview from '../pages/management/ManagementStudent/StudentLearningProgressOverview.jsx';
   
 const CONFIG_ROUTER = [
 	//   {
@@ -346,7 +345,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: StudentLearningProgressOverviewView,
+		component: StudentLearningProgressOverview,
 		path: ROUTER_PAGE.STUDENT_LEARNING_PROGRESS,
 		menuName: 'Student Learning Progress Overview',
 		exact: true,
