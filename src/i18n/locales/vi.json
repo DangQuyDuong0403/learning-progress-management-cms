@@ -2191,6 +2191,15 @@
     "question2": "Câu 2",
     "confirm": "Xác nhận"
   },
+  "dailyChallengeContent": {
+    "totalQuestionsLabel": "Tổng số câu hỏi",
+    "remainingQuestionsLabel": "Còn lại",
+    "questionsUnit": "câu",
+    "noItemsMessage": "Chưa có nội dung nào",
+    "importInstructionsTitle": "Chọn tệp Excel để nhập câu hỏi",
+    "removeFile": "Xóa tệp",
+    "publishConfirmDescription": "Bạn sắp xuất bản thử thách này. Vui lòng kiểm tra các thiết lập sau:"
+  },
   "resetPassword": {
     "title": "Đặt lại mật khẩu",
     "newPassword": "Mật khẩu mới",

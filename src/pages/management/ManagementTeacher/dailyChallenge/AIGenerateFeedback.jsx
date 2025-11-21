@@ -13,6 +13,14 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 
 const { Title, Text } = Typography;
 
+const VIDEO_FILE_EXTS = ['.mp4', '.mov', '.m4v', '.mkv', '.avi', '.webm'];
+const isVideoUrl = (value) => {
+  if (!value || typeof value !== 'string') return false;
+  const lower = value.toLowerCase();
+  if (VIDEO_FILE_EXTS.some(ext => lower.includes(ext))) return true;
+  return lower.includes('video');
+};
+
 const clampSuggestedScoreValue = (value) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
@@ -2588,20 +2596,39 @@ const AIGenerateFeedback = () => {
                             <Typography.Text style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', display: 'block' }}>
                               Student's Recording:
                             </Typography.Text>
-                            {studentAnswer?.audioUrl || studentAnswer?.audio ? (
-                              <div>
+                            {(() => {
+                              const recordingUrl = studentAnswer?.audioUrl || studentAnswer?.audio;
+                              if (!recordingUrl) {
+                                return (
+                                  <Typography.Text type="secondary" style={{ fontSize: '14px', fontStyle: 'italic' }}>
+                                    No recording submitted
+                                  </Typography.Text>
+                                );
+                              }
+                              const isVideo = isVideoUrl(recordingUrl);
+                              if (isVideo) {
+                                return (
+                                  <video
+                                    controls
+                                    style={{ width: '100%', maxHeight: '360px', borderRadius: '12px' }}
+                                  >
+                                    <source src={recordingUrl} type="video/webm" />
+                                    <source src={recordingUrl} type="video/mp4" />
+                                    <source src={recordingUrl} type="video/ogg" />
+                                    Your browser does not support the video element.
+                                  </video>
+                                );
+                              }
+                              return (
                                 <audio controls style={{ width: '100%' }}>
-                                  <source src={studentAnswer?.audioUrl || studentAnswer?.audio} type="audio/mpeg" />
-                                  <source src={studentAnswer?.audioUrl || studentAnswer?.audio} type="audio/wav" />
-                                  <source src={studentAnswer?.audioUrl || studentAnswer?.audio} type="audio/mp3" />
+                                  <source src={recordingUrl} type="audio/webm" />
+                                  <source src={recordingUrl} type="audio/mpeg" />
+                                  <source src={recordingUrl} type="audio/wav" />
+                                  <source src={recordingUrl} type="audio/mp3" />
                                   Your browser does not support the audio element.
                                 </audio>
-                              </div>
-                            ) : (
-                              <Typography.Text type="secondary" style={{ fontSize: '14px', fontStyle: 'italic' }}>
-                                No recording submitted
-                              </Typography.Text>
-                            )}
+                              );
+                            })()}
                           </div>
                         </>
                       );
