@@ -34,11 +34,11 @@ import { dailyChallengeApi } from "../../../../apis/apis";
 
 // Challenge types constant (base metadata; labels are translated at render-time)
 const challengeTypes = [
-  { id: 1, type: "GV", icon: "🌟" },
-  { id: 2, type: "RE", icon: "📝" },
-  { id: 3, type: "LI", icon: "🎵" },
-  { id: 4, type: "WR", icon: "✏️" },
-  { id: 5, type: "SP", icon: "💬" },
+  { id: 1, type: "GV", icon: "🌟", label: "Grammar & Vocabulary" },
+  { id: 2, type: "RE", icon: "📝", label: "Reading" },
+  { id: 3, type: "LI", icon: "🎵", label: "Listening" },
+  { id: 4, type: "WR", icon: "✏️", label: "Writing" },
+  { id: 5, type: "SP", icon: "💬", label: "Speaking" },
 ];
 
 // Select removed in favor of AccountList-style filter dropdown
@@ -157,15 +157,15 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   // Helper to translate type codes to labels
   const getTypeLabelByCode = useCallback((typeCode) => {
-    switch(typeCode) {
-      case 'GV': return t('dailyChallenge.typeNames.GV') || 'Grammar & Vocabulary';
-      case 'RE': return t('dailyChallenge.typeNames.RE') || 'Reading';
-      case 'LI': return t('dailyChallenge.typeNames.LI') || 'Listening';
-      case 'WR': return t('dailyChallenge.typeNames.WR') || 'Writing';
-      case 'SP': return t('dailyChallenge.typeNames.SP') || 'Speaking';
-      default: return typeCode;
-    }
-  }, [t]);
+    const map = {
+      GV: "Grammar & Vocabulary",
+      RE: "Reading",
+      LI: "Listening",
+      WR: "Writing",
+      SP: "Speaking",
+    };
+    return map[typeCode] || typeCode;
+  }, []);
 
   // Fetch class data if classId exists
   const fetchClassData = useCallback(async () => {
