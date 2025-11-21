@@ -86,7 +86,7 @@ const TextTranslator = ({ enabled = true }) => {
           selectedText: selectedText.substring(0, 50) + '...',
           hasEnglishChars,
           textLength: selectedText.length,
-          maxLengthReading: 2000,
+          maxLengthReading: 500,
           maxLengthOther: 500,
           isInPassageContent,
           rect: range ? {

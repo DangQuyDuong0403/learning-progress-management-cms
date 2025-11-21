@@ -1089,6 +1089,11 @@
 .question-text-content {
   line-height: 2.1;
   color: inherit;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  max-width: 100%;
 }
 
 .question-text-content * {

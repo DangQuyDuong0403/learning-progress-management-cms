@@ -976,7 +976,12 @@ const SortablePassageItem = memo(
                           dangerouslySetInnerHTML={{ __html: question.question }}
                         />
                         {question.options && (
-                          <div className="question-options" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                          <div className="question-options" style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: '1fr', 
+                            gap: '12px',
+                            width: '100%'
+                          }}>
                             <style>{`.option-text p{margin:0}`}</style>
                             {question.options.map((option, idx) => {
                               const isMulti = question.type === 'MULTIPLE_SELECT';
@@ -998,7 +1003,12 @@ const SortablePassageItem = memo(
                                       : `2px solid ${theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
                                     borderRadius: '12px',
                                     cursor: 'pointer',
-                                    minHeight: '48px'
+                                    minHeight: '48px',
+                                    width: '100%',
+                                    minWidth: 0,
+                                    maxWidth: '100%',
+                                    boxSizing: 'border-box',
+                                    overflow: 'hidden'
                                   }}
                                 >
                                   <input
@@ -1006,13 +1016,25 @@ const SortablePassageItem = memo(
                                     name={`question-${question.id}`}
                                     defaultChecked={!!option.isCorrect}
                                     onChange={() => {}}
-                                    style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                                    style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6', flexShrink: 0 }}
                                   disabled
                                   />
-                                  <span style={{ fontWeight: 400 }}>{key}.</span>
-                                  <span className="option-text" style={{ flex: 1, display: 'block', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: option.text }} />
+                                  <span style={{ fontWeight: 400, flexShrink: 0 }}>{key}.</span>
+                                  <span 
+                                    className="option-text" 
+                                    style={{ 
+                                      flex: 1, 
+                                      display: 'block', 
+                                      lineHeight: '1.6',
+                                      minWidth: 0,
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word',
+                                      overflow: 'hidden'
+                                    }} 
+                                    dangerouslySetInnerHTML={{ __html: option.text }} 
+                                  />
                                   {option.isCorrect && (
-                                    <span style={{ color: '#52c41a', fontSize: '16px' }}></span>
+                                    <span style={{ color: '#52c41a', fontSize: '16px', flexShrink: 0 }}></span>
                                   )}
                                 </label>
                               );
@@ -2525,7 +2547,8 @@ const SortableQuestionItem = memo(
                     display: 'grid', 
                     gridTemplateColumns: 'repeat(2, 1fr)', 
                     gap: '14px', 
-                    marginTop: '12px' 
+                    marginTop: '12px',
+                    width: '100%'
                   }}>
                     {optionsFromApi.map((opt, idx) => {
                       const key = opt.key || String.fromCharCode(65 + idx);
@@ -2552,7 +2575,11 @@ const SortableQuestionItem = memo(
                             position: 'relative',
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             minHeight: '50px',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            width: '100%',
+                            minWidth: 0,
+                            maxWidth: '100%',
+                            overflow: 'hidden'
                           }}
                         >
                           <input 
@@ -2581,7 +2608,11 @@ const SortableQuestionItem = memo(
                               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                               fontWeight: '350',
                               flex: 1,
-                              lineHeight: '1.6'
+                              lineHeight: '1.6',
+                              minWidth: 0,
+                              wordBreak: 'break-word',
+                              overflowWrap: 'break-word',
+                              overflow: 'hidden'
                             }}
                             dangerouslySetInnerHTML={{ __html: opt.text || '' }}
                           />
@@ -2726,7 +2757,12 @@ const SortableQuestionItem = memo(
                 dangerouslySetInnerHTML={{ __html: question.question }}
               />
 
-              <div className="question-options" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+              <div className="question-options" style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr', 
+                gap: '12px',
+                width: '100%'
+              }}>
                 <style>{`.option-text p{margin:0}`}</style>
                 {question.options && question.options.map((option, idx) => {
                   const isMulti = question.type === 'MULTIPLE_SELECT';
@@ -2747,8 +2783,13 @@ const SortableQuestionItem = memo(
                           ? '2px solid rgba(82, 196, 26, 0.4)'
                           : `2px solid ${theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
                         borderRadius: '12px',
-                                    cursor: 'default',
-                        minHeight: '48px'
+                        cursor: 'default',
+                        minHeight: '48px',
+                        width: '100%',
+                        minWidth: 0,
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
+                        overflow: 'hidden'
                       }}
                     >
                       <input
@@ -2756,13 +2797,25 @@ const SortableQuestionItem = memo(
                         name={`question-${question.id}`}
                         defaultChecked={!!option.isCorrect}
                         onChange={() => {}}
-                        style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                        style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6', flexShrink: 0 }}
                         disabled
                       />
-                      <span style={{ fontWeight: 400 }}>{key}.</span>
-                      <span className="option-text" style={{ flex: 1, display: 'block', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: option.text }} />
+                      <span style={{ fontWeight: 400, flexShrink: 0 }}>{key}.</span>
+                      <span 
+                        className="option-text" 
+                        style={{ 
+                          flex: 1, 
+                          display: 'block', 
+                          lineHeight: '1.6',
+                          minWidth: 0,
+                          wordBreak: 'break-word',
+                          overflowWrap: 'break-word',
+                          overflow: 'hidden'
+                        }} 
+                        dangerouslySetInnerHTML={{ __html: option.text }} 
+                      />
                       {option.isCorrect && (
-                        <span style={{ color: '#52c41a', fontSize: '16px' }}>✓</span>
+                        <span style={{ color: '#52c41a', fontSize: '16px', flexShrink: 0 }}>✓</span>
                       )}
                     </label>
                   );

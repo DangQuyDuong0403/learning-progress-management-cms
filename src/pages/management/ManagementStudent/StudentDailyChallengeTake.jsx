@@ -616,7 +616,8 @@ useEffect(() => {
                           <div className="question-options" style={{ 
                             display: 'grid', 
                             gridTemplateColumns: '1fr', 
-                            gap: '12px'
+                            gap: '12px',
+                            width: '100%'
                           }}>
                             {options.map((opt, idx) => {
                               const key = opt.key || String.fromCharCode(65 + idx);
@@ -632,21 +633,33 @@ useEffect(() => {
                                     : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
                                   border: `2px solid ${checked ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')}`,
                                   borderRadius: '12px',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  minWidth: 0,
+                                  maxWidth: '100%',
+                                  boxSizing: 'border-box',
+                                  overflow: 'hidden'
                                 }}>
                                   <input
                                     type={isMulti ? 'checkbox' : 'radio'}
                                     name={`reading-q-${q.id}`}
                                     checked={checked}
                                     onChange={() => toggle(key)}
-                                    style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                                    style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6', flexShrink: 0 }}
                                   />
                                   {q.type !== 'TRUE_OR_FALSE' && (
-                                    <span style={{ fontWeight: 600 }}>{key}.</span>
+                                    <span style={{ fontWeight: 600, flexShrink: 0 }}>{key}.</span>
                                   )}
                                   <span 
                                     className="option-text"
-                                    style={{ flex: 1, lineHeight: '1.6' }}
+                                    style={{ 
+                                      flex: 1, 
+                                      lineHeight: '1.6',
+                                      minWidth: 0,
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word',
+                                      overflow: 'hidden'
+                                    }}
                                     dangerouslySetInnerHTML={{ __html: opt.text || opt.value || '' }}
                                   />
                                 </label>
@@ -1483,7 +1496,8 @@ useEffect(() => {
                     <div style={{ 
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '14px' 
+                      gap: '14px',
+                      width: '100%'
                     }}>
                       {q.type === 'MULTIPLE_SELECT' ? (
                       // Multiple Select (Checkbox)
@@ -1518,7 +1532,11 @@ useEffect(() => {
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             cursor: 'pointer',
                             minHeight: '50px',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            width: '100%',
+                            minWidth: 0,
+                            maxWidth: '100%',
+                            overflow: 'hidden'
                           }}
                           onClick={() => {
                             const currentAnswers = selectedAnswers[q.id] || [];
@@ -1539,7 +1557,8 @@ useEffect(() => {
                               width: '18px',
                               height: '18px',
                               accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              flexShrink: 0
                             }} 
                           />
                           <span style={{ 
@@ -1554,7 +1573,11 @@ useEffect(() => {
                             fontSize: '14px',
                             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                             fontWeight: '350',
-                            flex: 1
+                            flex: 1,
+                            minWidth: 0,
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            overflow: 'hidden'
                           }}>
                             {option.text}
                           </Typography.Text>
@@ -1593,7 +1616,11 @@ useEffect(() => {
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             cursor: 'pointer',
                             minHeight: '50px',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            width: '100%',
+                            minWidth: 0,
+                            maxWidth: '100%',
+                            overflow: 'hidden'
                           }}
                           onClick={() => handleAnswerSelect(q.id, option.key)}
                         >
@@ -1606,7 +1633,8 @@ useEffect(() => {
                               width: '18px',
                               height: '18px',
                               accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              flexShrink: 0
                             }} 
                           />
                           {q.type === 'TRUE_OR_FALSE' ? (
@@ -1614,7 +1642,11 @@ useEffect(() => {
                               fontSize: '14px',
                               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                               fontWeight: '350',
-                              flex: 1
+                              flex: 1,
+                              minWidth: 0,
+                              wordBreak: 'break-word',
+                              overflowWrap: 'break-word',
+                              overflow: 'hidden'
                             }}>
                               {option.text}
                             </Typography.Text>
@@ -1632,7 +1664,11 @@ useEffect(() => {
                                 fontSize: '14px',
                                 color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                                 fontWeight: '350',
-                                flex: 1
+                                flex: 1,
+                                minWidth: 0,
+                                wordBreak: 'break-word',
+                                overflowWrap: 'break-word',
+                                overflow: 'hidden'
                               }}>
                                 {option.text}
                               </Typography.Text>
@@ -5451,7 +5487,8 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
           display: 'grid', 
           gridTemplateColumns: 'repeat(2, 1fr)', 
           gap: '14px', 
-          marginTop: '12px' 
+          marginTop: '12px',
+          width: '100%'
         }}>
           {(
             optionsFromApi
@@ -5494,7 +5531,11 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   cursor: isViewOnly ? 'default' : 'pointer',
                   minHeight: '50px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  overflow: 'hidden'
                 }}
               >
                 <input 
@@ -5507,7 +5548,8 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
                     width: '18px',
                     height: '18px',
                     accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    cursor: isViewOnly ? 'default' : 'pointer'
+                    cursor: isViewOnly ? 'default' : 'pointer',
+                    flexShrink: 0
                   }} 
                 />
                 <span style={{ 
@@ -5525,7 +5567,11 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
                     color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                     fontWeight: '350',
                     flex: 1,
-                    lineHeight: '1.6'
+                    lineHeight: '1.6',
+                    minWidth: 0,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    overflow: 'hidden'
                   }}
                   dangerouslySetInnerHTML={{ __html: opt.text || '' }}
                 />
@@ -5668,7 +5714,8 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
           display: 'grid', 
           gridTemplateColumns: 'repeat(2, 1fr)', 
           gap: '14px', 
-          marginTop: '12px' 
+          marginTop: '12px',
+          width: '100%'
         }}>
           {(
             optionsFromApi
@@ -5711,7 +5758,11 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             cursor: isViewOnly ? 'default' : 'pointer',
                   minHeight: '50px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  overflow: 'hidden'
                 }}
               >
                 <input 
@@ -5723,7 +5774,8 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
                     width: '18px',
                     height: '18px',
                     accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-              cursor: isViewOnly ? 'default' : 'pointer'
+              cursor: isViewOnly ? 'default' : 'pointer',
+                    flexShrink: 0
                   }} 
                 />
                 <span style={{ 
@@ -5741,7 +5793,11 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
                     color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                     fontWeight: '350',
                     flex: 1,
-                    lineHeight: '1.6'
+                    lineHeight: '1.6',
+                    minWidth: 0,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    overflow: 'hidden'
                   }}
                   dangerouslySetInnerHTML={{ __html: opt.text || '' }}
                 />
