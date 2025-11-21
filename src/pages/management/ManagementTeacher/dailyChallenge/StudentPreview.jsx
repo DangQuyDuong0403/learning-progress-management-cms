@@ -5950,6 +5950,13 @@ const StudentPreview = () => {
 
   const questionNav = getQuestionNavigation();
 
+  const hasAnyQuestions =
+    questions.length > 0 ||
+    readingSections.some(section => (section.questions?.length || 0) > 0) ||
+    listeningSections.some(section => (section.questions?.length || 0) > 0) ||
+    writingSections.length > 0 ||
+    speakingSections.length > 0;
+
   // Calculate starting question number for each section
   const getStartQuestionNumber = (sectionType, sectionIndex) => {
     let questionNumber = 1;
@@ -6043,78 +6050,100 @@ const StudentPreview = () => {
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             <LoadingWithEffect loading={loading} message="Loading questions...">
               <div className="questions-list">
-                {/* Render Reading sections when challenge type is RE */}
-                {challengeType === 'RE' && readingSections.length > 0 && (
-                  readingSections.map((section, index) => {
-                    const startQuestionNumber = getStartQuestionNumber('reading', index);
-                    return (
-                      <div key={`reading-wrap-${section.id || index}`} ref={el => (questionRefs.current[`reading-${index + 1}`] = el)}>
-                        <SectionQuestionItem key={section.id || `section_${index}`} question={section} index={index} theme={theme} startQuestionNumber={startQuestionNumber} />
-                      </div>
-                    );
-                  })
-                )}
-                {/* Render Writing sections when challenge type is WR */}
-                {challengeType === 'WR' && writingSections.length > 0 && (
-                  writingSections.map((section, index) => (
-                    <div key={`writing-wrap-${section.id || index}`} ref={el => (questionRefs.current[`writing-${index + 1}`] = el)}>
-                      <WritingSectionItem key={section.id || `writing_${index}`} question={section} index={index} theme={theme} />
+                {hasAnyQuestions ? (
+                  <>
+                    {/* Render Reading sections when challenge type is RE */}
+                    {challengeType === 'RE' && readingSections.length > 0 && (
+                      readingSections.map((section, index) => {
+                        const startQuestionNumber = getStartQuestionNumber('reading', index);
+                        return (
+                          <div key={`reading-wrap-${section.id || index}`} ref={el => (questionRefs.current[`reading-${index + 1}`] = el)}>
+                            <SectionQuestionItem key={section.id || `section_${index}`} question={section} index={index} theme={theme} startQuestionNumber={startQuestionNumber} />
+                          </div>
+                        );
+                      })
+                    )}
+                    {/* Render Writing sections when challenge type is WR */}
+                    {challengeType === 'WR' && writingSections.length > 0 && (
+                      writingSections.map((section, index) => (
+                        <div key={`writing-wrap-${section.id || index}`} ref={el => (questionRefs.current[`writing-${index + 1}`] = el)}>
+                          <WritingSectionItem key={section.id || `writing_${index}`} question={section} index={index} theme={theme} />
+                        </div>
+                      ))
+                    )}
+                    {/* Render Speaking sections when challenge type is SP */}
+                    {challengeType === 'SP' && speakingSections.length > 0 && (
+                      speakingSections.map((section, index) => (
+                        <div key={`speaking-wrap-${section.id || index}`} ref={el => (questionRefs.current[`speaking-${index + 1}`] = el)}>
+                          {section.type === 'SPEAKING_WITH_AUDIO_SECTION' ? (
+                            <SpeakingWithAudioSectionItem key={section.id || `speaking_audio_${index}`} question={section} index={index} theme={theme} />
+                          ) : (
+                            <SpeakingSectionItem key={section.id || `speaking_${index}`} question={section} index={index} theme={theme} />
+                          )}
+                        </div>
+                      ))
+                    )}
+                    {/* Dynamic questions preview (hide complex sections) */}
+                    {questions.map((q, idx) => {
+                      const questionNumber = getStartQuestionNumber('standalone', idx);
+                      return (
+                        <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
+                          {q.type === 'MULTIPLE_CHOICE' && (
+                            <MultipleChoiceContainer theme={theme} data={q} questionNumber={questionNumber} />
+                          )}
+                          {q.type === 'MULTIPLE_SELECT' && (
+                            <MultipleSelectContainer theme={theme} data={q} questionNumber={questionNumber} />
+                          )}
+                          {q.type === 'TRUE_OR_FALSE' && (
+                            <TrueFalseContainer theme={theme} data={q} questionNumber={questionNumber} />
+                          )}
+                          {q.type === 'FILL_IN_THE_BLANK' && (
+                            <FillBlankContainer theme={theme} data={q} questionNumber={questionNumber} />
+                          )}
+                          {q.type === 'DROPDOWN' && (
+                            <DropdownContainer theme={theme} data={q} questionNumber={questionNumber} />
+                          )}
+                          {q.type === 'DRAG_AND_DROP' && (
+                            <DragDropContainer theme={theme} data={q} questionNumber={questionNumber} />
+                          )}
+                          {q.type === 'REARRANGE' && (
+                            <ReorderContainer theme={theme} data={q} questionNumber={questionNumber} />
+                          )}
+                          {q.type === 'REWRITE' && (
+                            <RewriteContainer theme={theme} data={q} questionNumber={questionNumber} />
+                          )}
+                        </div>
+                      );
+                    })}
+                    {challengeType === 'LI' && listeningSections.length > 0 && (
+                      listeningSections.map((section, index) => {
+                        const startQuestionNumber = getStartQuestionNumber('listening', index);
+                        return (
+                          <div key={`listening-wrap-${section.id || index}`} ref={el => (questionRefs.current[`listening-${index + 1}`] = el)}>
+                            <ListeningSectionItem key={section.id || `listening_${index}`} question={section} index={index} theme={theme} startQuestionNumber={startQuestionNumber} />
+                          </div>
+                        );
+                      })
+                    )}
+                  </>
+                ) : (
+                  !loading && (
+                    <div
+                      className="no-questions-placeholder"
+                      style={{
+                        textAlign: 'center',
+                        padding: '80px 16px',
+                        color: theme === 'sun' ? '#1E40AF' : '#E0E7FF',
+                        fontSize: '18px',
+                        fontWeight: 600,
+                        background: theme === 'sun' ? 'rgba(24, 144, 255, 0.05)' : 'rgba(138, 122, 255, 0.06)',
+                        borderRadius: '12px',
+                        border: `1px dashed ${theme === 'sun' ? 'rgba(24, 144, 255, 0.4)' : 'rgba(138, 122, 255, 0.4)'}`
+                      }}
+                    >
+                       No question please create a new question to preview
                     </div>
-                  ))
-                )}
-                {/* Render Speaking sections when challenge type is SP */}
-                {challengeType === 'SP' && speakingSections.length > 0 && (
-                  speakingSections.map((section, index) => (
-                    <div key={`speaking-wrap-${section.id || index}`} ref={el => (questionRefs.current[`speaking-${index + 1}`] = el)}>
-                      {section.type === 'SPEAKING_WITH_AUDIO_SECTION' ? (
-                        <SpeakingWithAudioSectionItem key={section.id || `speaking_audio_${index}`} question={section} index={index} theme={theme} />
-                      ) : (
-                        <SpeakingSectionItem key={section.id || `speaking_${index}`} question={section} index={index} theme={theme} />
-                      )}
-                    </div>
-                  ))
-                )}
-                {/* Dynamic questions preview (hide complex sections) */}
-                {questions.map((q, idx) => {
-                  const questionNumber = getStartQuestionNumber('standalone', idx);
-                  return (
-                    <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
-                      {q.type === 'MULTIPLE_CHOICE' && (
-                        <MultipleChoiceContainer theme={theme} data={q} questionNumber={questionNumber} />
-                      )}
-                      {q.type === 'MULTIPLE_SELECT' && (
-                        <MultipleSelectContainer theme={theme} data={q} questionNumber={questionNumber} />
-                      )}
-                      {q.type === 'TRUE_OR_FALSE' && (
-                        <TrueFalseContainer theme={theme} data={q} questionNumber={questionNumber} />
-                      )}
-                      {q.type === 'FILL_IN_THE_BLANK' && (
-                        <FillBlankContainer theme={theme} data={q} questionNumber={questionNumber} />
-                      )}
-                      {q.type === 'DROPDOWN' && (
-                        <DropdownContainer theme={theme} data={q} questionNumber={questionNumber} />
-                      )}
-                      {q.type === 'DRAG_AND_DROP' && (
-                        <DragDropContainer theme={theme} data={q} questionNumber={questionNumber} />
-                      )}
-                      {q.type === 'REARRANGE' && (
-                        <ReorderContainer theme={theme} data={q} questionNumber={questionNumber} />
-                      )}
-                      {q.type === 'REWRITE' && (
-                        <RewriteContainer theme={theme} data={q} questionNumber={questionNumber} />
-                      )}
-                    </div>
-                  );
-                })}
-                {challengeType === 'LI' && listeningSections.length > 0 && (
-                  listeningSections.map((section, index) => {
-                    const startQuestionNumber = getStartQuestionNumber('listening', index);
-                    return (
-                      <div key={`listening-wrap-${section.id || index}`} ref={el => (questionRefs.current[`listening-${index + 1}`] = el)}>
-                        <ListeningSectionItem key={section.id || `listening_${index}`} question={section} index={index} theme={theme} startQuestionNumber={startQuestionNumber} />
-                      </div>
-                    );
-                  })
+                  )
                 )}
               </div>
             </LoadingWithEffect>
