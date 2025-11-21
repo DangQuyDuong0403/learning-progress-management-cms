@@ -3081,6 +3081,7 @@ const DailyChallengeContent = () => {
                 sectionId: section.id,
                 sectionTitle: section.sectionTitle,
                 orderNumber: question.orderNumber || qIndex + 1,
+                sectionOrderNumber: section.orderNumber || index + 1, // Store section orderNumber for proper sorting
               };
 
               // Log specific question types for debugging
@@ -3106,8 +3107,13 @@ const DailyChallengeContent = () => {
 
         // total count is now computed dynamically for display based on challenge type
 
-        // Sort questions by orderNumber to ensure correct order
-        const sortedQuestions = mappedQuestions.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
+        // Sort questions by sectionOrderNumber first, then by orderNumber within section
+        // This ensures questions maintain their position even after update
+        const sortedQuestions = mappedQuestions.sort((a, b) => {
+          const sectionOrderDiff = (a.sectionOrderNumber || 0) - (b.sectionOrderNumber || 0);
+          if (sectionOrderDiff !== 0) return sectionOrderDiff;
+          return (a.orderNumber || 0) - (b.orderNumber || 0);
+        });
         const sortedPassages = mappedPassages.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
         
         console.log('Sorted Questions:', sortedQuestions);
@@ -3522,16 +3528,24 @@ const DailyChallengeContent = () => {
     try {
       setSavingQuestion(true);
 
-      // Use existing order number
+      // Use existing order number - IMPORTANT: Keep the original orderNumber to maintain position
       const orderNumber = editingQuestion.orderNumber || 1;
       
       // Transform question to API format
       const apiQuestion = transformQuestionToApiFormat(questionData, orderNumber, questionData.type);
 
-      // Ensure question id is included for GV (Grammar & Vocabulary) when editing
-      if (currentChallengeType === 'GV' && editingQuestion?.id) {
+      // Ensure question id is included when editing (for all challenge types)
+      // This is critical to maintain the question's position and identity
+      if (editingQuestion?.id) {
         apiQuestion.id = editingQuestion.id;
       }
+      
+      // IMPORTANT: Also preserve the section's orderNumber to maintain overall position
+      // Find the section's orderNumber from the current questions/passages
+      const currentQuestion = questions.find(q => q.id === editingQuestion.id);
+      const sectionOrderNumber = currentQuestion?.sectionOrderNumber || 
+                                  passages.find(p => p.sectionId === editingQuestion.sectionId)?.orderNumber ||
+                                  questions.find(q => q.sectionId === editingQuestion.sectionId)?.sectionOrderNumber;
       
       // Prepare section data with updated question
       const sectionContent = getSectionContent(questionData.type);
@@ -3540,12 +3554,16 @@ const DailyChallengeContent = () => {
         section: {
           id: editingQuestion.sectionId, // Send sectionId to update that section
           sectionsContent: sectionContent,
-          resourceType: 'NONE'
+          resourceType: 'NONE',
+          // Preserve section orderNumber if available
+          ...(sectionOrderNumber && { orderNumber: sectionOrderNumber })
         },
         questions: [apiQuestion]
       };
 
       console.log('Updating existing question:', sectionData);
+      console.log('Preserving orderNumber:', orderNumber, 'sectionOrderNumber:', sectionOrderNumber);
+      console.log('Question ID:', editingQuestion.id, 'Section ID:', editingQuestion.sectionId);
 
       // Call API to update the section
       const response = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
@@ -3569,7 +3587,7 @@ const DailyChallengeContent = () => {
     } finally {
       setSavingQuestion(false);
     }
-  }, [editingQuestion, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, currentChallengeType, t]);
+  }, [editingQuestion, id, fetchQuestions, transformQuestionToApiFormat, getSectionContent, currentChallengeType, t, questions, passages]);
 
   // Main handler - route to create or update
   const handleModalSave = useCallback(async (questionData) => {
