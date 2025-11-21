@@ -1846,6 +1846,7 @@
     "method": "Phương thức",
     "no": "STT",
     "finished": "Đã hoàn thành",
+    "noQuestionsToSaveDraft": "Vui lòng thêm ít nhất một câu hỏi trước khi lưu dưới dạng bản nháp.",
     "closed": "Đã đóng",
     "inProgress": "Đang làm",
     "completion": "Hoàn thành",

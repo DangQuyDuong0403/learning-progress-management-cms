@@ -3850,6 +3850,20 @@ const DailyChallengeContent = () => {
     const visibleQuestions = questions.filter(q => !q.toBeDeleted);
     const visiblePassages = passages.filter(p => !p.toBeDeleted);
     
+    // Block "Save as Draft" when there is no content
+    if (
+      saveAsStatus === 'draft' &&
+      visibleQuestions.length === 0 &&
+      visiblePassages.length === 0
+    ) {
+      if (!options?.silent) {
+        spaceToast.warning(
+          t('dailyChallenge.noQuestionsToSaveDraft') ||
+          'Please add at least one question before saving as draft.'
+        );
+      }
+      return;
+    }
 
     try {
       setLoading(true);
