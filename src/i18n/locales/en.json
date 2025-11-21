@@ -2202,6 +2202,15 @@
     "question2": "Question 2",
     "confirm": "Confirm"
   },
+  "dailyChallengeContent": {
+    "totalQuestionsLabel": "Total Questions",
+    "remainingQuestionsLabel": "Remaining",
+    "questionsUnit": "questions",
+    "noItemsMessage": "No items yet",
+    "importInstructionsTitle": "Select an Excel file to import questions",
+    "removeFile": "Remove file",
+    "publishConfirmDescription": "You are about to publish this challenge. Please verify the following settings:"
+  },
   "resetPassword": {
     "title": "Reset password",
     "newPassword": "New password",
