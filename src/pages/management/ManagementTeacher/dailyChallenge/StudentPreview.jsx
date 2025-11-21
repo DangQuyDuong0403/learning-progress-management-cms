@@ -648,13 +648,21 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                           </div>
                           <div 
                             className="question-text-content"
-                            style={{ marginBottom: '10px' }}
+                            style={{ 
+                              marginBottom: '10px',
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word',
+                              wordBreak: 'break-word',
+                              whiteSpace: 'normal',
+                              maxWidth: '100%'
+                            }}
                             dangerouslySetInnerHTML={{ __html: q.questionText || q.question || '' }}
                           />
                           <div className="question-options" style={{ 
                             display: 'grid', 
                             gridTemplateColumns: '1fr', 
-                            gap: '12px'
+                            gap: '12px',
+                            width: '100%'
                           }}>
                             {options.map((opt, idx) => {
                               const key = opt.key || String.fromCharCode(65 + idx);
@@ -670,19 +678,31 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                                     : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
                                   border: `2px solid ${checked ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')}`,
                                   borderRadius: '12px',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  minWidth: 0,
+                                  maxWidth: '100%',
+                                  boxSizing: 'border-box',
+                                  overflow: 'hidden'
                                 }}>
                                   <input
                                     type={isMulti ? 'checkbox' : 'radio'}
                                     name={`reading-q-${q.id}`}
                                     checked={checked}
                                     onChange={() => toggle(key)}
-                                    style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}
+                                    style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6', flexShrink: 0 }}
                                   />
-                                  <span style={{ fontWeight: 600 }}>{key}.</span>
+                                  <span style={{ fontWeight: 600, flexShrink: 0 }}>{key}.</span>
                                   <span 
                                     className="option-text"
-                                    style={{ flex: 1, lineHeight: '1.6' }}
+                                    style={{ 
+                                      flex: 1, 
+                                      lineHeight: '1.6',
+                                      minWidth: 0,
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word',
+                                      overflow: 'hidden'
+                                    }}
                                     dangerouslySetInnerHTML={{ __html: opt.text || opt.value || '' }}
                                   />
                                 </label>
@@ -1242,6 +1262,13 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                           <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
                             <div 
                               className="question-text-content"
+                              style={{
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word',
+                                wordBreak: 'break-word',
+                                whiteSpace: 'normal',
+                                maxWidth: '100%'
+                              }}
                               dangerouslySetInnerHTML={{ __html: displayText || 'Rearrange the words to form a correct sentence:' }}
                             />
                           </div>
@@ -2278,7 +2305,18 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                             <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {startQuestionNumber + qIndex}:</div>
                             <div 
                               className="question-text-content"
-                              style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}
+                              style={{ 
+                                fontSize: '15px', 
+                                fontWeight: 350, 
+                                marginBottom: '16px', 
+                                lineHeight: '1.8', 
+                                color: '#000000',
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word',
+                                wordBreak: 'break-word',
+                                whiteSpace: 'normal',
+                                maxWidth: '100%'
+                              }}
                               dangerouslySetInnerHTML={{ __html: displayText || '' }}
                             />
                             <div style={{ marginBottom:'16px', padding:'16px', background: theme==='sun'?'#f9f9f9':'rgba(255,255,255,0.02)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
@@ -2329,7 +2367,12 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                               fontWeight: 350,
                               color: '#000000',
                               display: 'block',
-                              lineHeight: '1.8'
+                              lineHeight: '1.8',
+                              wordWrap: 'break-word',
+                              overflowWrap: 'break-word',
+                              wordBreak: 'break-word',
+                              whiteSpace: 'normal',
+                              maxWidth: '100%'
                             }}
                             dangerouslySetInnerHTML={{ __html: q.question || q.questionText || '' }}
                           />
@@ -2338,7 +2381,8 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                         <div style={{ 
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '14px' 
+                          gap: '14px',
+                          width: '100%'
                         }}>
                           {q.type === 'MULTIPLE_SELECT' ? (
                           // Multiple Select (Checkbox)
@@ -2373,7 +2417,11 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                 cursor: 'pointer',
                                 minHeight: '50px',
-                                boxSizing: 'border-box'
+                                boxSizing: 'border-box',
+                                width: '100%',
+                                minWidth: 0,
+                                maxWidth: '100%',
+                                overflow: 'hidden'
                               }}
                               onClick={() => {
                                 const currentAnswers = selectedAnswers[q.id] || [];
@@ -2394,7 +2442,8 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                                   width: '18px',
                                   height: '18px',
                                   accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  flexShrink: 0
                                 }} 
                               />
                               <span style={{ 
@@ -2412,7 +2461,11 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                                   color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                                   fontWeight: '350',
                                   flex: 1,
-                                  lineHeight: '1.6'
+                                  lineHeight: '1.6',
+                                  minWidth: 0,
+                                  wordBreak: 'break-word',
+                                  overflowWrap: 'break-word',
+                                  overflow: 'hidden'
                                 }}
                                 dangerouslySetInnerHTML={{ __html: option.text || '' }}
                               />
@@ -2451,7 +2504,11 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                 cursor: 'pointer',
                                 minHeight: '50px',
-                                boxSizing: 'border-box'
+                                boxSizing: 'border-box',
+                                width: '100%',
+                                minWidth: 0,
+                                maxWidth: '100%',
+                                overflow: 'hidden'
                               }}
                               onClick={() => handleAnswerSelect(q.id, option.key)}
                             >
@@ -2464,7 +2521,8 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                                   width: '18px',
                                   height: '18px',
                                   accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  flexShrink: 0
                                 }} 
                               />
                               {q.type === 'TRUE_OR_FALSE' ? (
@@ -2472,11 +2530,15 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                                   fontSize: '14px',
                                   color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                                   fontWeight: '350',
-                                  flex: 1
+                                  flex: 1,
+                                  minWidth: 0,
+                                  wordBreak: 'break-word',
+                                  overflowWrap: 'break-word',
+                                  overflow: 'hidden'
                                 }}>
                                   <span 
                                     className="option-text"
-                                    style={{ flex: 1, lineHeight: '1.6' }}
+                                    style={{ flex: 1, lineHeight: '1.6', minWidth: 0, wordBreak: 'break-word', overflowWrap: 'break-word', overflow: 'hidden' }}
                                     dangerouslySetInnerHTML={{ __html: option.text || '' }}
                                   />
                                 </Typography.Text>
@@ -2497,7 +2559,11 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                                       color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                                       fontWeight: '350',
                                       flex: 1,
-                                      lineHeight: '1.6'
+                                      lineHeight: '1.6',
+                                      minWidth: 0,
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word',
+                                      overflow: 'hidden'
                                     }}
                                     dangerouslySetInnerHTML={{ __html: option.text || '' }}
                                   />
@@ -4068,7 +4134,12 @@ const MultipleChoiceContainer = ({ theme, data, questionNumber = 1 }) => {
             marginBottom: '12px',
             display: 'block',
             lineHeight: '1.8',
-            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
+            maxWidth: '100%'
           }}
           dangerouslySetInnerHTML={{ __html: questionText }}
         />
@@ -4078,7 +4149,8 @@ const MultipleChoiceContainer = ({ theme, data, questionNumber = 1 }) => {
           display: 'grid', 
           gridTemplateColumns: 'repeat(2, 1fr)', 
           gap: '14px', 
-          marginTop: '12px' 
+          marginTop: '12px',
+          width: '100%'
         }}>
           {(optionsFromApi || ['A','B','C','D'].map((k, i) => ({ key: k, text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i] }))).map((opt, idx) => {
             const key = opt.key || String.fromCharCode(65 + idx);
@@ -4115,7 +4187,11 @@ const MultipleChoiceContainer = ({ theme, data, questionNumber = 1 }) => {
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   cursor: 'pointer',
                   minHeight: '50px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  overflow: 'hidden'
                 }}
               >
                 <input 
@@ -4127,7 +4203,8 @@ const MultipleChoiceContainer = ({ theme, data, questionNumber = 1 }) => {
                     width: '18px',
                     height: '18px',
                     accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    flexShrink: 0
                   }} 
                 />
                 <span style={{ 
@@ -4145,7 +4222,11 @@ const MultipleChoiceContainer = ({ theme, data, questionNumber = 1 }) => {
                     color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                     fontWeight: '350',
                     flex: 1,
-                    lineHeight: '1.6'
+                    lineHeight: '1.6',
+                    minWidth: 0,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    overflow: 'hidden'
                   }}
                   dangerouslySetInnerHTML={{ __html: opt.text || '' }}
                 />
@@ -4231,7 +4312,12 @@ const MultipleSelectContainer = ({ theme, data, questionNumber = 2 }) => {
             marginBottom: '12px',
             display: 'block',
             lineHeight: '1.8',
-            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
+            maxWidth: '100%'
           }}
           dangerouslySetInnerHTML={{ __html: questionText }}
         />
@@ -4241,7 +4327,8 @@ const MultipleSelectContainer = ({ theme, data, questionNumber = 2 }) => {
           display: 'grid', 
           gridTemplateColumns: 'repeat(2, 1fr)', 
           gap: '14px', 
-          marginTop: '12px' 
+          marginTop: '12px',
+          width: '100%'
         }}>
           {(optionsFromApi || ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }))).map((opt, idx) => {
             const key = opt.key || String.fromCharCode(65 + idx);
@@ -4278,7 +4365,11 @@ const MultipleSelectContainer = ({ theme, data, questionNumber = 2 }) => {
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   cursor: 'pointer',
                   minHeight: '50px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  overflow: 'hidden'
                 }}
               >
                 <input 
@@ -4289,7 +4380,8 @@ const MultipleSelectContainer = ({ theme, data, questionNumber = 2 }) => {
                     width: '18px',
                     height: '18px',
                     accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    flexShrink: 0
                   }} 
                 />
                 <span style={{ 
@@ -4307,7 +4399,11 @@ const MultipleSelectContainer = ({ theme, data, questionNumber = 2 }) => {
                     color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                     fontWeight: '350',
                     flex: 1,
-                    lineHeight: '1.6'
+                    lineHeight: '1.6',
+                    minWidth: 0,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    overflow: 'hidden'
                   }}
                   dangerouslySetInnerHTML={{ __html: opt.text || '' }}
                 />
@@ -4384,7 +4480,12 @@ const TrueFalseContainer = ({ theme, data, questionNumber = 3 }) => {
             marginBottom: '12px',
             display: 'block',
             lineHeight: '1.8',
-            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
+            maxWidth: '100%'
           }}
           dangerouslySetInnerHTML={{ __html: questionText }}
         />
@@ -4542,7 +4643,12 @@ const DropdownContainer = ({ theme, data, questionNumber = 5 }) => {
           fontWeight: 350,
           lineHeight: '1.8',
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-          marginBottom: '16px'
+          marginBottom: '16px',
+          wordWrap: 'break-word',
+          overflowWrap: 'break-word',
+          wordBreak: 'break-word',
+          whiteSpace: 'normal',
+          maxWidth: '100%'
           }}
           dangerouslySetInnerHTML={{ __html: (data?.questionText || '')
             .replace(/\[\[pos_(.*?)\]\]/g, (_m, pid) => {
@@ -5326,7 +5432,12 @@ const RewriteContainer = ({ theme, data, questionNumber = 8 }) => {
             marginBottom: '16px',
             display: 'block',
             lineHeight: '1.8',
-            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
+            maxWidth: '100%'
           }}
           dangerouslySetInnerHTML={{ __html: questionText }}
         />

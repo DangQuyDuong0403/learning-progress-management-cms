@@ -984,8 +984,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   }, []);
 
   const handleSave = async () => {
-    if (blanks.length === 0) {
-      spaceToast.warning('Please add at least one item');
+    if (blanks.length < 2) {
+      spaceToast.warning('Please add at least two items');
         return;
       }
 
