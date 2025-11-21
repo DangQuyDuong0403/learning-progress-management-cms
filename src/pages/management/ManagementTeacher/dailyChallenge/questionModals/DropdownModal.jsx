@@ -2016,10 +2016,61 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				const isLastSibling = index === childNodes.length - 1;
 				result += processNode(node, isLastSibling, true); // true = isTopLevel
 				
-				// Add <br> between top-level nodes if this is not the last node
-				// This ensures line breaks are preserved when user presses Enter
+				// Add <br> between top-level div nodes (each div represents a paragraph/line when user presses Enter)
+				// But skip if current node is already an empty div (converted to <br>)
 				if (!isLastSibling) {
-					result += '<br>';
+					const nextNode = childNodes[index + 1];
+					
+					// Check if current node is an empty div (already converted to <br> by processNode)
+					const isCurrentEmptyDiv = node.nodeType === Node.ELEMENT_NODE && 
+						node.tagName.toLowerCase() === 'div' &&
+						!node.hasAttribute('data-image-wrapper') &&
+						!node.classList.contains('image-wrapper') &&
+						(!node.textContent || !node.textContent.trim()) &&
+						node.childNodes.length === 0;
+					
+					// If current node is empty div, it's already converted to <br>, so skip adding <br>
+					if (isCurrentEmptyDiv) {
+						return; // Skip adding <br> after empty div
+					}
+					
+					// Check if current node is a div with content (paragraph/line)
+					const isCurrentDiv = node.nodeType === Node.ELEMENT_NODE && 
+						node.tagName.toLowerCase() === 'div' &&
+						!node.hasAttribute('data-image-wrapper') &&
+						!node.classList.contains('image-wrapper');
+					
+					// Check if next node is a div (paragraph/line)
+					const isNextDiv = nextNode && 
+						nextNode.nodeType === Node.ELEMENT_NODE && 
+						nextNode.tagName.toLowerCase() === 'div' &&
+						!nextNode.hasAttribute('data-image-wrapper') &&
+						!nextNode.classList.contains('image-wrapper');
+					
+					// Check if next node is an empty div (will be converted to <br>)
+					const isNextEmptyDiv = nextNode && 
+						nextNode.nodeType === Node.ELEMENT_NODE && 
+						nextNode.tagName.toLowerCase() === 'div' &&
+						!nextNode.hasAttribute('data-image-wrapper') &&
+						!nextNode.classList.contains('image-wrapper') &&
+						(!nextNode.textContent || !nextNode.textContent.trim()) &&
+						nextNode.childNodes.length === 0;
+					
+					// Check if current node is a text node
+					const isCurrentTextNode = node.nodeType === Node.TEXT_NODE;
+					
+					// Add <br> between div nodes (each div is a paragraph when user presses Enter)
+					// But skip if next node is empty div (will be converted to <br> already)
+					if (isCurrentDiv && isNextDiv && !isNextEmptyDiv) {
+						// Div -> Div (with content): add <br> (user pressed Enter between paragraphs)
+						result += '<br>';
+					} else if (isCurrentTextNode && isNextDiv && !isNextEmptyDiv) {
+						// Text -> Div (with content): add <br> (text node at root level followed by new paragraph div)
+						result += '<br>';
+					}
+					// Skip: Empty div -> anything (already has <br> from processNode)
+					// Skip: Anything -> Empty div (empty div will be converted to <br>)
+					// Skip: Text -> Text (no <br>, they're in same paragraph)
 				}
 			});
 
