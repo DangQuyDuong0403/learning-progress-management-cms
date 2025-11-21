@@ -3289,7 +3289,7 @@ const AIGenerateFeedback = () => {
                                   Actual Audio Transcript
                                 </Text>
                                 <div style={{ 
-                                  lineHeight: 2.5,
+                                  lineHeight: 4,
                                   fontSize: 14,
                                   wordBreak: 'break-word',
                                   flex: 1
@@ -3297,7 +3297,7 @@ const AIGenerateFeedback = () => {
                                   <div style={{ 
                                     display: 'flex', 
                                     flexWrap: 'wrap', 
-                                    gap: '2px 1px',
+                                    gap: '8px 4px',
                                     alignItems: 'baseline'
                                   }}>
                                     {speakingResult.words.map((w, idx) => {
@@ -3333,18 +3333,20 @@ const AIGenerateFeedback = () => {
                                             alignItems: 'center',
                                             margin: '0 1px',
                                             padding: '0 2px',
-                                            verticalAlign: 'baseline'
+                                            verticalAlign: 'baseline',
+                                            lineHeight: 1
                                           }}
                                         >
                                           {/* Accuracy Score above word */}
                                           <span
                                             style={{
-                                              fontSize: '12px',
-                                              fontWeight: 600,
-                                              color: scoreColor,
-                                              lineHeight: 1.2,
-                                              marginBottom: '2px',
-                                              whiteSpace: 'nowrap'
+                                              fontSize: '11px',
+                                              fontWeight: 500,
+                                              color: scoreColor ? `${scoreColor}99` : (theme === 'sun' ? '#999' : '#888'),
+                                              lineHeight: 1,
+                                              marginBottom: '-2px',
+                                              whiteSpace: 'nowrap',
+                                             
                                             }}
                                           >
                                             {accuracyScore !== null ? `${Math.round(accuracyScore)}%` : '-'}
@@ -3353,8 +3355,10 @@ const AIGenerateFeedback = () => {
                                           <span
                                             style={{
                                               color: wordColor,
-                                              fontWeight: hasError ? 700 : (accuracyScore !== null && accuracyScore < 60 ? 600 : 500),
-                                              fontSize: '14px'
+                                              fontWeight: 700,
+                                              fontSize: '14px',
+                                              lineHeight: 1.2,
+                                              marginTop: '-1px'
                                             }}
                                           >
                                             {w?.word || ''}

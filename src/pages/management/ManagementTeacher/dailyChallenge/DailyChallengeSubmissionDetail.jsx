@@ -1425,7 +1425,10 @@ const DailyChallengeSubmissionDetail = () => {
         const gradingData = gradingRes?.data?.data || gradingRes?.data || null;
         if (gradingData) {
           // Map grading fields to local state
-          const score = gradingData.finalScore ?? gradingData.totalScore;
+          const hasFinalScoreField = Object.prototype.hasOwnProperty.call(gradingData, 'finalScore');
+          const hasTotalScoreField = Object.prototype.hasOwnProperty.call(gradingData, 'totalScore');
+          const scoreProvided = hasFinalScoreField || hasTotalScoreField;
+          const score = hasFinalScoreField ? gradingData.finalScore : gradingData.totalScore;
           const maxPointsFromGrading = gradingData.maxPossibleWeight ?? gradingData.maxPossibleScore;
           const accuracyPct = gradingData.scorePercentage != null ? Math.round(gradingData.scorePercentage) : undefined;
           const correct = gradingData.correctAnswers;
@@ -1445,8 +1448,8 @@ const DailyChallengeSubmissionDetail = () => {
             },
             submission: {
               ...prev.submission,
-              score: score ?? prev.submission?.score,
-              totalPoints: score ?? prev.submission?.totalPoints,
+              score: scoreProvided ? (score ?? null) : prev.submission?.score,
+              totalPoints: scoreProvided ? (score ?? null) : prev.submission?.totalPoints,
               maxPoints: maxPointsFromGrading ?? prev.submission?.maxPoints,
               correctCount: correct ?? prev.submission?.correctCount,
               incorrectCount: incorrect ?? prev.submission?.incorrectCount,
@@ -5040,19 +5043,31 @@ useEffect(() => {
                                   </>
                                 ) : (
                                   <>
-                                    <Typography.Text
-                                      strong
-                                      style={{
-                                        fontSize: '36px',
-                                        fontWeight: 700,
-                                        color: theme === 'sun' ? '#999' : '#666',
-                                        lineHeight: '1',
-                                        marginBottom: '4px',
-                                        whiteSpace: 'nowrap'
-                                      }}
-                                    >
-                                      -
-                                    </Typography.Text>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '4px' }}>
+                                      <Typography.Text
+                                        strong
+                                        style={{
+                                          fontSize: '36px',
+                                          fontWeight: 700,
+                                          color: theme === 'sun' ? '#999' : '#666',
+                                          lineHeight: '1',
+                                          whiteSpace: 'nowrap'
+                                        }}
+                                      >
+                                        -
+                                      </Typography.Text>
+                                      <Typography.Text
+                                        strong
+                                        style={{
+                                          fontSize: '18px',
+                                          fontWeight: 600,
+                                          color: theme === 'sun' ? '#4a5568' : '#CBD5F5',
+                                          lineHeight: '1'
+                                        }}
+                                      >
+                                        /10
+                                      </Typography.Text>
+                                    </div>
                                     <Typography.Text
                                       style={{
                                         fontSize: '12px',
@@ -5096,8 +5111,8 @@ useEffect(() => {
                           </div>
                         </div>
 
-                        {/* Question Breakdown Grid (hidden for Writing/Speaking submissions) */}
-                        {!hasWritingOrSpeaking && (
+                        {/* Question Breakdown Grid */}
+                        {(
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                             {/* Total Weight - separated from other items */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -5114,28 +5129,39 @@ useEffect(() => {
                             </div>
                             
                             {/* Other items grouped together */}
-                            {[
-                              {
-                                label: 'Total Questions',
-                                value: submissionData.challenge?.totalQuestions != null ? submissionData.challenge.totalQuestions : '-',
-                                color: '#f97316'
-                              },
-                              {
-                                label: 'Correct',
-                                value: submission.correctCount != null ? submission.correctCount : '-',
-                                color: '#22c55e'
-                              },
-                              {
-                                label: 'Incorrect',
-                                value: submission.incorrectCount != null ? submission.incorrectCount : '-',
-                                color: '#ef4444'
-                              },
-                              {
-                                label: 'Unanswered',
-                                value: submission.unansweredCount != null ? submission.unansweredCount : '-',
-                                color: '#9ca3af'
-                              }
-                            ].map((item) => (
+                            {(() => {
+                              // For writing & speaking: show only Total Questions + Unanswered
+                              // For other challenge types: show full breakdown
+                              const baseItems = [
+                                {
+                                  label: 'Total Questions',
+                                  value: submissionData.challenge?.totalQuestions != null ? submissionData.challenge.totalQuestions : '-',
+                                  color: '#f97316'
+                                },
+                                {
+                                  label: 'Correct',
+                                  value: submission.correctCount != null ? submission.correctCount : '-',
+                                  color: '#22c55e'
+                                },
+                                {
+                                  label: 'Incorrect',
+                                  value: submission.incorrectCount != null ? submission.incorrectCount : '-',
+                                  color: '#ef4444'
+                                },
+                                {
+                                  label: 'Unanswered',
+                                  value: submission.unansweredCount != null ? submission.unansweredCount : '-',
+                                  color: '#9ca3af'
+                                }
+                              ];
+
+                              const items = hasWritingOrSpeaking
+                                ? baseItems.filter((it) =>
+                                    it.label === 'Total Questions' || it.label === 'Unanswered'
+                                  )
+                                : baseItems;
+
+                              return items.map((item) => (
                               <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Typography.Text style={{ fontSize: '14px', fontWeight: 600, color: item.color }}>
                                   {item.label}
@@ -5144,7 +5170,8 @@ useEffect(() => {
                                   {item.value}
                                 </Typography.Text>
                               </div>
-                            ))}
+                              ));
+                            })()}
                           </div>
                         )}
                       </>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, Input, Tooltip, Typography, Upload, Space, Progress } from "antd";
-import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, SaveOutlined, ThunderboltOutlined, CheckOutlined, CloudUploadOutlined, CloseOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Card, Input, Tooltip, Typography, Upload, Space } from "antd";
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, SaveOutlined, ThunderboltOutlined, CheckOutlined, CloudUploadOutlined, CloseOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import { useTheme } from "../../../../contexts/ThemeContext";
@@ -18,6 +18,7 @@ import DropdownModal from "./questionModals/DropdownModal";
 import DragDropModal from "./questionModals/DragDropModal";
 import ReorderModal from "./questionModals/ReorderModal";
 import "./AIGenerateQuestions.css";
+import TableSpinner from "../../../../component/spinner/TableSpinner";
 
 const { Title } = Typography;
 const { Text } = Typography;
@@ -62,6 +63,9 @@ const AIGenerateListening = () => {
   const [uploadedAudioFileName, setUploadedAudioFileName] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const [audioPreviewUrl, setAudioPreviewUrl] = useState(null);
+  const [showSpinner, setShowSpinner] = useState(true);
+  const [spinnerCompleted, setSpinnerCompleted] = useState(false);
+  const [contentVisible, setContentVisible] = useState(false);
   
   // State for new API fields
   const [levelType, setLevelType] = useState(null); // 'system', 'academic', 'cefr'
@@ -75,6 +79,16 @@ const AIGenerateListening = () => {
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
   const MAX_FILE_MB = 10;
+  useEffect(() => {
+    const spinnerTimer = setTimeout(() => setSpinnerCompleted(true), 1200);
+    return () => clearTimeout(spinnerTimer);
+  }, []);
+
+  const handleSpinnerAnimationEnd = useCallback(() => {
+    setShowSpinner(false);
+    setContentVisible(true);
+  }, []);
+
 
   // Helper function to extract backend error messages
   const getBackendMessage = useCallback((resOrErr) => {
@@ -343,6 +357,15 @@ const AIGenerateListening = () => {
   }, [getBackendMessage]);
 
   const handleGenerateWithAI = useCallback(async () => {
+    // Validate: Check if at least one question type is selected
+    const selectedConfigs = (questionTypeConfigs || [])
+      .filter((c) => Number(c.numberOfQuestions) > 0);
+    
+    if (selectedConfigs.length === 0) {
+      spaceToast.error('At least one question type config is required');
+      return;
+    }
+    
     if (!prompt.trim()) {
       spaceToast.error(t('dailyChallenge.pleaseEnterPrompt') || 'Please enter a prompt');
       return;
@@ -367,12 +390,10 @@ const AIGenerateListening = () => {
               orderNumber: 1,
               resourceType: 'FILE',
             },
-            questionTypeConfigs: questionTypeConfigs
-              .filter((c) => Number(c.numberOfQuestions) > 0)
-              .map((c) => ({
-                questionType: c.questionType,
-                numberOfQuestions: Math.max(0, Number(c.numberOfQuestions) || 0),
-              })),
+            questionTypeConfigs: selectedConfigs.map((c) => ({
+              questionType: c.questionType,
+              numberOfQuestions: Math.max(0, Number(c.numberOfQuestions) || 0),
+            })),
           },
         ],
         description: description || '',
@@ -411,7 +432,7 @@ const AIGenerateListening = () => {
 
   const handleGenerateFromFile = useCallback(async () => {
     if (!uploadedFile) {
-      spaceToast.error('Please upload a file first');
+      spaceToast.error('Please select a file to generate questions');
       return;
     }
     try {
@@ -482,7 +503,15 @@ const AIGenerateListening = () => {
     setIsEditModalVisible(true);
   }, [questions]);
   const handleDeleteQuestion = useCallback((qid) => {
-    setQuestions(prev => prev.filter(q => q.id !== qid));
+    setQuestions(prev => {
+      const filtered = prev.filter(q => q.id !== qid);
+      // Re-index questions after deletion
+      return filtered.map((q, index) => ({
+        ...q,
+        id: index + 1,
+        title: `Question ${index + 1}`
+      }));
+    });
     spaceToast.success('Question deleted successfully');
   }, []);
   const handleSaveFromModal = useCallback((updated) => {
@@ -592,8 +621,35 @@ const AIGenerateListening = () => {
     </header>
   );
 
+  const mainContentStyle = {
+    opacity: contentVisible ? 1 : 0,
+    transition: 'opacity 0.45s ease',
+    pointerEvents: contentVisible ? 'auto' : 'none'
+  };
+
   return (
     <ThemedLayout customHeader={customHeader} contentMargin={10}>
+      {showSpinner && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 4000,
+            background: theme === 'sun'
+              ? 'rgba(255, 255, 255, 0.92)'
+              : 'rgba(7, 7, 12, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <TableSpinner
+            message="Loading..."
+            isCompleted={spinnerCompleted}
+            onAnimationEnd={handleSpinnerAnimationEnd}
+          />
+        </div>
+      )}
       <style>
         {`
           @keyframes astroBounce {
@@ -606,7 +662,10 @@ const AIGenerateListening = () => {
           }
         `}
       </style>
-      <div className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}>
+      <div
+        className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}
+        style={mainContentStyle}
+      >
         <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto' }}>
           {/* Hierarchy info moved inside the main container */}
           <Card
@@ -1103,15 +1162,30 @@ const AIGenerateListening = () => {
                   style={{ display: 'none' }}
                   onChange={(e) => {
                     const f = e.target.files && e.target.files[0];
-                    if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+                    if (!f) {
+                      setUploadedFile(null);
+                      setUploadedFileName('');
+                      return;
+                    }
+
+                    const fileExtension = f.name.split('.').pop().toLowerCase();
+                    if (!['doc', 'docx'].includes(fileExtension)) {
+                      spaceToast.error(`Unsupported file type: .${fileExtension}. Supported types: .doc, .docx`);
+                      e.target.value = '';
+                      setUploadedFile(null);
+                      setUploadedFileName('');
+                      return;
+                    }
+
+                    if (f.size > MAX_FILE_MB * 1024 * 1024) {
                       spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
                       e.target.value = '';
                       setUploadedFile(null);
                       setUploadedFileName('');
                       return;
                     }
-                    setUploadedFileName(f ? f.name : '');
-                    setUploadedFile(f || null);
+                    setUploadedFileName(f.name);
+                    setUploadedFile(f);
                   }}
                 />
 
@@ -1176,25 +1250,75 @@ const AIGenerateListening = () => {
                       style={{ display: 'none' }}
                       onChange={(e) => {
                         const f = e.target.files && e.target.files[0];
-                        if (f && f.size > MAX_FILE_MB * 1024 * 1024) {
+                        if (!f) {
+                          setUploadedFile(null);
+                          setUploadedFileName('');
+                          return;
+                        }
+
+                        const fileExtension = f.name.split('.').pop().toLowerCase();
+                        if (!['doc', 'docx'].includes(fileExtension)) {
+                          spaceToast.error(`Unsupported file type: .${fileExtension}. Supported types: .doc, .docx`);
+                          e.target.value = '';
+                          setUploadedFile(null);
+                          setUploadedFileName('');
+                          return;
+                        }
+
+                        if (f.size > MAX_FILE_MB * 1024 * 1024) {
                           spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
                           e.target.value = '';
                           setUploadedFile(null);
                           setUploadedFileName('');
                           return;
                         }
-                        setUploadedFileName(f ? f.name : '');
-                        setUploadedFile(f || null);
+                        setUploadedFileName(f.name);
+                        setUploadedFile(f);
                       }}
                     />
                     {uploadedFileName && (
-                      <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#d1cde8' }}>{uploadedFileName}</div>
+                      <div style={{ 
+                        marginTop: 10, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        background: theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.15)',
+                        border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(139, 92, 246, 0.3)'}`
+                      }}>
+                        <Typography.Text style={{ 
+                          fontSize: 13, 
+                          fontWeight: 600, 
+                          color: theme === 'sun' ? '#1E40AF' : '#d1cde8',
+                          flex: 1
+                        }}>
+                          {uploadedFileName}
+                        </Typography.Text>
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<CloseOutlined />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadedFile(null);
+                            setUploadedFileName('');
+                            const input = document.getElementById('listening-question-upload-input');
+                            if (input) input.value = '';
+                          }}
+                          style={{
+                            color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+                            padding: '0 4px',
+                            minWidth: 'auto',
+                            height: 'auto'
+                          }}
+                        />
+                      </div>
                     )}
                     <Button
                       type="primary"
                       icon={<ThunderboltOutlined />}
                       loading={isGenerating}
-                      disabled={!uploadedFile}
                       onClick={handleGenerateFromFile}
                       style={{ marginTop: 16, height: '40px', borderRadius: '8px', fontSize: '16px', fontWeight: 500, padding: '0 24px', background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)', border: 'none', color: '#000000' }}
                     >

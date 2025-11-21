@@ -1271,17 +1271,17 @@ const DailyChallengePerformance = () => {
                             </tr>
                             <tr
                               style={{
-                                backgroundColor: theme === 'sun' ? '#c8f5d4' : '#1a4d2e'
+                                backgroundColor: theme === 'sun' ? '#bbf7d0' : '#047857'
                               }}
                             >
                               <th
                                 style={{
                                   padding: '10px 16px',
-                                  fontWeight: 600,
-                                  fontSize: 13,
-                                  color: theme === 'sun' ? '#1f2937' : '#f9fafb',
-                                  border: `1px solid ${theme === 'sun' ? '#86efac' : '#2d5a3e'}`,
-                                  backgroundColor: theme === 'sun' ? '#c8f5d4' : '#1a4d2e',
+                                  fontWeight: 700,
+                                  fontSize: 14,
+                                  color: theme === 'sun' ? '#065f46' : '#f0fdf4',
+                                  border: `1px solid ${theme === 'sun' ? '#10b981' : '#34d399'}`,
+                                  backgroundColor: theme === 'sun' ? '#bbf7d0' : '#047857',
                                   position: 'sticky',
                                   top: 52,
                                   left: 0,
@@ -1294,8 +1294,8 @@ const DailyChallengePerformance = () => {
                                     : '0 2px 4px rgba(0,0,0,0.4), 2px 0 4px rgba(0,0,0,0.3)'
                                 }}
                               >
-                                <div style={{ fontWeight: 600 }}>Total Score</div>
-                                <div style={{ fontSize: 11, color: theme === 'sun' ? '#4b5563' : '#9ca3af' }}>
+                                <div style={{ fontWeight: 700 }}>Total Score</div>
+                                <div style={{ fontSize: 11, fontWeight: 500, color: theme === 'sun' ? '#047857' : '#86efac' }}>
                                   Scale 0 – 10
                                 </div>
                               </th>
@@ -1305,14 +1305,14 @@ const DailyChallengePerformance = () => {
                                   typeof totalScore?.score10 === 'number'
                                     ? totalScore.score10.toFixed(2)
                                     : '-';
-                                let textColor = theme === 'sun' ? '#1f2937' : '#f9fafb';
+                                let textColor = theme === 'sun' ? '#065f46' : '#f0fdf4';
                                 if (typeof totalScore?.score10 === 'number') {
                                   if (totalScore.score10 < 5) {
                                     textColor = '#dc2626'; // Red
                                   } else if (totalScore.score10 < 7) {
                                     textColor = '#f97316'; // Orange
                                   } else {
-                                    textColor = '#0f766e'; // Green
+                                    textColor = '#047857'; // Green
                                   }
                                 }
                                 return (
@@ -1321,10 +1321,10 @@ const DailyChallengePerformance = () => {
                                     style={{
                                       padding: '10px 16px',
                                       fontWeight: 600,
-                                      fontSize: 13,
+                                      fontSize: 14,
                                       color: textColor,
-                                      border: `1px solid ${theme === 'sun' ? '#86efac' : '#2d5a3e'}`,
-                                      backgroundColor: theme === 'sun' ? '#c8f5d4' : '#1a4d2e',
+                                      border: `1px solid ${theme === 'sun' ? '#10b981' : '#34d399'}`,
+                                      backgroundColor: theme === 'sun' ? '#bbf7d0' : '#047857',
                                       position: 'sticky',
                                       top: 52,
                                       zIndex: 10,
