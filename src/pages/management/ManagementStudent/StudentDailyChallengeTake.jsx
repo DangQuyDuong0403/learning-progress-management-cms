@@ -5381,23 +5381,48 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
     ? data.options
     : null;
 
+  const normalizedOptions = React.useMemo(() => {
+    const fallbackOptions = ['A','B','C','D'].map((k, i) => ({
+      key: k,
+      text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i]
+    }));
+    const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
+      ? data.content.data.map((d, idx) => ({
+          key: d.id || d.key || d.value || `opt_${idx}`,
+          text: d.value
+        }))
+      : null;
+    const baseOptions = optionsFromApi || contentOpts || fallbackOptions;
+    return baseOptions.map((opt, idx) => {
+      const valueKey = String(opt.valueKey || opt.key || opt.id || (opt.text ?? opt.value) || `opt_${idx}`);
+      const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
+      const text = typeof opt.text === 'string'
+        ? opt.text
+        : typeof opt.value === 'string'
+          ? opt.value
+          : '';
+      return {
+        ...opt,
+        valueKey,
+        displayKey,
+        text
+      };
+    });
+  }, [optionsFromApi, data?.content?.data]);
+
   // Register answer collector
   React.useEffect(() => {
     if (!registerAnswerCollector || !data?.id) return;
     
     const getAnswer = () => {
       if (!selectedAnswer) return null;
-      const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
-        ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
-        : null;
-      const baseOptions = optionsFromApi || contentOpts || ['A','B','C','D'].map((k, i) => ({ key: k, text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i] }));
-      const options = baseOptions.map((o, idx) => ({ key: o.key || String.fromCharCode(65 + idx), text: o.text }));
+      const options = normalizedOptions.map((o) => ({ key: o.valueKey, text: o.text }));
       return { answer: selectedAnswer, questionType: 'MULTIPLE_CHOICE', options };
     };
     
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
-  }, [registerAnswerCollector, data?.id, selectedAnswer]);
+  }, [registerAnswerCollector, data?.id, selectedAnswer, normalizedOptions]);
 
   // Register answer restorer (for submittedContent)
   React.useEffect(() => {
@@ -5405,18 +5430,17 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
 
     const unregister = registerAnswerRestorer(data.id, (restored) => {
       if (typeof restored === 'string' && restored) {
-        const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
-          ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
-          : null;
-        const baseOptions = optionsFromApi || contentOpts || ['A','B','C','D'].map((k, i) => ({ key: k, text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i] }));
-        const options = baseOptions.map((o, idx) => ({ key: o.key || String.fromCharCode(65 + idx), text: typeof o.text === 'string' ? o.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : o.text }));
         const normalized = String(restored).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-        const match = options.find(o => o.text === normalized || o.key === normalized);
-        setSelectedAnswer(match ? match.key : normalized);
+        const match = normalizedOptions.find(o =>
+          o.text === normalized ||
+          o.valueKey === normalized ||
+          o.displayKey === normalized
+        );
+        setSelectedAnswer(match ? match.valueKey : normalized);
       }
     });
     return unregister;
-  }, [registerAnswerRestorer, data?.id]);
+  }, [registerAnswerRestorer, data?.id, normalizedOptions]);
 
   return (
     <div
@@ -5490,14 +5514,9 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
           marginTop: '12px',
           width: '100%'
         }}>
-          {(
-            optionsFromApi
-              || (Array.isArray(data?.content?.data) && data.content.data.length > 0
-                    ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
-                    : null)
-              || ['A','B','C','D'].map((k, i) => ({ key: k, text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i] }))
-          ).map((opt, idx) => {
-            const key = opt.key || String.fromCharCode(65 + idx);
+          {normalizedOptions.map((opt, idx) => {
+            const key = opt.valueKey;
+            const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
             const isSelected = selectedAnswer === key;
             return (
               <div
@@ -5558,7 +5577,7 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
                   fontWeight: '600',
                   fontSize: '16px'
                 }}>
-                  {key}.
+                  {displayKey}.
                 </span>
                 <span 
                   className="option-text"
@@ -5573,7 +5592,7 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
                     overflowWrap: 'break-word',
                     overflow: 'hidden'
                   }}
-                  dangerouslySetInnerHTML={{ __html: opt.text || '' }}
+                  dangerouslySetInnerHTML={{ __html: opt.text || opt.value || '' }}
                 />
               </div>
             );
@@ -5593,49 +5612,74 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
   const questionText = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
 
+  const normalizedOptions = React.useMemo(() => {
+    const fallbackOptions = ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }));
+    const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
+      ? data.content.data.map((d, idx) => ({
+          key: d.id || d.key || d.value || `opt_${idx}`,
+          text: d.value
+        }))
+      : null;
+    const baseOptions = optionsFromApi || contentOpts || fallbackOptions;
+    return baseOptions.map((opt, idx) => {
+      const valueKey = String(opt.valueKey || opt.key || opt.id || (opt.text ?? opt.value) || `opt_${idx}`);
+      const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
+      const text = typeof opt.text === 'string'
+        ? opt.text
+        : typeof opt.value === 'string'
+          ? opt.value
+          : '';
+      return {
+        ...opt,
+        valueKey,
+        displayKey,
+        text
+      };
+    });
+  }, [optionsFromApi, data?.content?.data]);
+
   // Register answer collector
   React.useEffect(() => {
     if (!registerAnswerCollector || !data?.id) return;
     
     const getAnswer = () => {
       if (selectedAnswers.length === 0) return null;
-      const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
-        ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
-        : null;
-      const baseOptions = optionsFromApi || contentOpts || ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }));
-      const options = baseOptions.map((o, idx) => ({ key: o.key || String.fromCharCode(65 + idx), text: o.text }));
+      const options = normalizedOptions.map((o) => ({ key: o.valueKey, text: o.text }));
       return { answer: selectedAnswers, questionType: 'MULTIPLE_SELECT', options };
     };
     
     const unregister = registerAnswerCollector(data.id, getAnswer);
     return unregister;
-  }, [registerAnswerCollector, data?.id, selectedAnswers]);
+  }, [registerAnswerCollector, data?.id, selectedAnswers, normalizedOptions]);
 
   // Register answer restorer (for submittedContent)
   React.useEffect(() => {
     if (!registerAnswerRestorer || !data?.id) return;
 
     const unregister = registerAnswerRestorer(data.id, (restored) => {
-      const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
-        ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
-        : null;
-      const baseOptions = optionsFromApi || contentOpts || ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }));
-      const options = baseOptions.map((o, idx) => ({ key: o.key || String.fromCharCode(65 + idx), text: typeof o.text === 'string' ? o.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : o.text }));
       if (Array.isArray(restored)) {
         const keys = restored.map(val => {
           const normalized = String(val).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-          const match = options.find(o => o.text === normalized || o.key === normalized);
-          return match ? match.key : normalized;
+          const match = normalizedOptions.find(o =>
+            o.text === normalized ||
+            o.valueKey === normalized ||
+            o.displayKey === normalized
+          );
+          return match ? match.valueKey : normalized;
         });
         setSelectedAnswers(keys);
       } else if (typeof restored === 'string' && restored) {
         const normalized = String(restored).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-        const match = options.find(o => o.text === normalized || o.key === normalized);
-        setSelectedAnswers([match ? match.key : normalized]);
+        const match = normalizedOptions.find(o =>
+          o.text === normalized ||
+          o.valueKey === normalized ||
+          o.displayKey === normalized
+        );
+        setSelectedAnswers([match ? match.valueKey : normalized]);
       }
     });
     return unregister;
-  }, [registerAnswerRestorer, data?.id]);
+  }, [registerAnswerRestorer, data?.id, normalizedOptions]);
 
   const toggleAnswer = (key) => {
     if (selectedAnswers.includes(key)) {
@@ -5717,19 +5761,14 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
           marginTop: '12px',
           width: '100%'
         }}>
-          {(
-            optionsFromApi
-              || (Array.isArray(data?.content?.data) && data.content.data.length > 0
-                    ? data.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }))
-                    : null)
-              || ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }))
-          ).map((opt, idx) => {
-            const key = opt.key || String.fromCharCode(65 + idx);
+          {normalizedOptions.map((opt, idx) => {
+            const key = opt.valueKey;
+            const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
             const isSelected = selectedAnswers.includes(key);
-      return (
+            return (
               <div
                 key={idx}
-          onClick={() => { if (!isViewOnly) toggleAnswer(key); }}
+                onClick={() => { if (!isViewOnly) toggleAnswer(key); }}
                 className={`option-item ${isSelected ? 'selected-answer' : ''}`}
                 style={{
                   display: 'flex',
@@ -5768,13 +5807,13 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
                 <input 
                   type="checkbox" 
                   checked={isSelected}
-            onChange={() => { if (!isViewOnly) toggleAnswer(key); }}
-            disabled={isViewOnly}
+                  onChange={() => { if (!isViewOnly) toggleAnswer(key); }}
+                  disabled={isViewOnly}
                   style={{ 
                     width: '18px',
                     height: '18px',
                     accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-              cursor: isViewOnly ? 'default' : 'pointer',
+                    cursor: isViewOnly ? 'default' : 'pointer',
                     flexShrink: 0
                   }} 
                 />
@@ -5784,7 +5823,7 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
                   fontWeight: '600',
                   fontSize: '16px'
                 }}>
-                  {key}.
+                  {displayKey}.
                 </span>
                 <span 
                   className="option-text"
@@ -5799,7 +5838,7 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
                     overflowWrap: 'break-word',
                     overflow: 'hidden'
                   }}
-                  dangerouslySetInnerHTML={{ __html: opt.text || '' }}
+                  dangerouslySetInnerHTML={{ __html: opt.text || opt.value || '' }}
                 />
               </div>
             );
@@ -5819,16 +5858,22 @@ const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
 
   // Normalize options from API: prefer backend ids (e.g., 'opt1', 'opt2')
   const tfOptions = React.useMemo(() => {
+    const normalizeText = (val) =>
+      typeof val === 'string'
+        ? val.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim()
+        : val;
     if (Array.isArray(data?.options) && data.options.length > 0) {
       return data.options.map((opt, idx) => ({
         key: opt.key || opt.id || (String(opt.text).toLowerCase() === 'true' ? 'opt1' : 'opt2'),
-        text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text
+        text: normalizeText(opt.text),
+        displayKey: opt.displayKey || String.fromCharCode(65 + idx)
       }));
     }
     const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
-    return contentData.map((d) => ({
+    return contentData.map((d, idx) => ({
       key: d.id || (String(d.value).toLowerCase() === 'true' ? 'opt1' : 'opt2'),
-      text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value
+      text: normalizeText(d.value),
+      displayKey: d.displayKey || String.fromCharCode(65 + idx)
     }));
   }, [data?.options, data?.content?.data]);
 
@@ -5839,7 +5884,7 @@ const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
     const getAnswer = () => {
       if (!selectedAnswer) return null;
       // Pass options with backend ids so formatter emits id=opt1/opt2
-      const options = tfOptions;
+      const options = tfOptions.map(opt => ({ key: opt.key, text: opt.text }));
       return { answer: selectedAnswer, questionType: 'TRUE_OR_FALSE', options };
     };
     
@@ -5990,7 +6035,7 @@ const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
                   fontWeight: '600',
                   fontSize: '16px'
                 }}>
-                  {String(opt.text).toLowerCase() === 'true' ? 'A' : 'B'}.
+                  {(opt.displayKey || (String(opt.text).toLowerCase() === 'true' ? 'A' : 'B'))}.
                 </span>
                 <Typography.Text style={{ 
                   fontSize: '14px',
@@ -6293,10 +6338,11 @@ const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const isViewOnly = useContext(ViewOnlyContext);
   const [droppedItems, setDroppedItems] = React.useState({});
+  const dragDropContentData = React.useMemo(() => getContentDataArray(data), [data]);
   const initialPool = React.useMemo(() => {
-    const values = (data?.content?.data || []).map(it => it?.value).filter(Boolean);
+    const values = dragDropContentData.map(it => (typeof it?.value === 'string' ? it.value : (it?.text ?? ''))).filter(Boolean);
     return values.length ? values : ['love', 'like', 'enjoy', 'hate'];
-  }, [data?.content?.data]);
+  }, [dragDropContentData]);
   const [availableItems, setAvailableItems] = React.useState(initialPool);
   const [dragOverPosition, setDragOverPosition] = React.useState(null);
 
@@ -7655,6 +7701,37 @@ const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
 
   return { questions, readingSections, listeningSections, writingSections, speakingSections };
 };
+
+const getContentDataArray = (question) => {
+  if (!question) return [];
+  const candidates = [
+    question?.content?.data,
+    question?.content,
+    question?.questionContent?.data,
+    question?.questionContent,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate) && candidate.length > 0) {
+      return candidate;
+    }
+  }
+  return [];
+};
+
+const extractContentItemsForQuestion = (question) => {
+  const contentItems = getContentDataArray(question);
+  if (contentItems.length > 0) {
+    return contentItems;
+  }
+  if (Array.isArray(question?.options) && question.options.length > 0) {
+    return question.options.map((opt, idx) => ({
+      id: opt.id || opt.key || `opt_${idx}`,
+      value: opt.text || opt.value || '',
+      positionId: opt.positionId ?? null
+    }));
+  }
+  return [];
+};
 const StudentDailyChallengeTake = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -7715,7 +7792,30 @@ const StudentDailyChallengeTake = () => {
   const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
   const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
   const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
-  
+
+  // Resolve feature flags (shuffle / anti-cheat) from navigation state in a backward-compatible way
+  const resolvedShuffleQuestions = React.useMemo(() => {
+    const state = location.state || {};
+    // Accept multiple possible keys from different navigation flows
+    const value =
+      state.shuffleQuestion ??
+      state.shuffleAnswers ??
+      state.challengeSettings?.shuffleQuestion ??
+      state.challenge?.shuffleQuestion;
+    return !!value;
+  }, [location.state]);
+
+  const resolvedHasAntiCheat = React.useMemo(() => {
+    const state = location.state || {};
+    // Accept multiple possible keys from different navigation flows
+    const value =
+      state.hasAntiCheat ??
+      state.antiCheatModeEnabled ??
+      state.challengeSettings?.antiCheatModeEnabled ??
+      state.challenge?.hasAntiCheat;
+    return !!value;
+  }, [location.state]);
+
   // Prevent auto-save immediately after manual save
   const isManualSavingRef = useRef(false);
   const lastManualSaveTimeRef = useRef(0);
@@ -7841,7 +7941,6 @@ const StudentDailyChallengeTake = () => {
     [extractSubmissionList, pickSubmissionMeta]
   );
   const [allowTranslateOnScreen, setAllowTranslateOnScreen] = useState(false);
-  const [allowShuffleQuestions, setAllowShuffleQuestions] = useState(false);
   
   usePageTitle('Daily Challenge - Take Challenge');
   
@@ -7940,7 +8039,7 @@ const StudentDailyChallengeTake = () => {
   };
 
   const [isViewOnly, setIsViewOnly] = useState(false);
-
+  const allowShuffleQuestions = resolvedShuffleQuestions;
   // Helper function to find current questionId from active element
   const getCurrentQuestionId = useCallback(() => {
     try {
@@ -8233,11 +8332,9 @@ const StudentDailyChallengeTake = () => {
     }
 
     setChallengeType(type);
-    // Feature flags from navigation state
+    // Feature flags from navigation state (support multiple keys, incl. normal mode)
     const translateOnScreen = !!location.state?.translateOnScreen;
-    const shuffleQuestion = !!location.state?.shuffleQuestion;
     setAllowTranslateOnScreen(translateOnScreen);
-    setAllowShuffleQuestions(shuffleQuestion);
     setChallengeInfo({
       challengeName: location.state?.challengeName || 'Daily Challenge',
       className: location.state?.lessonName || null,
@@ -8428,13 +8525,12 @@ const StudentDailyChallengeTake = () => {
                     
                     const shuffledQuestion = { ...question };
                     
-                    // Shuffle options array if it exists and reassign keys A, B, C, D...
+                    // Shuffle options array if it exists and assign display keys while preserving original ids
                     if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
                       const shuffled = shuffle([...shuffledQuestion.options]);
-                      // Reassign keys A, B, C, D... to maintain alphabetical order
                       shuffledQuestion.options = shuffled.map((opt, idx) => ({
                         ...opt,
-                        key: String.fromCharCode(65 + idx) // A, B, C, D...
+                        displayKey: opt.displayKey || String.fromCharCode(65 + idx)
                       }));
                     }
                     
@@ -8450,7 +8546,31 @@ const StudentDailyChallengeTake = () => {
                     return shuffledQuestion;
                   };
                   const applyShuffle = (data) => {
-                    if (!allowShuffleQuestions || effectiveViewOnly) return data;
+                    if (!allowShuffleQuestions || effectiveViewOnly) {
+                      console.log('[Shuffle] Skipped', {
+                        allowShuffleQuestions,
+                        effectiveViewOnly,
+                      });
+                      return data;
+                    }
+                    
+                    const snapshotOrder = (questionsArr) => (questionsArr || []).map((q) => q.id);
+                    const snapshotOptionKeys = (question) =>
+                      (question?.options || []).map((opt) => opt.key || opt.id || opt.text);
+                    
+                    console.log('[Shuffle] Before shuffle', {
+                      topLevelQuestions: snapshotOrder(data.questions),
+                      firstQuestionOptions: snapshotOptionKeys(data.questions?.[0]),
+                      readingSections: (data.readingSections || []).map((sec) => ({
+                        sectionId: sec.id,
+                        questions: snapshotOrder(sec.questions)
+                      })),
+                      listeningSections: (data.listeningSections || []).map((sec) => ({
+                        sectionId: sec.id,
+                        questions: snapshotOrder(sec.questions)
+                      }))
+                    });
+                    
                     const newData = { ...data };
                     // Shuffle and renumber individual questions, then shuffle their options
                     newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
@@ -8464,6 +8584,20 @@ const StudentDailyChallengeTake = () => {
                       ...sec,
                       questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
                     }));
+
+                    console.log('[Shuffle] After shuffle', {
+                      topLevelQuestions: snapshotOrder(newData.questions),
+                      firstQuestionOptions: snapshotOptionKeys(newData.questions?.[0]),
+                      readingSections: (newData.readingSections || []).map((sec) => ({
+                        sectionId: sec.id,
+                        questions: snapshotOrder(sec.questions)
+                      })),
+                      listeningSections: (newData.listeningSections || []).map((sec) => ({
+                        sectionId: sec.id,
+                        questions: snapshotOrder(sec.questions)
+                      }))
+                    });
+
                     return newData;
                   };
                   const maybeShuffled = applyShuffle(transformedData);
@@ -8477,7 +8611,8 @@ const StudentDailyChallengeTake = () => {
                     const map = new Map();
                     const posMap = new Map();
                     const collect = (q) => {
-                      map.set(q.id, q.content?.data || []);
+                      const contentItems = extractContentItemsForQuestion(q);
+                      map.set(q.id, contentItems);
                       const txt = q.questionText || q.question || '';
                       const ids = [];
                       const re = /\[\[pos_(.*?)\]\]/g; let m;
@@ -8619,14 +8754,13 @@ const StudentDailyChallengeTake = () => {
       .finally(() => {
         setLoading(false);
         // Enable anti-cheat after data is loaded and not in view-only mode
-        const hasAntiCheat = !!location.state?.hasAntiCheat;
-        if (!isViewOnly && hasAntiCheat) {
+        if (!isViewOnly && resolvedHasAntiCheat) {
           setIsAntiCheatEnabled(true);
         } else {
           setIsAntiCheatEnabled(false);
         }
       });
-  }, [id, location.state, isViewOnly, sendSessionStartEvent]);
+  }, [id, location.state, isViewOnly, sendSessionStartEvent, resolvedShuffleQuestions, resolvedHasAntiCheat]);
 
   // Kết nối SSE để nhận device_mismatch event
   useEffect(() => {
@@ -10341,11 +10475,18 @@ const StudentDailyChallengeTake = () => {
                   violationWarningData.type
                 }
               </p>
-              {violationWarningData.timestamp && (
-                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                  <strong>Thời gian:</strong> {new Date(violationWarningData.timestamp).toLocaleString('vi-VN')}
-                </p>
-              )}
+              {violationWarningData.timestamp && (() => {
+                const ts = violationWarningData.timestamp;
+                const dateObj = ts instanceof Date ? ts : new Date(ts);
+                const isValid = !Number.isNaN(dateObj.getTime());
+                // Nếu parse được -> hiển thị dạng locale; nếu không -> hiển thị raw string
+                const displayText = isValid ? dateObj.toLocaleString('vi-VN') : String(ts);
+                return (
+                  <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                    <strong>Thời gian:</strong> {displayText}
+                  </p>
+                );
+              })()}
               {violationWarningData.type === 'copy' && violationWarningData.oldValue && violationWarningData.oldValue.length > 0 && (
                 <p style={{ marginBottom: '8px', fontSize: '14px'}}>
                   <strong>Nội dung đã copy:</strong> 
