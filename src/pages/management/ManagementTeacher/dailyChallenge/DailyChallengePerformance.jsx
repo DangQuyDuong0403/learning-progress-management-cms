@@ -623,16 +623,33 @@ const DailyChallengePerformance = () => {
   // Enter/exit daily challenge menu mode
   useEffect(() => {
     // Determine back path based on classId
+    // Also preserve pagination state from location.state for restoring when navigating back
     const getBackPath = () => {
+      // Preserve state from location.state (contains pagination info from DailyChallengeList)
+      const savedState = location.state || {};
+      const preservedState = {
+        ...savedState,
+        // Keep pagination state if it exists
+        currentPage: savedState.currentPage,
+        pageSize: savedState.pageSize,
+        searchText: savedState.searchText,
+        typeFilter: savedState.typeFilter,
+        statusFilter: savedState.statusFilter,
+      };
+      
+      console.log('🔵 DailyChallengePerformance - Preserving state for back navigation:', preservedState);
+      
       if (challengeInfo.classId) {
         // If coming from class-specific daily challenges, go back to that list
         // Route: /teacher/classes/daily-challenges/:classId
         const userRole = user?.role?.toLowerCase();
-        if (userRole === 'teacher' || userRole === 'teaching_assistant') {
-          return `/teacher/classes/daily-challenges/${challengeInfo.classId}`;
-        } else {
-          return `/manager/classes/daily-challenges/${challengeInfo.classId}`;
-        }
+        const path = userRole === 'teacher' || userRole === 'teaching_assistant'
+          ? `/teacher/classes/daily-challenges/${challengeInfo.classId}`
+          : `/manager/classes/daily-challenges/${challengeInfo.classId}`;
+        
+        // Store preserved state in a way that ThemedHeader can access it
+        // We'll modify the context to include state, or use a ref
+        return path;
       } else {
         // Otherwise, go back to general daily challenges list
         const userRole = user?.role?.toLowerCase();
@@ -769,18 +786,32 @@ const DailyChallengePerformance = () => {
           {userRole !== 'teaching_assistant' && (
             <Button
               className={`dcpr-tab-button ${theme}-dcpr-tab-button`}
-              onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/content`, {
-                state: challengeInfo
-              })}
+              onClick={() => {
+                // Preserve pagination state from location.state when navigating to content
+                const savedState = location.state || {};
+                navigate(`/teacher/daily-challenges/detail/${id}/content`, {
+                  state: {
+                    ...challengeInfo,
+                    ...savedState, // Preserve pagination state
+                  }
+                });
+              }}
             >
               {t('dailyChallenge.content')}
             </Button>
           )}
           <Button
             className={`dcpr-tab-button ${theme}-dcpr-tab-button`}
-            onClick={() => navigate(`/teacher/daily-challenges/detail/${id}/submissions`, {
-              state: challengeInfo
-            })}
+            onClick={() => {
+              // Preserve pagination state from location.state when navigating to submissions
+              const savedState = location.state || {};
+              navigate(`/teacher/daily-challenges/detail/${id}/submissions`, {
+                state: {
+                  ...challengeInfo,
+                  ...savedState, // Preserve pagination state
+                }
+              });
+            }}
           >
             {t('dailyChallenge.submission')}
           </Button>
