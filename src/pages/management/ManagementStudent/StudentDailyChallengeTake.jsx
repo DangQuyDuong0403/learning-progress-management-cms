@@ -8829,8 +8829,19 @@ const StudentDailyChallengeTake = () => {
           
           // Helper function to redirect to DC list
           const redirectToDCList = (classIdToUse) => {
+            // Preserve state from location.state when redirecting to DC list
+            const savedState = location.state || {};
+            const backState = {
+              ...savedState,
+              // Preserve pagination state if it exists
+              currentPage: savedState.currentPage,
+              pageSize: savedState.pageSize,
+              searchText: savedState.searchText,
+            };
+            console.log('🔵 StudentDailyChallengeTake - Redirecting to DC list with state:', backState);
+            
             if (classIdToUse) {
-              navigate(`${routePrefix}/classes/daily-challenges/${classIdToUse}`);
+              navigate(`${routePrefix}/classes/daily-challenges/${classIdToUse}`, { state: backState });
             } else {
               // Last resort: redirect to student's first class DC list or general DC list
               // Try to get student's classes and redirect to first class
@@ -8850,16 +8861,16 @@ const StudentDailyChallengeTake = () => {
                   if (studentClasses.length > 0) {
                     const firstClassId = studentClasses[0]?.id;
                     if (firstClassId) {
-                      navigate(`${routePrefix}/classes/daily-challenges/${firstClassId}`);
+                      navigate(`${routePrefix}/classes/daily-challenges/${firstClassId}`, { state: backState });
                       return;
                     }
                   }
                   // If no classes found, redirect to general DC list
-                  navigate(`${routePrefix}/daily-challenges`);
+                  navigate(`${routePrefix}/daily-challenges`, { state: backState });
                 })
                 .catch(() => {
                   // If fetch fails, redirect to general DC list
-                  navigate(`${routePrefix}/daily-challenges`);
+                  navigate(`${routePrefix}/daily-challenges`, { state: backState });
                 });
             }
           };
@@ -10015,7 +10026,17 @@ const StudentDailyChallengeTake = () => {
     setTimeout(() => {
       const resolvedClassId = location.state?.classId;
       if (resolvedClassId) {
-        navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`);
+        // Preserve state from location.state when navigating back after submit
+        const savedState = location.state || {};
+        const backState = {
+          ...savedState,
+          // Preserve pagination state if it exists
+          currentPage: savedState.currentPage,
+          pageSize: savedState.pageSize,
+          searchText: savedState.searchText,
+        };
+        console.log('🔵 StudentDailyChallengeTake - Navigating after submit with state:', backState);
+        navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`, { state: backState });
       } else {
         navigate(`${routePrefix}/classes`);
       }
@@ -10075,13 +10096,47 @@ const StudentDailyChallengeTake = () => {
   };
 
   const handleBack = () => {
-    navigate(-1);
+    // Preserve state from location.state when navigating back to restore pagination/filters
+    const savedState = location.state || {};
+    const backState = {
+      ...savedState,
+      // Preserve pagination state if it exists
+      currentPage: savedState.currentPage,
+      pageSize: savedState.pageSize,
+      searchText: savedState.searchText,
+    };
+    console.log('🔵 StudentDailyChallengeTake - Navigating back with state:', backState);
+    
+    // Try to preserve state when using navigate(-1) by using navigate with state if we have saved state
+    if (savedState.currentPage) {
+      // If we have saved state, try to navigate to the list page with state
+      const resolvedClassId = location.state?.classId || classIdForRedirect;
+      if (resolvedClassId) {
+        console.log('🔵 StudentDailyChallengeTake - Navigating to list with state:', backState);
+        navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`, { state: backState });
+      } else {
+        navigate(-1);
+      }
+    } else {
+      navigate(-1);
+    }
   };
 
   const handleTimeUpOk = () => {
     const resolvedClassId = location.state?.classId;
+    // Preserve state from location.state when navigating back after time up
+    const savedState = location.state || {};
+    const backState = {
+      ...savedState,
+      // Preserve pagination state if it exists
+      currentPage: savedState.currentPage,
+      pageSize: savedState.pageSize,
+      searchText: savedState.searchText,
+    };
+    console.log('🔵 StudentDailyChallengeTake - Navigating after time up with state:', backState);
+    
     if (resolvedClassId) {
-      navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`);
+      navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`, { state: backState });
     } else {
       navigate(`${routePrefix}/classes`);
     }
@@ -10669,9 +10724,9 @@ const StudentDailyChallengeTake = () => {
                   </div>
                 </p>
               )}
-              {violationWarningData.message && (
+              {violationWarningData.message && violationWarningData.type !== 'device_mismatch' && (
               <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                  <strong>Chi tiết:</strong> 
+                  <strong>Chi tiết: </strong> 
                   <span dangerouslySetInnerHTML={{ __html: violationWarningData.message }} />
               </p>
               )}

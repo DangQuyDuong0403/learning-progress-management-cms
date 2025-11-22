@@ -123,9 +123,9 @@ const AIGenerateListening = () => {
     { value: "MULTIPLE_SELECT", label: t('dailyChallenge.multipleSelect') || 'Multiple Select', icon: '☑️', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "TRUE_OR_FALSE", label: t('dailyChallenge.trueFalse') || 'True/False', icon: '✅', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "FILL_IN_THE_BLANK", label: t('dailyChallenge.fillBlank') || 'Fill in the Blank', icon: '✏️', color: primaryColor, bgColor: primaryColorWithAlpha },
-    { value: "DROPDOWN", label: 'Dropdown', icon: '📋', color: primaryColor, bgColor: primaryColorWithAlpha },
-    { value: "DRAG_AND_DROP", label: 'Drag and Drop', icon: '🔄', color: primaryColor, bgColor: primaryColorWithAlpha },
-    { value: "REARRANGE", label: 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
+    { value: "DROPDOWN", label: t('dailyChallenge.dropdown') || 'Dropdown', icon: '📋', color: primaryColor, bgColor: primaryColorWithAlpha },
+    { value: "DRAG_AND_DROP", label: t('dailyChallenge.dragAndDrop') || 'Drag and Drop', icon: '🔄', color: primaryColor, bgColor: primaryColorWithAlpha },
+    { value: "REARRANGE", label: t('dailyChallenge.rearrange') || 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
   ], [t, primaryColor, primaryColorWithAlpha]);
 
   // Level options constants
@@ -316,7 +316,7 @@ const AIGenerateListening = () => {
           const text = q?.questionText || q?.question || '';
           const ids = []; const re = /\[\[pos_([a-zA-Z0-9]+)\]\]/g; let m; while ((m = re.exec(text)) !== null) { ids.push(m[1]); }
           const words = ids.map(id => posToVal.get(id)).filter(Boolean);
-          return { id: nextId(), type: 'REARRANGE', title: `Question ${counter}`, question: 'Rearrange the words by dragging them into the correct order:', questionText: text, sourceItems: words, correctOrder: words, content: { data: contentItems }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
+          return { id: nextId(), type: 'REARRANGE', title: `Question ${counter}`, question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'), questionText: text, sourceItems: words, correctOrder: words, content: { data: contentItems }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         }
         default:
           return null;
@@ -328,12 +328,12 @@ const AIGenerateListening = () => {
     try {
       const allowed = ['audio/mp3', 'audio/mpeg'];
       if (!allowed.includes(file.type)) {
-        spaceToast.error('Please upload an MP3 file');
+        spaceToast.error(t('dailyChallenge.pleaseUploadMp3File', 'Please upload an MP3 file'));
         return false;
       }
       const maxSize = 10 * 1024 * 1024;
       if (file.size > maxSize) {
-        spaceToast.error('File size must be less than 10MB');
+        spaceToast.error(t('dailyChallenge.fileSizeMustBeLessThan10MB', 'File size must be less than 10MB'));
         return false;
       }
       setIsProcessingAudio(true);
@@ -345,7 +345,7 @@ const AIGenerateListening = () => {
       const preview = URL.createObjectURL(file);
       setAudioUrl(url);
       setAudioPreviewUrl(preview);
-      spaceToast.success(`Audio file "${file.name}" uploaded successfully!`);
+      spaceToast.success(t('dailyChallenge.audioFileUploadedSuccessfully', 'Audio file "{{fileName}}" uploaded successfully!', { fileName: file.name }));
     } catch (e) {
       console.error('Audio upload error:', e);
       const beErr = getBackendMessage(e);
@@ -362,7 +362,7 @@ const AIGenerateListening = () => {
       .filter((c) => Number(c.numberOfQuestions) > 0);
     
     if (selectedConfigs.length === 0) {
-      spaceToast.error('At least one question type config is required');
+      spaceToast.error(t('dailyChallenge.atLeastOneQuestionTypeConfig', 'At least one question type config is required'));
       return;
     }
     
@@ -412,7 +412,7 @@ const AIGenerateListening = () => {
       // Small delay to show 100% before closing
       await new Promise(resolve => setTimeout(resolve, 300));
       if (!normalized.length) {
-        spaceToast.warning('AI did not return any questions');
+        spaceToast.warning(t('dailyChallenge.aiDidNotReturnQuestions', 'AI did not return any questions'));
         setQuestions([]);
         setShowPreview(false);
       } else {
@@ -423,7 +423,7 @@ const AIGenerateListening = () => {
     } catch (err) {
       console.error('Generate listening AI questions error:', err);
       const beErr = getBackendMessage(err);
-      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate questions');
+      spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToGenerateQuestions', 'Failed to generate questions'));
     } finally {
       setIsGenerating(false);
       setGenerationProgress(0);
@@ -432,7 +432,7 @@ const AIGenerateListening = () => {
 
   const handleGenerateFromFile = useCallback(async () => {
     if (!uploadedFile) {
-      spaceToast.error('Please select a file to generate questions');
+      spaceToast.error(t('dailyChallenge.pleaseSelectFileToGenerate', 'Please select a file to generate questions'));
       return;
     }
     try {
@@ -447,18 +447,18 @@ const AIGenerateListening = () => {
       // Small delay to show 100% before closing
       await new Promise(resolve => setTimeout(resolve, 300));
       if (!normalized.length) {
-        spaceToast.warning('No questions parsed from file');
+        spaceToast.warning(t('dailyChallenge.noQuestionsParsedFromFile', 'No questions parsed from file'));
         setQuestions([]);
         setShowPreview(false);
       } else {
         setQuestions(normalized);
         setShowPreview(true);
-        spaceToast.success('Questions generated from file');
+        spaceToast.success(t('dailyChallenge.questionsGeneratedFromFile', 'Questions generated from file'));
       }
     } catch (err) {
       console.error('Generate listening from file error:', err);
       const beErr = getBackendMessage(err);
-      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate from file');
+      spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToGenerateFromFile', 'Failed to generate from file'));
     } finally {
       setIsGenerating(false);
       setGenerationProgress(0);
@@ -512,22 +512,22 @@ const AIGenerateListening = () => {
         title: `Question ${index + 1}`
       }));
     });
-    spaceToast.success('Question deleted successfully');
+    spaceToast.success(t('dailyChallenge.questionDeletedSuccessfully', 'Question deleted successfully'));
   }, []);
   const handleSaveFromModal = useCallback((updated) => {
     setQuestions(prev => prev.map(q => q.id === updated.id ? { ...q, ...updated, title: q.title } : q));
     setIsEditModalVisible(false);
     setEditingQuestion(null);
-    spaceToast.success('Question updated successfully');
+    spaceToast.success(t('dailyChallenge.questionUpdatedSuccessfully', 'Question updated successfully'));
   }, []);
 
   const handleSave = useCallback(async () => {
     if (!audioUrl) {
-      spaceToast.error('Please upload an MP3 audio file');
+      spaceToast.error(t('dailyChallenge.pleaseUploadMp3AudioFile', 'Please upload an MP3 audio file'));
       return;
     }
     if (!prompt.trim()) {
-      spaceToast.error('Prompt is empty');
+      spaceToast.error(t('dailyChallenge.promptIsEmpty', 'Prompt is empty'));
       return;
     }
     try {
@@ -577,7 +577,7 @@ const AIGenerateListening = () => {
     } catch (err) {
       console.error('Save AI listening section error:', err);
       const beErr = getBackendMessage(err);
-      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to save');
+      spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToSaveChallenge', 'Failed to save'));
     } finally { setSaving(false); }
   }, [id, prompt, questions, navigate, user, challengeInfo, t, audioUrl, getBackendMessage]);
 
@@ -695,14 +695,14 @@ const AIGenerateListening = () => {
                 style={{ borderRadius: '16px', border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.25)' : '2px solid rgba(138, 122, 255, 0.2)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', backdropFilter: 'blur(10px)', minHeight: '540px', height: '100%', display: 'flex', flexDirection: 'column' }}
                 bodyStyle={{ padding: '20px', maxHeight: '600px', overflowY: 'auto' }}
               >
-                <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px', marginBottom: '20px' }}>AI Generation Settings</Title>
+                <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px', marginBottom: '20px' }}>{t('dailyChallenge.aiGenerationSettings', 'AI Generation Settings')}</Title>
                 
                 {/* Chapter and Lesson - Side by Side (Read-only) - Moved to top */}
                 <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
                   {/* Chapter - Read-only */}
                   <div style={{ flex: 1, position: 'relative' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
-                      Chapter
+                      {t('dailyChallenge.chapter', 'Chapter')}
                   </Typography.Text>
               <div
                 style={{
@@ -737,7 +737,7 @@ const AIGenerateListening = () => {
                   {/* Lesson - Read-only */}
                   <div style={{ flex: 1, position: 'relative' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
-                      Lesson
+                      {t('dailyChallenge.lesson', 'Lesson')}
                     </Typography.Text>
                     <div
                       style={{
@@ -777,7 +777,7 @@ const AIGenerateListening = () => {
                     {/* Level Selection - Custom 2-Level Dropdown */}
                     <div style={{ position: 'relative' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Level <span style={{ color: 'red' }}>*</span>
+                      {t('dailyChallenge.level', 'Level')} <span style={{ color: 'red' }}>*</span>
                   </Typography.Text>
                   
                   {/* Input Field */}
@@ -824,7 +824,7 @@ const AIGenerateListening = () => {
                             const found = allOptions.find(o => o.value === selectedLevel);
                             return found ? found.label : 'Selected';
                           })()
-                        : 'Select level type and level'}
+                        : t('dailyChallenge.selectLevelTypeAndLevel', 'Select level type and level')}
                     </span>
                     <span style={{ 
                       transform: isLevelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -899,9 +899,9 @@ const AIGenerateListening = () => {
                           }}
                         >
                           {[
-                            { value: 'system', label: 'Camkey Level' },
-                            { value: 'academic', label: 'Academic Level' },
-                            { value: 'cefr', label: 'CEFR Level (A1-C2)' },
+                            { value: 'system', label: t('dailyChallenge.camkeyLevel', 'Camkey Level') },
+                            { value: 'academic', label: t('dailyChallenge.academicLevel', 'Academic Level') },
+                            { value: 'cefr', label: t('dailyChallenge.cefrLevel', 'CEFR Level (A1-C2)') },
                           ].map((type) => (
                             <div
                               key={type.value}
@@ -977,7 +977,7 @@ const AIGenerateListening = () => {
                                         color: theme === 'sun' ? '#999' : '#999',
                                         fontSize: '14px'
                                       }}>
-                                        {levelType === 'system' ? 'Loading Camkey levels...' : 'No levels available'}
+                                        {levelType === 'system' ? t('dailyChallenge.loadingCamkeyLevels', 'Loading Camkey levels...') : t('dailyChallenge.noLevelsAvailable', 'No levels available')}
                                       </div>
                                     );
                                   }
@@ -1049,7 +1049,7 @@ const AIGenerateListening = () => {
                               color: theme === 'sun' ? '#999' : '#999',
                               fontSize: '14px'
                             }}>
-                              Hover over a level type to see options
+                              {t('dailyChallenge.hoverOverLevelType', 'Hover over a level type to see options')}
                   </div>
                 )}
                         </div>
@@ -1062,13 +1062,13 @@ const AIGenerateListening = () => {
                   {/* Additional Description */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Additional Description
+                      {t('dailyChallenge.additionalDescription', 'Additional Description')}
                     </Typography.Text>
                     <TextArea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
-                      placeholder="Optional: Add any additional instructions or context..."
+                      placeholder={t('dailyChallenge.optionalAddInstructions', 'Optional: Add any additional instructions or context...')}
                       style={{
                         width: '100%',
                         fontSize: '14px',
@@ -1087,7 +1087,7 @@ const AIGenerateListening = () => {
                 {/* Audio upload (required for Listening) */}
                 <div style={{ marginTop: '16px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px', position: 'relative' }}>
-                    <Title level={5} style={{ margin: 0, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: '600' }}>Audio File (MP3)</Title>
+                    <Title level={5} style={{ margin: 0, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: '600' }}>{t('dailyChallenge.audioFileMp3', 'Audio File (MP3)')}</Title>
                     {audioUrl && (
                       <Button
                         type="text"
@@ -1101,7 +1101,7 @@ const AIGenerateListening = () => {
                           setAudioPreviewUrl(null);
                         }}
                       >
-                        Remove
+                        {t('dailyChallenge.remove', 'Remove')}
                       </Button>
                     )}
                   </div>
@@ -1109,11 +1109,11 @@ const AIGenerateListening = () => {
                   {audioUrl ? (
                     <div style={{ padding: '6px', background: theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)', borderRadius: '6px', border: theme === 'sun' ? '1px solid rgba(113, 179, 253, 0.3)' : '1px solid rgba(138, 122, 255, 0.3)', marginBottom: '6px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{uploadedAudioFileName || 'Audio file uploaded'}</span>
+                        <span style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{uploadedAudioFileName || t('dailyChallenge.audioFileUploaded', 'Audio file uploaded')}</span>
                       </div>
                       <audio controls style={{ width: '100%', height: '26px' }} volume={1.0} onLoadedMetadata={(e) => { e.target.volume = 1.0; }}>
                         <source src={audioPreviewUrl || audioUrl} type="audio/mpeg" />
-                        Your browser does not support the audio element.
+                        {t('dailyChallenge.yourBrowserDoesNotSupport', 'Your browser does not support the audio element.')}
                       </audio>
                     </div>
                   ) : (
@@ -1123,10 +1123,10 @@ const AIGenerateListening = () => {
                           <span style={{ fontSize: 18 }}>🎵</span>
                           <div>
                             <Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '12px' }}>
-                              {isProcessingAudio ? (uploadedAudioFileName ? `Processing "${uploadedAudioFileName}"...` : 'Processing...') : 'Upload Audio File'}
+                              {isProcessingAudio ? (uploadedAudioFileName ? t('dailyChallenge.processingAudioFile', 'Processing "{{fileName}}"...', { fileName: uploadedAudioFileName }) : t('dailyChallenge.processing', 'Processing...')) : t('dailyChallenge.uploadAudioFile', 'Upload Audio File')}
                             </Text>
                             <br />
-                            <Text style={{ color: '#999', fontSize: '10px' }}>MP3 (max 10MB)</Text>
+                            <Text style={{ color: '#999', fontSize: '10px' }}>{t('dailyChallenge.mp3Max10MB', 'MP3 (max 10MB)')}</Text>
                           </div>
                         </Space>
                       </Upload>
@@ -1137,13 +1137,13 @@ const AIGenerateListening = () => {
                 {/* Transcript */}
                 <div style={{ marginTop: '16px' }}>
                   <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                    Transcript
+                    {t('dailyChallenge.transcript', 'Transcript')}
                   </Typography.Text>
                  <TextArea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   autoSize={{ minRows: 10, maxRows: 14 }}
-                  placeholder={'Please add transcript'}
+                  placeholder={t('dailyChallenge.pleaseAddTranscript', 'Please add transcript')}
                     style={{ marginTop: 0, fontSize: '14px', borderRadius: '8px', border: `2px solid ${primaryColor}99`, background: theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)', outline: 'none', boxShadow: 'none', minHeight: '300px' }}
                 />
                 </div>
@@ -1154,7 +1154,7 @@ const AIGenerateListening = () => {
                 className={`prompt-description-card ${theme}-prompt-description-card`}
                 style={{ borderRadius: '16px', border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.25)' : '2px solid rgba(138, 122, 255, 0.2)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}
               >
-                <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>Question Settings</Title>
+                <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>{t('dailyChallenge.questionSettings', 'Question Settings')}</Title>
                 <input
                   ref={uploadInputRef}
                   type="file"
@@ -1170,7 +1170,7 @@ const AIGenerateListening = () => {
 
                     const fileExtension = f.name.split('.').pop().toLowerCase();
                     if (!['doc', 'docx'].includes(fileExtension)) {
-                      spaceToast.error(`Unsupported file type: .${fileExtension}. Supported types: .doc, .docx`);
+                      spaceToast.error(t('dailyChallenge.unsupportedFileType', 'Unsupported file type: .{{extension}}. Supported types: .doc, .docx', { extension: fileExtension }));
                       e.target.value = '';
                       setUploadedFile(null);
                       setUploadedFileName('');
@@ -1178,7 +1178,7 @@ const AIGenerateListening = () => {
                     }
 
                     if (f.size > MAX_FILE_MB * 1024 * 1024) {
-                      spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                      spaceToast.error(t('dailyChallenge.fileTooLarge', 'File too large. Max {{max}}MB', { max: MAX_FILE_MB }));
                       e.target.value = '';
                       setUploadedFile(null);
                       setUploadedFileName('');
@@ -1203,7 +1203,7 @@ const AIGenerateListening = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Generate question from file
+                            {t('dailyChallenge.generateQuestionFromFile', 'Generate question from file')}
                           </Typography.Text>
                         </div>
                       </Card>
@@ -1219,7 +1219,7 @@ const AIGenerateListening = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                            Generate question from settings
+                            {t('dailyChallenge.generateQuestionFromSettings', 'Generate question from settings')}
                           </Typography.Text>
                         </div>
                       </Card>
@@ -1236,9 +1236,9 @@ const AIGenerateListening = () => {
                       >
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                           <CloudUploadOutlined style={{ fontSize: 56, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }} />
-                          <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>Click to upload</Typography.Text>
+                          <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>{t('dailyChallenge.clickToUpload', 'Click to upload')}</Typography.Text>
                           <Typography.Text style={{ fontSize: 12, opacity: 0.8, color: theme === 'sun' ? '#0f172a' : '#d1cde8' }}>
-                            Supported: .doc, .docx — Max {MAX_FILE_MB}MB
+                            {t('dailyChallenge.supportedDocxMax', 'Supported: .doc, .docx — Max {{max}}MB', { max: MAX_FILE_MB })}
                           </Typography.Text>
                         </div>
                       </label>
@@ -1258,7 +1258,7 @@ const AIGenerateListening = () => {
 
                         const fileExtension = f.name.split('.').pop().toLowerCase();
                         if (!['doc', 'docx'].includes(fileExtension)) {
-                          spaceToast.error(`Unsupported file type: .${fileExtension}. Supported types: .doc, .docx`);
+                          spaceToast.error(t('dailyChallenge.unsupportedFileType', 'Unsupported file type: .{{extension}}. Supported types: .doc, .docx', { extension: fileExtension }));
                           e.target.value = '';
                           setUploadedFile(null);
                           setUploadedFileName('');
@@ -1266,7 +1266,7 @@ const AIGenerateListening = () => {
                         }
 
                         if (f.size > MAX_FILE_MB * 1024 * 1024) {
-                          spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                          spaceToast.error(t('dailyChallenge.fileTooLarge', 'File too large. Max {{max}}MB', { max: MAX_FILE_MB }));
                           e.target.value = '';
                           setUploadedFile(null);
                           setUploadedFileName('');
@@ -1322,7 +1322,7 @@ const AIGenerateListening = () => {
                       onClick={handleGenerateFromFile}
                       style={{ marginTop: 16, height: '40px', borderRadius: '8px', fontSize: '16px', fontWeight: 500, padding: '0 24px', background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)', border: 'none', color: '#000000' }}
                     >
-                      Generate From File
+                      {t('dailyChallenge.generateFromFile', 'Generate From File')}
                     </Button>
                     <Typography.Text
                       style={{
@@ -1335,7 +1335,7 @@ const AIGenerateListening = () => {
                         width: '100%'
                       }}
                     >
-                      The generated content is for reference only.
+                      {t('dailyChallenge.generatedContentForReference', 'The generated content is for reference only.')}
                     </Typography.Text>
                   </div>
                 )}
@@ -1394,7 +1394,7 @@ const AIGenerateListening = () => {
                           transition: 'all 0.3s ease'
                         }}
                       >
-                        {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Questions'}
+                        {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : t('dailyChallenge.generateQuestions', 'Generate Questions')}
                       </Button>
                       <Typography.Text
                         style={{
@@ -1404,7 +1404,7 @@ const AIGenerateListening = () => {
                           textAlign: 'center'
                         }}
                       >
-                        The generated content is for reference only.
+                        {t('dailyChallenge.generatedContentForReference', 'The generated content is for reference only.')}
                       </Typography.Text>
                     </div>
                   </>
@@ -1569,10 +1569,10 @@ const AIGenerateListening = () => {
                       marginTop: '4px',
                       textAlign: 'center'
                     }}>
-                      {generationProgress < 30 ? 'Analyzing transcript...' :
-                       generationProgress < 60 ? 'Creating questions...' :
-                       generationProgress < 90 ? 'Finalizing content...' :
-                       'Almost done...'}
+                      {generationProgress < 30 ? t('dailyChallenge.analyzingTranscript', 'Analyzing transcript...') :
+                       generationProgress < 60 ? t('dailyChallenge.creatingQuestions', 'Creating questions...') :
+                       generationProgress < 90 ? t('dailyChallenge.finalizingContent', 'Finalizing content...') :
+                       t('dailyChallenge.almostDone', 'Almost done...')}
                     </div>
                   </div>
                 </div>
@@ -1588,20 +1588,20 @@ const AIGenerateListening = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>{question.title}</Typography.Text>
                       <Typography.Text style={{ fontSize: '14px', color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)', fontStyle: 'italic' }}>
-                        {question.type === 'MULTIPLE_CHOICE' ? 'Multiple Choice' :
-                         question.type === 'MULTIPLE_SELECT' ? 'Multiple Select' :
-                         question.type === 'TRUE_OR_FALSE' ? 'True/False' :
-                         question.type === 'FILL_IN_THE_BLANK' ? 'Fill in the Blank' :
-                         question.type === 'DROPDOWN' ? 'Dropdown' :
-                         question.type === 'DRAG_AND_DROP' ? 'Drag and Drop' :
-                         question.type === 'REARRANGE' ? 'Rearrange' : question.type}
+                        {question.type === 'MULTIPLE_CHOICE' ? t('dailyChallenge.multipleChoice', 'Multiple Choice') :
+                         question.type === 'MULTIPLE_SELECT' ? t('dailyChallenge.multipleSelect', 'Multiple Select') :
+                         question.type === 'TRUE_OR_FALSE' ? t('dailyChallenge.trueFalse', 'True/False') :
+                         question.type === 'FILL_IN_THE_BLANK' ? t('dailyChallenge.fillBlank', 'Fill in the Blank') :
+                         question.type === 'DROPDOWN' ? t('dailyChallenge.dropdown', 'Dropdown') :
+                         question.type === 'DRAG_AND_DROP' ? t('dailyChallenge.dragAndDrop', 'Drag and Drop') :
+                         question.type === 'REARRANGE' ? t('dailyChallenge.rearrange', 'Rearrange') : question.type}
                       </Typography.Text>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
                         <Typography.Text style={{ fontSize: '14px', fontWeight: 600 }}>
-                          {question.points} {question.points === 1 ? 'point' : 'points'}
+                          {question.points} {question.points === 1 ? t('dailyChallenge.point', 'point') : t('dailyChallenge.points', 'points')}
                         </Typography.Text>
                       </div>
                       <Tooltip title={t('common.edit') || 'Edit Question'}>
@@ -1702,7 +1702,7 @@ const AIGenerateListening = () => {
                         <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
                           <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
                             <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                              Complete the sentence by dragging words into the blanks:
+                              {t('dailyChallenge.completeSentenceByDragging', 'Complete the sentence by dragging words into the blanks:')}
                             </Typography.Text>
                             <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '2.4', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', marginBottom: '16px' }}>
                               {(() => {
@@ -1739,7 +1739,7 @@ const AIGenerateListening = () => {
                           </div>
                           <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
                             <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                              Available words:
+                              {t('dailyChallenge.availableWords', 'Available words:')}
                             </Typography.Text>
                             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', minHeight: '120px' }}>
                               {(() => {
@@ -1760,11 +1760,11 @@ const AIGenerateListening = () => {
                     {question.type === 'REARRANGE' && (
                       <>
                         <Typography.Text style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', display: 'block', lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                          {question.question || 'Rearrange the words by dragging them into the correct order:'}
+                          {question.question || t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:')}
                         </Typography.Text>
                         <div style={{ marginBottom: '24px', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
                           <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                            Drop the words here in order:
+                            {t('dailyChallenge.dropWordsHereInOrder', 'Drop the words here in order:')}
                           </Typography.Text>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
                             {(() => {
@@ -1783,7 +1783,7 @@ const AIGenerateListening = () => {
                         </div>
                         <div style={{ padding: '20px', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
                           <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                            Available words:
+                            {t('dailyChallenge.availableWords', 'Available words:')}
                           </Typography.Text>
                           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', minHeight: '120px' }}>
                             {(question.sourceItems || []).map((word, wordIdx) => (

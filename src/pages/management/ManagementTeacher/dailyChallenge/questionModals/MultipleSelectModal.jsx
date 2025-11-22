@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { Modal, Button, InputNumber, Tooltip } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	PlusOutlined,
@@ -13,7 +14,7 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
 
 // Memoized Option Card to minimize re-renders while typing
-const OptionCard = memo(({ option, index, optionEditorConfig, getPlainText, onRemove, onToggleCorrect, onChange, optionEditorsRef }) => {
+const OptionCard = memo(({ option, index, optionEditorConfig, getPlainText, onRemove, onToggleCorrect, onChange, optionEditorsRef, t }) => {
 	const [isHovered, setIsHovered] = useState(false);
 	return (
 		<div
@@ -47,7 +48,7 @@ const OptionCard = memo(({ option, index, optionEditorConfig, getPlainText, onRe
 			</div>
 
 			<div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-				<Tooltip title={option.isCorrect ? 'Correct Answer' : 'Mark as Correct'}>
+				<Tooltip title={option.isCorrect ? t('dailyChallenge.correctAnswer', 'Correct Answer') : t('dailyChallenge.markAsCorrect', 'Mark as Correct')}>
 					<div
 						onClick={(e) => { e.stopPropagation(); onToggleCorrect(option.id, !option.isCorrect); }}
 						style={{
@@ -57,10 +58,10 @@ const OptionCard = memo(({ option, index, optionEditorConfig, getPlainText, onRe
 						}}
 					>
 						<CheckOutlined />
-						{option.isCorrect ? 'Correct' : 'Mark'}
+						{option.isCorrect ? t('dailyChallenge.correct', 'Correct') : t('dailyChallenge.mark', 'Mark')}
 					</div>
 				</Tooltip>
-				<Tooltip title="Delete Option">
+				<Tooltip title={t('dailyChallenge.deleteOption', 'Delete Option')}>
 					<Button
 						size="small"
 						danger
@@ -97,6 +98,7 @@ const MultipleSelectModal = ({
 	questionData = null,
 	saving = false,
 }) => {
+	const { t } = useTranslation();
 	
 	// Custom upload adapter for CKEditor to convert images to base64
 	function CustomUploadAdapterPlugin(editor) {
@@ -166,7 +168,7 @@ const MultipleSelectModal = ({
 
 	// Memoize CKEditor config to prevent re-creation on each render
 	const questionEditorConfig = useMemo(() => ({
-		placeholder: 'Enter your question here...',
+		placeholder: t('dailyChallenge.enterYourQuestionHere', 'Enter your question here...'),
 		extraPlugins: [CustomUploadAdapterPlugin],
 		toolbar: {
 			items: [
@@ -191,10 +193,10 @@ const MultipleSelectModal = ({
 		},
 		heading: {
 			options: [
-				{ model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-				{ model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-				{ model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-				{ model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+				{ model: 'paragraph', title: t('dailyChallenge.paragraph', 'Paragraph'), class: 'ck-heading_paragraph' },
+				{ model: 'heading1', view: 'h1', title: t('dailyChallenge.heading1', 'Heading 1'), class: 'ck-heading_heading1' },
+				{ model: 'heading2', view: 'h2', title: t('dailyChallenge.heading2', 'Heading 2'), class: 'ck-heading_heading2' },
+				{ model: 'heading3', view: 'h3', title: t('dailyChallenge.heading3', 'Heading 3'), class: 'ck-heading_heading3' }
 			]
 		},
 		table: {
@@ -214,11 +216,11 @@ const MultipleSelectModal = ({
 				'alignRight'
 			]
 		}
-	}), []);
+	}), [t]);
 
 	// Memoize option editor config
 	const optionEditorConfig = useMemo(() => ({
-		placeholder: 'Type your answer here...',
+		placeholder: t('dailyChallenge.typeYourAnswerHere', 'Type your answer here...'),
 		extraPlugins: [CustomUploadAdapterPlugin],
 		toolbar: {
 			items: [
@@ -251,7 +253,7 @@ const MultipleSelectModal = ({
 				'alignRight'
 			]
 		}
-	}), []);
+	}), [t]);
 
 	// Load question data when editing
 	useEffect(() => {
@@ -301,7 +303,7 @@ const MultipleSelectModal = ({
 		setOptions(prevOptions => {
 			// Limit to maximum of 8 options
 			if (prevOptions.length >= 8) {
-				spaceToast.warning('Maximum 8 options allowed');
+				spaceToast.warning(t('dailyChallenge.maximum8OptionsAllowed', 'Maximum 8 options allowed'));
 				return prevOptions;
 			}
 			const newId = Math.max(...prevOptions.map((opt) => opt.id)) + 1;
@@ -319,7 +321,7 @@ const MultipleSelectModal = ({
 			if (prevOptions.length > 2) {
 				return prevOptions.filter((opt) => opt.id !== optionId);
 			} else {
-				spaceToast.warning('Question must have at least 2 options');
+				spaceToast.warning(t('dailyChallenge.questionMustHaveAtLeast2Options', 'Question must have at least 2 options'));
 				return prevOptions;
 			}
 		});
@@ -353,7 +355,7 @@ const MultipleSelectModal = ({
 			setEditorData(prevData => {
 				// Enforce max length of 600 characters for question (based on plain text)
 				if (plainText.length > 600) {
-					spaceToast.warning('Maximum 600 characters allowed for the question');
+					spaceToast.warning(t('dailyChallenge.maximum600CharactersAllowed', 'Maximum 600 characters allowed for the question'));
 					// Revert editor content to previous valid state
 					if (editor) {
 						editor.setData(prevData || '');
@@ -379,7 +381,7 @@ const MultipleSelectModal = ({
 			const data = editor.getData();
 			const plainText = getPlainText(data);
 			if (plainText.length > 200) {
-				spaceToast.warning('Maximum 200 characters allowed');
+				spaceToast.warning(t('dailyChallenge.maximum200CharactersAllowed', 'Maximum 200 characters allowed'));
 				const currentOption = options.find((opt) => opt.id === optionId);
 				const previousHtml = currentOption ? currentOption.text : '';
 				if (optionEditorsRef.current[optionId]) {
@@ -410,7 +412,7 @@ const MultipleSelectModal = ({
     const handleSave = async () => {
 		// Validate question content: allow text or image-only
 		if (!hasContent(editorData)) {
-			spaceToast.warning('Please add question content (text or image)');
+			spaceToast.warning(t('dailyChallenge.pleaseAddQuestionContent', 'Please add question content (text or image)'));
 			return;
 		}
 
@@ -423,7 +425,7 @@ const MultipleSelectModal = ({
 
 		const correctAnswers = options.filter((opt) => opt.isCorrect);
 		if (correctAnswers.length === 0) {
-			spaceToast.warning('Please select at least one correct answer');
+			spaceToast.warning(t('dailyChallenge.pleaseSelectAtLeastOneCorrectAnswer', 'Please select at least one correct answer'));
 			return;
 		}
 
@@ -433,7 +435,7 @@ const MultipleSelectModal = ({
 
 		const hasEmptyOptions = options.some((opt) => !hasContent(opt.text));
 		if (hasEmptyOptions) {
-			spaceToast.warning('Please add content for all options (text or image)');
+			spaceToast.warning(t('dailyChallenge.pleaseAddContentForAllOptions', 'Please add content for all options (text or image)'));
 			return;
 		}
 
@@ -441,7 +443,7 @@ const MultipleSelectModal = ({
 		const optionTexts = options.map(opt => getPlainText(opt.text).toLowerCase().trim());
 		const duplicates = optionTexts.filter((text, index) => text && optionTexts.indexOf(text) !== index);
 		if (duplicates.length > 0) {
-			spaceToast.warning('Cannot create duplicate answers. Please ensure all answers are unique.');
+			spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateAnswers', 'Cannot create duplicate answers. Please ensure all answers are unique.'));
 			return;
 		}
 
@@ -502,7 +504,7 @@ const MultipleSelectModal = ({
 						animation: 'pulse 2s infinite'
 					}} />
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						{questionData ? 'Edit Multiple Select Question' : 'Create Multiple Select Question'}
+						{questionData ? t('dailyChallenge.editMultipleSelectQuestion', 'Edit Multiple Select Question') : t('dailyChallenge.createMultipleSelectQuestion', 'Create Multiple Select Question')}
 					</span>
 				</div>
 			}
@@ -538,7 +540,7 @@ const MultipleSelectModal = ({
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>{t('dailyChallenge.weight', 'Weight')}</span>
 							{pointsMenu}
 					</div>
 
@@ -562,7 +564,7 @@ const MultipleSelectModal = ({
 							boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
 						}}
 					>
-						<SaveOutlined /> Save Question
+						<SaveOutlined /> {t('common.save', 'Save')} {t('dailyChallenge.question', 'Question')}
 					</Button>
 					</div>
 				</div>
@@ -679,7 +681,7 @@ const MultipleSelectModal = ({
 							fontWeight: 600,
 							color: '#1890ff'
 						}}>
-							Answer Options ({options.length})
+							{t('dailyChallenge.options', 'Options')} ({options.length})
 						</span>
 						<Button
 							icon={<PlusOutlined />}
@@ -698,7 +700,7 @@ const MultipleSelectModal = ({
 								opacity: 0.9
 							}}
 						>
-							Add Option
+							{t('dailyChallenge.addOption', 'Add Option')}
 						</Button>
 					</div>
 
@@ -722,6 +724,7 @@ const MultipleSelectModal = ({
                         onToggleCorrect={(id, val) => handleOptionChange(id, 'isCorrect', val)}
                         onChange={handleOptionEditorChange}
                         optionEditorsRef={optionEditorsRef}
+                        t={t}
                     />
                 ))}
 

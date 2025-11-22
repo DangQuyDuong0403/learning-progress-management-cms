@@ -6,6 +6,7 @@ import React, {
 	useMemo,
 } from 'react';
 import { Modal, Button, InputNumber, Tooltip, Dropdown } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	CheckOutlined,
@@ -54,6 +55,7 @@ const throttle = (func, limit) => {
 };
 
 const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
+	const { t } = useTranslation();
 	const [blanks, setBlanksState] = useState([]);
     const [weight, setWeight] = useState(1);
 	const [questionCharCount, setQuestionCharCount] = useState(0);
@@ -346,7 +348,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	const handleInsertLink = useCallback(() => {
 		if (!editorRef.current) return;
-		const url = prompt('Enter URL:');
+		const url = prompt(t('dailyChallenge.enterUrl', 'Enter URL:'));
 		if (url) {
 			handleFormat('createLink', url);
 		}
@@ -553,7 +555,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				};
 				reader.readAsDataURL(file);
 			} else if (file) {
-				console.error('Please select an image file');
+				console.error(t('dailyChallenge.pleaseSelectImageFile', 'Please select an image file'));
 			}
 			// Reset input
 			if (e.target) {
@@ -595,14 +597,14 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const handleImageAlign = useCallback(
 		(alignment) => {
 			if (!selectedImage) {
-				spaceToast.warning('Please select an image first');
+				spaceToast.warning(t('dailyChallenge.pleaseSelectImageFirst', 'Please select an image first'));
 				return;
 			}
 
 			// Find the wrapper (parent of the image)
 			const wrapper = selectedImage.parentElement;
 			if (!wrapper || !wrapper.hasAttribute('data-image-wrapper')) {
-				spaceToast.warning('Image wrapper not found');
+				spaceToast.warning(t('dailyChallenge.imageWrapperNotFound', 'Image wrapper not found'));
 				return;
 			}
 
@@ -972,7 +974,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Input field (hidden by default in compact mode)
 			const input = document.createElement('input');
 			input.type = 'text';
-			input.placeholder = 'type answer...';
+			input.placeholder = t('dailyChallenge.typeAnswer', 'type answer...');
 			input.value = (blank.answer || '').slice(0, 50);
 			input.maxLength = 50;
 			input.className = 'blank-input';
@@ -1175,7 +1177,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					if (patternIndex !== -1) {
 						// Respect maximum of 10 blanks
 						if (blanksRef.current.length >= 10) {
-							spaceToast.warning('Maximum 10 blanks allowed');
+							spaceToast.warning(t('dailyChallenge.maximum10BlanksAllowed', 'Maximum 10 blanks allowed'));
 							break;
 						}
 					// Found a pattern in this text node
@@ -1313,7 +1315,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Enforce max 1000 characters (plain text length)
 			const plainText = (element.textContent || '').trim();
 			if (plainText.length > 1000) {
-				spaceToast.warning('Maximum 1000 characters allowed for the question');
+				spaceToast.warning(t('dailyChallenge.maximum1000CharactersAllowed', 'Maximum 1000 characters allowed for the question'));
 				// Revert to last valid HTML snapshot
 				if (lastValidHtmlRef.current !== '' && editorRef.current) {
 					editorRef.current.innerHTML = lastValidHtmlRef.current;
@@ -1345,14 +1347,14 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		// Limit to maximum of 10 blanks
 		if (blanksRef.current.length >= 10) {
-			spaceToast.warning('Maximum 10 blanks allowed');
+			spaceToast.warning(t('dailyChallenge.maximum10BlanksAllowed', 'Maximum 10 blanks allowed'));
 			setShowBlankPopup(false);
 			return;
 		}
 
 		// Don't insert blank if cursor is inside another blank
 		if (isCursorInsideBlank()) {
-			spaceToast.warning('Cannot insert blank inside another blank');
+			spaceToast.warning(t('dailyChallenge.cannotInsertBlankInsideAnother', 'Cannot insert blank inside another blank'));
 			setShowBlankPopup(false);
 			return;
 		}
@@ -1518,12 +1520,12 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		// Validate
 		const editorText = editorRef.current.textContent.trim();
 		if (!editorText && blanks.length === 0) {
-			spaceToast.warning('Please enter the question text');
+			spaceToast.warning(t('dailyChallenge.pleaseEnterQuestionText', 'Please enter the question text'));
 			return;
 		}
 
 		if (blanks.length === 0) {
-			spaceToast.warning('Please add at least one blank (use __ or [])');
+			spaceToast.warning(t('dailyChallenge.pleaseAddAtLeastOneBlank', 'Please add at least one blank (use __ or [])'));
 			return;
 		}
 
@@ -1531,7 +1533,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			(blank) => !blank.answer || !blank.answer.trim()
 		);
 		if (hasEmptyBlanks) {
-			spaceToast.warning('Please fill in all blank answers');
+			spaceToast.warning(t('dailyChallenge.pleaseFillInAllBlankAnswers', 'Please fill in all blank answers'));
 			return;
 		}
 
@@ -1539,7 +1541,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const blankAnswers = blanks.map(blank => (blank.answer || '').toLowerCase().trim());
 		const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
 		if (duplicates.length > 0) {
-			spaceToast.warning('Cannot create duplicate answers. Please ensure all blank answers are unique.');
+			spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateAnswersBlanks', 'Cannot create duplicate answers. Please ensure all blank answers are unique.'));
 			return;
 		}
 
@@ -2022,8 +2024,8 @@ useEffect(() => {
 					/>
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
 						{questionData
-							? 'Edit Fill in the Blank Question'
-							: 'Create Fill in the Blank Question'}
+							? t('dailyChallenge.editFillBlankQuestion', 'Edit Fill in the Blank Question')
+							: t('dailyChallenge.createFillBlankQuestion', 'Create Fill in the Blank Question')}
 					</span>
 				</div>
 			}
@@ -2072,45 +2074,13 @@ useEffect(() => {
 							borderRadius: '8px',
 							fontWeight: 500,
 						}}>
-						💡 Tips: Click{' '}
-						<span
-							style={{
-								background: 'rgba(24, 144, 255, 0.2)',
-								padding: '2px 8px',
-								borderRadius: '4px',
-								fontWeight: 600,
-								color: '#1890ff',
-							}}>
-							+ Blank
-						</span>{' '}
-						button at cursor position to insert blank • Or type{' '}
-						<code
-							style={{
-								background: 'rgba(24, 144, 255, 0.2)',
-								padding: '2px 8px',
-								borderRadius: '4px',
-								fontWeight: 600,
-								color: '#1890ff',
-							}}>
-							__
-						</code>{' '}
-						or{' '}
-						<code
-							style={{
-								background: 'rgba(24, 144, 255, 0.2)',
-								padding: '2px 8px',
-								borderRadius: '4px',
-								fontWeight: 600,
-								color: '#1890ff',
-							}}>
-							[]
-						</code>
+						{t('dailyChallenge.tipsClickBlankButton', '💡 Tips: Click + Blank button at cursor position to insert blank • Or type __ or []')}
 					</div>
 
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>{t('dailyChallenge.weight', 'Weight')}</span>
 							{pointsMenu}
 						</div>
 
@@ -2130,7 +2100,7 @@ useEffect(() => {
 								color: '#000000',
 								boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
 							}}>
-							<SaveOutlined /> Save Question
+							<SaveOutlined /> {t('common.save', 'Save')} {t('dailyChallenge.question', 'Question')}
 						</Button>
 					</div>
 				</div>
@@ -2188,7 +2158,7 @@ useEffect(() => {
 								items: [
 									{
 										key: 'paragraph',
-										label: <span style={{ color: '#000000' }}>Paragraph</span>,
+										label: <span style={{ color: '#000000' }}>{t('dailyChallenge.paragraph', 'Paragraph')}</span>,
 										onClick: () => handleHeading('paragraph'),
 									},
 									{
@@ -2200,7 +2170,7 @@ useEffect(() => {
 													fontWeight: 700,
 													fontSize: '16px',
 												}}>
-												Heading 1
+												{t('dailyChallenge.heading1', 'Heading 1')}
 											</span>
 										),
 										onClick: () => handleHeading('h1'),
@@ -2214,7 +2184,7 @@ useEffect(() => {
 													fontWeight: 600,
 													fontSize: '15px',
 												}}>
-												Heading 2
+												{t('dailyChallenge.heading2', 'Heading 2')}
 											</span>
 										),
 										onClick: () => handleHeading('h2'),
@@ -2228,7 +2198,7 @@ useEffect(() => {
 													fontWeight: 600,
 													fontSize: '14px',
 												}}>
-												Heading 3
+												{t('dailyChallenge.heading3', 'Heading 3')}
 											</span>
 										),
 										onClick: () => handleHeading('h3'),
@@ -2242,7 +2212,7 @@ useEffect(() => {
 							overlayStyle={{
 								zIndex: 9999,
 							}}>
-							<Tooltip title='Heading'>
+							<Tooltip title={t('dailyChallenge.heading', 'Heading')}>
 								<Button
 									icon={<FontSizeOutlined />}
 									style={{
@@ -2263,7 +2233,7 @@ useEffect(() => {
 						/>
 
 						{/* Text Formatting */}
-						<Tooltip title='Bold'>
+						<Tooltip title={t('dailyChallenge.bold', 'Bold')}>
 							<Button
 								icon={<BoldOutlined />}
 								onClick={() => handleFormat('bold')}
@@ -2275,7 +2245,7 @@ useEffect(() => {
 								}}
 							/>
 						</Tooltip>
-						<Tooltip title='Italic'>
+						<Tooltip title={t('dailyChallenge.italic', 'Italic')}>
 							<Button
 								icon={<ItalicOutlined />}
 								onClick={() => handleFormat('italic')}
@@ -2287,7 +2257,7 @@ useEffect(() => {
 								}}
 							/>
 						</Tooltip>
-						<Tooltip title='Underline'>
+						<Tooltip title={t('dailyChallenge.underline', 'Underline')}>
 							<Button
 								icon={<UnderlineOutlined />}
 								onClick={() => handleFormat('underline')}
@@ -2308,7 +2278,7 @@ useEffect(() => {
 						/>
 
 						{/* Link */}
-						<Tooltip title='Insert Link'>
+						<Tooltip title={t('dailyChallenge.insertLink', 'Insert Link')}>
 							<Button
 								icon={<LinkOutlined />}
 								onClick={handleInsertLink}
@@ -2322,7 +2292,7 @@ useEffect(() => {
 						</Tooltip>
 
 						{/* Image Upload */}
-						<Tooltip title='Upload Image'>
+						<Tooltip title={t('dailyChallenge.uploadImage', 'Upload Image')}>
 							<Button
 								icon={<PictureOutlined />}
 								onClick={handleImageUpload}
@@ -2343,7 +2313,7 @@ useEffect(() => {
 						/>
 
 						{/* Lists */}
-						<Tooltip title='Ordered List'>
+						<Tooltip title={t('dailyChallenge.orderedList', 'Ordered List')}>
 							<Button
 								icon={<OrderedListOutlined />}
 								onClick={() => handleFormat('insertOrderedList')}
@@ -2355,7 +2325,7 @@ useEffect(() => {
 								}}
 							/>
 						</Tooltip>
-						<Tooltip title='Unordered List'>
+						<Tooltip title={t('dailyChallenge.unorderedList', 'Unordered List')}>
 							<Button
 								icon={<UnorderedListOutlined />}
 								onClick={() => handleFormat('insertUnorderedList')}
@@ -2407,7 +2377,7 @@ useEffect(() => {
 										}}>
 										{hoveredCell.row > 0 && hoveredCell.col > 0
 											? `${hoveredCell.row} x ${hoveredCell.col} Table`
-											: 'Select table size'}
+											: t('dailyChallenge.selectTableSize', 'Select table size')}
 									</div>
 									<div
 										style={{
@@ -2448,7 +2418,7 @@ useEffect(() => {
 									</div>
 								</div>
 							)}>
-							<Tooltip title='Insert Table'>
+							<Tooltip title={t('dailyChallenge.insertTable', 'Insert Table')}>
 								<Button
 									icon={<TableOutlined />}
 									style={{
@@ -2471,7 +2441,7 @@ useEffect(() => {
 						{/* Image Alignment (only show when image is selected) */}
 						{selectedImage && (
 							<>
-								<Tooltip title='Align Left'>
+								<Tooltip title={t('dailyChallenge.alignLeft', 'Align Left')}>
 									<Button
 										icon={<AlignLeftOutlined />}
 										onClick={() => handleImageAlign('left')}
@@ -2484,7 +2454,7 @@ useEffect(() => {
 										}}
 									/>
 								</Tooltip>
-								<Tooltip title='Align Center'>
+								<Tooltip title={t('dailyChallenge.alignCenter', 'Align Center')}>
 									<Button
 										icon={<AlignCenterOutlined />}
 										onClick={() => handleImageAlign('center')}
@@ -2497,7 +2467,7 @@ useEffect(() => {
 										}}
 									/>
 								</Tooltip>
-								<Tooltip title='Align Right'>
+								<Tooltip title={t('dailyChallenge.alignRight', 'Align Right')}>
 									<Button
 										icon={<AlignRightOutlined />}
 										onClick={() => handleImageAlign('right')}
@@ -2521,7 +2491,7 @@ useEffect(() => {
 						)}
 
 						{/* Undo/Redo */}
-						<Tooltip title='Undo'>
+						<Tooltip title={t('dailyChallenge.undo', 'Undo')}>
 							<Button
 								icon={<UndoOutlined />}
 								onClick={() => handleFormat('undo')}
@@ -2533,7 +2503,7 @@ useEffect(() => {
 								}}
 							/>
 						</Tooltip>
-						<Tooltip title='Redo'>
+						<Tooltip title={t('dailyChallenge.redo', 'Redo')}>
 							<Button
 								icon={<RedoOutlined />}
 								onClick={() => handleFormat('redo')}
@@ -2588,7 +2558,7 @@ useEffect(() => {
 								userSelect: 'text',
 								WebkitUserSelect: 'text',
 							}}
-							data-placeholder='Type your question here... The + Blank button will follow your cursor'
+							data-placeholder={t('dailyChallenge.typeYourQuestionHere', 'Type your question here...') + ' ' + t('dailyChallenge.theBlankButtonWillFollow', 'The + Blank button will follow your cursor')}
 						/>
 
 						{/* Character Counter for Question (1000 max) */}
@@ -2634,7 +2604,7 @@ useEffect(() => {
 										gap: '4px',
 										color: '#000000',
 									}}>
-									+ Blank
+									+ {t('dailyChallenge.blank', 'Blank')}
 								</Button>
 							</div>
 						)}
@@ -2657,7 +2627,7 @@ useEffect(() => {
 									color: '#1890ff',
 									marginBottom: '12px',
 								}}>
-								Blanks Summary ({blanks.length})
+								{t('dailyChallenge.blanksSummary', 'Blanks Summary')} ({blanks.length})
 							</div>
 							<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
 								{orderedBlanks.map((blank, index) => (
@@ -2707,7 +2677,7 @@ useEffect(() => {
 													updateBlankAnswerText(blank.id, v);
 												}}
 												onClick={(e) => e.stopPropagation()}
-												placeholder='type answer...'
+												placeholder={t('dailyChallenge.typeCorrectOption', 'Type correct option')}
 												style={{
 													border: '1px solid rgba(24, 144, 255, 0.3)',
 													outline: 'none',

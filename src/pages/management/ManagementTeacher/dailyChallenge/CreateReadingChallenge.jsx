@@ -248,7 +248,7 @@ const CreateReadingChallenge = () => {
       
       // Validate required data
       if (!currentChallengeId) {
-        spaceToast.warning("Challenge ID is required");
+        spaceToast.warning(t('dailyChallenge.challengeIdRequired', 'Challenge ID is required'));
         setIsSaving(false);
         return;
       }
@@ -266,14 +266,14 @@ const CreateReadingChallenge = () => {
       }
 
       if (!passage.content || passage.content.trim() === '') {
-        spaceToast.warning("Please add passage content before saving");
+        spaceToast.warning(t('dailyChallenge.pleaseAddPassageContent', 'Please add passage content before saving'));
         setIsSaving(false);
         return;
       }
 
       // For listening challenges only, audio file is required
       if (isListeningChallenge && !passage.audioUrl) {
-        spaceToast.warning("Please upload audio file before saving");
+        spaceToast.warning(t('dailyChallenge.pleaseUploadAudioFile', 'Please upload audio file before saving'));
         setIsSaving(false);
         return;
       }
@@ -282,7 +282,7 @@ const CreateReadingChallenge = () => {
       if ((isWritingChallenge || isSpeakingChallenge)) {
         const numericWeight = Number(questionWeight);
         if (!Number.isFinite(numericWeight) || numericWeight <= 0) {
-          spaceToast.warning("Please enter a valid positive weight");
+          spaceToast.warning(t('dailyChallenge.pleaseEnterValidWeight', 'Please enter a valid positive weight'));
           setIsSaving(false);
           return;
         }
@@ -522,10 +522,10 @@ const CreateReadingChallenge = () => {
         section: {
           // Always include id when editing (has sectionId), null for new sections
           ...(passage.sectionId && { id: passage.sectionId }),
-          sectionTitle: isWritingChallenge ? "Writing Section" : 
-                        isListeningChallenge ? "Listening Section" : 
-                        isSpeakingChallenge ? "Speaking Section" : 
-                        "Reading Section",
+          sectionTitle: isWritingChallenge ? t('dailyChallenge.writingSection', 'Writing Section') : 
+                        isListeningChallenge ? t('dailyChallenge.listeningSection', 'Listening Section') : 
+                        isSpeakingChallenge ? t('dailyChallenge.speakingSection', 'Speaking Section') : 
+                        t('dailyChallenge.readingSection', 'Reading Section'),
           sectionsUrl: (isListeningChallenge || isSpeakingChallenge) && passage.audioUrl ? passage.audioUrl : "", // Audio URL for listening/speaking
           sectionsContent: finalContent,
           orderNumber: 1, // First section
@@ -556,7 +556,7 @@ const CreateReadingChallenge = () => {
       const response = await dailyChallengeApi.saveSectionWithQuestions(currentChallengeId, sectionData);
       
       if (response.message) {
-        spaceToast.success(response.data?.message || response.message || "Challenge saved successfully!");
+        spaceToast.success(response.data?.message || response.message || t('dailyChallenge.challengeSavedSuccessfully', 'Challenge saved successfully!'));
         
         // Navigate back to DailyChallengeContent with proper path based on user role
         const userRole = user?.role?.toLowerCase();
@@ -577,7 +577,7 @@ const CreateReadingChallenge = () => {
 
     } catch (error) {
       console.error('Error saving challenge:', error);
-      spaceToast.error(error.response?.data?.error || error.response?.data?.message || "Failed to save challenge. Please try again.");
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || t('dailyChallenge.failedToSaveChallenge', 'Failed to save challenge. Please try again.'));
     } finally {
       setIsSaving(false);
     }
@@ -664,14 +664,14 @@ const CreateReadingChallenge = () => {
       // Validate audio file
       const allowedTypes = ['audio/mp3', 'audio/mpeg'];
       if (!allowedTypes.includes(file.type)) {
-        spaceToast.error("Vui lòng chọn file audio hợp lệ (MP3)");
+        spaceToast.error(t('dailyChallenge.pleaseSelectValidAudioFile', 'Please select a valid audio file (MP3)'));
         return false;
       }
 
       // Check file size (max 10MB for audio)
       const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
-        spaceToast.error("File size must be less than 10MB");
+        spaceToast.error(t('dailyChallenge.fileSizeMustBeLessThan10MB', 'File size must be less than 10MB'));
         return false;
       }
 
@@ -695,7 +695,7 @@ const CreateReadingChallenge = () => {
       
       if (!audioUrl) {
         console.error('Upload response structure:', response);
-        throw new Error("Upload failed: No URL returned from server");
+        throw new Error(t('dailyChallenge.uploadFailedNoUrl', 'Upload failed: No URL returned from server'));
       }
       
       console.log('Extracted audio URL:', audioUrl);
@@ -711,11 +711,11 @@ const CreateReadingChallenge = () => {
         audioPreviewUrl: previewUrl // Local preview URL
       }));
 
-      spaceToast.success(`Audio file "${file.name}" uploaded successfully!`);
+      spaceToast.success(t('dailyChallenge.audioUploadedSuccessfully', 'Audio file "{{fileName}}" uploaded successfully!', { fileName: file.name }));
       
     } catch (error) {
       console.error('Error processing audio:', error);
-      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || "Có lỗi xảy ra khi xử lý file audio");
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('dailyChallenge.errorProcessingAudio', 'An error occurred while processing the audio file'));
     } finally {
       setIsProcessingAudio(false);
     }
@@ -895,7 +895,7 @@ const CreateReadingChallenge = () => {
 
       return { ...prevPassage, questions: updatedQuestions };
     });
-    spaceToast.success("Question marked for deletion");
+    spaceToast.success(t('dailyChallenge.questionMarkedForDeletion', 'Question marked for deletion'));
   };
 
   // Reorder helper: reorder only visible (non-deleted) questions in-place
@@ -993,7 +993,7 @@ const CreateReadingChallenge = () => {
       }
     });
 
-    spaceToast.success(editingQuestion ? "Question updated successfully!" : "Question added successfully!");
+    spaceToast.success(editingQuestion ? t('dailyChallenge.questionUpdatedSuccessfully', 'Question updated successfully!') : t('dailyChallenge.questionAddedSuccessfully', 'Question added successfully!'));
     setActiveModal(null);
     setEditingQuestion(null);
     setEditingIndex(null);
@@ -1039,7 +1039,7 @@ const CreateReadingChallenge = () => {
       ...prevPassage,
       questions: [...(prevPassage.questions || []), duplicated],
     }));
-    spaceToast.success('Question duplicated!');
+    spaceToast.success(t('dailyChallenge.questionDuplicated', 'Question duplicated!'));
   };
 
   const getQuestionTypeLabel = (type) => {
@@ -1101,7 +1101,7 @@ const CreateReadingChallenge = () => {
   // Helper function to format fill-in-the-blank questions
   const formatFillBlankQuestion = (question) => {
     if (question.type !== 'fill-blank' && question.type !== 'FILL_IN_THE_BLANK') {
-      return stripHtmlTags(question.question) || "No question text";
+      return stripHtmlTags(question.question) || t('dailyChallenge.noQuestionText', 'No question text');
     }
 
     // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
@@ -1130,7 +1130,7 @@ const CreateReadingChallenge = () => {
   // Helper function to format dropdown questions
   const formatDropdownQuestion = (question) => {
     if (question.type !== 'DROPDOWN' && question.type !== 'dropdown') {
-      return stripHtmlTags(question.question) || "No question text";
+      return stripHtmlTags(question.question) || t('dailyChallenge.noQuestionText', 'No question text');
     }
 
     // Parse questionText and replace [[pos_xxx]] with (1)▼, (2)▼, etc.
@@ -1169,7 +1169,7 @@ const CreateReadingChallenge = () => {
   // Helper function to format drag and drop questions
   const formatDragDropQuestion = (question) => {
     if (question.type !== 'DRAG_AND_DROP' && question.type !== 'drag-drop') {
-      return stripHtmlTags(question.question) || "No question text";
+      return stripHtmlTags(question.question) || t('dailyChallenge.noQuestionText', 'No question text');
     }
 
     // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
@@ -1203,7 +1203,7 @@ const CreateReadingChallenge = () => {
   // Helper function to format reorder questions
   const formatReorderQuestion = (question) => {
     if (question.type !== 'REARRANGE' && question.type !== 'reorder') {
-      return stripHtmlTags(question.question) || "No question text";
+      return stripHtmlTags(question.question) || t('dailyChallenge.noQuestionText', 'No question text');
     }
 
     // Parse questionText and replace [[pos_xxx]] with (1)____, (2)____, etc.
@@ -1303,7 +1303,7 @@ const CreateReadingChallenge = () => {
                   ? challengeName
                   : className
                   ? className
-                  : 'Daily Challenge'
+                  : t('dailyChallenge.dailyChallenge', 'Daily Challenge')
                 }
               </span>
             </div>
@@ -1334,8 +1334,8 @@ const CreateReadingChallenge = () => {
               }}
             >
               {isSaving 
-                ? (isWritingChallenge ? 'Saving Writing Prompt...' : 'Saving Challenge...')
-                : (isWritingChallenge ? (t('common.saveChanges') || 'Save Writing Prompt') : (t('common.saveChanges') || 'Save Challenge'))
+                ? (isWritingChallenge ? t('dailyChallenge.savingWritingPrompt', 'Saving Writing Prompt...') : t('dailyChallenge.savingChallenge', 'Saving Challenge...'))
+                : (isWritingChallenge ? t('dailyChallenge.saveWritingPrompt', 'Save Writing Prompt') : t('dailyChallenge.saveChallenge', 'Save Challenge'))
               }
                 </Button>
           </div>
@@ -1399,7 +1399,7 @@ const CreateReadingChallenge = () => {
                         fontSize: '20px',
                         fontWeight: '600'
                       }}>
-                        Audio File
+                        {t('dailyChallenge.audioFile', 'Audio File')}
                       </Title>
                        {passage.audioUrl && (
                          <Button
@@ -1423,7 +1423,7 @@ const CreateReadingChallenge = () => {
                              setUploadedAudioFileName("");
                            }}
                          >
-                           Remove
+                           {t('dailyChallenge.remove', 'Remove')}
                          </Button>
                        )}
                       </div>
@@ -1442,7 +1442,7 @@ const CreateReadingChallenge = () => {
                        }}>
                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                            <span style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                             {uploadedAudioFileName || 'Audio file uploaded'}
+                             {uploadedAudioFileName || t('dailyChallenge.audioFileUploaded', 'Audio file uploaded')}
                            </span>
                          </div>
                          <audio 
@@ -1493,14 +1493,14 @@ const CreateReadingChallenge = () => {
                                  color: theme === 'sun' ? '#1E40AF' : '#8377A0',
                                  fontSize: '13px'
                                }}>
-                                 {isProcessingAudio ? `Processing "${uploadedAudioFileName}"...` : (isSpeakingChallenge ? "Upload Speaking Audio" : "Upload Audio File")}
+                                 {isProcessingAudio ? t('dailyChallenge.processingAudio', 'Processing "{{fileName}}"...', { fileName: uploadedAudioFileName }) : (isSpeakingChallenge ? t('dailyChallenge.uploadSpeakingAudio', 'Upload Speaking Audio') : t('dailyChallenge.uploadAudioFile', 'Upload Audio File'))}
                                </Text>
                                <br />
                                <Text style={{ 
                                  color: '#999',
                                  fontSize: '11px'
                                }}>
-                                MP3 (max 10MB)
+                                {t('dailyChallenge.mp3Max10MB', 'MP3 (max 10MB)')}
                                </Text>
                              </div>
                            </Space>
@@ -1529,7 +1529,7 @@ const CreateReadingChallenge = () => {
                         
                       }}
                     >
-                      {'Back to options'}
+                      {t('dailyChallenge.backToOptions', 'Back to options')}
                     </Button>
                   )}
                    <Title level={3} style={{ 
@@ -1538,19 +1538,15 @@ const CreateReadingChallenge = () => {
                    }}>
                     {editingPassage
                       ? (isWritingChallenge
-                          ? 'Edit writing topic'
-                          : isSpeakingChallenge
-                            ? 'Edit speaking topic'
-                            : isListeningChallenge
-                              ? 'Edit transcript'
-                              : 'Edit passage')
+                          ? t('dailyChallenge.editWritingTopic', 'Edit writing topic')
+                          : isListeningChallenge
+                            ? t('dailyChallenge.editTranscript', 'Edit transcript')
+                            : t('dailyChallenge.editPassage', 'Edit passage'))
                       : (isWritingChallenge
-                          ? 'Add writing topic'
-                          : isSpeakingChallenge
-                            ? 'Add speaking topic'
-                            : isListeningChallenge
-                              ? 'Add transcript'
-                              : 'Add passage')
+                          ? t('dailyChallenge.addWritingTopic', 'Add writing topic')
+                          : isListeningChallenge
+                            ? t('dailyChallenge.addTranscript', 'Add transcript')
+                            : t('dailyChallenge.addPassage', 'Add passage'))
                     }
                    </Title>
                  </div>
@@ -1564,7 +1560,7 @@ const CreateReadingChallenge = () => {
                       alignItems: 'center',
                       gap: '12px',
                     }}>
-                      <Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>Question weight</Text>
+                      <Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.questionWeight', 'Question weight')}</Text>
                       <InputNumber
                         min={1}
                         max={100}
@@ -1620,9 +1616,9 @@ const CreateReadingChallenge = () => {
                                  handlePassageContentChange(data);
                                }}
                                config={{
-                                 placeholder: isWritingChallenge ? 'Enter your writing topic here...' : 
-                                             isSpeakingChallenge ? 'Enter your speaking topic here...' : 
-                                             'Enter your passage content here...',
+                                 placeholder: isWritingChallenge ? t('dailyChallenge.enterWritingTopic', 'Enter your writing topic here...') : 
+                                             isSpeakingChallenge ? t('dailyChallenge.enterSpeakingTopic', 'Enter your speaking topic here...') : 
+                                             t('dailyChallenge.enterPassageContent', 'Enter your passage content here...'),
                                  extraPlugins: [CustomUploadAdapterPlugin],
                                  toolbar: {
                                    items: [
@@ -1721,9 +1717,9 @@ const CreateReadingChallenge = () => {
                             <Text strong style={{ 
                               color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
                             }}>
-                              {isWritingChallenge ? 'Add writing topic manually' : 
-                               isSpeakingChallenge ? 'Add speaking topic manually' : 
-                               isListeningChallenge ? 'Add transcript' : 'Add passage manually'}
+                              {isWritingChallenge ? t('dailyChallenge.addWritingTopicManually', 'Add writing topic manually') : 
+                               isSpeakingChallenge ? t('dailyChallenge.addSpeakingTopicManually', 'Add speaking topic manually') : 
+                               isListeningChallenge ? t('dailyChallenge.addTranscriptManually', 'Add transcript') : t('dailyChallenge.addPassageManually', 'Add passage manually')}
                             </Text>
                           </Space>
                         </Card>
@@ -1780,7 +1776,7 @@ const CreateReadingChallenge = () => {
                              <Text strong style={{ 
                                color: theme === 'sun' ? '#1E40AF' : '#8377A0' 
                              }}>
-                               Generate with AI
+                               {t('dailyChallenge.generateWithAI', 'Generate with AI')}
                              </Text>
                           </Space>
                          </Card>
@@ -1821,7 +1817,7 @@ const CreateReadingChallenge = () => {
                     color: theme === 'sun' ? '#1E40AF' : '#8377A0',
                     textAlign: 'center'
                   }}>
-                    Questions ({visibleQuestions.length})
+                    {t('dailyChallenge.questionsCount', 'Questions ({{count}})', { count: visibleQuestions.length })}
                       </Title>
                     </div>
 
@@ -1847,7 +1843,7 @@ const CreateReadingChallenge = () => {
                       opacity: 0.9
                     }}
                   >
-                    Add a Question
+                    {t('dailyChallenge.addAQuestion', 'Add a Question')}
                   </Button>
                 </div>
 
@@ -1869,11 +1865,11 @@ const CreateReadingChallenge = () => {
                         fontWeight: 500,
                         color: theme === 'sun' ? '#1E40AF' : '#8377A0',
                         marginBottom: '8px'
-                      }}>No questions added yet</div>
+                      }}>{t('dailyChallenge.noQuestionsAddedYet', 'No questions added yet')}</div>
                       <div className="rc-empty-subtext" style={{ 
                         fontSize: '14px',
                         color: '#999'
-                      }}>Click "Add a Question" above to get started</div>
+                      }}>{t('dailyChallenge.clickAddQuestionToStart', 'Click "Add a Question" above to get started')}</div>
                         </div>
                       ) : (
                         visibleQuestions.map((question, index) => {
@@ -2000,7 +1996,7 @@ const CreateReadingChallenge = () => {
                       margin: 0, 
                       color: theme === 'sun' ? '#1E40AF' : '#8377A0'
                     }}>
-                      Recording Time 
+                      {t('dailyChallenge.recordingTime', 'Recording Time')}
                     </Title>
                   </Space>
                 </div>
@@ -2025,14 +2021,14 @@ const CreateReadingChallenge = () => {
                     textAlign: 'center'
                   }}>
                     <Text style={{ fontSize: '14px', color: '#666', display: 'block', marginBottom: '8px' }}>
-                      Recording time:
+                      {t('dailyChallenge.recordingTimeLabel', 'Recording time:')}
                     </Text>
                     <Text strong style={{ 
                       fontSize: '24px', 
                       color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
                       fontWeight: 700
                     }}>
-                      3 minutes
+                      {t('dailyChallenge.threeMinutes', '3 minutes')}
                     </Text>
                   </div>
 
@@ -2048,10 +2044,10 @@ const CreateReadingChallenge = () => {
                   }}>
                     <Space direction="vertical" size="small">
                       <Text strong style={{ fontSize: '14px', color: '#faad14', display: 'block' }}>
-                        💡 Information
+                        💡 {t('dailyChallenge.information', 'Information')}
                       </Text>
                       <Text style={{ fontSize: '13px', color: '#666', display: 'block' }}>
-                        Students will have 3 minutes to record their speaking response. The timer will start automatically when they begin recording.
+                        {t('dailyChallenge.speakingRecordingInfo', 'Students will have 3 minutes to record their speaking response. The timer will start automatically when they begin recording.')}
                       </Text>
                     </Space>
                   </div>

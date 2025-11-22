@@ -4,6 +4,7 @@ import {
   Button,
   InputNumber,
 } from "antd";
+import { useTranslation } from 'react-i18next';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import { 
   DragOutlined,
@@ -30,6 +31,7 @@ const debounce = (func, wait) => {
 
 
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
+  const { t } = useTranslation();
   const MAX_ITEMS = 10;
   const [weight, setWeight] = useState(1);
   const [shuffledWords, setShuffledWords] = useState([]);
@@ -419,7 +421,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     // Input field (hidden by default in compact mode)
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'type answer...';
+    input.placeholder = t('dailyChallenge.typeCorrectOption', 'Type correct option');
     input.value = (blank.answer || '').slice(0, 50);
     input.className = 'blank-input';
     input.style.cssText = `
@@ -618,7 +620,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       // Enforce maximum items when loading existing data
       const limitedBlanksData = blanksData.length > MAX_ITEMS ? blanksData.slice(0, MAX_ITEMS) : blanksData;
       if (blanksData.length > MAX_ITEMS) {
-        spaceToast.warning(`Maximum ${MAX_ITEMS} items allowed. Extra items were ignored.`);
+        spaceToast.warning(t('dailyChallenge.maximumItemsAllowed', 'Maximum {{max}} items allowed. Extra items were ignored.', { max: MAX_ITEMS }));
       }
 
       // Set blanks state
@@ -697,14 +699,14 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     // Enforce maximum number of items
     if (blanks.length >= MAX_ITEMS) {
-      spaceToast.warning(`You can add up to ${MAX_ITEMS} items.`);
+      spaceToast.warning(t('dailyChallenge.youCanAddUpToItems', 'You can add up to {{max}} items.', { max: MAX_ITEMS }));
       setShowBlankPopup(false);
       return;
     }
 
     // Don't insert blank if cursor is inside another blank
     if (isCursorInsideBlank()) {
-      spaceToast.warning('Cannot insert item inside another item');
+      spaceToast.warning(t('dailyChallenge.cannotInsertItemInsideAnother', 'Cannot insert item inside another item'));
       setShowBlankPopup(false);
       return;
     }
@@ -985,14 +987,14 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   const handleSave = async () => {
     if (blanks.length < 2) {
-      spaceToast.warning('Please add at least two items');
+      spaceToast.warning(t('dailyChallenge.pleaseAddAtLeastTwoItems', 'Please add at least two items'));
         return;
       }
 
     // Check if all blanks have answers
     const hasEmptyBlanks = blanks.some(blank => !blank.answer || !blank.answer.trim());
     if (hasEmptyBlanks) {
-      spaceToast.warning('Please fill in all item answers');
+      spaceToast.warning(t('dailyChallenge.pleaseFillInAllItemAnswers', 'Please fill in all item answers'));
       return;
     }
 
@@ -1000,7 +1002,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const blankAnswers = blanks.map(blank => (blank.answer || '').toLowerCase().trim());
     const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
     if (duplicates.length > 0) {
-      spaceToast.warning('Cannot create duplicate answers. Please ensure all item answers are unique.');
+      spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateItemAnswers', 'Cannot create duplicate answers. Please ensure all item answers are unique.'));
       return;
     }
 
@@ -1061,7 +1063,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         handleCancel();
       }
     } catch (e) {
-      spaceToast.error('Failed to save question');
+      spaceToast.error(t('dailyChallenge.failedToSaveQuestion', 'Failed to save question'));
     } finally {
       setSaving(false);
     }
@@ -1123,7 +1125,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             animation: 'pulse 2s infinite'
           }} />
           <span style={{ fontSize: '24px', fontWeight: 600 }}>
-            {questionData ? 'Edit Rearrange Question' : 'Create Rearrange Question'}
+            {questionData ? t('dailyChallenge.editRearrangeQuestion', 'Edit Rearrange Question') : t('dailyChallenge.createRearrangeQuestion', 'Create Rearrange Question')}
           </span>
         </div>
       }
@@ -1164,19 +1166,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             borderRadius: '8px',
             fontWeight: 500
           }}>
-            💡 Tips: Click <span style={{ 
-              background: 'rgba(24, 144, 255, 0.2)', 
-              padding: '2px 8px', 
-              borderRadius: '4px',
-              fontWeight: 600,
-              color: '#1890ff'
-            }}>Add Item</span> to add words • Each item = 1 word in shuffled preview • Students will reorder them
+            {t('dailyChallenge.tipsClickAddItemToAddWords', '💡 Tips: Click Add Item to add words • Each item = 1 word in shuffled preview • Students will reorder them')}
         </div>
 
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>{t('dailyChallenge.weight', 'Weight')}</span>
             {pointsMenu}
           </div>
 
@@ -1197,7 +1193,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                 boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
               }}
             >
-              <SaveOutlined /> Save Question
+              <SaveOutlined /> {t('common.save', 'Save')} {t('dailyChallenge.question', 'Question')}
           </Button>
           </div>
         </div>
@@ -1300,7 +1296,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                     color: '#000000',
                   }}
                 >
-                  {blanks.length >= MAX_ITEMS ? `Max ${MAX_ITEMS} items` : 'Add Item'}
+                  {blanks.length >= MAX_ITEMS ? t('dailyChallenge.maxItems', 'Max {{max}} items', { max: MAX_ITEMS }) : t('dailyChallenge.addItem', 'Add Item')}
                 </Button>
               </div>
             )}
@@ -1314,7 +1310,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
             marginBottom: '24px',
             fontStyle: 'italic'
           }}>
-            Each item above = 1 word. Students will see shuffled words below and reorder them. (Max 10 items)
+            {t('dailyChallenge.eachItemAboveEqualsOneWord', 'Each item above = 1 word. Students will see shuffled words below and reorder them. (Max 10 items)')}
               </div>
 
           {/* Shuffled Words Preview */}
@@ -1340,7 +1336,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                 gap: '8px'
               }}>
                 <DragOutlined style={{ fontSize: '18px' }} />
-                Preview: Shuffled Words (Students will drag to reorder)
+                {t('dailyChallenge.previewShuffledWords', 'Preview: Shuffled Words (Students will drag to reorder)')}
                 </div>
                 <Button
                   icon={<RetweetOutlined />}
@@ -1356,7 +1352,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                     gap: '4px'
                   }}
                 >
-                  Shuffle
+                  {t('dailyChallenge.shuffle', 'Shuffle')}
                 </Button>
               </div>
               <div style={{ 
@@ -1408,7 +1404,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                 color: '#666',
                 fontStyle: 'italic'
               }}>
-                💡 Tip: Try dragging words to see how students will interact with this question
+                {t('dailyChallenge.tipTryDraggingWords', '💡 Tip: Try dragging words to see how students will interact with this question')}
               </div>
             </div>
           )}
