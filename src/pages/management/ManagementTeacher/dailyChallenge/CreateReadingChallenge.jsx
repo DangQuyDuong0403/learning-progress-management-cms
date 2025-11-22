@@ -1539,14 +1539,18 @@ const CreateReadingChallenge = () => {
                     {editingPassage
                       ? (isWritingChallenge
                           ? 'Edit writing topic'
-                          : isListeningChallenge
-                            ? 'Edit transcript'
-                            : 'Edit passage')
+                          : isSpeakingChallenge
+                            ? 'Edit speaking topic'
+                            : isListeningChallenge
+                              ? 'Edit transcript'
+                              : 'Edit passage')
                       : (isWritingChallenge
                           ? 'Add writing topic'
-                          : isListeningChallenge
-                            ? 'Add transcript'
-                            : 'Add passage')
+                          : isSpeakingChallenge
+                            ? 'Add speaking topic'
+                            : isListeningChallenge
+                              ? 'Add transcript'
+                              : 'Add passage')
                     }
                    </Title>
                  </div>
