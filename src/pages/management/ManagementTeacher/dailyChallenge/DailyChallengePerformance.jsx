@@ -424,7 +424,7 @@ const DailyChallengePerformance = () => {
       
       // Normalize scores and prepare chart data
       const processedChartData = (chartDataPoints || []).map((point, index) => ({
-        name: point.fullName || `Student ${index + 1}`,
+        name: point.fullName || t('dailyChallenge.studentNumber', 'Student {{number}}', { number: index + 1 }),
         score: normalizeScore(point.score || 0),
         time: point.completionTimeMinutes || 0
       }));
@@ -817,14 +817,14 @@ const DailyChallengePerformance = () => {
                       <BookOutlined style={{ color: '#0ea5e9' }} />
                     </div>
                     <div style={{ fontWeight: 600, fontSize: 18, color: '#5b6b83', lineHeight: 1.1 }}>
-                      Challenge Type
+                      {t('dailyChallenge.challengeType', 'Challenge Type')}
                     </div>
                   </div>
                   <div style={{ fontSize: 30, fontWeight: 600, marginBottom: 8, lineHeight: 1, color: '#1f2937' }}>
-                    {getTypeLabelByCode(challengeInfo.challengeType) || 'N/A'}
+                    {getTypeLabelByCode(challengeInfo.challengeType) || t('dailyChallenge.notAvailable', 'N/A')}
                   </div>
                   <div style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
-                    {challengeInfo.challengeType || 'Unknown'}
+                    {challengeInfo.challengeType || t('dailyChallenge.unknown', 'Unknown')}
                   </div>
                 </Card>
               </Col>
@@ -860,7 +860,7 @@ const DailyChallengePerformance = () => {
                     {performanceData.average}/10
                   </div>
                   <div style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
-                    Average score
+                    {t('dailyChallenge.averageScoreLabel', 'Average score')}
                   </div>
                 </Card>
               </Col>
@@ -896,7 +896,7 @@ const DailyChallengePerformance = () => {
                     {performanceData.highest}/10
                   </div>
                   <div style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
-                    Highest score
+                    {t('dailyChallenge.highestScoreLabel', 'Highest score')}
                   </div>
                 </Card>
               </Col>
@@ -932,7 +932,7 @@ const DailyChallengePerformance = () => {
                     {performanceData.lowest}/10
                   </div>
                   <div style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
-                    Lowest score
+                    {t('dailyChallenge.lowestScoreLabel', 'Lowest score')}
                   </div>
                 </Card>
               </Col>
@@ -955,7 +955,7 @@ const DailyChallengePerformance = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                     <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Performance Chart</div>
+                    <div className="manager-dashboard-v2__title">{t('dailyChallenge.performanceChart', 'Performance Chart')}</div>
                   </div>
                   <div style={{ width: '100%', height: 528 }}>
                     {chartData.length === 0 ? (
@@ -966,7 +966,7 @@ const DailyChallengePerformance = () => {
                         height: '100%',
                         color: '#999'
                       }}>
-                        No chart data available
+                        {t('dailyChallenge.noChartData', 'No chart data available')}
                       </div>
                     ) : (
                       <ResponsiveContainer>
@@ -984,7 +984,7 @@ const DailyChallengePerformance = () => {
                           />
                           <YAxis 
                             yAxisId="left"
-                            label={{ value: 'Score', angle: -90, position: 'insideLeft', style: { fontSize: '14px' } }}
+                            label={{ value: t('dailyChallenge.scoreLabel', 'Score'), angle: -90, position: 'insideLeft', style: { fontSize: '14px' } }}
                             tick={{ fontSize: 12 }}
                             domain={[0, 10]}
                             ticks={[0, 2, 4, 6, 8, 10]}
@@ -992,7 +992,7 @@ const DailyChallengePerformance = () => {
                           <YAxis 
                             yAxisId="right"
                             orientation="right"
-                            label={{ value: 'Time (minutes)', angle: 90, position: 'insideRight', style: { fontSize: '14px' } }}
+                            label={{ value: `${t('dailyChallenge.completionTime', 'Completion Time')} (${t('dailyChallenge.minutes', 'minutes')})`, angle: 90, position: 'insideRight', style: { fontSize: '14px' } }}
                             tick={{ fontSize: 12 }}
                           />
                           <Tooltip content={<CustomChartTooltip />} />
@@ -1006,7 +1006,7 @@ const DailyChallengePerformance = () => {
                             dataKey="score" 
                             fill="#6366f1"
                             radius={[6, 6, 0, 0]}
-                            name="Score"
+                            name={t('dailyChallenge.scoreLabel', 'Score')}
                             barCategoryGap="30%"
                           />
                           <Line 
@@ -1017,7 +1017,7 @@ const DailyChallengePerformance = () => {
                             strokeWidth={2.2}
                             dot={{ r: 4 }}
                             activeDot={{ r: 6 }}
-                            name="Completion Time"
+                            name={t('dailyChallenge.completionTime', 'Completion Time')}
                           />
                         </ComposedChart>
                       </ResponsiveContainer>
@@ -1038,7 +1038,7 @@ const DailyChallengePerformance = () => {
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                       <TeamOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                      <div className="manager-dashboard-v2__title">Submission Statistics</div>
+                      <div className="manager-dashboard-v2__title">{t('dailyChallenge.submissionStatistics', 'Submission Statistics')}</div>
                     </div>
                     <div style={{ 
                       display: 'grid', 
@@ -1110,16 +1110,16 @@ const DailyChallengePerformance = () => {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                       <TrophyOutlined style={{ color: '#f59e0b', fontSize: 20 }} />
-                      <div className="manager-dashboard-v2__title">Top Scoring Students</div>
+                      <div className="manager-dashboard-v2__title">{t('dailyChallenge.topScoringStudents', 'Top Scoring Students')}</div>
                     </div>
                     {getSortedStudents().length === 0 ? (
-                      <Empty description="No student data" style={{ padding: '40px 20px' }} />
+                      <Empty description={t('dailyChallenge.noStudentData', 'No student data')} style={{ padding: '40px 20px' }} />
                     ) : (
                       <div className="dcpr-table">
                         <div className="dcpr-table__head" style={{ gridTemplateColumns: '0.6fr 2.4fr 1fr' }}>
-                          <div>Rank</div>
-                          <div>Student</div>
-                          <div>Score</div>
+                          <div>{t('dailyChallenge.rank', 'Rank')}</div>
+                          <div>{t('dailyChallenge.student', 'Student')}</div>
+                          <div>{t('dailyChallenge.scoreLabel', 'Score')}</div>
                         </div>
                         {getSortedStudents().slice(0, 3).map((student, index) => {
                           const isTopScore = index === 0;
@@ -1182,7 +1182,7 @@ const DailyChallengePerformance = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                     <BookOutlined style={{ color: '#10b981', fontSize: 20 }} />
                     <div className="manager-dashboard-v2__title">
-                      Question-Level Analysis
+                      {t('dailyChallenge.questionLevelAnalysis', 'Question-Level Analysis')}
                       {questionStatsMeta.challengeName && (
                         <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 400, marginTop: 2 }}>
                           {questionStatsMeta.challengeName}
@@ -1243,7 +1243,7 @@ const DailyChallengePerformance = () => {
                                   ? '0 2px 4px rgba(0,0,0,0.1), 2px 0 4px rgba(0,0,0,0.1)' 
                                   : '0 2px 4px rgba(0,0,0,0.3), 2px 0 4px rgba(0,0,0,0.3)'
                               }}>
-                                Question
+                                {t('dailyChallenge.question', 'Question')}
                               </th>
                               {questionMatrixData.students.map((student, idx) => (
                                 <th
@@ -1265,7 +1265,7 @@ const DailyChallengePerformance = () => {
                                     ...(idx === questionMatrixData.students.length - 1 && { borderTopRightRadius: '12px' })
                                   }}
                                 >
-                                  {student.fullName || student.email || `Student ${idx + 1}`}
+                                  {student.fullName || student.email || t('dailyChallenge.studentNumber', 'Student {{number}}', { number: idx + 1 })}
                                 </th>
                               ))}
                             </tr>
@@ -1294,9 +1294,9 @@ const DailyChallengePerformance = () => {
                                     : '0 2px 4px rgba(0,0,0,0.4), 2px 0 4px rgba(0,0,0,0.3)'
                                 }}
                               >
-                                <div style={{ fontWeight: 700 }}>Total Score</div>
+                                <div style={{ fontWeight: 700 }}>{t('dailyChallenge.totalScore', 'Total Score')}</div>
                                 <div style={{ fontSize: 11, fontWeight: 500, color: theme === 'sun' ? '#047857' : '#86efac' }}>
-                                  Scale 0 – 10
+                                  {t('dailyChallenge.scale010', 'Scale 0 – 10')}
                                 </div>
                               </th>
                               {questionMatrixData.students.map((student, idx) => {
@@ -1346,7 +1346,7 @@ const DailyChallengePerformance = () => {
                           <tbody>
                             {questionMatrixData.questions.map((question, qIdx) => {
                               const totalWeight = getQuestionTotalWeight(question);
-                              const questionKey = `Question ${qIdx + 1}`;
+                              const questionKey = t('dailyChallenge.questionNumber', 'Question #{{number}}', { number: qIdx + 1 });
                               const isLastRow = qIdx === questionMatrixData.questions.length - 1;
                               return (
                                 <tr
@@ -1378,7 +1378,7 @@ const DailyChallengePerformance = () => {
                                       {questionKey}
                                     </div>
                                     <div style={{ fontSize: 11, color: theme === 'sun' ? '#6b7280' : '#9ca3af', fontWeight: 400 }}>
-                                      Max score: {totalWeight}
+                                      {t('dailyChallenge.maxScore', 'Max score')}: {totalWeight}
                                     </div>
                                   </td>
                                   {questionMatrixData.students.map((student, sIdx) => {

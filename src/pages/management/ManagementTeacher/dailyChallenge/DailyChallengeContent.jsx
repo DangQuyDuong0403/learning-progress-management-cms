@@ -2863,12 +2863,6 @@ const questionTypes = [
 ];
 
 const DailyChallengeContent = () => {
-  // Helper: sentence-case a label (uppercase first char, lowercase rest)
-  const sentenceCase = useCallback((text) => {
-    if (!text) return text;
-    const s = String(text);
-    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-  }, []);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -3850,6 +3844,20 @@ const DailyChallengeContent = () => {
     const visibleQuestions = questions.filter(q => !q.toBeDeleted);
     const visiblePassages = passages.filter(p => !p.toBeDeleted);
     
+    // Block "Save as Draft" when there is no content
+    if (
+      saveAsStatus === 'draft' &&
+      visibleQuestions.length === 0 &&
+      visiblePassages.length === 0
+    ) {
+      if (!options?.silent) {
+        spaceToast.warning(
+          t('dailyChallenge.noQuestionsToSaveDraft') ||
+          'Please add at least one question before saving as draft.'
+        );
+      }
+      return;
+    }
 
     try {
       setLoading(true);
@@ -4497,6 +4505,19 @@ const DailyChallengeContent = () => {
     [filteredPassages]
   );
 
+  const statusLabel = useMemo(() => {
+    switch (status) {
+      case 'published':
+        return t('dailyChallenge.published');
+      case 'in-progress':
+        return t('dailyChallenge.inProgress') || 'In Progress';
+      case 'finished':
+        return t('dailyChallenge.finished') || 'Finished';
+      default:
+        return t('dailyChallenge.draft');
+    }
+  }, [status, t]);
+
   // Compute display totals and label based on challenge type
   const displayTotals = useMemo(() => {
     const type = challengeDetails?.challengeType;
@@ -4633,13 +4654,7 @@ const DailyChallengeContent = () => {
                   ? 'rgb(229, 79, 79)'
                   : '#faad14'
               }}>
-                {status === 'published' 
-                  ? t('dailyChallenge.published') 
-                  : status === 'in-progress'
-                  ? t('dailyChallenge.inProgress') || 'In Progress'
-                  : status === 'finished'
-                  ? t('dailyChallenge.finished') || 'Finished'
-                  : t('dailyChallenge.draft')}
+                {statusLabel}
               </span>
             </div>
 
@@ -4663,7 +4678,7 @@ const DailyChallengeContent = () => {
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
               }}
             >
-              {t('common.export') || 'Export'}
+              {t('common.export')}
             </Button>
 
             {/* Preview Button - Only visible for TEACHER role */}
@@ -4771,7 +4786,7 @@ const DailyChallengeContent = () => {
                   boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                 }}
               >
-                {t('common.save') || 'Lưu'} <DownOutlined />
+                {t('common.save')} <DownOutlined />
               </Button>
             </Dropdown>
             )}
@@ -4860,7 +4875,7 @@ const DailyChallengeContent = () => {
                         }}
                       />
                           </div>
-                  </Tooltip>
+                      </Tooltip>
                 ) : (
                   /* Expanded State - Show full settings */
                   <Card
@@ -5142,7 +5157,7 @@ const DailyChallengeContent = () => {
                 >
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography.Text style={{ fontWeight: 400, color: '#000', whiteSpace: 'nowrap', fontSize: '16px' }}>
-                <span style={{ fontWeight: 700 }}>Total:</span> {displayTotals.count} questions • <span style={{ fontWeight: 700 }}>Remaining:</span> {displayTotals.remaining} questions
+                <span style={{ fontWeight: 700 }}>{t('dailyChallengeContent.totalQuestionsLabel') || t('dailyChallenge.totalQuestions') || 'Total Questions'}:</span> {displayTotals.count} {t('dailyChallengeContent.questionsUnit') || t('dailyChallenge.questions') || 'questions'} • <span style={{ fontWeight: 700 }}>{t('dailyChallengeContent.remainingQuestionsLabel') || 'Remaining'}:</span> {displayTotals.remaining} {t('dailyChallengeContent.questionsUnit') || t('dailyChallenge.questions') || 'questions'}
               </Typography.Text>
               <Input
                   prefix={<SearchOutlined />}
@@ -5222,7 +5237,7 @@ const DailyChallengeContent = () => {
 
               {filteredQuestions.length === 0 && filteredPassages.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                  <Typography.Text>{t('dailyChallenge.noQuestions') || 'Chưa có câu hỏi nào'}</Typography.Text>
+                  <Typography.Text>{t('dailyChallengeContent.noItemsMessage') || t('dailyChallenge.noQuestions') || 'No items yet'}</Typography.Text>
                 </div>
               )}
             </div>
@@ -5527,7 +5542,7 @@ const DailyChallengeContent = () => {
         onOk={handleDeleteConfirm}
         onCancel={handleDeleteModalClose}
         okText={t('common.confirm')}
-        cancelText="Cancel"
+        cancelText={t('common.cancel')}
         width={500}
         centered
         bodyStyle={{
@@ -5613,7 +5628,7 @@ const DailyChallengeContent = () => {
         onOk={handleImportOk}
         onCancel={handleImportCancel}
         okText={t('dailyChallenge.import') || 'Import'}
-        cancelText="Cancel"
+        cancelText={t('common.cancel') || 'Cancel'}
         width={600}
         centered
         confirmLoading={importModal.uploading}
@@ -5864,25 +5879,25 @@ const DailyChallengeContent = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>{sentenceCase(t('dailyChallenge.shuffleQuestion') || t('dailyChallenge.shuffleAnswers') || 'Shuffle questions')}</Typography.Text>
+                <Typography.Text strong>{t('dailyChallenge.shuffleQuestion') || 'Shuffle questions'}</Typography.Text>
                 <span style={{color: shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
-                  {shuffleQuestion ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
+                  {shuffleQuestion ? (t('common.on') || 'On') : (t('common.off') || 'Off')}
                 </span>
               </div>
             </Card>
             <Card size="small" style={{ background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>{sentenceCase(t('dailyChallenge.antiCheatMode') || 'Anti-cheat mode')}</Typography.Text>
+                <Typography.Text strong>{t('dailyChallenge.antiCheatMode') || 'Anti-cheat mode'}</Typography.Text>
                 <span style={{color: antiCheatModeEnabled ? '#52c41a' : '#ff4d4f' }}>
-                  {antiCheatModeEnabled ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
+                  {antiCheatModeEnabled ? (t('common.on') || 'On') : (t('common.off') || 'Off')}
                 </span>
               </div>
             </Card>
             <Card size="small" style={{ gridColumn: '1 / span 2', background: theme === 'sun' ? '#fafafa' : 'rgba(255, 255, 255, 0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>{sentenceCase(t('dailyChallenge.translateOnScreen') || 'Translate on screen')}</Typography.Text>
+                <Typography.Text strong>{t('dailyChallenge.translateOnScreen') || 'Translate on screen'}</Typography.Text>
                 <span style={{ color: translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
-                  {translateOnScreen ? sentenceCase(t('common.on') || 'ON') : sentenceCase(t('common.off') || 'OFF')}
+                  {translateOnScreen ? (t('common.on') || 'On') : (t('common.off') || 'Off')}
                 </span>
               </div>
             </Card>
