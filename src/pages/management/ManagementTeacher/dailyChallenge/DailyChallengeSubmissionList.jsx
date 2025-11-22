@@ -270,12 +270,12 @@ const DailyChallengeSubmissionList = () => {
 
   const handleExtendDeadlineSubmit = async () => {
     if (extendSelectedSubmissionIds.length === 0) {
-      spaceToast.error('Please select at least one submission to extend.');
+      spaceToast.error(t('dailyChallenge.pleaseSelectAtLeastOneSubmissionToExtend', 'Please select at least one submission to extend.'));
       return;
     }
 
     if (!extendDeadlineValue) {
-      spaceToast.error('Please choose the new deadline.');
+      spaceToast.error(t('dailyChallenge.pleaseChooseNewDeadline', 'Please choose the new deadline.'));
       return;
     }
 
@@ -283,7 +283,7 @@ const DailyChallengeSubmissionList = () => {
       (id) => !extendEligibleIdSet.has(id)
     );
     if (invalidSelectedIds.length > 0) {
-      spaceToast.error('Some selected submissions are no longer eligible for extension.');
+      spaceToast.error(t('dailyChallenge.someSelectedSubmissionsNoLongerEligibleForExtension', 'Some selected submissions are no longer eligible for extension.'));
       setExtendSelectedSubmissionIds((prev) =>
         prev.filter((id) => extendEligibleIdSet.has(id))
       );
@@ -296,7 +296,7 @@ const DailyChallengeSubmissionList = () => {
         extendSelectedSubmissionIds,
         extendDeadlineValue.toISOString()
       );
-      spaceToast.success('Extended deadline successfully');
+      spaceToast.success(t('dailyChallenge.extendedDeadlineSuccessfully', 'Extended deadline successfully'));
       setExtendModalVisible(false);
       setExtendDeadlineValue(null);
       setExtendSelectedSubmissionIds([]);
@@ -305,7 +305,7 @@ const DailyChallengeSubmissionList = () => {
       const errorMessage =
         error?.response?.data?.error ||
         error?.response?.data?.message ||
-        'Failed to extend deadline';
+        t('dailyChallenge.failedToExtendDeadline', 'Failed to extend deadline');
       spaceToast.error(errorMessage);
     } finally {
       setExtendSubmitting(false);
@@ -328,23 +328,23 @@ const DailyChallengeSubmissionList = () => {
 
   const handleResetSubmissions = async () => {
     if (resetSelectedSubmissionIds.length === 0) {
-      spaceToast.error('Please select at least one submission.');
+      spaceToast.error(t('dailyChallenge.pleaseSelectAtLeastOneSubmission', 'Please select at least one submission.'));
       return;
     }
 
     if (!resetDateRange || resetDateRange.length !== 2) {
-      spaceToast.error('Please choose the start and end time.');
+      spaceToast.error(t('dailyChallenge.pleaseChooseStartAndEndTime', 'Please choose the start and end time.'));
       return;
     }
 
     const [start, end] = resetDateRange;
     if (!start || !end) {
-      spaceToast.error('Please choose a valid time range.');
+      spaceToast.error(t('dailyChallenge.pleaseChooseValidTimeRange', 'Please choose a valid time range.'));
       return;
     }
 
     if (end.isBefore(start)) {
-      spaceToast.error('End time must be after the start time.');
+      spaceToast.error(t('dailyChallenge.endTimeMustBeAfterStartTime', 'End time must be after the start time.'));
       return;
     }
 
@@ -352,7 +352,7 @@ const DailyChallengeSubmissionList = () => {
       (id) => !resetEligibleIdSet.has(id)
     );
     if (invalidResetSelection.length > 0) {
-      spaceToast.error('Some selected submissions are no longer eligible for reset.');
+      spaceToast.error(t('dailyChallenge.someSelectedSubmissionsNoLongerEligibleForReset', 'Some selected submissions are no longer eligible for reset.'));
       setResetSelectedSubmissionIds((prev) =>
         prev.filter((id) => resetEligibleIdSet.has(id))
       );
@@ -366,7 +366,7 @@ const DailyChallengeSubmissionList = () => {
         start.toISOString(),
         end.toISOString()
       );
-      spaceToast.success('Reset submissions successfully');
+      spaceToast.success(t('dailyChallenge.resetSubmissionsSuccessfully', 'Reset submissions successfully'));
       setResetModalVisible(false);
       setResetSelectedSubmissionIds([]);
       setResetDateRange([]);
@@ -375,7 +375,7 @@ const DailyChallengeSubmissionList = () => {
       const errorMessage =
         error?.response?.data?.error ||
         error?.response?.data?.message ||
-        'Failed to reset submissions';
+        t('dailyChallenge.failedToResetSubmissions', 'Failed to reset submissions');
       spaceToast.error(errorMessage);
     } finally {
       setResetSubmitting(false);
@@ -384,7 +384,7 @@ const DailyChallengeSubmissionList = () => {
 
   const handleSelectAllReset = () => {
     if (resetEligibleIds.length === 0) {
-      spaceToast.info('No eligible submissions to reset right now.');
+      spaceToast.info(t('dailyChallenge.noEligibleSubmissionsToReset', 'No eligible submissions to reset right now.'));
       return;
     }
     setResetSelectedSubmissionIds([...resetEligibleIds]);
@@ -397,7 +397,7 @@ const DailyChallengeSubmissionList = () => {
   const toggleResetSelection = (submissionId, forceValue = null) => {
     if (!submissionId) return;
     if (!resetEligibleIdSet.has(submissionId)) {
-      spaceToast.error('Only submitted, graded or missed submissions can be reset.');
+      spaceToast.error(t('dailyChallenge.onlySubmittedGradedOrMissedCanBeReset', 'Only submitted, graded or missed submissions can be reset.'));
       return;
     }
     setResetSelectedSubmissionIds((prev) => {
@@ -427,7 +427,7 @@ const DailyChallengeSubmissionList = () => {
 
   const handleSelectAllExtend = () => {
     if (extendEligibleIds.length === 0) {
-      spaceToast.info('No eligible submissions to extend right now.');
+      spaceToast.info(t('dailyChallenge.noEligibleSubmissionsToExtend', 'No eligible submissions to extend right now.'));
       return;
     }
     setExtendSelectedSubmissionIds([...extendEligibleIds]);
@@ -440,7 +440,7 @@ const DailyChallengeSubmissionList = () => {
   const toggleExtendSelection = (submissionId, forceValue = null) => {
     if (!submissionId) return;
     if (!extendEligibleIdSet.has(submissionId)) {
-      spaceToast.error("Only submissions in Pending or Draft can be extended.");
+      spaceToast.error(t('dailyChallenge.onlyPendingOrDraftCanBeExtended', 'Only submissions in Pending or Draft can be extended.'));
       return;
     }
     setExtendSelectedSubmissionIds((prev) => {
@@ -589,7 +589,7 @@ const DailyChallengeSubmissionList = () => {
       ),
     },
     {
-      title: 'Student Code',
+      title: t('dailyChallenge.studentCode', 'Student Code'),
       dataIndex: 'studentCode',
       key: 'studentCode',
       width: 160,
@@ -597,7 +597,7 @@ const DailyChallengeSubmissionList = () => {
       render: (text) => (text ? text : '-'),
     },
     {
-      title: 'Final Score',
+      title: t('dailyChallenge.finalScore', 'Final Score'),
       dataIndex: 'finalScore',
       key: 'finalScore',
       width: 130,
@@ -613,7 +613,7 @@ const DailyChallengeSubmissionList = () => {
       },
     },
     {
-      title: 'Actual Duration',
+      title: t('dailyChallenge.actualDuration', 'Actual Duration'),
       dataIndex: 'actualDuration',
       key: 'actualDuration',
       width: 160,
@@ -621,7 +621,7 @@ const DailyChallengeSubmissionList = () => {
       render: (v) => formatDurationHuman(v),
     },
     {
-      title: 'Submitted At',
+      title: t('dailyChallenge.submittedAt', 'Submitted At'),
       dataIndex: 'submittedAt',
       key: 'submittedAt',
       width: 200,
@@ -629,7 +629,7 @@ const DailyChallengeSubmissionList = () => {
       render: (v) => formatDateTimeVi(v),
     },
     {
-      title: 'End Date',
+      title: t('dailyChallenge.endDate', 'End Date'),
       dataIndex: 'endDate',
       key: 'endDate',
       width: 200,
@@ -684,7 +684,7 @@ const DailyChallengeSubmissionList = () => {
                   e.currentTarget.style.background = 'rgb(244,203,127)';
                 }}
               >
-                Grade
+                {t('dailyChallenge.grade', 'Grade')}
               </Button>
             ),
           });
@@ -714,7 +714,7 @@ const DailyChallengeSubmissionList = () => {
                   e.currentTarget.style.background = 'rgb(157,207,242)';
                 }}
               >
-                View result
+                {t('dailyChallenge.viewResult', 'View result')}
               </Button>
             ),
           });
@@ -754,7 +754,7 @@ const DailyChallengeSubmissionList = () => {
                 fontWeight: 500,
               }}
             >
-              Extend submissions
+              {t('dailyChallenge.extendSubmissions', 'Extend submissions')}
             </Button>
             <Button
               icon={<ReloadOutlined />}
@@ -765,7 +765,7 @@ const DailyChallengeSubmissionList = () => {
                 fontWeight: 500,
               }}
             >
-              Reset submissions
+              {t('dailyChallenge.resetSubmissions', 'Reset submissions')}
             </Button>
           </Space>
         </div>
@@ -799,7 +799,7 @@ const DailyChallengeSubmissionList = () => {
                 padding: '10px 0',
               }}
             >
-              Extend submission deadline
+              Extend submissions deadline
             </div>
           }
           footer={[
@@ -815,7 +815,7 @@ const DailyChallengeSubmissionList = () => {
               }}
               disabled={extendSubmitting}
             >
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>,
             <Button
               key="confirm"
@@ -871,12 +871,12 @@ const DailyChallengeSubmissionList = () => {
                 }
               }}
             >
-              Confirm
+              {t('common.confirm', 'Confirm')}
             </Button>,
           ]}
         >
           <Typography.Paragraph style={{ marginBottom: 12 }}>
-            Pick a new deadline for the selected submissions.
+            {t('dailyChallenge.pickNewDeadlineForSelectedSubmissions', 'Pick a new deadline for the selected submissions.')}
           </Typography.Paragraph>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -892,21 +892,21 @@ const DailyChallengeSubmissionList = () => {
                 />
                 <Space>
                   <Button size="small" onClick={handleSelectAllExtend}>
-                    Select all
+                    {t('dailyChallenge.selectAll', 'Select all')}
                   </Button>
                   <Button size="small" onClick={handleClearExtendSelection}>
-                    Clear selection
+                    {t('dailyChallenge.clearSelection', 'Clear selection')}
                   </Button>
                 </Space>
               </div>
               <Typography.Text type="secondary" style={{ display: 'block' }}>
-                Only submissions in Pending or Draft can be extended. The new deadline must be in the future.
+                {t('dailyChallenge.onlyPendingOrDraftCanBeExtendedNewDeadlineMustBeFuture', 'Only submissions in Pending or Draft can be extended. The new deadline must be in the future.')}
               </Typography.Text>
             </div>
 
             <div>
               <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
-                Class submission list
+                {t('dailyChallenge.classSubmissionList', 'Class submission list')}
               </Typography.Text>
               <div
                 style={{
@@ -954,7 +954,7 @@ const DailyChallengeSubmissionList = () => {
                               {item.studentName || `ID ${item.submissionId}`}
                             </Typography.Text>
                             <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                              {item.studentCode ? `Code: ${item.studentCode}` : 'No student code'}
+                              {item.studentCode ? `${t('dailyChallenge.code', 'Code')}: ${item.studentCode}` : t('dailyChallenge.noStudentCode', 'No student code')}
                             </Typography.Text>
                           </div>
                         </div>
@@ -965,7 +965,7 @@ const DailyChallengeSubmissionList = () => {
                     <Alert
                       type="info"
                       showIcon
-                      message="No submissions are currently pending or in draft."
+                      message={t('dailyChallenge.noSubmissionsCurrentlyPendingOrDraft', 'No submissions are currently pending or in draft.')}
                       style={{ gridColumn: '1 / -1' }}
                     />
                   )}
@@ -991,7 +991,7 @@ const DailyChallengeSubmissionList = () => {
                 padding: '10px 0',
               }}
             >
-              Reset submissions (create new attempt)
+              {t('dailyChallenge.resetSubmissionsCreateNewAttempt', 'Reset submissions (create new attempt)')}
             </div>
           }
           footer={[
@@ -1007,7 +1007,7 @@ const DailyChallengeSubmissionList = () => {
                 width: '100px',
               }}
             >
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>,
             <Button
               key="confirm"
@@ -1063,7 +1063,7 @@ const DailyChallengeSubmissionList = () => {
                 }
               }}
             >
-              Reset
+              {t('dailyChallenge.reset', 'Reset')}
             </Button>,
           ]}
         >
@@ -1071,7 +1071,7 @@ const DailyChallengeSubmissionList = () => {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
               <div style={{ flex: 1, minWidth: 280 }}>
                 <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
-                  Working time window
+                  {t('dailyChallenge.workingTimeWindow', 'Working time window')}
                 </Typography.Text>
                 <div
                   style={{
@@ -1093,15 +1093,15 @@ const DailyChallengeSubmissionList = () => {
                   />
                   <Space>
                     <Button size="small" onClick={handleSelectAllReset}>
-                      Select all
+                      {t('dailyChallenge.selectAll', 'Select all')}
                     </Button>
                     <Button size="small" onClick={handleClearResetSelection}>
-                      Clear selection
+                      {t('dailyChallenge.clearSelection', 'Clear selection')}
                     </Button>
                   </Space>
                 </div>
                 <Typography.Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
-                  Only submissions that were submitted, graded, or missed can be reset.
+                  {t('dailyChallenge.onlySubmittedGradedOrMissedCanBeResetDesc', 'Only submissions that were submitted, graded, or missed can be reset.')}
                 </Typography.Text>
               </div>
             </div>
@@ -1116,14 +1116,14 @@ const DailyChallengeSubmissionList = () => {
               }}
             >
               <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
-                Selected submissions
+                {t('dailyChallenge.selectedSubmissions', 'Selected submissions')}
               </Typography.Text>
               {resetSelectedSubmissions.length === 0 ? (
                 <Alert
                   type="warning"
                   showIcon
-                  message="No submissions selected."
-                  description="Please use the list below to choose the students who need a reset."
+                  message={t('dailyChallenge.noSubmissionsSelected', 'No submissions selected.')}
+                  description={t('dailyChallenge.pleaseUseListBelowToChooseStudents', 'Please use the list below to choose the students who need a reset.')}
                 />
               ) : (
                 <Space size={[8, 8]} wrap>
@@ -1143,7 +1143,7 @@ const DailyChallengeSubmissionList = () => {
                   })}
                   {resetSelectedSubmissions.length > 8 && (
                     <Tag color="blue">
-                      +{resetSelectedSubmissions.length - 8} other students
+                      +{resetSelectedSubmissions.length - 8} {t('dailyChallenge.otherStudents', 'other students')}
                     </Tag>
                   )}
                 </Space>
@@ -1154,7 +1154,7 @@ const DailyChallengeSubmissionList = () => {
 
             <div>
               <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
-                Class submission list
+                {t('dailyChallenge.classSubmissionList', 'Class submission list')}
               </Typography.Text>
               <div
                 style={{
@@ -1211,7 +1211,7 @@ const DailyChallengeSubmissionList = () => {
                             </Typography.Text>
                             {item.studentCode && (
                               <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                                Student code: {item.studentCode}
+                                {t('dailyChallenge.studentCodeLabel', 'Student code')}: {item.studentCode}
                               </Typography.Text>
                             )}
                             <div style={{ marginTop: 8 }}>
@@ -1220,13 +1220,13 @@ const DailyChallengeSubmissionList = () => {
                               </Tag>
                             </div>
                             <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-                              Start: {startAtText}
+                              {t('dailyChallenge.start', 'Start')}: {startAtText}
                             </Typography.Text>
                             <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                              End: {endAtText}
+                              {t('dailyChallenge.end', 'End')}: {endAtText}
                             </Typography.Text>
                             <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-                              Submitted at: {submittedAtText}
+                              {t('dailyChallenge.submittedAtLabel', 'Submitted at')}: {submittedAtText}
                             </Typography.Text>
                           </div>
                         </div>
@@ -1237,7 +1237,7 @@ const DailyChallengeSubmissionList = () => {
                     <Alert
                       type="info"
                       showIcon
-                      message="No submissions are currently eligible for reset."
+                      message={t('dailyChallenge.noSubmissionsCurrentlyEligibleForReset', 'No submissions are currently eligible for reset.')}
                       style={{ gridColumn: '1 / -1' }}
                     />
                   )}

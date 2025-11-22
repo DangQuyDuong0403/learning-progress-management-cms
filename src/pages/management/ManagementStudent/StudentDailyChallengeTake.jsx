@@ -10669,9 +10669,9 @@ const StudentDailyChallengeTake = () => {
                   </div>
                 </p>
               )}
-              {violationWarningData.message && (
+              {violationWarningData.message && violationWarningData.type !== 'device_mismatch' && (
               <p style={{ marginBottom: '8px', fontSize: '14px'}}>
-                  <strong>Chi tiết:</strong> 
+                  <strong>Chi tiết: </strong> 
                   <span dangerouslySetInnerHTML={{ __html: violationWarningData.message }} />
               </p>
               )}

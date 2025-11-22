@@ -206,9 +206,9 @@ const AIGenerateReading = () => {
     { value: "MULTIPLE_SELECT", label: t('dailyChallenge.multipleSelect') || 'Multiple Select', icon: '☑️', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "TRUE_OR_FALSE", label: t('dailyChallenge.trueFalse') || 'True/False', icon: '✅', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "FILL_IN_THE_BLANK", label: t('dailyChallenge.fillBlank') || 'Fill in the Blank', icon: '✏️', color: primaryColor, bgColor: primaryColorWithAlpha },
-    { value: "DROPDOWN", label: 'Dropdown', icon: '📋', color: primaryColor, bgColor: primaryColorWithAlpha },
-    { value: "DRAG_AND_DROP", label: 'Drag and Drop', icon: '🔄', color: primaryColor, bgColor: primaryColorWithAlpha },
-    { value: "REARRANGE", label: 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
+    { value: "DROPDOWN", label: t('dailyChallenge.dropdown') || 'Dropdown', icon: '📋', color: primaryColor, bgColor: primaryColorWithAlpha },
+    { value: "DRAG_AND_DROP", label: t('dailyChallenge.dragAndDrop') || 'Drag and Drop', icon: '🔄', color: primaryColor, bgColor: primaryColorWithAlpha },
+    { value: "REARRANGE", label: t('dailyChallenge.rearrange') || 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
   ], [t, primaryColor, primaryColorWithAlpha]);
 
   // Level options constants
@@ -313,7 +313,7 @@ const AIGenerateReading = () => {
             type: 'REARRANGE',
             title: `Question ${counter}`,
             // Human-friendly instruction (do not show placeholders)
-            question: 'Rearrange the words by dragging them into the correct order:',
+            question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
             questionText: text,
             sourceItems: words,
             correctOrder: words,
@@ -325,7 +325,7 @@ const AIGenerateReading = () => {
           return null;
       }
     }).filter(Boolean).map((q, idx) => ({ ...q, id: idx + 1, title: `Question ${idx + 1}` }));
-  }, []);
+  }, [t]);
 
   // Fetch hierarchy info (level/chapter/lesson) for the header info bar
   useEffect(() => {
@@ -419,7 +419,7 @@ const AIGenerateReading = () => {
   // Step 1: call passage generation
   const handleGeneratePassage = useCallback(async () => {
     if (!selectedLevel) {
-      spaceToast.error('Please select a level');
+      spaceToast.error(t('dailyChallenge.pleaseSelectLevel', 'Please select a level'));
       return;
     }
     try {
@@ -442,16 +442,16 @@ const AIGenerateReading = () => {
       // Small delay to show 100% before closing
       await new Promise(resolve => setTimeout(resolve, 300));
       setPassage(text);
-      spaceToast.success('Passage generated');
+      spaceToast.success(t('dailyChallenge.passageGenerated', 'Passage generated'));
     } catch (err) {
       console.error('Generate passage error:', err);
       const beErr = getBackendMessage(err);
-      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate passage');
+      spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToGeneratePassage', 'Failed to generate passage'));
     } finally {
       setGeneratingPassage(false);
       setGenerationProgress(0);
     }
-  }, [challengeInfo.challengeId, description, passagePrompt, numParagraphs, selectedLevel, vocabularyList, getBackendMessage]);
+  }, [challengeInfo.challengeId, description, passagePrompt, numParagraphs, selectedLevel, vocabularyList, getBackendMessage, t]);
 
   // Quantity change handler
 
@@ -466,14 +466,14 @@ const AIGenerateReading = () => {
       .filter((c) => Number(c.numberOfQuestions) > 0);
     
     if (selectedConfigs.length === 0) {
-      spaceToast.error('At least one question type config is required');
+      spaceToast.error(t('dailyChallenge.atLeastOneQuestionTypeConfig', 'At least one question type config is required'));
       return;
     }
     
     // Use current prompt content as passage source if local passage is empty
     const sourcePassage = (passage && passage.trim()) ? passage : (passagePrompt || '').trim();
     if (!sourcePassage) {
-      spaceToast.error('Passage is empty. Please generate or paste passage in the prompt box');
+      spaceToast.error(t('dailyChallenge.passageIsEmptyPleaseGenerate', 'Passage is empty. Please generate or paste passage in the prompt box'));
       return;
     }
     // Enforce total questions limit <= 100
@@ -533,7 +533,7 @@ const AIGenerateReading = () => {
     } catch (err) {
       console.error('Generate content-based questions error:', err);
       const beErr = getBackendMessage(err);
-      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate questions');
+      spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToGenerateQuestions', 'Failed to generate questions'));
     } finally {
       setIsGenerating(false);
       setGenerationProgress(0);
@@ -565,7 +565,7 @@ const AIGenerateReading = () => {
   const handleSave = useCallback(async () => {
     const currentPassage = (passageMode === 'manual') ? (passagePrompt || '') : (passage || '');
     if (!currentPassage.trim()) {
-      spaceToast.error('Passage is empty');
+      spaceToast.error(t('dailyChallenge.passageIsEmpty', 'Passage is empty'));
       return;
     }
     try {
@@ -675,7 +675,7 @@ const AIGenerateReading = () => {
     } catch (err) {
       console.error('Save AI reading section error:', err);
       const beErr = getBackendMessage(err);
-      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to save');
+      spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToSaveChallenge', 'Failed to save'));
     } finally {
       setSaving(false);
     }
@@ -684,7 +684,7 @@ const AIGenerateReading = () => {
   // Parse questions from uploaded file using OpenAI service
   const handleGenerateFromFile = useCallback(async () => {
     if (!uploadedFile) {
-      spaceToast.error('Please select a file to generate questions');
+      spaceToast.error(t('dailyChallenge.pleaseSelectFileToGenerate', 'Please select a file to generate questions'));
       return;
     }
     try {
@@ -699,22 +699,22 @@ const AIGenerateReading = () => {
       else if (Array.isArray(res?.result?.questions)) rawList = res.result.questions;
       const normalized = normalizeQuestionsFromAI(rawList);
       if (!normalized.length) {
-        spaceToast.warning('No questions parsed from file');
+        spaceToast.warning(t('dailyChallenge.noQuestionsParsedFromFile', 'No questions parsed from file'));
         setQuestions([]);
         setShowPreview(false);
       } else {
         setQuestions(normalized);
         setShowPreview(true);
-        spaceToast.success('Questions generated from file');
+        spaceToast.success(t('dailyChallenge.questionsGeneratedFromFile', 'Questions generated from file'));
       }
     } catch (err) {
       console.error('Generate from file error:', err);
       const beErr = getBackendMessage(err);
-      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate from file');
+      spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToGenerateFromFile', 'Failed to generate from file'));
     } finally {
       setIsGenerating(false);
     }
-  }, [uploadedFile, passagePrompt, normalizeQuestionsFromAI, getBackendMessage]);
+  }, [uploadedFile, passagePrompt, normalizeQuestionsFromAI, getBackendMessage, t]);
 
   const handleBack = useCallback(() => {
     const userRole = user?.role?.toLowerCase();
@@ -742,15 +742,15 @@ const AIGenerateReading = () => {
         title: `Question ${index + 1}`
       }));
     });
-    spaceToast.success('Question deleted successfully');
-  }, []);
+    spaceToast.success(t('dailyChallenge.questionDeletedSuccessfully', 'Question deleted successfully'));
+  }, [t]);
 
   const handleSaveFromModal = useCallback((updated) => {
     setQuestions(prev => prev.map(q => q.id === updated.id ? { ...q, ...updated, title: q.title } : q));
     setIsEditModalVisible(false);
     setEditingQuestion(null);
-    spaceToast.success('Question updated successfully');
-  }, []);
+    spaceToast.success(t('dailyChallenge.questionUpdatedSuccessfully', 'Question updated successfully'));
+  }, [t]);
 
   const headerSubtitle = (challengeInfo.className && challengeInfo.challengeName)
     ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
@@ -854,7 +854,7 @@ const AIGenerateReading = () => {
           }}
         >
           <TableSpinner
-            message="Loading..."
+            message={t('common.loading', 'Loading...')}
             isCompleted={spinnerCompleted}
             onAnimationEnd={handleSpinnerAnimationEnd}
           />
@@ -935,7 +935,7 @@ const AIGenerateReading = () => {
             }}
           >
             <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px', marginBottom: '20px' }}>
-              AI Generation Settings
+              {t('dailyChallenge.aiGenerationSettings', 'AI Generation Settings')}
             </Title>
 
             {/* Initial mode selector centered */}
@@ -965,7 +965,7 @@ const AIGenerateReading = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <FileTextOutlined style={{ fontSize: 24, color: '#000000' }} />
                       <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                        Add passage manually
+                        {t('dailyChallenge.addPassageManually', 'Add passage manually')}
                       </Typography.Text>
                     </div>
                   </Card>
@@ -992,7 +992,7 @@ const AIGenerateReading = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span style={{ fontSize: 22 }}>✨</span>
                       <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                        Generate passage with AI
+                        {t('dailyChallenge.generatePassageWithAI', 'Generate passage with AI')}
                       </Typography.Text>
                     </div>
                   </Card>
@@ -1031,7 +1031,7 @@ const AIGenerateReading = () => {
                   {/* Chapter - Read-only */}
                   <div style={{ flex: 1, position: 'relative' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
-                      Chapter
+                      {t('dailyChallenge.chapter', 'Chapter')}
                     </Typography.Text>
                     <div
                       style={{
@@ -1066,7 +1066,7 @@ const AIGenerateReading = () => {
                   {/* Lesson - Read-only */}
                   <div style={{ flex: 1, position: 'relative' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
-                      Lesson
+                      {t('dailyChallenge.lesson', 'Lesson')}
                     </Typography.Text>
                     <div
                       style={{
@@ -1106,7 +1106,7 @@ const AIGenerateReading = () => {
                     {/* Level Selection - Custom 2-Level Dropdown */}
                     <div className="level-dropdown-container" style={{ position: 'relative', zIndex: 1000, overflow: 'visible' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Level <span style={{ color: 'red' }}>*</span>
+                      {t('dailyChallenge.level', 'Level')} <span style={{ color: 'red' }}>*</span>
                     </Typography.Text>
                 
                 {/* Input Field */}
@@ -1153,7 +1153,7 @@ const AIGenerateReading = () => {
                           const found = allOptions.find(o => o.value === selectedLevel);
                           return found ? found.label : 'Selected';
                         })()
-                      : 'Select level type and level'}
+                        : t('dailyChallenge.selectLevelTypeAndLevel', 'Select level type and level')}
                   </span>
                   <span style={{ 
                     transform: isLevelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -1228,9 +1228,9 @@ const AIGenerateReading = () => {
                         }}
                       >
                         {[
-                          { value: 'system', label: 'Camkey Level' },
-                          { value: 'academic', label: 'Academic Level' },
-                          { value: 'cefr', label: 'CEFR Level (A1-C2)' },
+                          { value: 'system', label: t('dailyChallenge.camkeyLevel', 'Camkey Level') },
+                          { value: 'academic', label: t('dailyChallenge.academicLevel', 'Academic Level') },
+                          { value: 'cefr', label: t('dailyChallenge.cefrLevel', 'CEFR Level (A1-C2)') },
                         ].map((type) => (
                           <div
                             key={type.value}
@@ -1306,7 +1306,7 @@ const AIGenerateReading = () => {
                                       color: theme === 'sun' ? '#999' : '#999',
                                       fontSize: '14px'
                                     }}>
-                                      {levelType === 'system' ? 'Loading Camkey levels...' : 'No levels available'}
+                                      {levelType === 'system' ? t('dailyChallenge.loadingCamkeyLevels', 'Loading Camkey levels...') : t('dailyChallenge.noLevelsAvailable', 'No levels available')}
                                     </div>
                                   );
                                 }
@@ -1378,7 +1378,7 @@ const AIGenerateReading = () => {
                             color: theme === 'sun' ? '#999' : '#999',
                             fontSize: '14px'
                           }}>
-                            Hover over a level type to see options
+                            {t('dailyChallenge.hoverOverLevelType', 'Hover over a level type to see options')}
                           </div>
                         )}
                       </div>
@@ -1391,13 +1391,13 @@ const AIGenerateReading = () => {
                   {/* Additional Description */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Additional Description
+                      {t('dailyChallenge.additionalDescription', 'Additional Description')}
                     </Typography.Text>
                     <TextArea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
-                      placeholder="Optional: Add any additional instructions or context..."
+                      placeholder={t('dailyChallenge.optionalAddInstructions', 'Optional: Add any additional instructions or context...')}
                       style={{
                         width: '100%',
                         fontSize: '14px',
@@ -1418,7 +1418,7 @@ const AIGenerateReading = () => {
                   <div style={{ marginBottom: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                       <Typography.Text style={{ display: 'block', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                        Vocabulary List
+                        {t('dailyChallenge.vocabularyList', 'Vocabulary List')}
                       </Typography.Text>
                       <span style={{
                         fontSize: '11px',
@@ -1429,14 +1429,14 @@ const AIGenerateReading = () => {
                         fontWeight: 600,
                         border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(139, 92, 246, 0.3)'}`
                       }}>
-                        Passage Only
+                        {t('dailyChallenge.passageOnly', 'Passage Only')}
                       </span>
                     </div>
                     <TextArea
                       value={vocabularyList}
                       onChange={(e) => setVocabularyList(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
-                      placeholder="new word..."
+                      placeholder={t('dailyChallenge.newWord', 'new word...')}
                       style={{
                         width: '100%',
                         borderRadius: '8px',
@@ -1470,7 +1470,7 @@ const AIGenerateReading = () => {
                       }}
                       config={{
                         ...passageEditorConfig,
-                        placeholder: (t('dailyChallenge.pleaseEnterPassage') !== 'dailyChallenge.pleaseEnterPassage' && t('dailyChallenge.pleaseEnterPassage')) || 'Please enter a passage'
+                        placeholder: t('dailyChallenge.pleaseEnterPassage', 'Please enter a passage')
                       }}
                       onReady={(editor) => {
                         try {
@@ -1496,7 +1496,7 @@ const AIGenerateReading = () => {
                       color: theme === 'sun' ? '#000000' : '#FFFFFF',
                       fontWeight: 600,
                       marginRight: 8
-                    }}>Paragraphs:</span>
+                    }}>{t('dailyChallenge.paragraphs', 'Paragraphs:')}</span>
                     <Input
                       type="number"
                       min={1}
@@ -1536,7 +1536,7 @@ const AIGenerateReading = () => {
                         transition: 'all 0.3s ease'
                       }}
                     >
-                      {generatingPassage ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Passage'}
+                      {generatingPassage ? (t('dailyChallenge.generating') || 'Generating...') : t('dailyChallenge.generatePassage', 'Generate Passage')}
                     </Button>
                   </div>
                   <Typography.Text
@@ -1547,7 +1547,7 @@ const AIGenerateReading = () => {
                       textAlign: 'right'
                     }}
                   >
-                    The generated content is for reference only.
+                    {t('dailyChallenge.generatedContentForReference', 'The generated content is for reference only.')}
                   </Typography.Text>
                 </>
               )}
@@ -1624,7 +1624,7 @@ const AIGenerateReading = () => {
           >
             {/* Title on its own line to align with left card title */}
             <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>
-              Question Settings
+              {t('dailyChallenge.questionSettings', 'Question Settings')}
             </Title>
             {/* Hidden input to allow direct upload from the option card */}
             <input
@@ -1642,7 +1642,7 @@ const AIGenerateReading = () => {
 
                 const fileExtension = f.name.split('.').pop().toLowerCase();
                 if (!['doc', 'docx'].includes(fileExtension)) {
-                  spaceToast.error(`Unsupported file type: .${fileExtension}. Supported types: .doc, .docx`);
+                  spaceToast.error(t('dailyChallenge.unsupportedFileType', 'Unsupported file type: .{{extension}}. Supported types: .doc, .docx', { extension: fileExtension }));
                   e.target.value = '';
                   setUploadedFile(null);
                   setUploadedFileName('');
@@ -1650,7 +1650,7 @@ const AIGenerateReading = () => {
                 }
 
                 if (f.size > MAX_FILE_MB * 1024 * 1024) {
-                  spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                  spaceToast.error(t('dailyChallenge.fileTooLarge', 'File too large. Max {{max}}MB', { max: MAX_FILE_MB }));
                   e.target.value = '';
                   setUploadedFile(null);
                   setUploadedFileName('');
@@ -1688,7 +1688,7 @@ const AIGenerateReading = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
                       <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                        Generate question from file
+                        {t('dailyChallenge.generateQuestionFromFile', 'Generate question from file')}
                       </Typography.Text>
                     </div>
                   </Card>
@@ -1714,7 +1714,7 @@ const AIGenerateReading = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                       <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                        Generate question from settings
+                        {t('dailyChallenge.generateQuestionFromSettings', 'Generate question from settings')}
                       </Typography.Text>
                     </div>
                   </Card>
@@ -1742,9 +1742,9 @@ const AIGenerateReading = () => {
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                       <CloudUploadOutlined style={{ fontSize: 56, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }} />
-                      <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>Click to upload</Typography.Text>
+                      <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>{t('dailyChallenge.clickToUpload', 'Click to upload')}</Typography.Text>
                       <Typography.Text style={{ fontSize: 12, opacity: 0.8, color: theme === 'sun' ? '#0f172a' : '#d1cde8' }}>
-                        Supported: .doc, .docx — Max {MAX_FILE_MB}MB
+                        {t('dailyChallenge.supportedDocxMax', 'Supported: .doc, .docx — Max {{max}}MB', { max: MAX_FILE_MB })}
                       </Typography.Text>
                     </div>
                   </label>
@@ -1840,7 +1840,7 @@ const AIGenerateReading = () => {
                     color: '#000000',
                   }}
                 >
-                  Generate From File
+                  {t('dailyChallenge.generateFromFile', 'Generate From File')}
                 </Button>
                 <Typography.Text
                   style={{
@@ -1853,7 +1853,7 @@ const AIGenerateReading = () => {
                     width: '100%'
                   }}
                 >
-                  The generated content is for reference only.
+                  {t('dailyChallenge.generatedContentForReference', 'The generated content is for reference only.')}
                 </Typography.Text>
               </div>
             )}
@@ -1940,7 +1940,7 @@ const AIGenerateReading = () => {
                     transition: 'all 0.3s ease'
                   }}
                 >
-                  {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Questions'}
+                  {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : t('dailyChallenge.generateQuestions', 'Generate Questions')}
                 </Button>
                 <Typography.Text
                   style={{
@@ -1950,7 +1950,7 @@ const AIGenerateReading = () => {
                     textAlign: 'center'
                   }}
                 >
-                  The generated content is for reference only.
+                  {t('dailyChallenge.generatedContentForReference', 'The generated content is for reference only.')}
                 </Typography.Text>
               </div>
             )}
@@ -2029,7 +2029,7 @@ const AIGenerateReading = () => {
                     </Title>
                     <div style={{ fontSize: '15px', color: theme === 'sun' ? '#64748b' : '#94a3b8', fontWeight: 500 }}>
                       {generatingPassage 
-                        ? 'Generating passage based on your settings'
+                        ? t('dailyChallenge.generatingPassageBasedOnSettings', 'Generating passage based on your settings')
                         : (t('dailyChallenge.generatingQuestions') || 'Generating questions based on your prompt')}
                     </div>
                   </div>
@@ -2114,14 +2114,14 @@ const AIGenerateReading = () => {
                       textAlign: 'center'
                     }}>
                       {generatingPassage 
-                        ? (generationProgress < 30 ? 'Analyzing settings...' :
-                           generationProgress < 60 ? 'Creating passage...' :
-                           generationProgress < 90 ? 'Finalizing content...' :
-                           'Almost done...')
-                        : (generationProgress < 30 ? 'Analyzing passage...' :
-                           generationProgress < 60 ? 'Creating questions...' :
-                           generationProgress < 90 ? 'Finalizing content...' :
-                           'Almost done...')}
+                        ? (generationProgress < 30 ? t('dailyChallenge.analyzingSettings', 'Analyzing settings...') :
+                           generationProgress < 60 ? t('dailyChallenge.creatingPassage', 'Creating passage...') :
+                           generationProgress < 90 ? t('dailyChallenge.finalizingContent', 'Finalizing content...') :
+                           t('dailyChallenge.almostDone', 'Almost done...'))
+                        : (generationProgress < 30 ? t('dailyChallenge.analyzingPassage', 'Analyzing passage...') :
+                           generationProgress < 60 ? t('dailyChallenge.creatingQuestions', 'Creating questions...') :
+                           generationProgress < 90 ? t('dailyChallenge.finalizingContent', 'Finalizing content...') :
+                           t('dailyChallenge.almostDone', 'Almost done...'))}
                     </div>
                   </div>
                 </div>
@@ -2179,21 +2179,21 @@ const AIGenerateReading = () => {
                         color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
                         fontStyle: 'italic'
                       }}>
-                        {question.type === 'MULTIPLE_CHOICE' ? 'Multiple Choice' :
-                         question.type === 'MULTIPLE_SELECT' ? 'Multiple Select' :
-                         question.type === 'TRUE_OR_FALSE' ? 'True/False' :
-                         question.type === 'FILL_IN_THE_BLANK' ? 'Fill in the Blank' :
-                         question.type === 'DROPDOWN' ? 'Dropdown' :
-                         question.type === 'DRAG_AND_DROP' ? 'Drag and Drop' :
-                         question.type === 'REARRANGE' ? 'Rearrange' :
-                         question.type === 'REWRITE' ? 'Re-write' : question.type}
+                        {question.type === 'MULTIPLE_CHOICE' ? t('dailyChallenge.multipleChoice', 'Multiple Choice') :
+                         question.type === 'MULTIPLE_SELECT' ? t('dailyChallenge.multipleSelect', 'Multiple Select') :
+                         question.type === 'TRUE_OR_FALSE' ? t('dailyChallenge.trueFalse', 'True/False') :
+                         question.type === 'FILL_IN_THE_BLANK' ? t('dailyChallenge.fillBlank', 'Fill in the Blank') :
+                         question.type === 'DROPDOWN' ? t('dailyChallenge.dropdown', 'Dropdown') :
+                         question.type === 'DRAG_AND_DROP' ? t('dailyChallenge.dragAndDrop', 'Drag and Drop') :
+                         question.type === 'REARRANGE' ? t('dailyChallenge.rearrange', 'Rearrange') :
+                         question.type === 'REWRITE' ? t('dailyChallenge.rewrite', 'Re-write') : question.type}
                       </Typography.Text>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
                         <Typography.Text style={{ fontSize: '14px', fontWeight: 600 }}>
-                          {question.points} {question.points === 1 ? 'point' : 'points'}
+                          {question.points} {question.points === 1 ? t('dailyChallenge.point', 'point') : t('dailyChallenge.points', 'points')}
                         </Typography.Text>
                       </div>
                       <Tooltip title={t('common.edit') || 'Edit Question'}>
@@ -2435,7 +2435,7 @@ const AIGenerateReading = () => {
                               display: 'block',
                               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                             }}>
-                              Complete the sentence by dragging words into the blanks:
+                              {t('dailyChallenge.completeSentenceByDragging', 'Complete the sentence by dragging words into the blanks:')}
                             </Typography.Text>
 
                             <div style={{ 
@@ -2508,7 +2508,7 @@ const AIGenerateReading = () => {
                               display: 'block',
                               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                             }}>
-                              Available words:
+                              {t('dailyChallenge.availableWords', 'Available words:')}
                             </Typography.Text>
                             <div style={{ 
                               display: 'flex', 
@@ -2666,7 +2666,7 @@ const AIGenerateReading = () => {
                           lineHeight: '1.8',
                           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                         }}>
-                          {question.question || 'Rearrange the words by dragging them into the correct order:'}
+                          {question.question || t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:')}
                         </Typography.Text>
                         <div style={{
                           marginBottom: '24px',
@@ -2682,7 +2682,7 @@ const AIGenerateReading = () => {
                             display: 'block',
                             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                           }}>
-                            Drop the words here in order:
+                            {t('dailyChallenge.dropWordsHereInOrder', 'Drop the words here in order:')}
                           </Typography.Text>
                           <div style={{ 
                             display: 'flex', 

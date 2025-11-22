@@ -953,7 +953,7 @@ const StudentDailyChallengeList = () => {
               color: theme === 'sun' ? '#1e40af' : '#fff'
             }}
           >
-            {t('dailyChallenge.dailyChallengeManagement')} <span className="student-count" style={{
+            {t('dailyChallenge.dailyChallengeList')} <span className="student-count" style={{
               fontSize: '24px',
               fontWeight: '500',
             }}>({totalItems})</span>

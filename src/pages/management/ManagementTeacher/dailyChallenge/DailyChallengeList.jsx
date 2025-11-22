@@ -1211,7 +1211,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
               </span>
               <Button
                 className="status-publish-btn"
-                icon={<CheckCircleOutlined />}
                 style={{
                   fontSize: '16px',
                   height: '40px',
