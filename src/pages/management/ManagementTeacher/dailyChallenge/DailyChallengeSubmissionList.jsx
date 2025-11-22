@@ -785,15 +785,95 @@ const DailyChallengeSubmissionList = () => {
         </div>
         <Modal
           open={extendModalVisible}
-          title="Extend submission deadline"
-          okText="Confirm"
-          cancelText="Cancel"
-          onOk={handleExtendDeadlineSubmit}
           onCancel={handleExtendModalClose}
-          confirmLoading={extendSubmitting}
           destroyOnClose
           width={900}
           bodyStyle={{ padding: '24px 32px 8px' }}
+          title={
+            <div
+              style={{
+                fontSize: '28px',
+                fontWeight: 600,
+                color: theme === 'sun' ? 'rgb(24, 144, 255)' : '#8B5CF6',
+                textAlign: 'center',
+                padding: '10px 0',
+              }}
+            >
+              Extend submission deadline
+            </div>
+          }
+          footer={[
+            <Button
+              key="cancel"
+              onClick={handleExtendModalClose}
+              style={{
+                height: '32px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '4px 15px',
+                width: '100px',
+              }}
+              disabled={extendSubmitting}
+            >
+              Cancel
+            </Button>,
+            <Button
+              key="confirm"
+              type="primary"
+              onClick={handleExtendDeadlineSubmit}
+              loading={extendSubmitting}
+              style={{
+                background:
+                  theme === 'sun'
+                    ? 'rgb(113, 179, 253)'
+                    : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+                borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                color: theme === 'sun' ? '#000' : '#fff',
+                borderRadius: '6px',
+                height: '32px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '4px 15px',
+                width: '100px',
+                transition: 'all 0.3s ease',
+                boxShadow: 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (extendSubmitting) return;
+                if (theme === 'sun') {
+                  e.currentTarget.style.background = 'rgb(95, 160, 240)';
+                  e.currentTarget.style.borderColor = 'rgb(95, 160, 240)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow =
+                    '0 4px 12px rgba(113, 179, 253, 0.4)';
+                } else {
+                  e.currentTarget.style.background =
+                    'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+                  e.currentTarget.style.borderColor = '#5a1fb8';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow =
+                    '0 4px 12px rgba(114, 40, 217, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (extendSubmitting) return;
+                if (theme === 'sun') {
+                  e.currentTarget.style.background = 'rgb(113, 179, 253)';
+                  e.currentTarget.style.borderColor = 'rgb(113, 179, 253)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                } else {
+                  e.currentTarget.style.background =
+                    'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+                  e.currentTarget.style.borderColor = '#7228d9';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }
+              }}
+            >
+              Confirm
+            </Button>,
+          ]}
         >
           <Typography.Paragraph style={{ marginBottom: 12 }}>
             Pick a new deadline for the selected submissions.
@@ -896,15 +976,96 @@ const DailyChallengeSubmissionList = () => {
         </Modal>
         <Modal
           open={resetModalVisible}
-          title="Reset submissions (create new attempt)"
-          okText="Reset"
-          cancelText="Cancel"
-          onOk={handleResetSubmissions}
           onCancel={handleResetModalClose}
           confirmLoading={resetSubmitting}
           width={900}
           destroyOnClose
           bodyStyle={{ padding: '24px 32px 8px' }}
+          title={
+            <div
+              style={{
+                fontSize: '28px',
+                fontWeight: 600,
+                color: theme === 'sun' ? 'rgb(24, 144, 255)' : '#8B5CF6',
+                textAlign: 'center',
+                padding: '10px 0',
+              }}
+            >
+              Reset submissions (create new attempt)
+            </div>
+          }
+          footer={[
+            <Button
+              key="cancel"
+              onClick={handleResetModalClose}
+              disabled={resetSubmitting}
+              style={{
+                height: '32px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '4px 15px',
+                width: '100px',
+              }}
+            >
+              Cancel
+            </Button>,
+            <Button
+              key="confirm"
+              type="primary"
+              onClick={handleResetSubmissions}
+              loading={resetSubmitting}
+              style={{
+                background:
+                  theme === 'sun'
+                    ? 'rgb(113, 179, 253)'
+                    : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+                borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                color: theme === 'sun' ? '#000' : '#fff',
+                borderRadius: '6px',
+                height: '32px',
+                fontWeight: 500,
+                fontSize: '16px',
+                padding: '4px 15px',
+                width: '100px',
+                transition: 'all 0.3s ease',
+                boxShadow: 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (resetSubmitting) return;
+                if (theme === 'sun') {
+                  e.currentTarget.style.background = 'rgb(95, 160, 240)';
+                  e.currentTarget.style.borderColor = 'rgb(95, 160, 240)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow =
+                    '0 4px 12px rgba(113, 179, 253, 0.4)';
+                } else {
+                  e.currentTarget.style.background =
+                    'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+                  e.currentTarget.style.borderColor = '#5a1fb8';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow =
+                    '0 4px 12px rgba(114, 40, 217, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (resetSubmitting) return;
+                if (theme === 'sun') {
+                  e.currentTarget.style.background = 'rgb(113, 179, 253)';
+                  e.currentTarget.style.borderColor = 'rgb(113, 179, 253)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                } else {
+                  e.currentTarget.style.background =
+                    'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+                  e.currentTarget.style.borderColor = '#7228d9';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }
+              }}
+            >
+              Reset
+            </Button>,
+          ]}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>

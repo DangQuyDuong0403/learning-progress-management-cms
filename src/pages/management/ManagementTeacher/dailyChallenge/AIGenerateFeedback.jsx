@@ -3938,7 +3938,7 @@ const AIGenerateFeedback = () => {
         }
         open={editModalVisible}
         onCancel={() => setEditModalVisible(false)}
-        width={1200}
+        width={900}
         footer={[
           <Button 
             key="cancel" 
@@ -4169,7 +4169,7 @@ const AIGenerateFeedback = () => {
           {sectionType === 'writing' && (
             <div>
               <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Criteria Feedback</Text>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
                 {WRITING_CRITERIA_KEYS.map((item) => {
                   const data = editWritingCriteria?.[item.key] || {};
                   const currentFeedback = data?.feedback || '';
@@ -4190,7 +4190,6 @@ const AIGenerateFeedback = () => {
                     >
                       <Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#C7D2FE' }}>{item.label}</Text>
                       <div>
-                        <Text style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>Feedback</Text>
                         <div className="feedback-editor-wrap" style={{ borderRadius: 8 }}>
                           <CKEditor
                             editor={ClassicEditor}

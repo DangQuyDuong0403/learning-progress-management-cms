@@ -2745,9 +2745,6 @@ useEffect(() => {
             <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
               {index + 1}. Writing Section
             </Typography.Text>
-            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({sectionTotals.received} / {sectionTotals.total} points)
-            </Typography.Text>
           </div>
           {!isStudent ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -3104,9 +3101,6 @@ useEffect(() => {
           <div>
             <Typography.Text strong style={{ fontSize: hasAudio ? '20px' : '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
               {index + 1}. {hasAudio ? 'Speaking With Audio Section' : 'Speaking Section'}
-            </Typography.Text>
-            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
           {!isStudent ? (
@@ -6112,50 +6106,94 @@ useEffect(() => {
                   border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.15)' : 'rgba(255,255,255,0.1)'}`,
                   padding: '12px'
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F5F9FF' : 'rgba(24,144,255,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.2)' : 'rgba(24,144,255,0.2)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#1e40af' : '#aab' }}>
-                        <ClockCircleOutlined />
-                        <span style={{ fontSize: '12px' }}>Total events</span>
+                  {(() => {
+                    const renderStatCard = (label, value, icon, styles) => (
+                      <div
+                        style={{
+                          flex: 1,
+                          padding: '10px',
+                          borderRadius: '8px',
+                          background: theme === 'sun' ? styles.bgSun : styles.bgMoon,
+                          border: `1px solid ${theme === 'sun' ? styles.borderSun : styles.borderMoon}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: theme === 'sun' ? styles.textSun : styles.textMoon,
+                            marginBottom: '4px',
+                          }}
+                        >
+                          {icon}
+                          <span style={{ fontSize: '12px' }}>{label}</span>
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: 700, color: theme === 'sun' ? '#000' : '#fff' }}>
+                          {value ?? 0}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalViolations}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#E9FBF0' : 'rgba(82,196,26,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(82,196,26,0.25)' : 'rgba(82,196,26,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#52c41a' }}>
-                        <PlayCircleOutlined />
-                        <span style={{ fontSize: '12px' }}>Session starts</span>
+                    );
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          {renderStatCard('Tab switches', totalTabSwitch, <SwapOutlined />, {
+                            bgSun: '#FFFBEA',
+                            bgMoon: 'rgba(251,140,0,0.08)',
+                            borderSun: 'rgba(251,140,0,0.25)',
+                            borderMoon: 'rgba(251,140,0,0.25)',
+                            textSun: '#ff9800',
+                            textMoon: '#ffb74d',
+                          })}
+                          {renderStatCard('Copy attempts', totalCopy, <CopyOutlined />, {
+                            bgSun: '#F3F8FF',
+                            bgMoon: 'rgba(24,144,255,0.08)',
+                            borderSun: 'rgba(24,144,255,0.25)',
+                            borderMoon: 'rgba(24,144,255,0.25)',
+                            textSun: '#1e40af',
+                            textMoon: '#aab',
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          {renderStatCard('Paste attempts', totalPaste, <FileTextOutlined />, {
+                            bgSun: '#F7ECFF',
+                            bgMoon: 'rgba(142,36,170,0.08)',
+                            borderSun: 'rgba(142,36,170,0.25)',
+                            borderMoon: 'rgba(142,36,170,0.25)',
+                            textSun: '#6A1B9A',
+                            textMoon: '#cbb',
+                          })}
+                          {renderStatCard('Device mismatch', totalDeviceMismatch, <CloseCircleOutlined />, {
+                            bgSun: '#FFEDED',
+                            bgMoon: 'rgba(255,77,79,0.08)',
+                            borderSun: 'rgba(255,77,79,0.25)',
+                            borderMoon: 'rgba(255,77,79,0.25)',
+                            textSun: '#ff4d4f',
+                            textMoon: '#ff7a7c',
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          {renderStatCard('Session start', totalSessionStart, <PlayCircleOutlined />, {
+                            bgSun: '#E9FBF0',
+                            bgMoon: 'rgba(82,196,26,0.08)',
+                            borderSun: 'rgba(82,196,26,0.25)',
+                            borderMoon: 'rgba(82,196,26,0.25)',
+                            textSun: '#52c41a',
+                            textMoon: '#81c784',
+                          })}
+                          {renderStatCard('Total violations', totalViolations, <ClockCircleOutlined />, {
+                            bgSun: '#F5F9FF',
+                            bgMoon: 'rgba(24,144,255,0.08)',
+                            borderSun: 'rgba(24,144,255,0.2)',
+                            borderMoon: 'rgba(24,144,255,0.2)',
+                            textSun: '#1e40af',
+                            textMoon: '#aab',
+                          })}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalSessionStart}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#FFEDED' : 'rgba(255,77,79,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(255,77,79,0.25)' : 'rgba(255,77,79,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff4d4f' }}>
-                        <CloseCircleOutlined />
-                        <span style={{ fontSize: '12px' }}>Device mismatch</span>
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalDeviceMismatch}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#FFFBEA' : 'rgba(251,140,0,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(251,140,0,0.25)' : 'rgba(251,140,0,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff9800' }}>
-                        <SwapOutlined />
-                        <span style={{ fontSize: '12px' }}>Tab switches</span>
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalTabSwitch}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F3F8FF' : 'rgba(24,144,255,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(24,144,255,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#1e40af' : '#aab' }}>
-                        <CopyOutlined />
-                        <span style={{ fontSize: '12px' }}>Copy attempts</span>
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalCopy}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F7ECFF' : 'rgba(142,36,170,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(142,36,170,0.25)' : 'rgba(142,36,170,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#6A1B9A' : '#cbb' }}>
-                        <FileTextOutlined />
-                        <span style={{ fontSize: '12px' }}>Paste attempts</span>
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalPaste}</div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Right: Activity log with pagination */}
