@@ -2745,9 +2745,6 @@ useEffect(() => {
             <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
               {index + 1}. Writing Section
             </Typography.Text>
-            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({sectionTotals.received} / {sectionTotals.total} points)
-            </Typography.Text>
           </div>
           {!isStudent ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -3104,9 +3101,6 @@ useEffect(() => {
           <div>
             <Typography.Text strong style={{ fontSize: hasAudio ? '20px' : '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
               {index + 1}. {hasAudio ? 'Speaking With Audio Section' : 'Speaking Section'}
-            </Typography.Text>
-            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({sectionTotals.received} / {sectionTotals.total} points)
             </Typography.Text>
           </div>
           {!isStudent ? (
