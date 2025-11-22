@@ -6,6 +6,7 @@ import React, {
 	useMemo,
 } from 'react';
 import { Modal, Button, InputNumber, Input, Tooltip, Dropdown } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	CheckOutlined,
@@ -56,6 +57,7 @@ const throttle = (func, limit) => {
 };
 
 const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
+	const { t } = useTranslation();
 	const [editorContent, setEditorContent] = useState([]);
 	const [dropdowns, setDropdowns] = useState([]);
     const [weight, setWeight] = useState(1);
@@ -656,7 +658,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Input field (hidden by default in compact mode)
 			const input = document.createElement('input');
 			input.type = 'text';
-			input.placeholder = 'type correct answer...';
+			input.placeholder = t('dailyChallenge.typeCorrectOption', 'Type correct option');
 			input.value = dropdown.correctAnswer || '';
 			input.className = 'dropdown-input';
 			input.maxLength = 50;
@@ -825,7 +827,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Enforce maximum dropdowns
 			const MAX_DROPDOWNS = 10;
 			if (dropdowns.length >= MAX_DROPDOWNS) {
-				spaceToast.warning(`Maximum ${MAX_DROPDOWNS} dropdowns allowed`);
+				spaceToast.warning(t('dailyChallenge.maximum10DropdownsAllowed', 'Maximum 10 dropdowns allowed'));
 				return;
 			}
 			// Walk through all child nodes
@@ -991,7 +993,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	const handleInsertLink = useCallback(() => {
 		if (!editorRef.current) return;
-		const url = prompt('Enter URL:');
+		const url = prompt(t('dailyChallenge.enterUrl', 'Enter URL:'));
 		if (url) {
 			handleFormat('createLink', url);
 		}
@@ -1200,7 +1202,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				};
 				reader.readAsDataURL(file);
 			} else if (file) {
-				console.error('Please select an image file');
+				console.error(t('dailyChallenge.pleaseSelectImageFile', 'Please select an image file'));
 			}
 			// Reset input
 			if (e.target) {
@@ -1242,7 +1244,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const handleImageAlign = useCallback(
 		(alignment) => {
 			if (!selectedImage) {
-				spaceToast.warning('Please select an image first');
+				spaceToast.warning(t('dailyChallenge.pleaseSelectImageFirst', 'Please select an image first'));
 				return;
 			}
 
@@ -1535,7 +1537,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Enforce max 600 characters (plain text length)
 			const plainText = (element.textContent || '').trim();
 			if (plainText.length > 600) {
-				spaceToast.warning('Maximum 600 characters allowed for the question');
+				spaceToast.warning(t('dailyChallenge.maximum600CharactersAllowed', 'Maximum 600 characters allowed for the question'));
 				// Revert to last valid HTML snapshot
 				if (lastValidHtmlRef.current !== '' && editorRef.current) {
 					editorRef.current.innerHTML = lastValidHtmlRef.current;
@@ -1576,7 +1578,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				if (dropdown.id !== dropdownId) return dropdown;
 				const currentOptionsCount = (dropdown.incorrectOptions || []).length;
 				if (currentOptionsCount >= 10) {
-					spaceToast.warning('Maximum 10 incorrect options allowed per dropdown. Please remove an option before adding a new one.');
+					spaceToast.warning(t('dailyChallenge.maximum10IncorrectOptionsPerDropdown', 'Maximum 10 incorrect options allowed per dropdown. Please remove an option before adding a new one.'));
 					return dropdown;
 				}
 				return {
@@ -1635,7 +1637,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		// Don't insert dropdown if cursor is inside another dropdown
 		if (isCursorInsideDropdown()) {
-			spaceToast.warning('Cannot insert dropdown inside another dropdown');
+			spaceToast.warning(t('dailyChallenge.cannotInsertDropdownInsideAnother', 'Cannot insert dropdown inside another dropdown'));
 			setShowDropdownPopup(false);
 			return;
 		}
@@ -1736,12 +1738,12 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		console.log('Dropdowns state:', dropdowns);
 
 		if (!editorText && dropdowns.length === 0) {
-			spaceToast.warning('Please enter the question text');
+			spaceToast.warning(t('dailyChallenge.pleaseEnterQuestionText', 'Please enter the question text'));
 			return;
 		}
 
 		if (dropdowns.length === 0) {
-			spaceToast.warning('Please add at least one dropdown (use __ or [])');
+			spaceToast.warning(t('dailyChallenge.pleaseAddAtLeastOneDropdown', 'Please add at least one dropdown (use __ or [])'));
 			return;
 		}
 
@@ -1762,7 +1764,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		if (hasEmptyDropdowns) {
 			spaceToast.warning(
-				'Please fill in all dropdown correct answers. Click on each dropdown chip to enter the correct answer.'
+				t('dailyChallenge.pleaseFillInAllDropdownAnswers', 'Please fill in all dropdown correct answers. Click on each dropdown chip to enter the correct answer.')
 			);
 			return;
 		}
@@ -1773,7 +1775,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return incorrectOptionsCount > 10;
 		});
 		if (dropdownWithTooManyOptions) {
-			spaceToast.warning('Maximum 10 incorrect options allowed per dropdown. Please remove excess options before saving.');
+			spaceToast.warning(t('dailyChallenge.maximum10IncorrectOptionsPerDropdown', 'Maximum 10 incorrect options allowed per dropdown. Please remove an option before adding a new one.') + ' ' + t('dailyChallenge.removeExcessOptions', 'Please remove excess options before saving.'));
 			return;
 		}
 
@@ -1796,14 +1798,14 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			
 			// Check if correct answer duplicates any incorrect option
 			if (correctAnswerText && correctAnswerText.length > 0 && incorrectTexts.includes(correctAnswerText)) {
-				spaceToast.warning('Cannot create duplicate answers in dropdown. The correct answer cannot be the same as any incorrect option.');
+				spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateAnswersDropdown', 'Cannot create duplicate answers in dropdown. The correct answer cannot be the same as any incorrect option.'));
 				return;
 			}
 			
 			// Check if there are duplicate incorrect options
 			const duplicateIncorrect = incorrectTexts.filter((text, index) => incorrectTexts.indexOf(text) !== index);
 			if (duplicateIncorrect.length > 0) {
-				spaceToast.warning('Cannot create duplicate incorrect options. Please ensure all options are unique.');
+				spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateIncorrectOptions', 'Cannot create duplicate incorrect options. Please ensure all options are unique.'));
 				return;
 			}
 		}
@@ -1839,7 +1841,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		});
 
 		if (missingIncorrectOption) {
-			spaceToast.warning('Incorrect option must be filled');
+			spaceToast.warning(t('dailyChallenge.incorrectOptionMustBeFilled', 'Incorrect option must be filled'));
 			return;
 		}
 
@@ -2457,8 +2459,8 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					/>
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
 						{questionData
-							? 'Edit Dropdown Question'
-							: 'Create Dropdown Question'}
+							? t('dailyChallenge.editDropdownQuestion', 'Edit Dropdown Question')
+							: t('dailyChallenge.createDropdownQuestion', 'Create Dropdown Question')}
 					</span>
 				</div>
 			}
@@ -2505,45 +2507,13 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							borderRadius: '8px',
 							fontWeight: 500,
 						}}>
-						💡 Tips: Click{' '}
-						<span
-							style={{
-								background: 'rgba(24, 144, 255, 0.2)',
-								padding: '2px 8px',
-								borderRadius: '4px',
-								fontWeight: 600,
-								color: '#1890ff',
-							}}>
-							+ Dropdown
-						</span>{' '}
-						button at cursor position to insert dropdown • Or type{' '}
-						<code
-							style={{
-								background: 'rgba(24, 144, 255, 0.2)',
-								padding: '2px 8px',
-								borderRadius: '4px',
-								fontWeight: 600,
-								color: '#1890ff',
-							}}>
-							__
-						</code>{' '}
-						or{' '}
-						<code
-							style={{
-								background: 'rgba(24, 144, 255, 0.2)',
-								padding: '2px 8px',
-								borderRadius: '4px',
-								fontWeight: 600,
-								color: '#1890ff',
-							}}>
-							[]
-						</code>
+						{t('dailyChallenge.tipsClickDropdownButton', '💡 Tips: Click + Dropdown button at cursor position to insert dropdown • Or type __ or []')}
 					</div>
 
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>{t('dailyChallenge.weight', 'Weight')}</span>
 							{pointsMenu}
 						</div>
 
@@ -2563,7 +2533,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								color: '#000000',
 								boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
 							}}>
-							<SaveOutlined /> Save Question
+							<SaveOutlined /> {t('common.save', 'Save')} {t('dailyChallenge.question', 'Question')}
 						</Button>
 					</div>
 				</div>
@@ -3021,7 +2991,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								userSelect: 'text',
 								WebkitUserSelect: 'text',
 							}}
-							data-placeholder='Type your question here... The + Dropdown button will follow your cursor'
+							data-placeholder={t('dailyChallenge.typeYourQuestionHere', 'Type your question here...') + ' ' + t('dailyChallenge.theDropdownButtonWillFollow', 'The + Dropdown button will follow your cursor')}
 						/>
 
 							{/* Character Counter for Question (600 max) */}
@@ -3142,7 +3112,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													color: '#666',
 													marginBottom: '6px',
 												}}>
-												✓ Correct option
+												✓ {t('dailyChallenge.correctOption', 'Correct option')}
 											</div>
 											<div
 												style={{
@@ -3159,7 +3129,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 														)
 													}
 										maxLength={50}
-													placeholder='Type correct option'
+													placeholder={t('dailyChallenge.typeCorrectOption', 'Type correct option')}
 													style={{
 														padding: '10px 12px',
 														background: `${dropdown.color}10`,
@@ -3196,7 +3166,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													alignItems: 'center',
 													gap: '6px',
 												}}>
-												✗ Incorrect options
+												✗ {t('dailyChallenge.incorrectOptions', 'Incorrect options')}
 												<span
 													style={{
 														width: '16px',
@@ -3241,7 +3211,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 																)
 															}
 																maxLength={50}
-															placeholder={`Option ${optIndex + 1}`}
+															placeholder={t('dailyChallenge.typeIncorrectOption', 'Type incorrect option')}
 															style={{
 																flex: 1,
 																border: 'none',

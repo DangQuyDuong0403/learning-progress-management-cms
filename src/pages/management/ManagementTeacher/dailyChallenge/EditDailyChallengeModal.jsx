@@ -21,14 +21,6 @@ import { dailyChallengeApi } from "../../../../apis/apis";
 const { TextArea } = Input;
 const { Option } = Select;
 
-const questionTypeOptions = [
-  { value: "GV", label: "Grammar & Vocabulary" },
-  { value: "RE", label: "Reading" },
-  { value: "LI", label: "Listening" },
-  { value: "WR", label: "Writing" },
-  { value: "SP", label: "Speaking" },
-];
-
 const EditDailyChallengeModal = ({
   visible,
   onCancel,
@@ -48,6 +40,14 @@ const EditDailyChallengeModal = ({
     translateOnScreen: false,
   });
   const [challengeStatus, setChallengeStatus] = useState(null);
+
+  const questionTypeOptions = [
+    { value: "GV", label: t('dailyChallenge.typeNames.GV', 'Grammar & Vocabulary') },
+    { value: "RE", label: t('dailyChallenge.typeNames.RE', 'Reading') },
+    { value: "LI", label: t('dailyChallenge.typeNames.LI', 'Listening') },
+    { value: "WR", label: t('dailyChallenge.typeNames.WR', 'Writing') },
+    { value: "SP", label: t('dailyChallenge.typeNames.SP', 'Speaking') },
+  ];
 
 
   
@@ -282,7 +282,7 @@ const EditDailyChallengeModal = ({
         <Card 
           title={
             <Typography.Title level={5} style={{ margin: 0, fontSize: '18px', fontWeight: 600, textAlign: 'center' }}>
-              {t('dailyChallenge.basicInformation') || 'Basic Information'}
+              {t('dailyChallenge.basicInformation', 'Basic Information')}
             </Typography.Title>
           }
           style={{ marginBottom: '24px' }}
@@ -496,7 +496,7 @@ const EditDailyChallengeModal = ({
         <Card 
           title={
             <Typography.Title level={5} style={{ margin: 0, fontSize: '18px', fontWeight: 600, textAlign: 'center' }}>
-              {t('dailyChallenge.challengeSettings') || 'Challenge Settings'}
+              {t('dailyChallenge.challengeSettings', 'Challenge Settings')}
             </Typography.Title>
           }
           style={{ marginBottom: '24px' }}
@@ -507,7 +507,7 @@ const EditDailyChallengeModal = ({
                 <div style={{ flex: 1, paddingRight: '8px' }}>
                   <Typography.Text strong style={{ fontSize: '13px' }}>{t('dailyChallenge.hasAntiCheat')}</Typography.Text>
                   <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                    {t('dailyChallenge.hasAntiCheatDesc') || 'Enable anti-cheat features for this challenge'}
+                    {t('dailyChallenge.hasAntiCheatDesc', 'Enable anti-cheat features for this challenge')}
                   </div>
                 </div>
                 <Form.Item name="hasAntiCheat" valuePropName="checked" noStyle>
@@ -520,7 +520,7 @@ const EditDailyChallengeModal = ({
                 <div style={{ flex: 1, paddingRight: '8px' }}>
                   <Typography.Text strong style={{ fontSize: '13px' }}>{t('dailyChallenge.shuffleQuestion')}</Typography.Text>
                   <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                    {t('dailyChallenge.shuffleQuestionDesc') || 'Randomize question order for each student'}
+                    {t('dailyChallenge.shuffleQuestionDesc', 'Randomize question order for each student')}
                   </div>
                 </div>
                 <Form.Item name="shuffleQuestion" valuePropName="checked" noStyle>
@@ -533,7 +533,7 @@ const EditDailyChallengeModal = ({
                 <div style={{ flex: 1, paddingRight: '8px' }}>
                   <Typography.Text strong style={{ fontSize: '13px' }}>{t('dailyChallenge.translateOnScreen')}</Typography.Text>
                   <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                    {t('dailyChallenge.translateOnScreenDesc') || 'Enable on-screen translation feature'}
+                    {t('dailyChallenge.translateOnScreenDesc', 'Enable on-screen translation feature')}
                   </div>
                 </div>
                 <Form.Item name="translateOnScreen" valuePropName="checked" noStyle>
@@ -548,7 +548,7 @@ const EditDailyChallengeModal = ({
         <Card 
           title={
             <Typography.Title level={5} style={{ margin: 0, fontSize: '18px', fontWeight: 600, textAlign: 'center' }}>
-              {t('dailyChallenge.scheduleSettings') || 'Schedule Settings'}
+              {t('dailyChallenge.scheduleSettings', 'Schedule Settings')}
             </Typography.Title>
           }
         >
@@ -578,7 +578,7 @@ const EditDailyChallengeModal = ({
                       if (!value || !endDate || !value.isAfter(endDate)) {
                         return Promise.resolve();
                       }
-                      return Promise.reject(new Error(t('dailyChallenge.startDateMustBeBeforeEndDate') || 'Start date must be on or before end date'));
+                      return Promise.reject(new Error(t('dailyChallenge.startDateMustBeBeforeEndDate', 'Start date must be on or before end date')));
                     },
                   }),
                 ]}>
@@ -619,7 +619,7 @@ const EditDailyChallengeModal = ({
                       if (!value || !startDate || !value.isBefore(startDate)) {
                         return Promise.resolve();
                       }
-                      return Promise.reject(new Error(t('dailyChallenge.endDateMustBeAfterStartDate') || 'End date must be on or after start date'));
+                      return Promise.reject(new Error(t('dailyChallenge.endDateMustBeAfterStartDate', 'End date must be on or after start date')));
                     },
                   }),
                 ]}>
@@ -645,7 +645,7 @@ const EditDailyChallengeModal = ({
             textAlign: 'center',
             padding: '10px 0'
           }}>
-            {t('dailyChallenge.confirmExamMode') || 'Confirm Exam Mode Settings'}
+            {t('dailyChallenge.confirmExamMode', 'Confirm Exam Mode Settings')}
           </div>
         }
         open={examConfirmVisible}
@@ -658,43 +658,43 @@ const EditDailyChallengeModal = ({
           setIsButtonDisabled(false);
           setIsUpdating(false);
         }}
-        okText={t('common.confirm') || 'Confirm'}
-        cancelText={t('common.cancel') || 'Cancel'}
+        okText={t('common.confirm', 'Confirm')}
+        cancelText={t('common.cancel', 'Cancel')}
         width={560}
         centered
       >
         <div style={{ padding: '8px 4px' }}>
           <Typography.Paragraph style={{ marginBottom: 12, textAlign: 'center' }}>
-            {t('dailyChallenge.examWarning') || 'You selected Exam Mode. Please verify the following settings:'}
+            {t('dailyChallenge.examWarning', 'You selected Exam Mode. Please verify the following settings:')}
           </Typography.Paragraph>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Card size="small">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>{t('dailyChallenge.shuffleQuestion') || 'Shuffle Questions'}</Typography.Text>
+                <Typography.Text strong>{t('dailyChallenge.shuffleQuestions', 'Shuffle Questions')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: examCheck.shuffleQuestion ? '#52c41a' : '#ff4d4f' }}>
-                  {examCheck.shuffleQuestion ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  {examCheck.shuffleQuestion ? t('common.on', 'ON') : t('common.off', 'OFF')}
                 </span>
               </div>
             </Card>
             <Card size="small">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>{t('dailyChallenge.hasAntiCheat') || 'Anti-Cheat Screen'}</Typography.Text>
+                <Typography.Text strong>{t('dailyChallenge.antiCheatScreen', 'Anti-Cheat Screen')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: examCheck.hasAntiCheat ? '#52c41a' : '#ff4d4f' }}>
-                  {examCheck.hasAntiCheat ? (t('common.on') || 'ON') : (t('common.off') || 'OFF')}
+                  {examCheck.hasAntiCheat ? t('common.on', 'ON') : t('common.off', 'OFF')}
                 </span>
               </div>
             </Card>
             <Card size="small" style={{ gridColumn: '1 / span 2' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text strong>{t('dailyChallenge.translateOnScreen') || 'Translate On Screen'}</Typography.Text>
+                <Typography.Text strong>{t('dailyChallenge.translateOnScreen', 'Translate On Screen')}</Typography.Text>
                 <span style={{ fontWeight: 700, color: !examCheck.translateOnScreen ? '#52c41a' : '#ff4d4f' }}>
-                  {!examCheck.translateOnScreen ? (t('common.off') || 'OFF') : (t('common.on') || 'ON')}
+                  {!examCheck.translateOnScreen ? t('common.off', 'OFF') : t('common.on', 'ON')}
                 </span>
               </div>
             </Card>
           </div>
           <Typography.Paragraph style={{ marginTop: 12, color: '#faad14', fontWeight: 600, textAlign: 'center' }}>
-            {t('dailyChallenge.examHint') || 'For exam mode, it is recommended: Shuffle ON, Anti-cheat ON, Translate OFF.'}
+            {t('dailyChallenge.examHint', 'For exam mode, it is recommended: Shuffle ON, Anti-cheat ON, Translate OFF.')}
           </Typography.Paragraph>
         </div>
       </Modal>

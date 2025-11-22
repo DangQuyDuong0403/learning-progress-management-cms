@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Modal, Button, InputNumber, Tooltip } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	CheckOutlined,
@@ -11,6 +12,7 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
 
 const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving = false }) => {
+	const { t } = useTranslation();
 	
 	// Custom upload adapter for CKEditor to convert images to base64
 	function CustomUploadAdapterPlugin(editor) {
@@ -63,7 +65,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 
 	// Memoize CKEditor config to prevent re-creation on each render
 	const questionEditorConfig = useMemo(() => ({
-		placeholder: 'Enter your question here...',
+		placeholder: t('dailyChallenge.enterYourQuestionHere', 'Enter your question here...'),
 		extraPlugins: [CustomUploadAdapterPlugin],
 		toolbar: {
 			items: [
@@ -88,10 +90,10 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 		},
 		heading: {
 			options: [
-				{ model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-				{ model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-				{ model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-				{ model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+				{ model: 'paragraph', title: t('dailyChallenge.paragraph', 'Paragraph'), class: 'ck-heading_paragraph' },
+				{ model: 'heading1', view: 'h1', title: t('dailyChallenge.heading1', 'Heading 1'), class: 'ck-heading_heading1' },
+				{ model: 'heading2', view: 'h2', title: t('dailyChallenge.heading2', 'Heading 2'), class: 'ck-heading_heading2' },
+				{ model: 'heading3', view: 'h3', title: t('dailyChallenge.heading3', 'Heading 3'), class: 'ck-heading_heading3' }
 			]
 		},
 		table: {
@@ -111,7 +113,7 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 				'alignRight'
 			]
 		}
-	}), []);
+	}), [t]);
 
 	// Load question data when editing
 	useEffect(() => {
@@ -269,24 +271,24 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 const handleSave = async () => {
 		// Validate question content: allow text or image-only
 		if (!hasContent(editorData)) {
-			spaceToast.warning('Please add question content (text or image)');
+			spaceToast.warning(t('dailyChallenge.pleaseAddQuestionContent', 'Please add question content (text or image)'));
 			return;
 		}
 
 		if (!correctAnswer) {
-			spaceToast.warning('Please select the correct answer (True or False)');
+			spaceToast.warning(t('dailyChallenge.pleaseSelectCorrectAnswer', 'Please select the correct answer (True or False)'));
 			return;
 		}
 
 		const newQuestionData = {
 			id: questionData?.id || Date.now(),
 			type: 'TRUE_OR_FALSE',
-			title: 'True or false',
+			title: t('dailyChallenge.trueFalse', 'True or false'),
 			question: editorData,
             weight: weight,
 			options: [
-				{ id: 1, text: 'True', isCorrect: correctAnswer === 'True', key: 'A' },
-				{ id: 2, text: 'False', isCorrect: correctAnswer === 'False', key: 'B' },
+				{ id: 1, text: t('dailyChallenge.true', 'True'), isCorrect: correctAnswer === 'True', key: 'A' },
+				{ id: 2, text: t('dailyChallenge.false', 'False'), isCorrect: correctAnswer === 'False', key: 'B' },
 			],
 			correctAnswer: correctAnswer,
 		};
@@ -337,7 +339,7 @@ const handleSave = async () => {
 						animation: 'pulse 2s infinite'
 					}} />
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						{questionData ? 'Edit True or False Question' : 'Create True or False Question'}
+						{questionData ? t('dailyChallenge.editTrueFalseQuestion', 'Edit True/False Question') : t('dailyChallenge.createTrueFalseQuestion', 'Create True/False Question')}
 					</span>
 				</div>
 			}
@@ -373,7 +375,7 @@ const handleSave = async () => {
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>{t('dailyChallenge.weight', 'Weight')}</span>
 							{pointsMenu}
 						</div>
 
@@ -397,7 +399,7 @@ const handleSave = async () => {
 								boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
 							}}
 						>
-							<SaveOutlined /> Save Question
+							<SaveOutlined /> {t('common.save', 'Save')} {t('dailyChallenge.question', 'Question')}
 						</Button>
 					</div>
 				</div>
@@ -593,7 +595,7 @@ const handleSave = async () => {
 							}}
 						>
 							{/* Correct Answer Badge */}
-							<Tooltip title={correctAnswer === 'True' ? "Correct Answer" : "Mark as Correct"}>
+							<Tooltip title={correctAnswer === 'True' ? t('dailyChallenge.correctAnswer', 'Correct Answer') : t('dailyChallenge.markAsCorrect', 'Mark as Correct')}>
 								<div
 									style={{
 										position: 'absolute',
@@ -612,7 +614,7 @@ const handleSave = async () => {
 									}}
 								>
 									<CheckOutlined />
-									{correctAnswer === 'True' ? 'Correct' : 'Mark'}
+									{correctAnswer === 'True' ? t('dailyChallenge.correct', 'Correct') : t('dailyChallenge.mark', 'Mark')}
 								</div>
 							</Tooltip>
 
@@ -672,7 +674,7 @@ const handleSave = async () => {
 							}}
 						>
 							{/* Correct Answer Badge */}
-							<Tooltip title={correctAnswer === 'False' ? "Correct Answer" : "Mark as Correct"}>
+							<Tooltip title={correctAnswer === 'False' ? t('dailyChallenge.correctAnswer', 'Correct Answer') : t('dailyChallenge.markAsCorrect', 'Mark as Correct')}>
 								<div
 									style={{
 										position: 'absolute',
@@ -691,7 +693,7 @@ const handleSave = async () => {
 									}}
 								>
 									<CheckOutlined />
-									{correctAnswer === 'False' ? 'Correct' : 'Mark'}
+									{correctAnswer === 'False' ? t('dailyChallenge.correct', 'Correct') : t('dailyChallenge.mark', 'Mark')}
 								</div>
 							</Tooltip>
 

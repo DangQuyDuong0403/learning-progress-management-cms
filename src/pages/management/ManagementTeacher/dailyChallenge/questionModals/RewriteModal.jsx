@@ -5,6 +5,7 @@ import {
   InputNumber,
   Tooltip,
 } from "antd";
+import { useTranslation } from 'react-i18next';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import { 
   PlusOutlined, 
@@ -18,7 +19,7 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
 
 // Memoized Answer Card to minimize re-renders while typing
-const AnswerCard = memo(({ answer, index, answerEditorConfig, getPlainText, onRemove, onChange, answerEditorsRef, canDelete, onHover }) => {
+const AnswerCard = memo(({ answer, index, answerEditorConfig, getPlainText, onRemove, onChange, answerEditorsRef, canDelete, onHover, t }) => {
   const [isHovered, setIsHovered] = useState(false);
   return (
     <div
@@ -53,7 +54,7 @@ const AnswerCard = memo(({ answer, index, answerEditorConfig, getPlainText, onRe
       {/* Delete Button */}
       <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
         {canDelete && (
-          <Tooltip title="Delete Answer">
+          <Tooltip title={t('dailyChallenge.deleteAnswer', 'Delete Answer')}>
             <Button
               size="small"
               danger
@@ -90,6 +91,7 @@ const AnswerCard = memo(({ answer, index, answerEditorConfig, getPlainText, onRe
 }, (prev, next) => prev.answer === next.answer && prev.index === next.index);
 
 const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
+  const { t } = useTranslation();
   
   // Custom upload adapter for CKEditor to convert images to base64
   function CustomUploadAdapterPlugin(editor) {
@@ -144,7 +146,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   // Memoize CKEditor config for question editor
   const questionEditorConfig = useMemo(() => ({
-    placeholder: 'Enter your question here...',
+    placeholder: t('dailyChallenge.enterYourQuestionHere', 'Enter your question here...'),
     extraPlugins: [CustomUploadAdapterPlugin],
     toolbar: {
       items: [
@@ -169,10 +171,10 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     },
     heading: {
       options: [
-        { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-        { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-        { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-        { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+        { model: 'paragraph', title: t('dailyChallenge.paragraph', 'Paragraph'), class: 'ck-heading_paragraph' },
+        { model: 'heading1', view: 'h1', title: t('dailyChallenge.heading1', 'Heading 1'), class: 'ck-heading_heading1' },
+        { model: 'heading2', view: 'h2', title: t('dailyChallenge.heading2', 'Heading 2'), class: 'ck-heading_heading2' },
+        { model: 'heading3', view: 'h3', title: t('dailyChallenge.heading3', 'Heading 3'), class: 'ck-heading_heading3' }
       ]
     },
     table: {
@@ -191,12 +193,12 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
         'alignLeft',
         'alignRight'
       ]
-    }
-  }), []);
+		}
+	}), [t]);
 
   // Memoize answer editor config (simpler toolbar)
   const answerEditorConfig = useMemo(() => ({
-    placeholder: 'Type your answer here...',
+    placeholder: t('dailyChallenge.typeYourAnswerHere', 'Type your answer here...'),
     extraPlugins: [CustomUploadAdapterPlugin],
     toolbar: {
       items: [
@@ -228,8 +230,8 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
         'alignLeft',
         'alignRight'
       ]
-    }
-  }), []);
+		}
+	}), [t]);
 
   // Initialize from questionData
   useEffect(() => {
@@ -299,7 +301,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     editorChangeTimeoutRef.current = setTimeout(() => {
       // Enforce max 600 characters (plain text length)
       if (plainText.length > 600) {
-        spaceToast.warning('Maximum 600 characters allowed for the question');
+        spaceToast.warning(t('dailyChallenge.maximum600CharactersAllowed', 'Maximum 600 characters allowed for the question'));
         // Revert to last valid HTML snapshot
         if (lastValidQuestionDataRef.current !== '' && editorRef.current) {
           editorRef.current.setData(lastValidQuestionDataRef.current);
@@ -335,7 +337,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       const data = editor.getData();
       const plainText = getPlainText(data);
       if (plainText.length > 200) {
-        spaceToast.warning('Maximum 200 characters allowed');
+        spaceToast.warning(t('dailyChallenge.maximum200CharactersAllowed', 'Maximum 200 characters allowed'));
         const currentAnswer = correctAnswers.find((ans) => ans.id === answerId);
         const previousHtml = currentAnswer ? currentAnswer.answer : '';
         if (answerEditorsRef.current[answerId]) {
@@ -371,7 +373,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     setCorrectAnswers(prevAnswers => {
       // Limit to maximum of 8 answers
       if (prevAnswers.length >= 8) {
-        spaceToast.warning('Maximum 8 answers allowed');
+        spaceToast.warning(t('dailyChallenge.maximum8AnswersAllowed', 'Maximum 8 answers allowed'));
         return prevAnswers;
       }
       const newId = Math.max(...prevAnswers.map(ans => ans.id)) + 1;
@@ -386,7 +388,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       if (prevAnswers.length > 1) {
         return prevAnswers.filter(ans => ans.id !== answerId);
     } else {
-      spaceToast.warning("Question must have at least one correct answer");
+      spaceToast.warning(t('dailyChallenge.questionMustHaveAtLeastOneCorrectAnswer', 'Question must have at least one correct answer'));
         return prevAnswers;
       }
     });
@@ -396,27 +398,27 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     // Validate editor data
     const questionPlainText = getPlainText(editorData);
     if (!questionPlainText || !questionPlainText.trim()) {
-      spaceToast.warning('Please enter the question text');
+      spaceToast.warning(t('dailyChallenge.pleaseEnterQuestionTextRewrite', 'Please enter the question text'));
       return;
     }
 
     // Validate question length (plain text <= 600)
     if (questionPlainText.length > 600) {
-      spaceToast.warning('Maximum 600 characters allowed for the question');
+      spaceToast.warning(t('dailyChallenge.maximum600CharactersAllowed', 'Maximum 600 characters allowed for the question'));
       return;
     }
 
     // Validate answer length (plain text <= 200) and non-empty
     const tooLong = correctAnswers.some(ans => getPlainText(ans.answer).length > 200);
     if (tooLong) {
-      spaceToast.error('Each answer must be 200 characters or fewer');
+      spaceToast.error(t('dailyChallenge.eachAnswerMustBe200Characters', 'Each answer must be 200 characters or fewer'));
       return;
     }
 
     // Check empty answers
     const hasEmptyAnswers = correctAnswers.some(ans => !getPlainText(ans.answer));
     if (hasEmptyAnswers) {
-      spaceToast.warning('Please fill in all correct answers');
+      spaceToast.warning(t('dailyChallenge.pleaseFillInAllCorrectAnswers', 'Please fill in all correct answers'));
       return;
     }
 
@@ -424,7 +426,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const answerTexts = correctAnswers.map(ans => getPlainText(ans.answer).toLowerCase().trim());
     const duplicates = answerTexts.filter((text, index) => text && answerTexts.indexOf(text) !== index);
     if (duplicates.length > 0) {
-      spaceToast.warning('Cannot create duplicate answers. Please ensure all answers are unique.');
+      spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateAnswers', 'Cannot create duplicate answers. Please ensure all answers are unique.'));
       return;
     }
 
@@ -479,7 +481,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
         handleCancel();
       }
     } catch (e) {
-      spaceToast.error('Failed to save question');
+      spaceToast.error(t('dailyChallenge.failedToSaveQuestion', 'Failed to save question'));
     } finally {
       setSaving(false);
     }
@@ -520,7 +522,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
             animation: 'pulse 2s infinite'
           }} />
           <span style={{ fontSize: '24px', fontWeight: 600 }}>
-						{questionData ? 'Edit Re-write Question' : 'Create Re-write Question'}
+						{questionData ? t('dailyChallenge.editRewriteQuestion', 'Edit Re-write Question') : t('dailyChallenge.createRewriteQuestion', 'Create Re-write Question')}
           </span>
         </div>
       }
@@ -561,13 +563,13 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
             borderRadius: '8px',
             fontWeight: 500
           }}>
-            💡 Tips: Create the question on the left • Add multiple correct answers on the right
+            {t('dailyChallenge.tipsCreateQuestionOnLeft', '💡 Tips: Create the question on the left • Add multiple correct answers on the right')}
         </div>
 
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>{t('dailyChallenge.weight', 'Weight')}</span>
             {pointsMenu}
           </div>
 
@@ -588,7 +590,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
                 boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
               }}
             >
-              <SaveOutlined /> Save Question
+              <SaveOutlined /> {t('common.save', 'Save')} {t('dailyChallenge.question', 'Question')}
           </Button>
           </div>
         </div>
@@ -708,7 +710,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
             fontWeight: 600,
             color: '#1890ff'
           }}>
-            Correct Answers ({correctAnswers.length})
+            {t('dailyChallenge.correctAnswers', 'Correct Answers')} ({correctAnswers.length})
           </span>
           <Button
             icon={<PlusOutlined />}
@@ -727,7 +729,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
               opacity: 0.9
               }}
             >
-              Add Answer
+              {t('dailyChallenge.addAnswer', 'Add Answer')}
           </Button>
         </div>
 
@@ -748,6 +750,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
               answerEditorsRef={answerEditorsRef}
               canDelete={correctAnswers.length > 1}
               onHover={(id) => setHoveredAnswer(id)}
+              t={t}
             />
           ))}
         </div>

@@ -261,7 +261,7 @@ const DailyChallengeSubmissionDetail = () => {
       const sec = locateSection(sectionId);
       const submissionQuestionId = getSubmissionQuestionIdForSection(sectionId);
       if (!submissionQuestionId) {
-        spaceToast.error('Không tìm thấy submissionQuestionId cho section này');
+        spaceToast.error(t('dailyChallenge.submissionQuestionIdNotFound', 'Submission question ID not found for this section'));
         return;
       }
       // Use challengeId from submissionData, fallback to id from URL params
@@ -350,7 +350,7 @@ const DailyChallengeSubmissionDetail = () => {
       }
       const submissionQuestionId = getSubmissionQuestionIdForSection(sectionIdParam);
       if (!submissionQuestionId) {
-        spaceToast.error('Không tìm thấy submissionQuestionId cho section này');
+        spaceToast.error(t('dailyChallenge.submissionQuestionIdNotFound', 'Submission question ID not found for this section'));
         return;
       }
       // Use challengeId from submissionData, fallback to id from URL params (component-level id from useParams)
@@ -906,7 +906,7 @@ const DailyChallengeSubmissionDetail = () => {
 
   const fetchSubmissionDetail = useCallback(async () => {
     if (!submissionId) {
-      spaceToast.error('Submission ID is required');
+      spaceToast.error(t('dailyChallenge.submissionIdRequired', 'Submission ID is required'));
       setLoading(false);
       return;
     }
@@ -1588,10 +1588,10 @@ const DailyChallengeSubmissionDetail = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching submission detail:', error);
-      spaceToast.error(error.response?.data?.error || error.response?.data?.message || 'Error loading submission detail');
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || t('dailyChallenge.errorLoadingSubmissionDetail', 'Error loading submission detail'));
       setLoading(false);
     }
-  }, [submissionId, id]);
+  }, [submissionId, id, t]);
 
   useEffect(() => {
     fetchSubmissionDetail();
@@ -1826,7 +1826,7 @@ useEffect(() => {
 
     return (
       <ThemedLayout customHeader={loadingHeader}>
-        <LoadingWithEffect loading={loading} message="Loading submission details..." />
+        <LoadingWithEffect loading={loading} message={t('dailyChallenge.loadingSubmissionDetails', 'Loading submission details...')} />
       </ThemedLayout>
     );
   }
@@ -1848,7 +1848,7 @@ useEffect(() => {
   // Build grading payload and save
   const handleSaveGrading = async () => {
     if (!submissionData?.id && !submissionId) {
-      spaceToast.error('Missing submission ID');
+      spaceToast.error(t('dailyChallenge.missingSubmissionId', 'Missing submission ID'));
       return;
     }
     const subId = submissionId || submissionData?.id;
@@ -1869,7 +1869,7 @@ useEffect(() => {
       await fetchSubmissionDetail();
     } catch (err) {
       console.error('Save grading failed:', err);
-      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed to save grading');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || t('dailyChallenge.failedToSaveGrading', 'Failed to save grading'));
     } finally {
       setSavingGrading(false);
     }
@@ -1896,7 +1896,7 @@ useEffect(() => {
   const handleSaveScore = () => {
     const scoreValue = parseFloat(scoreModal.score);
     if (isNaN(scoreValue) || scoreValue < 0 || scoreValue > 10) {
-      spaceToast.error('Score must be between 0 and 10');
+      spaceToast.error(t('dailyChallenge.scoreMustBeBetween0And10', 'Score must be between 0 and 10'));
       return;
     }
     
@@ -1926,7 +1926,7 @@ useEffect(() => {
       // No toast; header Save will show BE message
     } catch (error) {
       console.error('Error saving teacher feedback:', error);
-      spaceToast.error(error.response?.data?.error || error.response?.data?.message || 'Failed to save teacher feedback');
+      spaceToast.error(error.response?.data?.error || error.response?.data?.message || t('dailyChallenge.failedToSaveTeacherFeedback', 'Failed to save teacher feedback'));
     } finally {
       setSavingFeedback(false);
     }
@@ -1953,7 +1953,7 @@ useEffect(() => {
   const handleSaveOverallFeedback = async () => {
     const subId = submissionId || submissionData?.id;
     if (!subId) {
-      spaceToast.error('Missing submission ID');
+      spaceToast.error(t('dailyChallenge.missingSubmissionId', 'Missing submission ID'));
       return;
     }
     try {
@@ -1963,7 +1963,7 @@ useEffect(() => {
       // Validate Raw Score (0-10)
       const rawScoreValue = finalScoreDraft ? parseFloat(finalScoreDraft) : 0;
       if (isNaN(rawScoreValue) || rawScoreValue < 0 || rawScoreValue > 10) {
-        spaceToast.error('Raw score must be  0 and 10');
+        spaceToast.error(t('dailyChallenge.rawScoreMustBeBetween0And10', 'Raw score must be between 0 and 10'));
         setSavingFeedback(false);
         return;
       }
@@ -1973,7 +1973,7 @@ useEffect(() => {
       if (isPenaltyEnabled) {
         const penaltyPercent = penaltyAppliedDraft ? parseFloat(penaltyAppliedDraft) : 0;
         if (isNaN(penaltyPercent) || penaltyPercent < 0 || penaltyPercent > 100) {
-          spaceToast.error('Penalty percentage must be between 0 and 100');
+          spaceToast.error(t('dailyChallenge.penaltyPercentageMustBeBetween0And100', 'Penalty percentage must be between 0 and 100'));
         setSavingFeedback(false);
         return;
         }
@@ -1995,7 +1995,7 @@ useEffect(() => {
       await fetchSubmissionDetail();
     } catch (err) {
       console.error('Save overall feedback failed:', err);
-      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed to save feedback');
+      spaceToast.error(err?.response?.data?.error || err?.response?.data?.message || t('dailyChallenge.failedToSaveFeedback', 'Failed to save feedback'));
     } finally {
       setSavingFeedback(false);
     }
@@ -2745,9 +2745,6 @@ useEffect(() => {
             <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
               {index + 1}. Writing Section
             </Typography.Text>
-            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({sectionTotals.received} / {sectionTotals.total} points)
-            </Typography.Text>
           </div>
           {!isStudent ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2758,7 +2755,7 @@ useEffect(() => {
                     onClick={() => handleOpenAddFeedback(section.id, 'section')}
                     style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
                   >
-                    Add Score/Feedback
+                    {t('dailyChallenge.addScoreFeedback', 'Add Score/Feedback')}
                   </Button>
                 </>
               ) : (
@@ -3105,9 +3102,6 @@ useEffect(() => {
             <Typography.Text strong style={{ fontSize: hasAudio ? '20px' : '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
               {index + 1}. {hasAudio ? 'Speaking With Audio Section' : 'Speaking Section'}
             </Typography.Text>
-            <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-              ({sectionTotals.received} / {sectionTotals.total} points)
-            </Typography.Text>
           </div>
           {!isStudent ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -3122,7 +3116,7 @@ useEffect(() => {
                       padding: '0 12px'
                     }}
                   >
-                    Add Score/Feedback
+                    {t('dailyChallenge.addScoreFeedback', 'Add Score/Feedback')}
                   </Button>
                 </>
               ) : (
@@ -3344,7 +3338,7 @@ useEffect(() => {
           {/* Right Section - Recording Area */}
           <div style={{ flex: '1', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, padding: hasAudio ? '24px' : '20px', textAlign: hasAudio ? 'center' : 'left' }}>
             <Typography.Text style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', display: 'block' }}>
-              {hasAudio ? (audioUrl ? 'Student Recorded Audio:' : 'Record Your Response:') : "Student's Recording:"}
+              {hasAudio ? (audioUrl ? t('dailyChallenge.studentRecordedAudio', 'Student Recorded Audio:') : t('dailyChallenge.recordYourResponse', 'Record Your Response:')) : t('dailyChallenge.studentsRecording', "Student's Recording:")}
             </Typography.Text>
             {audioUrl ? (
               <div>
@@ -4678,7 +4672,7 @@ useEffect(() => {
                 {(() => {
                   const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
                   const hasScore = submissionData?.submission?.score != null && submissionData?.submission?.score !== undefined;
-                  return (hasFeedback || hasScore) ? 'Edit Grading' : 'Finalize Grading';
+                  return (hasFeedback || hasScore) ? t('dailyChallenge.editGrading', 'Edit Grading') : t('dailyChallenge.finalizeGrading', 'Finalize Grading');
                 })()}
             </Button>
           </div>
@@ -4854,7 +4848,7 @@ useEffect(() => {
                             }
                           }}
                         >
-                          Info
+                          {t('dailyChallenge.info', 'Info')}
                         </button>
                         <button
                           onClick={() => setActiveTab('questions')}
@@ -4896,7 +4890,7 @@ useEffect(() => {
                             }
                           }}
                         >
-                          Questions
+                          {t('dailyChallenge.questions', 'Questions')}
                         </button>
                       </div>
                     </div>
@@ -4956,7 +4950,7 @@ useEffect(() => {
                           userSelect: 'none'
                         }}
                       >
-                        Performance
+                        {t('dailyChallenge.performance', 'Performance')}
                       </Typography.Title>
                       {isPerformanceCollapsed ? (
                         <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
@@ -5038,7 +5032,7 @@ useEffect(() => {
                                         fontWeight: 400
                                       }}
                                     >
-                                      Score
+                                      {t('dailyChallenge.score', 'Score')}
                                     </Typography.Text>
                                   </>
                                 ) : (
@@ -5075,7 +5069,7 @@ useEffect(() => {
                                         fontWeight: 400
                                       }}
                                     >
-                                      Score
+                                      {t('dailyChallenge.score', 'Score')}
                                     </Typography.Text>
                                   </>
                                 );
@@ -5117,7 +5111,7 @@ useEffect(() => {
                             {/* Total Weight - separated from other items */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                               <Typography.Text style={{ fontSize: '16px', fontWeight: 600, color: '#2563EB' }}>
-                                Total Weight
+                                {t('dailyChallenge.totalWeight', 'Total Weight')}
                               </Typography.Text>
                               <Typography.Text style={{ fontSize: '16px', fontWeight: 600, color: theme === 'sun' ? '#111827' : '#e2e8f0' }}>
                                 {(() => {
@@ -5134,22 +5128,22 @@ useEffect(() => {
                               // For other challenge types: show full breakdown
                               const baseItems = [
                                 {
-                                  label: 'Total Questions',
+                                  label: t('dailyChallenge.totalQuestions', 'Total Questions'),
                                   value: submissionData.challenge?.totalQuestions != null ? submissionData.challenge.totalQuestions : '-',
                                   color: '#f97316'
                                 },
                                 {
-                                  label: 'Correct',
+                                  label: t('dailyChallenge.correct', 'Correct'),
                                   value: submission.correctCount != null ? submission.correctCount : '-',
                                   color: '#22c55e'
                                 },
                                 {
-                                  label: 'Incorrect',
+                                  label: t('dailyChallenge.incorrect', 'Incorrect'),
                                   value: submission.incorrectCount != null ? submission.incorrectCount : '-',
                                   color: '#ef4444'
                                 },
                                 {
-                                  label: 'Unanswered',
+                                  label: t('dailyChallenge.unanswered', 'Unanswered'),
                                   value: submission.unansweredCount != null ? submission.unansweredCount : '-',
                                   color: '#9ca3af'
                                 }
@@ -5157,7 +5151,7 @@ useEffect(() => {
 
                               const items = hasWritingOrSpeaking
                                 ? baseItems.filter((it) =>
-                                    it.label === 'Total Questions' || it.label === 'Unanswered'
+                                    it.label === t('dailyChallenge.totalQuestions', 'Total Questions') || it.label === t('dailyChallenge.unanswered', 'Unanswered')
                                   )
                                 : baseItems;
 
@@ -5231,7 +5225,7 @@ useEffect(() => {
                           userSelect: 'none'
                         }}
                       >
-                        Teacher Feedback
+                        {t('dailyChallenge.teacherFeedback', 'Teacher Feedback')}
                       </Typography.Title>
                       {isTeacherFeedbackCollapsed ? (
                         <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
@@ -5284,14 +5278,14 @@ useEffect(() => {
                                       boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                                     }}
                                   >
-                                    View details
+                                    {t('dailyChallenge.viewDetails', 'View details')}
                                   </Button>
                                 </div>
                               )}
                             </>
                           ) : (
                             <div style={{ fontSize: '14px', color: theme === 'sun' ? '#666' : '#999', fontStyle: 'italic' }}>
-                              No feedback yet
+                              {t('dailyChallenge.noFeedbackYet', 'No feedback yet')}
                             </div>
                           )}
                         </div>
@@ -5353,7 +5347,7 @@ useEffect(() => {
                             userSelect: 'none'
                           }}
                         >
-                          Anti-Cheat
+                          {t('dailyChallenge.antiCheat', 'Anti-Cheat')}
                         </Typography.Title>
                         {isAntiCheatCollapsed ? (
                           <DownOutlined style={{ fontSize: '14px', color: theme === 'sun' ? '#4a5568' : '#e2e8f0' }} />
@@ -5376,7 +5370,7 @@ useEffect(() => {
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ff9800', marginBottom: '4px' }}>
                               <SwapOutlined />
-                              <span style={{ fontSize: '12px' }}>Tab switch</span>
+                              <span style={{ fontSize: '12px' }}>{t('dailyChallenge.tabSwitch', 'Tab switch')}</span>
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.tabBlurCount}</div>
                           </div>
@@ -5391,7 +5385,7 @@ useEffect(() => {
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: theme === 'sun' ? '#1e40af' : '#aab', marginBottom: '4px' }}>
                               <CopyOutlined />
-                              <span style={{ fontSize: '12px' }}>Copy</span>
+                              <span style={{ fontSize: '12px' }}>{t('dailyChallenge.copy', 'Copy')}</span>
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.copyCount}</div>
                           </div>
@@ -5408,7 +5402,7 @@ useEffect(() => {
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: theme === 'sun' ? '#6A1B9A' : '#cbb', marginBottom: '4px' }}>
                               <FileTextOutlined />
-                              <span style={{ fontSize: '12px' }}>Paste</span>
+                              <span style={{ fontSize: '12px' }}>{t('dailyChallenge.paste', 'Paste')}</span>
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.pasteCount}</div>
                           </div>
@@ -5423,7 +5417,7 @@ useEffect(() => {
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ff4d4f', marginBottom: '4px' }}>
                               <CloseCircleOutlined />
-                              <span style={{ fontSize: '12px' }}>Device mismatch</span>
+                              <span style={{ fontSize: '12px' }}>{t('dailyChallenge.deviceMismatch', 'Device mismatch')}</span>
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.deviceMismatchCount || 0}</div>
                           </div>
@@ -5440,7 +5434,7 @@ useEffect(() => {
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#52c41a', marginBottom: '4px' }}>
                               <PlayCircleOutlined />
-                              <span style={{ fontSize: '12px' }}>Session start</span>
+                              <span style={{ fontSize: '12px' }}>{t('dailyChallenge.sessionStart', 'Session start')}</span>
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.sessionStartCount || 0}</div>
                           </div>
@@ -5455,7 +5449,7 @@ useEffect(() => {
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: theme === 'sun' ? '#1e40af' : '#aab', marginBottom: '4px' }}>
                               <ClockCircleOutlined />
-                              <span style={{ fontSize: '12px' }}>Total violations</span>
+                              <span style={{ fontSize: '12px' }}>{t('dailyChallenge.totalViolations', 'Total violations')}</span>
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: '#000' }}>{antiCheatData.totalViolations}</div>
                           </div>
@@ -5483,7 +5477,7 @@ useEffect(() => {
                               boxShadow: theme === 'sun' ? '0 2px 8px rgba(255, 176, 32, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                             }}
                           >
-                            View detail
+                            {t('dailyChallenge.viewDetail', 'View detail')}
                           </Button>
                         </div>
                       </div>
@@ -5786,7 +5780,7 @@ useEffect(() => {
               textAlign: 'center',
               padding: '10px 0',
             }}>
-            {feedbackModal.isEdit ? 'Edit Score/Feedback' : 'Add Score/Feedback'}
+            {feedbackModal.isEdit ? t('dailyChallenge.editScoreFeedback', 'Edit Score/Feedback') : t('dailyChallenge.addScoreFeedback', 'Add Score/Feedback')}
             </div>
         }
         open={feedbackModal.visible}
@@ -5803,7 +5797,7 @@ useEffect(() => {
               padding: '4px 15px',
               width: '100px'
             }}>
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>,
           <Button 
             key="save" 
@@ -5836,19 +5830,19 @@ useEffect(() => {
                 e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
               }
             }}>
-            {feedbackModal.isEdit ? 'Update' : 'Add'}
+            {feedbackModal.isEdit ? t('dailyChallenge.update', 'Update') : t('dailyChallenge.add', 'Add')}
           </Button>
         ]}>
         <div style={{ padding: '20px 0' }}>
           {feedbackModal.type === 'section' && (
             <div style={{ marginBottom: '12px' }}>
-              <Typography.Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '6px' }}>Score</Typography.Text>
+              <Typography.Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '6px' }}>{t('dailyChallenge.score', 'Score')}</Typography.Text>
               <Input
                 type="number"
                 min="0"
                 value={feedbackModal.score}
                 onChange={(e) => setFeedbackModal(prev => ({ ...prev, score: e.target.value }))}
-                placeholder="Enter score for this question"
+                placeholder={t('dailyChallenge.enterScoreForThisQuestion', 'Enter score for this question')}
               />
             </div>
           )}
@@ -5997,7 +5991,7 @@ useEffect(() => {
               padding: '6px 0'
             }}
           >
-            Anti-Cheat Log
+            {t('dailyChallenge.antiCheatLog', 'Anti-Cheat Log')}
           </div>
         }
         open={antiCheatModalVisible}
@@ -6054,20 +6048,20 @@ useEffect(() => {
           const getEventMeta = (evt) => {
             switch (evt) {
               case 'START':
-                return { icon: <PlayCircleOutlined />, color: '#52c41a', label: 'Started test' };
+                return { icon: <PlayCircleOutlined />, color: '#52c41a', label: t('dailyChallenge.startedTest', 'Started test') };
               case 'TAB_SWITCH':
               case 'TAB_BLUR': // unify as Tab switch (data source only uses TAB_SWITCH)
-                return { icon: <SwapOutlined />, color: '#ff9800', label: 'Tab switch' };
+                return { icon: <SwapOutlined />, color: '#ff9800', label: t('dailyChallenge.tabSwitch', 'Tab switch') };
               case 'COPY':
               case 'COPY_ATTEMPT':
-                return { icon: <CopyOutlined />, color: '#f44336', label: 'Copy attempt' };
+                return { icon: <CopyOutlined />, color: '#f44336', label: t('dailyChallenge.copyAttempt', 'Copy attempt') };
               case 'PASTE':
               case 'PASTE_ATTEMPT':
-                return { icon: <FileTextOutlined />, color: '#9c27b0', label: 'Paste attempt' };
+                return { icon: <FileTextOutlined />, color: '#9c27b0', label: t('dailyChallenge.pasteAttempt', 'Paste attempt') };
               case 'DEVICE_MISMATCH':
-                return { icon: <CloseCircleOutlined />, color: '#ff4d4f', label: 'Device mismatch' };
+                return { icon: <CloseCircleOutlined />, color: '#ff4d4f', label: t('dailyChallenge.deviceMismatch', 'Device mismatch') };
               case 'ANSWER_CHANGE':
-                return { icon: <EditOutlined />, color: '#1890ff', label: 'Answer changed' };
+                return { icon: <EditOutlined />, color: '#1890ff', label: t('dailyChallenge.answerChanged', 'Answer changed') };
               default:
                 return { icon: <ClockCircleOutlined />, color: '#666', label: evt };
             }
@@ -6112,50 +6106,94 @@ useEffect(() => {
                   border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.15)' : 'rgba(255,255,255,0.1)'}`,
                   padding: '12px'
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F5F9FF' : 'rgba(24,144,255,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.2)' : 'rgba(24,144,255,0.2)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#1e40af' : '#aab' }}>
-                        <ClockCircleOutlined />
-                        <span style={{ fontSize: '12px' }}>Total events</span>
+                  {(() => {
+                    const renderStatCard = (label, value, icon, styles) => (
+                      <div
+                        style={{
+                          flex: 1,
+                          padding: '10px',
+                          borderRadius: '8px',
+                          background: theme === 'sun' ? styles.bgSun : styles.bgMoon,
+                          border: `1px solid ${theme === 'sun' ? styles.borderSun : styles.borderMoon}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: theme === 'sun' ? styles.textSun : styles.textMoon,
+                            marginBottom: '4px',
+                          }}
+                        >
+                          {icon}
+                          <span style={{ fontSize: '12px' }}>{label}</span>
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: 700, color: theme === 'sun' ? '#000' : '#fff' }}>
+                          {value ?? 0}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalViolations}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#E9FBF0' : 'rgba(82,196,26,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(82,196,26,0.25)' : 'rgba(82,196,26,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#52c41a' }}>
-                        <PlayCircleOutlined />
-                        <span style={{ fontSize: '12px' }}>Session starts</span>
+                    );
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          {renderStatCard(t('dailyChallenge.tabSwitches', 'Tab switches'), totalTabSwitch, <SwapOutlined />, {
+                            bgSun: '#FFFBEA',
+                            bgMoon: 'rgba(251,140,0,0.08)',
+                            borderSun: 'rgba(251,140,0,0.25)',
+                            borderMoon: 'rgba(251,140,0,0.25)',
+                            textSun: '#ff9800',
+                            textMoon: '#ffb74d',
+                          })}
+                          {renderStatCard(t('dailyChallenge.copyAttempts', 'Copy attempts'), totalCopy, <CopyOutlined />, {
+                            bgSun: '#F3F8FF',
+                            bgMoon: 'rgba(24,144,255,0.08)',
+                            borderSun: 'rgba(24,144,255,0.25)',
+                            borderMoon: 'rgba(24,144,255,0.25)',
+                            textSun: '#1e40af',
+                            textMoon: '#aab',
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          {renderStatCard(t('dailyChallenge.pasteAttempts', 'Paste attempts'), totalPaste, <FileTextOutlined />, {
+                            bgSun: '#F7ECFF',
+                            bgMoon: 'rgba(142,36,170,0.08)',
+                            borderSun: 'rgba(142,36,170,0.25)',
+                            borderMoon: 'rgba(142,36,170,0.25)',
+                            textSun: '#6A1B9A',
+                            textMoon: '#cbb',
+                          })}
+                          {renderStatCard(t('dailyChallenge.deviceMismatch', 'Device mismatch'), totalDeviceMismatch, <CloseCircleOutlined />, {
+                            bgSun: '#FFEDED',
+                            bgMoon: 'rgba(255,77,79,0.08)',
+                            borderSun: 'rgba(255,77,79,0.25)',
+                            borderMoon: 'rgba(255,77,79,0.25)',
+                            textSun: '#ff4d4f',
+                            textMoon: '#ff7a7c',
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          {renderStatCard(t('dailyChallenge.sessionStart', 'Session start'), totalSessionStart, <PlayCircleOutlined />, {
+                            bgSun: '#E9FBF0',
+                            bgMoon: 'rgba(82,196,26,0.08)',
+                            borderSun: 'rgba(82,196,26,0.25)',
+                            borderMoon: 'rgba(82,196,26,0.25)',
+                            textSun: '#52c41a',
+                            textMoon: '#81c784',
+                          })}
+                          {renderStatCard(t('dailyChallenge.totalViolations', 'Total violations'), totalViolations, <ClockCircleOutlined />, {
+                            bgSun: '#F5F9FF',
+                            bgMoon: 'rgba(24,144,255,0.08)',
+                            borderSun: 'rgba(24,144,255,0.2)',
+                            borderMoon: 'rgba(24,144,255,0.2)',
+                            textSun: '#1e40af',
+                            textMoon: '#aab',
+                          })}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalSessionStart}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#FFEDED' : 'rgba(255,77,79,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(255,77,79,0.25)' : 'rgba(255,77,79,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff4d4f' }}>
-                        <CloseCircleOutlined />
-                        <span style={{ fontSize: '12px' }}>Device mismatch</span>
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalDeviceMismatch}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#FFFBEA' : 'rgba(251,140,0,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(251,140,0,0.25)' : 'rgba(251,140,0,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff9800' }}>
-                        <SwapOutlined />
-                        <span style={{ fontSize: '12px' }}>Tab switches</span>
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalTabSwitch}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F3F8FF' : 'rgba(24,144,255,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(24,144,255,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#1e40af' : '#aab' }}>
-                        <CopyOutlined />
-                        <span style={{ fontSize: '12px' }}>Copy attempts</span>
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalCopy}</div>
-                    </div>
-                    <div style={{ padding: '10px', borderRadius: '8px', background: theme === 'sun' ? '#F7ECFF' : 'rgba(142,36,170,0.08)', border: `1px solid ${theme === 'sun' ? 'rgba(142,36,170,0.25)' : 'rgba(142,36,170,0.25)'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme === 'sun' ? '#6A1B9A' : '#cbb' }}>
-                        <FileTextOutlined />
-                        <span style={{ fontSize: '12px' }}>Paste attempts</span>
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700 }}>{totalPaste}</div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Right: Activity log with pagination */}
@@ -6167,7 +6205,7 @@ useEffect(() => {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
                   }}>
                     {pagedEvents.length === 0 ? (
-                      <Typography.Text style={{ fontStyle: 'italic', fontSize: '14px' }}>No anti-cheat events recorded.</Typography.Text>
+                      <Typography.Text style={{ fontStyle: 'italic', fontSize: '14px' }}>{t('dailyChallenge.noAntiCheatEventsRecorded', 'No anti-cheat events recorded.')}</Typography.Text>
                     ) : (
                       pagedEvents.map((ev, idx) => {
                         const meta = getEventMeta(ev.event);
@@ -6269,7 +6307,7 @@ useEffect(() => {
               padding: '4px 15px',
               width: '100px'
             }}>
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>,
           <Button 
             key="save" 
@@ -6302,7 +6340,7 @@ useEffect(() => {
                 e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
               }
             }}>
-            {scoreModal.isEdit ? 'Update' : 'Add'}
+            {scoreModal.isEdit ? t('dailyChallenge.update', 'Update') : t('dailyChallenge.add', 'Add')}
           </Button>
         ]}>
         <div style={{ padding: '20px 0' }}>
@@ -6313,7 +6351,7 @@ useEffect(() => {
               marginBottom: '12px',
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
             }}>
-              Score (0-10):
+              {t('dailyChallenge.score0To10', 'Score (0-10):')}
             </Typography.Text>
             <Input
               type="number"
@@ -6322,7 +6360,7 @@ useEffect(() => {
               step="0.1"
               value={scoreModal.score}
               onChange={handleScoreInputChange}
-              placeholder="Enter score (0-10)"
+              placeholder={t('dailyChallenge.enterScore0To10', 'Enter score (0-10)')}
               style={{
                 fontSize: '16px',
                 height: '42px'
@@ -6347,7 +6385,7 @@ useEffect(() => {
             {(() => {
               const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
               const hasScore = submissionData?.submission?.score != null && submissionData?.submission?.score !== undefined;
-              return (hasFeedback || hasScore) ? 'Edit Grading' : 'Add Grading';
+              return (hasFeedback || hasScore) ? t('dailyChallenge.editGrading', 'Edit Grading') : t('dailyChallenge.addGrading', 'Add Grading');
             })()}
           </div>
         }
@@ -6359,7 +6397,7 @@ useEffect(() => {
           <Button key="cancel" onClick={() => setOverallFeedbackModalVisible(false)}
             style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
           >
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>,
           <Button key="clear" onClick={() => { 
             setOverallFeedbackDraft(''); 
@@ -6369,7 +6407,7 @@ useEffect(() => {
           }}
             style={{ height: '36px', borderRadius: '6px', padding: '0 22px' }}
           >
-            Clear
+            {t('dailyChallenge.clear', 'Clear')}
           </Button>,
           <Button key="save" type="primary" loading={savingFeedback} onClick={handleSaveOverallFeedback}
             style={{
@@ -6384,7 +6422,7 @@ useEffect(() => {
               color: '#000000'
             }}
           >
-            Save
+            {t('dailyChallenge.save', 'Save')}
           </Button>
         ]}
       >
@@ -6437,7 +6475,7 @@ useEffect(() => {
                   textTransform: 'uppercase'
                 }}
               >
-            Raw Score
+            {t('dailyChallenge.rawScore', 'Raw Score')}
               </span>
               <div style={{ position: 'relative', width: 140, height: 140 }}>
                 <div
@@ -6531,7 +6569,7 @@ useEffect(() => {
                   color: theme === 'sun' ? '#1E3A8A' : '#E9D5FF'
                 }}
               >
-                Apply penalty score?
+                {t('dailyChallenge.applyPenaltyScore', 'Apply penalty score?')}
               </Checkbox>
               {isPenaltyEnabled && (
                 <div
@@ -6594,7 +6632,7 @@ useEffect(() => {
               )}
               {!isPenaltyEnabled && (
                 <div style={{ fontSize: 13, color: theme === 'sun' ? '#475569' : '#CBD5F5' }}>
-                  Enable penalty to deduct a percentage from the final score.
+                  {t('dailyChallenge.enablePenaltyToDeductPercentage', 'Enable penalty to deduct a percentage from the final score.')}
         </div>
               )}
             </div>
@@ -6602,7 +6640,7 @@ useEffect(() => {
         </div>
         <div>
           <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#E9D5FF', fontSize: 14 }}>
-            Overall Feedback
+            {t('dailyChallenge.overallFeedback', 'Overall Feedback')}
           </label>
         </div>
         <div className="feedback-editor-wrap" style={{ borderRadius: 12, border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.5)' : 'rgba(139, 92, 246, 0.5)'}`, background: theme === 'sun' ? 'rgba(24,144,255,0.08)' : 'rgba(139,92,246,0.12)' }}>
@@ -6612,7 +6650,7 @@ useEffect(() => {
             onChange={(event, editor) => setOverallFeedbackDraft(editor.getData())}
             config={{
               extraPlugins: [CustomUploadAdapterPlugin],
-              placeholder: 'Enter overall feedback...',
+              placeholder: t('dailyChallenge.enterOverallFeedback', 'Enter overall feedback...'),
               toolbar: {
                 items: [
                   'heading',
@@ -6674,7 +6712,7 @@ useEffect(() => {
               textAlign: 'center',
               padding: '10px 0',
             }}>
-            {commentModal.isEdit ? 'Edit Comment' : 'Add Comment'}
+            {commentModal.isEdit ? t('dailyChallenge.editComment', 'Edit Comment') : t('dailyChallenge.addComment', 'Add Comment')}
                         </div>
         }
         open={commentModal.visible}
@@ -6707,7 +6745,7 @@ useEffect(() => {
               padding: '4px 15px',
               width: '100px'
             }}>
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>,
           <Button 
             key="save" 
@@ -6740,7 +6778,7 @@ useEffect(() => {
                 e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
               }
             }}>
-            {commentModal.isEdit ? 'Update' : 'Add'}
+            {commentModal.isEdit ? t('dailyChallenge.update', 'Update') : t('dailyChallenge.add', 'Add')}
           </Button>
         ]}>
         <div style={{ padding: '20px 0' }}>
@@ -6748,7 +6786,7 @@ useEffect(() => {
             rows={6}
             value={commentModal.comment}
             onChange={handleCommentInputChange}
-            placeholder="Enter your comment for the selected text..."
+            placeholder={t('dailyChallenge.enterYourCommentForSelectedText', 'Enter your comment for the selected text...')}
             maxLength={2000}
             showCount
             autoSize={{ minRows: 6, maxRows: 10 }}

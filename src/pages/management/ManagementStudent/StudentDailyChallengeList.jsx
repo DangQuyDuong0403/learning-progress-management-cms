@@ -119,12 +119,18 @@ const StudentDailyChallengeList = () => {
   const [dailyChallenges, setDailyChallenges] = useState([]);
   const [searchText, setSearchText] = useState("");
   // Removed type filter per request
-  const [currentPage, setCurrentPage] = useState(1);
+  // Restore currentPage from location.state if available (when navigating back)
+  const [currentPage, setCurrentPage] = useState(() => {
+    const initialPage = location.state?.currentPage || 1;
+    console.log('🔵 StudentDailyChallengeList - Initial currentPage from state:', initialPage, 'location.state:', location.state);
+    return initialPage;
+  });
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [allChallenges, setAllChallenges] = useState([]);
   const [searchDebounce, setSearchDebounce] = useState("");
   const [loadingChallenges, setLoadingChallenges] = useState(new Set());
+  const hasRestoredState = useRef(false); // Track if we've already restored state from location
 
   // Removed filter dropdown logic per request
 
@@ -344,6 +350,68 @@ const StudentDailyChallengeList = () => {
     setDailyChallenges(paged);
   }, [filteredAllChallenges, currentPage, pageSize, computePagedRows]);
 
+  // Reset hasRestoredState when location.state changes from having currentPage to not having it
+  // This allows restoring again when navigating back with new state
+  useEffect(() => {
+    // If location.state no longer has currentPage, reset the flag
+    if (!location.state?.currentPage && hasRestoredState.current) {
+      console.log('🔄 StudentDailyChallengeList - Resetting hasRestoredState (no saved state)');
+      hasRestoredState.current = false;
+    }
+  }, [location.state]);
+
+  // Restore pagination and filters from location.state when navigating back
+  // Only restore once when component mounts with saved state
+  useEffect(() => {
+    console.log('🟢 StudentDailyChallengeList - Location state changed:', location.state);
+    console.log('🟢 StudentDailyChallengeList - hasRestoredState.current:', hasRestoredState.current);
+    console.log('🟢 StudentDailyChallengeList - Current page before restore:', currentPage);
+    
+    if (location.state?.currentPage) {
+      const savedPage = location.state.currentPage;
+      const savedPageSize = location.state.pageSize;
+      const savedSearchText = location.state.searchText;
+      
+      console.log('🟡 StudentDailyChallengeList - Found saved state to restore:', {
+        savedPage,
+        savedPageSize,
+        savedSearchText,
+        hasRestored: hasRestoredState.current
+      });
+      
+      // Only restore if we haven't restored yet OR if the saved page is different from current
+      // This allows restoring even if component didn't unmount
+      if (!hasRestoredState.current || (savedPage !== currentPage)) {
+        console.log('✅ StudentDailyChallengeList - Restoring state...');
+        
+        // Restore page and pageSize
+        if (savedPage && savedPage > 0) {
+          console.log('📄 Restoring page from', currentPage, 'to', savedPage);
+          setCurrentPage(savedPage);
+        }
+        if (savedPageSize && savedPageSize > 0) {
+          console.log('📏 Restoring pageSize to', savedPageSize);
+          setPageSize(savedPageSize);
+        }
+        
+        // Restore search text if available
+        if (savedSearchText !== undefined) {
+          console.log('🔍 Restoring searchText:', savedSearchText);
+          setSearchText(savedSearchText);
+          setSearchDebounce(savedSearchText);
+        }
+        
+        // Mark as restored to avoid restoring again
+        hasRestoredState.current = true;
+        console.log('✅ StudentDailyChallengeList - State restored successfully');
+      } else {
+        console.log('⏭️ StudentDailyChallengeList - Skipping restore (already restored or same page)');
+      }
+    } else {
+      console.log('ℹ️ StudentDailyChallengeList - No saved state found in location.state');
+    }
+  }, [location.state, currentPage]);
+
   // Keep totalItems in sync with filtered total and correct currentPage bounds
   useEffect(() => {
     const total = filteredAllChallenges.length;
@@ -404,20 +472,26 @@ const StudentDailyChallengeList = () => {
       const resolvedClassId = classId || location.state?.classId;
 
       // Navigate to challenge take view (student/test_taker view)
+      // Also save currentPage to restore when navigating back
+      const savedState = {
+        challengeId: challenge.id,
+        challengeName: challenge.title,
+        lessonName: challenge.lessonName,
+        challengeType: challenge.type, // Pass challenge type (GV, RE, LI, WR, SP)
+        type: challenge.type, // Also pass as 'type' for compatibility
+        submissionChallengeId: challenge.submissionChallengeId, // Pass submissionChallengeId for saving/submitting
+        submissionStatus: challenge.submissionStatus, // Pass submissionStatus to determine if viewing submitted answer
+        hasAntiCheat: challenge.hasAntiCheat,
+        shuffleQuestion: challenge.shuffleQuestion,
+        translateOnScreen: challenge.translateOnScreen,
+        classId: resolvedClassId, // For redirecting back to the class DC list
+        currentPage: currentPage, // Save current page to restore later
+        pageSize: pageSize, // Also save pageSize for consistency
+        searchText: searchText, // Save search text
+      };
+      console.log('🔵 StudentDailyChallengeList - Navigating to take challenge, saving state:', savedState);
       navigate(`${routePrefix}/daily-challenges/take/${challenge.id}`, {
-        state: {
-          challengeId: challenge.id,
-          challengeName: challenge.title,
-          lessonName: challenge.lessonName,
-          challengeType: challenge.type, // Pass challenge type (GV, RE, LI, WR, SP)
-          type: challenge.type, // Also pass as 'type' for compatibility
-          submissionChallengeId: challenge.submissionChallengeId, // Pass submissionChallengeId for saving/submitting
-          submissionStatus: challenge.submissionStatus, // Pass submissionStatus to determine if viewing submitted answer
-          hasAntiCheat: challenge.hasAntiCheat,
-          shuffleQuestion: challenge.shuffleQuestion,
-          translateOnScreen: challenge.translateOnScreen,
-          classId: resolvedClassId, // For redirecting back to the class DC list
-        }
+        state: savedState
       });
     } catch (error) {
       // Clear loading state on any error
@@ -433,21 +507,27 @@ const StudentDailyChallengeList = () => {
     // Navigate to challenge take view in view-only mode to see submitted answer
     const resolvedClassId = classId || location.state?.classId;
     
+    // Also save currentPage to restore when navigating back
+    const savedState = {
+      challengeId: challenge.id,
+      challengeName: challenge.title,
+      lessonName: challenge.lessonName,
+      challengeType: challenge.type,
+      type: challenge.type,
+      submissionChallengeId: challenge.submissionChallengeId,
+      submissionStatus: challenge.submissionStatus, // SUBMITTED status will make it view-only
+      hasAntiCheat: challenge.hasAntiCheat,
+      shuffleQuestion: challenge.shuffleQuestion,
+      translateOnScreen: challenge.translateOnScreen,
+      classId: resolvedClassId,
+      viewAnswer: true, // Flag to indicate viewing submitted answer
+      currentPage: currentPage, // Save current page to restore later
+      pageSize: pageSize, // Also save pageSize for consistency
+      searchText: searchText, // Save search text
+    };
+    console.log('🔵 StudentDailyChallengeList - Navigating to view answer, saving state:', savedState);
     navigate(`${routePrefix}/daily-challenges/take/${challenge.id}`, {
-      state: {
-        challengeId: challenge.id,
-        challengeName: challenge.title,
-        lessonName: challenge.lessonName,
-        challengeType: challenge.type,
-        type: challenge.type,
-        submissionChallengeId: challenge.submissionChallengeId,
-        submissionStatus: challenge.submissionStatus, // SUBMITTED status will make it view-only
-        hasAntiCheat: challenge.hasAntiCheat,
-        shuffleQuestion: challenge.shuffleQuestion,
-        translateOnScreen: challenge.translateOnScreen,
-        classId: resolvedClassId,
-        viewAnswer: true, // Flag to indicate viewing submitted answer
-      }
+      state: savedState
     });
   };
 
@@ -465,8 +545,8 @@ const StudentDailyChallengeList = () => {
       // Get classId from params or location state
       const resolvedClassId = classId || location.state?.classId;
       
-      navigate(`${routePrefix}/daily-challenges/detail/${challengeId}/submissions/${submissionId}`, {
-      state: {
+      // Also save currentPage to restore when navigating back
+      const savedState = {
         challengeId: challenge.id,
         submissionChallengeId: challenge.submissionChallengeId,
         challengeName: challenge.title,
@@ -477,8 +557,14 @@ const StudentDailyChallengeList = () => {
         className: challenge.lessonName, // For header display
         studentName: null, // Student viewing their own submission
         classId: resolvedClassId, // Pass classId for back navigation
-      }
-    });
+        currentPage: currentPage, // Save current page to restore later
+        pageSize: pageSize, // Also save pageSize for consistency
+        searchText: searchText, // Save search text
+      };
+      console.log('🔵 StudentDailyChallengeList - Navigating to view result, saving state:', savedState);
+      navigate(`${routePrefix}/daily-challenges/detail/${challengeId}/submissions/${submissionId}`, {
+        state: savedState
+      });
   };
 
   const columns = [
@@ -953,7 +1039,7 @@ const StudentDailyChallengeList = () => {
               color: theme === 'sun' ? '#1e40af' : '#fff'
             }}
           >
-            {t('dailyChallenge.dailyChallengeManagement')} <span className="student-count" style={{
+            {t('dailyChallenge.dailyChallengeList')} <span className="student-count" style={{
               fontSize: '24px',
               fontWeight: '500',
             }}>({totalItems})</span>
