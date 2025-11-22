@@ -243,7 +243,7 @@ const AIGenerateQuestions = () => {
       id: 8,
       type: 'REWRITE',
       title: 'Question 8',
-      question: 'Rewrite the following sentence using different words:',
+            question: t('dailyChallenge.rewriteFollowingSentence', 'Rewrite the following sentence using different words:'),
       originalSentence: 'I really enjoy programming.',
       correctAnswer: 'I truly love coding.',
       points: 1
@@ -296,28 +296,28 @@ const AIGenerateQuestions = () => {
     },
     { 
       value: "DROPDOWN", 
-      label: 'Dropdown', 
+      label: t('dailyChallenge.dropdown') || 'Dropdown', 
       icon: '📋',
       color: primaryColor,
       bgColor: primaryColorWithAlpha
     },
     { 
       value: "DRAG_AND_DROP", 
-      label: 'Drag and Drop', 
+      label: t('dailyChallenge.dragAndDrop') || 'Drag and Drop', 
       icon: '🔄',
       color: primaryColor,
       bgColor: primaryColorWithAlpha
     },
     { 
       value: "REARRANGE", 
-      label: 'Rearrange', 
+      label: t('dailyChallenge.rearrange') || 'Rearrange', 
       icon: '🔀',
       color: primaryColor,
       bgColor: primaryColorWithAlpha
     },
     { 
       value: "REWRITE", 
-      label: 'Re-write', 
+      label: t('dailyChallenge.rewrite') || 'Re-write', 
       icon: '✍️',
       color: primaryColor,
       bgColor: primaryColorWithAlpha
@@ -685,7 +685,7 @@ const AIGenerateQuestions = () => {
               id: nextId(),
               type: 'DROPDOWN',
               title: `Question ${counter}`,
-              question: q?.question || 'Choose the correct words to complete the sentence:',
+              question: q?.question || t('dailyChallenge.chooseCorrectWords', 'Choose the correct words to complete the sentence:'),
               questionText: text,
               content: { data: normalizedContent },
               points: q?.points ?? q?.weight ?? q?.score ?? 1,
@@ -741,7 +741,7 @@ const AIGenerateQuestions = () => {
               type: 'REARRANGE',
               title: `Question ${counter}`,
               // Show human-friendly instruction; keep placeholders only in questionText
-              question: 'Rearrange the words by dragging them into the correct order:',
+              question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
               questionText: text || '',
               sourceItems: sortedWords,
               correctOrder: sortedWords,
@@ -775,7 +775,7 @@ const AIGenerateQuestions = () => {
       })
       .filter(Boolean)
       .map((q, idx) => ({ ...q, id: idx + 1, title: `Question ${idx + 1}` }));
-  }, []);
+  }, [t]);
 
   // Handle AI generation
   const handleGenerateWithAI = useCallback(async () => {
@@ -784,7 +784,7 @@ const AIGenerateQuestions = () => {
       .filter(c => Number(c.numberOfQuestions) > 0);
     
     if (selectedConfigs.length === 0) {
-      spaceToast.error('At least one question type config is required');
+      spaceToast.error(t('dailyChallenge.atLeastOneQuestionTypeConfig', 'At least one question type config is required'));
       return;
     }
     
@@ -836,7 +836,7 @@ const AIGenerateQuestions = () => {
       // Small delay to show 100% before closing
       await new Promise(resolve => setTimeout(resolve, 300));
       if (!normalized.length) {
-        spaceToast.warning('AI did not return any questions');
+        spaceToast.warning(t('dailyChallenge.aiDidNotReturnQuestions', 'AI did not return any questions'));
         setQuestions([]);
         setShowPreview(false);
       } else {
@@ -848,17 +848,17 @@ const AIGenerateQuestions = () => {
     } catch (error) {
       console.error('Error generating AI questions:', error);
       const beErr = getBackendMessage(error);
-      spaceToast.error(beErr || error?.response?.data?.error || 'Failed to generate AI questions');
+      spaceToast.error(beErr || error?.response?.data?.error || t('dailyChallenge.failedToGenerateQuestions', 'Failed to generate AI questions'));
     } finally {
       setIsGenerating(false);
       setGenerationProgress(0);
     }
-  }, [promptDescription, t, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, getBackendMessage]);
+  }, [promptDescription, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, getBackendMessage, t]);
 
   // Generate questions from uploaded file + optional description
   const handleGenerateFromFile = useCallback(async () => {
     if (!uploadedFile) {
-      spaceToast.error('Please select a file to generate questions');
+      spaceToast.error(t('dailyChallenge.pleaseSelectFileToGenerate', 'Please select a file to generate questions'));
       return;
     }
     try {
@@ -877,23 +877,23 @@ const AIGenerateQuestions = () => {
       // Small delay to show 100% before closing
       await new Promise(resolve => setTimeout(resolve, 300));
       if (!normalized.length) {
-        spaceToast.warning('No questions parsed from file');
+        spaceToast.warning(t('dailyChallenge.noQuestionsParsedFromFile', 'No questions parsed from file'));
         setQuestions([]);
         setShowPreview(false);
       } else {
         setQuestions(normalized);
         setShowPreview(true);
-        spaceToast.success('Questions generated from file');
+        spaceToast.success(t('dailyChallenge.questionsGeneratedFromFile', 'Questions generated from file'));
       }
     } catch (err) {
       console.error('Generate from file error:', err);
       const beErr = getBackendMessage(err);
-      spaceToast.error(beErr || err?.response?.data?.error || 'Failed to generate from file');
+      spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToGenerateFromFile', 'Failed to generate from file'));
     } finally {
       setIsGenerating(false);
       setGenerationProgress(0);
     }
-  }, [uploadedFile, promptDescription, normalizeQuestionsFromAI, getBackendMessage]);
+  }, [uploadedFile, promptDescription, normalizeQuestionsFromAI, getBackendMessage, t]);
 
   // Simulate progress when generating
   useEffect(() => {
@@ -1112,7 +1112,7 @@ const AIGenerateQuestions = () => {
     } catch (error) {
       console.error('Error saving AI generated questions:', error);
       const beErr = getBackendMessage(error);
-      spaceToast.error(beErr || error?.response?.data?.error || 'Failed to save AI questions');
+      spaceToast.error(beErr || error?.response?.data?.error || t('dailyChallenge.failedToSaveChallenge', 'Failed to save AI questions'));
     } finally {
       setSaving(false);
     }
@@ -1324,10 +1324,10 @@ const AIGenerateQuestions = () => {
         setEditingQuestion(modalData);
         setIsEditModalVisible(true);
       } else {
-        spaceToast.info('Edit functionality for this question type is coming soon');
+        spaceToast.info(t('dailyChallenge.editFunctionalityComingSoon', 'Edit functionality for this question type is coming soon'));
       }
     }
-  }, [questions]);
+  }, [questions, t]);
 
   // Handle deleting a question
   const handleDeleteQuestion = useCallback((questionId) => {
@@ -1340,8 +1340,8 @@ const AIGenerateQuestions = () => {
         title: `Question ${index + 1}`
       }));
     });
-    spaceToast.success('Question deleted successfully');
-  }, []);
+    spaceToast.success(t('dailyChallenge.questionDeletedSuccessfully', 'Question deleted successfully'));
+  }, [t]);
 
   
 
@@ -1362,7 +1362,7 @@ const AIGenerateQuestions = () => {
           ...q,
           type: 'REARRANGE',
           title: q.title,
-          question: q.question || 'Rearrange the words by dragging them into the correct order:',
+          question: q.question || t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
           // Keep structured fields
           questionText: updatedQuestion.questionText,
           content: { data: Array.isArray(updatedQuestion?.content?.data) ? updatedQuestion.content.data : [] },
@@ -1385,7 +1385,7 @@ const AIGenerateQuestions = () => {
           type: 'REWRITE',
           title: q.title,
           // Show only one prompt (instruction or edited text without markers)
-          question: 'Rewrite the following sentence using different words:',
+            question: t('dailyChallenge.rewriteFollowingSentence', 'Rewrite the following sentence using different words:'),
           questionText: removePosMarkers(updatedQuestion.questionText || updatedQuestion.question || ''),
           content: { data: Array.isArray(updatedQuestion?.content?.data) ? updatedQuestion.content.data : [] },
           points: updatedQuestion.points ?? q.points,
@@ -1398,8 +1398,8 @@ const AIGenerateQuestions = () => {
     }));
     setIsEditModalVisible(false);
     setEditingQuestion(null);
-    spaceToast.success('Question updated successfully');
-  }, [stripHtml, removePosMarkers]);
+    spaceToast.success(t('dailyChallenge.questionUpdatedSuccessfully', 'Question updated successfully'));
+  }, [stripHtml, removePosMarkers, t]);
 
   // Handle cancel edit modal
   const handleCancelEditModal = useCallback(() => {
@@ -1531,7 +1531,7 @@ const AIGenerateQuestions = () => {
           }}
         >
           <TableSpinner
-            message="Loading..."
+            message={t('common.loading', 'Loading...')}
             isCompleted={spinnerCompleted}
             onAnimationEnd={handleSpinnerAnimationEnd}
           />
@@ -1613,7 +1613,7 @@ const AIGenerateQuestions = () => {
                 }}
               >
                 <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px', marginBottom: '20px' }}>
-                  AI Generation Settings
+                  {t('dailyChallenge.aiGenerationSettings', 'AI Generation Settings')}
                 </Title>
             
                 {/* Chapter and Lesson - Side by Side (Read-only) - Moved to top */}
@@ -1621,7 +1621,7 @@ const AIGenerateQuestions = () => {
                   {/* Chapter - Read-only */}
                   <div style={{ flex: 1, position: 'relative' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
-                      Chapter
+                      {t('dailyChallenge.chapter', 'Chapter')}
                   </Typography.Text>
                     <div
                     style={{
@@ -1656,7 +1656,7 @@ const AIGenerateQuestions = () => {
                   {/* Lesson - Read-only */}
                   <div style={{ flex: 1, position: 'relative' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
-                      Lesson
+                      {t('dailyChallenge.lesson', 'Lesson')}
                     </Typography.Text>
                     <div
                       style={{
@@ -1694,7 +1694,7 @@ const AIGenerateQuestions = () => {
                   {/* Level Selection - Custom 2-Level Dropdown */}
                   <div className="level-dropdown-container" style={{ flex: 1, position: 'relative', zIndex: 1000, overflow: 'visible' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Level <span style={{ color: 'red' }}>*</span>
+                      {t('dailyChallenge.level', 'Level')} <span style={{ color: 'red' }}>*</span>
                   </Typography.Text>
                   
                   {/* Input Field */}
@@ -1741,7 +1741,7 @@ const AIGenerateQuestions = () => {
                             const found = allOptions.find(o => o.value === selectedLevel);
                             return found ? found.label : 'Selected';
                           })()
-                        : 'Select level type and level'}
+                        : t('dailyChallenge.selectLevelTypeAndLevel', 'Select level type and level')}
                     </span>
                     <span style={{ 
                       transform: isLevelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -1819,9 +1819,9 @@ const AIGenerateQuestions = () => {
                           }}
                         >
                           {[
-                            { value: 'system', label: 'Camkey Level' },
-                      { value: 'academic', label: 'Academic Level' },
-                      { value: 'cefr', label: 'CEFR Level (A1-C2)' },
+                            { value: 'system', label: t('dailyChallenge.camkeyLevel', 'Camkey Level') },
+                      { value: 'academic', label: t('dailyChallenge.academicLevel', 'Academic Level') },
+                      { value: 'cefr', label: t('dailyChallenge.cefrLevel', 'CEFR Level (A1-C2)') },
                           ].map((type) => (
                             <div
                               key={type.value}
@@ -1897,7 +1897,7 @@ const AIGenerateQuestions = () => {
                                         color: theme === 'sun' ? '#999' : '#999',
                                         fontSize: '14px'
                                       }}>
-                                        {levelType === 'system' ? 'Loading Camkey levels...' : 'No levels available'}
+                                        {levelType === 'system' ? t('dailyChallenge.loadingCamkeyLevels', 'Loading Camkey levels...') : t('dailyChallenge.noLevelsAvailable', 'No levels available')}
                                       </div>
                                     );
                                   }
@@ -1971,7 +1971,7 @@ const AIGenerateQuestions = () => {
                               color: theme === 'sun' ? '#999' : '#999',
                               fontSize: '14px'
                             }}>
-                              Hover over a level type to see options
+                              {t('dailyChallenge.hoverOverLevelType', 'Hover over a level type to see options')}
                   </div>
                 )}
                         </div>
@@ -1983,7 +1983,7 @@ const AIGenerateQuestions = () => {
                   {/* Lesson Focus - Custom Dropdown with Input */}
                   <div className="lesson-focus-dropdown-container" style={{ flex: 1, position: 'relative', zIndex: 1000, overflow: 'visible' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                    Lesson Focus
+                    {t('dailyChallenge.lessonFocus', 'Lesson Focus')}
                     </Typography.Text>
                   
                   {/* Input Field */}
@@ -2036,7 +2036,7 @@ const AIGenerateQuestions = () => {
                         fontSize: '14px',
                         fontWeight: 400
                       }}>
-                        Select lesson focus
+                        {t('dailyChallenge.selectLessonFocus', 'Select lesson focus')}
                       </span>
                     ) : (() => {
                       // Get all tags to display
@@ -2221,7 +2221,7 @@ const AIGenerateQuestions = () => {
                         <div style={{ padding: '12px', borderBottom: `1px solid ${primaryColor}20` }}>
                           <Input
                             prefix={<SearchOutlined style={{ color: primaryColor }} />}
-                            placeholder="Search lesson focus..."
+                            placeholder={t('dailyChallenge.searchLessonFocus', 'Search lesson focus...')}
                             value={lessonFocusSearchTerm}
                             onChange={(e) => setLessonFocusSearchTerm(e.target.value)}
                             onClick={(e) => e.stopPropagation()}
@@ -2452,13 +2452,13 @@ const AIGenerateQuestions = () => {
                 {/* Vocabulary List */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                    Vocabulary List
+                    {t('dailyChallenge.vocabularyList', 'Vocabulary List')}
                   </Typography.Text>
                   <TextArea
                     value={vocabularyList}
                     onChange={(e) => setVocabularyList(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
-                    placeholder="new word..."
+                    placeholder={t('dailyChallenge.newWord', 'new word...')}
                     style={{
                         width: '100%',
                       borderRadius: '8px',
@@ -2473,13 +2473,13 @@ const AIGenerateQuestions = () => {
                 {/* Additional Description/Prompt */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      Additional Description
+                      {t('dailyChallenge.additionalDescription', 'Additional Description')}
                   </Typography.Text>
                   <TextArea
                     value={promptDescription}
                     onChange={(e) => setPromptDescription(e.target.value)}
                       autoSize={{ minRows: 4, maxRows: 8 }}
-                    placeholder="Optional: Add any additional instructions or context..."
+                    placeholder={t('dailyChallenge.optionalAddInstructions', 'Optional: Add any additional instructions or context...')}
                     style={{
                         width: '100%',
                       fontSize: '14px',
@@ -2516,7 +2516,7 @@ const AIGenerateQuestions = () => {
                 }}
               >
                 <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>
-                  Question Settings
+                  {t('dailyChallenge.questionSettings', 'Question Settings')}
                 </Title>
 
                 {/* Hidden input to allow direct upload from the option card */}
@@ -2534,7 +2534,7 @@ const AIGenerateQuestions = () => {
                     const validExtensions = ['.doc', '.docx'];
                     const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
                     if (!validExtensions.includes(fileExtension)) {
-                      spaceToast.error(`Unsupported file type: ${fileExtension}. Supported types: .doc, .docx`);
+                      spaceToast.error(t('dailyChallenge.unsupportedFileType', 'Unsupported file type: .{{extension}}. Supported types: .doc, .docx', { extension: fileExtension.substring(1) }));
                       e.target.value = '';
                       setUploadedFile(null);
                       setUploadedFileName('');
@@ -2542,7 +2542,7 @@ const AIGenerateQuestions = () => {
                     }
                     
                     if (f.size > MAX_FILE_MB * 1024 * 1024) {
-                      spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                      spaceToast.error(t('dailyChallenge.fileTooLarge', 'File too large. Max {{max}}MB', { max: MAX_FILE_MB }));
                       e.target.value = '';
                       setUploadedFile(null);
                       setUploadedFileName('');
@@ -2579,7 +2579,7 @@ const AIGenerateQuestions = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <CloudUploadOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 400 }}>
-                            Generate question from file
+                            {t('dailyChallenge.generateQuestionFromFile', 'Generate question from file')}
                           </Typography.Text>
                         </div>
                       </Card>
@@ -2605,7 +2605,7 @@ const AIGenerateQuestions = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <EditOutlined style={{ fontSize: 24, color: '#000000' }} />
                           <Typography.Text style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 400 }}>
-                            Generate question from settings 
+                            {t('dailyChallenge.generateQuestionFromSettings', 'Generate question from settings')}
                           </Typography.Text>
                         </div>
                       </Card>
@@ -2633,9 +2633,9 @@ const AIGenerateQuestions = () => {
                       >
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                           <CloudUploadOutlined style={{ fontSize: 56, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }} />
-                          <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>Click to upload</Typography.Text>
+                          <Typography.Text style={{ fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#6F61A8' }}>{t('dailyChallenge.clickToUpload', 'Click to upload')}</Typography.Text>
                           <Typography.Text style={{ fontSize: 12, opacity: 0.8, color: theme === 'sun' ? '#0f172a' : '#d1cde8' }}>
-                            Supported: .doc, .docx — Max {MAX_FILE_MB}MB
+                            {t('dailyChallenge.supportedDocxMax', 'Supported: .doc, .docx — Max {{max}}MB', { max: MAX_FILE_MB })}
                           </Typography.Text>
                         </div>
                       </label>
@@ -2653,7 +2653,7 @@ const AIGenerateQuestions = () => {
                           const validExtensions = ['.doc', '.docx'];
                           const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
                           if (!validExtensions.includes(fileExtension)) {
-                            spaceToast.error(`Unsupported file type: ${fileExtension}. Supported types: .doc, .docx`);
+                            spaceToast.error(t('dailyChallenge.unsupportedFileType', 'Unsupported file type: .{{extension}}. Supported types: .doc, .docx', { extension: fileExtension.substring(1) }));
                             e.target.value = '';
                             setUploadedFile(null);
                             setUploadedFileName('');
@@ -2661,7 +2661,7 @@ const AIGenerateQuestions = () => {
                           }
                           
                           if (f.size > MAX_FILE_MB * 1024 * 1024) {
-                            spaceToast.error(`File too large. Max ${MAX_FILE_MB}MB`);
+                            spaceToast.error(t('dailyChallenge.fileTooLarge', 'File too large. Max {{max}}MB', { max: MAX_FILE_MB }));
                             e.target.value = '';
                             setUploadedFile(null);
                             setUploadedFileName('');
@@ -2730,7 +2730,7 @@ const AIGenerateQuestions = () => {
                         color: '#000000',
                       }}
                     >
-                      Generate From File
+                      {t('dailyChallenge.generateFromFile', 'Generate From File')}
                     </Button>
                     <Typography.Text
                       style={{
@@ -2743,7 +2743,7 @@ const AIGenerateQuestions = () => {
                         width: '100%'
                       }}
                     >
-                      The generated content is for reference only.
+                      {t('dailyChallenge.generatedContentForReference', 'The generated content is for reference only.')}
                     </Typography.Text>
                   </div>
                 )}
@@ -2841,7 +2841,7 @@ const AIGenerateQuestions = () => {
                           transition: 'all 0.3s ease'
                         }}
                       >
-                        {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : 'Generate Questions'}
+                        {isGenerating ? (t('dailyChallenge.generating') || 'Generating...') : t('dailyChallenge.generateQuestions', 'Generate Questions')}
                       </Button>
                       <Typography.Text
                         style={{
@@ -2851,7 +2851,7 @@ const AIGenerateQuestions = () => {
                           textAlign: 'center'
                         }}
                       >
-                        The generated content is for reference only.
+                        {t('dailyChallenge.generatedContentForReference', 'The generated content is for reference only.')}
                       </Typography.Text>
                     </div>
                   </>
@@ -3017,10 +3017,10 @@ const AIGenerateQuestions = () => {
                       marginTop: '4px',
                       textAlign: 'center'
                     }}>
-                      {generationProgress < 30 ? 'Analyzing prompt...' :
-                       generationProgress < 60 ? 'Creating questions...' :
-                       generationProgress < 90 ? 'Finalizing content...' :
-                       'Almost done...'}
+                      {generationProgress < 30 ? t('dailyChallenge.analyzingPrompt', 'Analyzing prompt...') :
+                       generationProgress < 60 ? t('dailyChallenge.creatingQuestions', 'Creating questions...') :
+                       generationProgress < 90 ? t('dailyChallenge.finalizingContent', 'Finalizing content...') :
+                       t('dailyChallenge.almostDone', 'Almost done...')}
                     </div>
                   </div>
                 </div>
@@ -3079,14 +3079,14 @@ const AIGenerateQuestions = () => {
                         color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
                         fontStyle: 'italic'
                       }}>
-                        {question.type === 'MULTIPLE_CHOICE' ? 'Multiple Choice' :
-                         question.type === 'MULTIPLE_SELECT' ? 'Multiple Select' :
-                         question.type === 'TRUE_OR_FALSE' ? 'True/False' :
-                         question.type === 'FILL_IN_THE_BLANK' ? 'Fill in the Blank' :
-                         question.type === 'DROPDOWN' ? 'Dropdown' :
-                         question.type === 'DRAG_AND_DROP' ? 'Drag and Drop' :
-                         question.type === 'REARRANGE' ? 'Rearrange' :
-                         question.type === 'REWRITE' ? 'Re-write' : question.type}
+                        {question.type === 'MULTIPLE_CHOICE' ? t('dailyChallenge.multipleChoice', 'Multiple Choice') :
+                         question.type === 'MULTIPLE_SELECT' ? t('dailyChallenge.multipleSelect', 'Multiple Select') :
+                         question.type === 'TRUE_OR_FALSE' ? t('dailyChallenge.trueFalse', 'True/False') :
+                         question.type === 'FILL_IN_THE_BLANK' ? t('dailyChallenge.fillBlank', 'Fill in the Blank') :
+                         question.type === 'DROPDOWN' ? t('dailyChallenge.dropdown', 'Dropdown') :
+                         question.type === 'DRAG_AND_DROP' ? t('dailyChallenge.dragAndDrop', 'Drag and Drop') :
+                         question.type === 'REARRANGE' ? t('dailyChallenge.rearrange', 'Rearrange') :
+                         question.type === 'REWRITE' ? t('dailyChallenge.rewrite', 'Re-write') : question.type}
                       </Typography.Text>
                     </div>
                     
@@ -3094,7 +3094,7 @@ const AIGenerateQuestions = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
                         <Typography.Text style={{ fontSize: '14px', fontWeight: 600 }}>
-                          {question.points} {question.points === 1 ? 'point' : 'points'}
+                          {question.points} {question.points === 1 ? t('dailyChallenge.point', 'point') : t('dailyChallenge.points', 'points')}
                         </Typography.Text>
                       </div>
 
@@ -3407,7 +3407,7 @@ const AIGenerateQuestions = () => {
                               display: 'block',
                               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                             }}>
-                              Complete the sentence by dragging words into the blanks:
+                              {t('dailyChallenge.completeSentenceByDragging', 'Complete the sentence by dragging words into the blanks:')}
                             </Typography.Text>
 
                             <div style={{ 
@@ -3512,7 +3512,7 @@ const AIGenerateQuestions = () => {
                               display: 'block',
                               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                             }}>
-                              Available words:
+                              {t('dailyChallenge.availableWords', 'Available words:')}
                             </Typography.Text>
                             
                             <div style={{ 
@@ -3705,7 +3705,7 @@ const AIGenerateQuestions = () => {
                             display: 'block',
                             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                           }}>
-                            Drop the words here in order:
+                            {t('dailyChallenge.dropWordsHereInOrder', 'Drop the words here in order:')}
                           </Typography.Text>
                           
                           <div style={{ 
@@ -3759,7 +3759,7 @@ const AIGenerateQuestions = () => {
                             display: 'block',
                             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                           }}>
-                            Available words:
+                            {t('dailyChallenge.availableWords', 'Available words:')}
                           </Typography.Text>
                           
                           <div style={{ 
@@ -3834,7 +3834,9 @@ const AIGenerateQuestions = () => {
                             display: 'block',
                             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                           }}>
-                            Correct Answer{Array.isArray(question.content?.data) && question.content.data.length > 1 ? 's' : ''}:
+                            {Array.isArray(question.content?.data) && question.content.data.length > 1 
+                              ? t('dailyChallenge.correctAnswers', 'Correct Answers') 
+                              : t('dailyChallenge.correctAnswer', 'Correct Answer')}:
                           </Typography.Text>
                           <div style={{
                             display: 'flex',

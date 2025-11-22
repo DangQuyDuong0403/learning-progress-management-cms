@@ -6,6 +6,7 @@ import React, {
 	useMemo,
 } from 'react';
 import { Modal, Button, InputNumber, Input, Tooltip, Dropdown } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { spaceToast } from '../../../../../component/SpaceToastify';
 import {
 	CheckOutlined,
@@ -56,6 +57,7 @@ const throttle = (func, limit) => {
 };
 
 const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
+	const { t } = useTranslation();
 	const [editorContent, setEditorContent] = useState([]);
 	const [blanks, setBlanks] = useState([]);
 	const [incorrectOptions, setIncorrectOptions] = useState([]);
@@ -359,7 +361,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	const handleInsertLink = useCallback(() => {
 		if (!editorRef.current) return;
-		const url = prompt('Enter URL:');
+		const url = prompt(t('dailyChallenge.enterUrl', 'Enter URL:'));
 		if (url) {
 			handleFormat('createLink', url);
 		}
@@ -568,7 +570,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				};
 				reader.readAsDataURL(file);
 			} else if (file) {
-				console.error('Please select an image file');
+				console.error(t('dailyChallenge.pleaseSelectImageFile', 'Please select an image file'));
 			}
 			// Reset input
 			if (e.target) {
@@ -582,14 +584,14 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const handleImageAlign = useCallback(
 		(alignment) => {
 			if (!selectedImage) {
-				spaceToast.warning('Please select an image first');
+				spaceToast.warning(t('dailyChallenge.pleaseSelectImageFirst', 'Please select an image first'));
 				return;
 			}
 
 			// Find the wrapper (parent of the image)
 			const wrapper = selectedImage.parentElement;
 			if (!wrapper || !wrapper.hasAttribute('data-image-wrapper')) {
-				spaceToast.warning('Image wrapper not found');
+				spaceToast.warning(t('dailyChallenge.imageWrapperNotFound', 'Image wrapper not found'));
 				return;
 			}
 
@@ -1027,7 +1029,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Input field (hidden by default in compact mode)
 			const input = document.createElement('input');
 			input.type = 'text';
-			input.placeholder = 'type answer...';
+			input.placeholder = t('dailyChallenge.typeCorrectOption', 'Type correct option');
 			input.value = (blank.answer || '').slice(0, 50);
 			input.maxLength = 50;
 			input.className = 'blank-input';
@@ -1216,7 +1218,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		(element) => {
 			// Enforce maximum blanks
 			if (blanks.length >= MAX_BLANKS) {
-				spaceToast.warning(`Maximum ${MAX_BLANKS} blanks allowed`);
+				spaceToast.warning(t('dailyChallenge.maximum10BlanksAllowed', 'Maximum 10 blanks allowed'));
 				return;
 			}
 			// Walk through all child nodes
@@ -1369,7 +1371,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Enforce max 600 characters (plain text length)
 			const plainText = (element.textContent || '').trim();
 			if (plainText.length > 600) {
-				spaceToast.warning('Maximum 600 characters allowed for the question');
+				spaceToast.warning(t('dailyChallenge.maximum600CharactersAllowed', 'Maximum 600 characters allowed for the question'));
 				// Revert to last valid HTML snapshot
 				if (lastValidHtmlRef.current !== '' && editorRef.current) {
 					editorRef.current.innerHTML = lastValidHtmlRef.current;
@@ -1401,7 +1403,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Insert blank at saved cursor position
 	const insertBlankAtCursor = useCallback(() => {
 		if (blanks.length >= MAX_BLANKS) {
-			spaceToast.warning(`Maximum ${MAX_BLANKS} blanks allowed`);
+			spaceToast.warning(t('dailyChallenge.maximum10BlanksAllowed', 'Maximum 10 blanks allowed'));
 			setShowBlankPopup(false);
 			return;
 		}
@@ -1409,7 +1411,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		// Don't insert blank if cursor is inside another blank
 		if (isCursorInsideBlank()) {
-			spaceToast.warning('Cannot insert blank inside another blank');
+			spaceToast.warning(t('dailyChallenge.cannotInsertBlankInsideAnother', 'Cannot insert blank inside another blank'));
 			setShowBlankPopup(false);
 			return;
 		}
@@ -1526,7 +1528,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const handleAddIncorrectOption = () => {
 		setIncorrectOptions((prev) => {
 			if (prev.length >= MAX_INCORRECT_OPTIONS) {
-				spaceToast.warning(`Maximum ${MAX_INCORRECT_OPTIONS} incorrect options allowed. Please remove an option before adding a new one.`);
+				spaceToast.warning(t('dailyChallenge.maximum10IncorrectOptionsPerDropdown', 'Maximum 10 incorrect options allowed per dropdown. Please remove an option before adding a new one.'));
 				return prev;
 			}
 			return [...prev, { id: Date.now(), text: '' }];
@@ -1553,12 +1555,12 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		// Validate
 		const editorText = editorRef.current.textContent.trim();
 		if (!editorText && blanks.length === 0) {
-			spaceToast.error('Please enter the question text');
+			spaceToast.error(t('dailyChallenge.pleaseEnterQuestionText', 'Please enter the question text'));
 			return;
 		}
 
 		if (blanks.length === 0) {
-			spaceToast.error('Please add at least one blank (use __ or [])');
+			spaceToast.error(t('dailyChallenge.pleaseAddAtLeastOneBlank', 'Please add at least one blank (use __ or [])'));
 			return;
 		}
 
@@ -1566,7 +1568,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			(blank) => !blank.answer || !blank.answer.trim()
 		);
 		if (hasEmptyBlanks) {
-			spaceToast.error('Please fill in all blank answers');
+			spaceToast.error(t('dailyChallenge.pleaseFillInAllBlankAnswers', 'Please fill in all blank answers'));
 			return;
 		}
 
@@ -1574,13 +1576,13 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const blankAnswers = blanks.map(blank => (blank.answer || '').toLowerCase().trim());
 		const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
 		if (duplicates.length > 0) {
-			spaceToast.warning('Cannot create duplicate answers. Please ensure all blank answers are unique.');
+			spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateAnswersBlanks', 'Cannot create duplicate answers. Please ensure all blank answers are unique.'));
 			return;
 		}
 
 		// Validate: check if there are more than 10 incorrect options
 		if (incorrectOptions.length > MAX_INCORRECT_OPTIONS) {
-			spaceToast.warning(`Maximum ${MAX_INCORRECT_OPTIONS} incorrect options allowed. Please remove excess options before saving.`);
+			spaceToast.warning(t('dailyChallenge.maximum10IncorrectOptionsPerDropdown', 'Maximum 10 incorrect options allowed per dropdown. Please remove an option before adding a new one.') + ' ' + t('dailyChallenge.removeExcessOptions', 'Please remove excess options before saving.'));
 			return;
 		}
 
@@ -1589,14 +1591,14 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			.map(opt => (opt.text || '').toLowerCase().trim())
 			.filter(text => text);
 		if (incorrectTexts.length === 0) {
-			spaceToast.warning('Please add at least one incorrect option');
+			spaceToast.warning(t('dailyChallenge.pleaseAddAtLeastOneIncorrectOption', 'Please add at least one incorrect option'));
 			return;
 		}
 
 		// Validate duplicate incorrect options
 		const duplicateIncorrect = incorrectTexts.filter((text, index) => incorrectTexts.indexOf(text) !== index);
 		if (duplicateIncorrect.length > 0) {
-			spaceToast.warning('Cannot create duplicate incorrect options. Please ensure all incorrect options are unique.');
+			spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateIncorrectOptions', 'Cannot create duplicate incorrect options. Please ensure all options are unique.'));
 			return;
 		}
 
@@ -1604,7 +1606,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		const blankAnswersLower = blankAnswers.filter(text => text);
 		const hasDuplicateWithIncorrect = blankAnswersLower.some(blankAnswer => incorrectTexts.includes(blankAnswer));
 		if (hasDuplicateWithIncorrect) {
-			spaceToast.warning('Cannot create duplicate answers. Blank answers cannot be the same as incorrect options.');
+			spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateAnswersBlanks', 'Cannot create duplicate answers. Please ensure all blank answers are unique.'));
 			return;
 		}
 
@@ -1842,7 +1844,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				handleCancel();
 			}
 		} catch (e) {
-			spaceToast.error('Failed to save question');
+			spaceToast.error(t('dailyChallenge.failedToSaveQuestion', 'Failed to save question'));
 		} finally {
 			setSaving(false);
 		}
@@ -2115,7 +2117,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						}}
 					/>
 					<span style={{ fontSize: '24px', fontWeight: 600 }}>
-						{questionData ? 'Edit Drag and Drop Question' : 'Create Drag and Drop Question'}
+						{questionData ? t('dailyChallenge.editDragDropQuestion', 'Edit Drag and Drop Question') : t('dailyChallenge.createDragDropQuestion', 'Create Drag and Drop Question')}
 					</span>
 				</div>
 			}
@@ -2162,7 +2164,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							borderRadius: '8px',
 							fontWeight: 500,
 						}}>
-						💡 Tips: Click{' '}
+						💡 {t('dailyChallenge.tips', 'Tips')}: {t('dailyChallenge.clickBlankButton', 'Click')}{' '}
 						<span
 							style={{
 								background: 'rgba(24, 144, 255, 0.2)',
@@ -2171,9 +2173,9 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								fontWeight: 600,
 								color: '#1890ff',
 							}}>
-							+ Blank
+							+ {t('dailyChallenge.blank', 'Blank')}
 						</span>{' '}
-						button at cursor position to insert blank • Or type{' '}
+						{t('dailyChallenge.buttonAtCursorToInsert', 'button at cursor position to insert blank')} • {t('dailyChallenge.orType', 'Or type')}{' '}
 						<code
 							style={{
 								background: 'rgba(24, 144, 255, 0.2)',
@@ -2184,7 +2186,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							}}>
 							__
 						</code>{' '}
-						or{' '}
+						{t('dailyChallenge.or', 'or')}{' '}
 						<code
 							style={{
 								background: 'rgba(24, 144, 255, 0.2)',
@@ -2200,7 +2202,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					<div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Weight</span>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>{t('dailyChallenge.weight', 'Weight')}</span>
 							{pointsMenu}
 						</div>
 
@@ -2220,7 +2222,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								color: '#000000',
 								boxShadow: '0 4px 16px rgba(60, 153, 255, 0.4)',
 							}}>
-							<SaveOutlined /> Save Question
+							<SaveOutlined /> {t('common.save', 'Save')} {t('dailyChallenge.question', 'Question')}
 						</Button>
 					</div>
 				</div>
@@ -2278,7 +2280,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								items: [
 									{
 										key: 'paragraph',
-										label: <span style={{ color: '#000000' }}>Paragraph</span>,
+										label: <span style={{ color: '#000000' }}>{t('dailyChallenge.paragraph', 'Paragraph')}</span>,
 										onClick: () => handleHeading('paragraph'),
 									},
 									{
@@ -2290,7 +2292,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													fontWeight: 700,
 													fontSize: '16px',
 												}}>
-												Heading 1
+												{t('dailyChallenge.heading1', 'Heading 1')}
 											</span>
 										),
 										onClick: () => handleHeading('h1'),
@@ -2304,7 +2306,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													fontWeight: 600,
 													fontSize: '15px',
 												}}>
-												Heading 2
+												{t('dailyChallenge.heading2', 'Heading 2')}
 											</span>
 										),
 										onClick: () => handleHeading('h2'),
@@ -2318,7 +2320,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													fontWeight: 600,
 													fontSize: '14px',
 												}}>
-												Heading 3
+												{t('dailyChallenge.heading3', 'Heading 3')}
 											</span>
 										),
 										onClick: () => handleHeading('h3'),
@@ -2332,7 +2334,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							overlayStyle={{
 								zIndex: 9999,
 							}}>
-							<Tooltip title='Heading'>
+							<Tooltip title={t('dailyChallenge.heading', 'Heading')}>
 								<Button
 									icon={<FontSizeOutlined />}
 									style={{
@@ -2353,7 +2355,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						/>
 
 						{/* Text Formatting */}
-						<Tooltip title='Bold'>
+						<Tooltip title={t('dailyChallenge.bold', 'Bold')}>
 							<Button
 								icon={<BoldOutlined />}
 								onClick={() => handleFormat('bold')}
@@ -2365,7 +2367,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								}}
 							/>
 						</Tooltip>
-						<Tooltip title='Italic'>
+						<Tooltip title={t('dailyChallenge.italic', 'Italic')}>
 							<Button
 								icon={<ItalicOutlined />}
 								onClick={() => handleFormat('italic')}
@@ -2377,7 +2379,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								}}
 							/>
 						</Tooltip>
-						<Tooltip title='Underline'>
+						<Tooltip title={t('dailyChallenge.underline', 'Underline')}>
 							<Button
 								icon={<UnderlineOutlined />}
 								onClick={() => handleFormat('underline')}
@@ -2398,7 +2400,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						/>
 
 						{/* Link */}
-						<Tooltip title='Insert Link'>
+						<Tooltip title={t('dailyChallenge.insertLink', 'Insert Link')}>
 							<Button
 								icon={<LinkOutlined />}
 								onClick={handleInsertLink}
@@ -2412,7 +2414,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						</Tooltip>
 
 						{/* Image Upload */}
-						<Tooltip title='Upload Image'>
+						<Tooltip title={t('dailyChallenge.uploadImage', 'Upload Image')}>
 							<Button
 								icon={<PictureOutlined />}
 								onClick={handleImageUpload}
@@ -2433,7 +2435,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						/>
 
 						{/* Lists */}
-						<Tooltip title='Ordered List'>
+						<Tooltip title={t('dailyChallenge.orderedList', 'Ordered List')}>
 							<Button
 								icon={<OrderedListOutlined />}
 								onClick={() => handleFormat('insertOrderedList')}
@@ -2445,7 +2447,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								}}
 							/>
 						</Tooltip>
-						<Tooltip title='Unordered List'>
+						<Tooltip title={t('dailyChallenge.unorderedList', 'Unordered List')}>
 							<Button
 								icon={<UnorderedListOutlined />}
 								onClick={() => handleFormat('insertUnorderedList')}
@@ -2496,8 +2498,8 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 											height: '16px',
 										}}>
 										{hoveredCell.row > 0 && hoveredCell.col > 0
-											? `${hoveredCell.row} x ${hoveredCell.col} Table`
-											: 'Select table size'}
+											? `${hoveredCell.row} x ${hoveredCell.col} ${t('dailyChallenge.table', 'Table')}`
+											: t('dailyChallenge.selectTableSize', 'Select table size')}
 									</div>
 									<div
 										style={{
@@ -2538,7 +2540,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 									</div>
 								</div>
 							)}>
-							<Tooltip title='Insert Table'>
+							<Tooltip title={t('dailyChallenge.insertTable', 'Insert Table')}>
 								<Button
 									icon={<TableOutlined />}
 									style={{
@@ -2561,7 +2563,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						{/* Image Alignment (only show when image is selected) */}
 						{selectedImage && (
 							<>
-								<Tooltip title='Align Left'>
+								<Tooltip title={t('dailyChallenge.alignLeft', 'Align Left')}>
 									<Button
 										icon={<AlignLeftOutlined />}
 										onClick={() => handleImageAlign('left')}
@@ -2574,7 +2576,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										}}
 									/>
 								</Tooltip>
-								<Tooltip title='Align Center'>
+								<Tooltip title={t('dailyChallenge.alignCenter', 'Align Center')}>
 									<Button
 										icon={<AlignCenterOutlined />}
 										onClick={() => handleImageAlign('center')}
@@ -2587,7 +2589,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										}}
 									/>
 								</Tooltip>
-								<Tooltip title='Align Right'>
+								<Tooltip title={t('dailyChallenge.alignRight', 'Align Right')}>
 									<Button
 										icon={<AlignRightOutlined />}
 										onClick={() => handleImageAlign('right')}
@@ -2611,7 +2613,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						)}
 
 						{/* Undo/Redo */}
-						<Tooltip title='Undo'>
+						<Tooltip title={t('dailyChallenge.undo', 'Undo')}>
 							<Button
 								icon={<UndoOutlined />}
 								onClick={() => handleFormat('undo')}
@@ -2623,7 +2625,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								}}
 							/>
 						</Tooltip>
-						<Tooltip title='Redo'>
+						<Tooltip title={t('dailyChallenge.redo', 'Redo')}>
 							<Button
 								icon={<RedoOutlined />}
 								onClick={() => handleFormat('redo')}
@@ -2678,7 +2680,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								userSelect: 'text',
 								WebkitUserSelect: 'text',
 							}}
-							data-placeholder='Type your question here... The + Blank button will follow your cursor'
+							data-placeholder={t('dailyChallenge.typeYourQuestionHere', 'Type your question here...') + ' ' + t('dailyChallenge.theBlankButtonWillFollow', 'The + Blank button will follow your cursor')}
 						/>
 
 							{/* Character Counter for Question (600 max) */}
@@ -2724,7 +2726,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										gap: '4px',
 										color: '#000000',
 									}}>
-									+ Blank
+									+ {t('dailyChallenge.blank', 'Blank')}
 								</Button>
 							</div>
 						)}
@@ -2739,8 +2741,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							marginBottom: '24px',
 							fontStyle: 'italic',
 						}}>
-						Click the floating "+ Blank" button or type '__' or '[]' to add
-						blank
+						{t('dailyChallenge.clickFloatingBlankButton', 'Click the floating "+ Blank" button or type')} '__' {t('dailyChallenge.or', 'or')} '[]' {t('dailyChallenge.toAddBlank', 'to add blank')}
 					</div>
 
 					{/* Options Section */}
@@ -2759,7 +2760,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 									color: '#333',
 									marginBottom: '12px',
 								}}>
-								Correct options
+								{t('dailyChallenge.correctOptions', 'Correct options')}
 							</div>
 							<div
 								style={{
@@ -2805,7 +2806,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 												handleBlankAnswerChange(blank.id, v);
 											}}
 																maxLength={50}
-											placeholder={'Type correct option'}
+											placeholder={t('dailyChallenge.typeCorrectOption', 'Type correct option')}
 											style={{
 												flex: 1,
 												border: 'none',
@@ -2832,7 +2833,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 											fontSize: '14px',
 											fontStyle: 'italic',
 										}}>
-										No blanks yet
+										{t('dailyChallenge.noBlanksYet', 'No blanks yet')}
 									</div>
 								)}
 							</div>
@@ -2850,7 +2851,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 									alignItems: 'center',
 									gap: '8px',
 								}}>
-								Incorrect options ({incorrectOptions.length})
+								{t('dailyChallenge.incorrectOptions', 'Incorrect options')} ({incorrectOptions.length})
 								<span
 									style={{
 										width: '20px',
@@ -2892,7 +2893,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 													handleIncorrectOptionChange(option.id, e.target.value)
 												}
 																maxLength={50}
-												placeholder={`Incorrect option ${index + 1}`}
+												placeholder={t('dailyChallenge.typeIncorrectOption', 'Type incorrect option')}
 												style={{
 													flex: 1,
 													border: 'none',
@@ -2927,7 +2928,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 											fontSize: '14px',
 											fontStyle: 'italic',
 										}}>
-										No incorrect options yet
+										{t('dailyChallenge.noIncorrectOptionsYet', 'No incorrect options yet')}
 									</div>
 								)}
 				<Button
@@ -2940,7 +2941,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										color: '#666',
 										width: '100%',
 									}}>
-									Add
+									{t('dailyChallenge.add', 'Add')}
 								</Button>
 							</div>
 						</div>

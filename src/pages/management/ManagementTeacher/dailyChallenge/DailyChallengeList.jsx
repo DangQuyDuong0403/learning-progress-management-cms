@@ -63,7 +63,12 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const [searchText, setSearchText] = useState("");
   const [typeFilter, setTypeFilter] = useState([]);
   const [statusFilter, setStatusFilter] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Restore currentPage from location.state if available (when navigating back)
+  const [currentPage, setCurrentPage] = useState(() => {
+    const initialPage = location.state?.currentPage || 1;
+    console.log('🔵 DailyChallengeList - Initial currentPage from state:', initialPage, 'location.state:', location.state);
+    return initialPage;
+  });
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [allChallenges, setAllChallenges] = useState([]); // Full flattened list for lesson-aware pagination
@@ -89,6 +94,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
   });
   const [publishDetails, setPublishDetails] = useState(null);
   const [performanceByChallengeId, setPerformanceByChallengeId] = useState({});
+  const hasRestoredState = useRef(false); // Track if we've already restored state from location
 
   // Build unique lesson list from current allChallenges to avoid extra API calls
   const availableLessons = React.useMemo(() => {
@@ -143,13 +149,13 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const getStatusLabel = (statusKey) => {
     switch (statusKey) {
       case 'DRAFT':
-        return 'Draft';
+        return t('dailyChallenge.DRAFT', 'Draft');
       case 'PUBLISHED':
-        return 'Published';
+        return t('dailyChallenge.PUBLISHED', 'Published');
       case 'IN_PROGRESS':
-        return 'In Progress';
+        return t('dailyChallenge.IN_PROGRESS', 'In Progress');
       case 'FINISHED':
-        return 'Finished';
+        return t('dailyChallenge.FINISHED', 'Finished');
       default:
         return statusKey;
     }
@@ -158,14 +164,14 @@ const DailyChallengeList = ({ readOnly = false }) => {
   // Helper to translate type codes to labels
   const getTypeLabelByCode = useCallback((typeCode) => {
     const map = {
-      GV: "Grammar & Vocabulary",
-      RE: "Reading",
-      LI: "Listening",
-      WR: "Writing",
-      SP: "Speaking",
+      GV: t('dailyChallenge.typeNames.GV', 'Grammar & Vocabulary'),
+      RE: t('dailyChallenge.typeNames.RE', 'Reading'),
+      LI: t('dailyChallenge.typeNames.LI', 'Listening'),
+      WR: t('dailyChallenge.typeNames.WR', 'Writing'),
+      SP: t('dailyChallenge.typeNames.SP', 'Speaking'),
     };
     return map[typeCode] || typeCode;
-  }, []);
+  }, [t]);
 
   // Fetch class data if classId exists
   const fetchClassData = useCallback(async () => {
@@ -585,6 +591,84 @@ const DailyChallengeList = ({ readOnly = false }) => {
     }
   }, [filteredAllChallenges, pageSize, currentPage]);
 
+  // Reset hasRestoredState when location.state changes from having currentPage to not having it
+  // This allows restoring again when navigating back with new state
+  useEffect(() => {
+    // If location.state no longer has currentPage, reset the flag
+    if (!location.state?.currentPage && hasRestoredState.current) {
+      console.log('🔄 DailyChallengeList - Resetting hasRestoredState (no saved state)');
+      hasRestoredState.current = false;
+    }
+  }, [location.state]);
+
+  // Restore pagination and filters from location.state when navigating back
+  // Only restore once when component mounts with saved state
+  useEffect(() => {
+    console.log('🟢 DailyChallengeList - Location state changed:', location.state);
+    console.log('🟢 DailyChallengeList - hasRestoredState.current:', hasRestoredState.current);
+    console.log('🟢 DailyChallengeList - Current page before restore:', currentPage);
+    
+    if (location.state?.currentPage) {
+      const savedPage = location.state.currentPage;
+      const savedPageSize = location.state.pageSize;
+      const savedSearchText = location.state.searchText;
+      const savedTypeFilter = location.state.typeFilter;
+      const savedStatusFilter = location.state.statusFilter;
+      
+      console.log('🟡 DailyChallengeList - Found saved state to restore:', {
+        savedPage,
+        savedPageSize,
+        savedSearchText,
+        savedTypeFilter,
+        savedStatusFilter,
+        hasRestored: hasRestoredState.current
+      });
+      
+      // Only restore if we haven't restored yet OR if the saved page is different from current
+      // This allows restoring even if component didn't unmount
+      if (!hasRestoredState.current || (savedPage !== currentPage)) {
+        console.log('✅ DailyChallengeList - Restoring state...');
+        
+        // Restore page and pageSize
+        if (savedPage && savedPage > 0) {
+          console.log('📄 Restoring page from', currentPage, 'to', savedPage);
+          setCurrentPage(savedPage);
+        }
+        if (savedPageSize && savedPageSize > 0) {
+          console.log('📏 Restoring pageSize to', savedPageSize);
+          setPageSize(savedPageSize);
+        }
+        
+        // Restore search text if available
+        if (savedSearchText !== undefined) {
+          console.log('🔍 Restoring searchText:', savedSearchText);
+          setSearchText(savedSearchText);
+          setSearchDebounce(savedSearchText);
+        }
+        
+        // Restore filters if available
+        if (savedTypeFilter && Array.isArray(savedTypeFilter)) {
+          console.log('🏷️ Restoring typeFilter:', savedTypeFilter);
+          setTypeFilter(savedTypeFilter);
+          setFilterDropdown(prev => ({ ...prev, selectedTypes: savedTypeFilter }));
+        }
+        if (savedStatusFilter && Array.isArray(savedStatusFilter)) {
+          console.log('📊 Restoring statusFilter:', savedStatusFilter);
+          setStatusFilter(savedStatusFilter);
+          setFilterDropdown(prev => ({ ...prev, selectedStatuses: savedStatusFilter }));
+        }
+        
+        // Mark as restored to avoid restoring again
+        hasRestoredState.current = true;
+        console.log('✅ DailyChallengeList - State restored successfully');
+      } else {
+        console.log('⏭️ DailyChallengeList - Skipping restore (already restored or same page)');
+      }
+    } else {
+      console.log('ℹ️ DailyChallengeList - No saved state found in location.state');
+    }
+  }, [location.state, currentPage]);
+
   // Fetch class data on component mount if classId exists
   useEffect(() => {
     fetchClassData();
@@ -787,14 +871,22 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   const handleViewClick = (challenge) => {
     // Navigate with state containing class and challenge information
+    // Also save currentPage to restore when navigating back
+    const savedState = {
+      classId: classId,
+      className: classData?.name,
+      challengeId: challenge.id,
+      challengeName: challenge.title,
+      lessonName: challenge.lessonName,
+      currentPage: currentPage, // Save current page to restore later
+      pageSize: pageSize, // Also save pageSize for consistency
+      searchText: searchText, // Save search text
+      typeFilter: typeFilter, // Save type filter
+      statusFilter: statusFilter, // Save status filter
+    };
+    console.log('🔵 DailyChallengeList - Navigating to detail, saving state:', savedState);
     navigate(`/teacher/daily-challenges/detail/${challenge.id}`, {
-      state: {
-        classId: classId,
-        className: classData?.name,
-        challengeId: challenge.id,
-        challengeName: challenge.title,
-        lessonName: challenge.lessonName,
-      }
+      state: savedState
     });
   };
 
@@ -1211,7 +1303,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
               </span>
               <Button
                 className="status-publish-btn"
-                icon={<CheckCircleOutlined />}
                 style={{
                   fontSize: '16px',
                   height: '40px',
