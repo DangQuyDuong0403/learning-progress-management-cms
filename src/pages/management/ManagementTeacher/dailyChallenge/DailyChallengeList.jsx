@@ -53,6 +53,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const { user } = useSelector((state) => state.auth);
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
   const isTeachingAssistant = (user?.role || '').toUpperCase() === 'TEACHING_ASSISTANT';
+  const isManager = (user?.role || '').toLowerCase() === 'manager';
   
   // Set page title based on whether it's class-specific or general
   usePageTitle(classId ? `Class ${classId} Daily Challenges` : 'Daily Challenge Management');
@@ -94,7 +95,8 @@ const DailyChallengeList = ({ readOnly = false }) => {
   });
   const [publishDetails, setPublishDetails] = useState(null);
   const [performanceByChallengeId, setPerformanceByChallengeId] = useState({});
-  const hasRestoredState = useRef(false); // Track if we've already restored state from location
+  const restoredStateKey = useRef(null); // Track which location.state we've already restored
+  const isRestoringState = useRef(false); // Flag to prevent side effects during state restoration
 
   // Build unique lesson list from current allChallenges to avoid extra API calls
   const availableLessons = React.useMemo(() => {
@@ -310,6 +312,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   hasAntiCheat: !!challenge.hasAntiCheat,
                   shuffleQuestion: !!challenge.shuffleQuestion,
                   translateOnScreen: !!challenge.translateOnScreen,
+                  challengeMethod: challenge.challengeMethod,
                   challengeMode: challenge.challengeMethod === 'TEST' ? 'exam' : 'normal',
                   // Completion info from API (prefer direct fields)
                   submittedCount: typeof challenge.submittedCount === 'number' ? challenge.submittedCount : 0,
@@ -591,83 +594,91 @@ const DailyChallengeList = ({ readOnly = false }) => {
     }
   }, [filteredAllChallenges, pageSize, currentPage]);
 
-  // Reset hasRestoredState when location.state changes from having currentPage to not having it
-  // This allows restoring again when navigating back with new state
-  useEffect(() => {
-    // If location.state no longer has currentPage, reset the flag
-    if (!location.state?.currentPage && hasRestoredState.current) {
-      console.log('🔄 DailyChallengeList - Resetting hasRestoredState (no saved state)');
-      hasRestoredState.current = false;
-    }
-  }, [location.state]);
-
   // Restore pagination and filters from location.state when navigating back
-  // Only restore once when component mounts with saved state
+  // Only restore once for each unique location.state
   useEffect(() => {
     console.log('🟢 DailyChallengeList - Location state changed:', location.state);
-    console.log('🟢 DailyChallengeList - hasRestoredState.current:', hasRestoredState.current);
-    console.log('🟢 DailyChallengeList - Current page before restore:', currentPage);
     
-    if (location.state?.currentPage) {
+    // Create a unique key from location.state to track if we've restored this specific state
+    const stateKey = location.state?.currentPage 
+      ? JSON.stringify({
+          currentPage: location.state.currentPage,
+          pageSize: location.state.pageSize,
+          searchText: location.state.searchText,
+          typeFilter: location.state.typeFilter,
+          statusFilter: location.state.statusFilter,
+        })
+      : null;
+    
+    console.log('🟢 DailyChallengeList - State key:', stateKey);
+    console.log('🟢 DailyChallengeList - Restored key:', restoredStateKey.current);
+    
+    // Only restore if we have saved state AND haven't restored this specific state yet
+    if (stateKey && restoredStateKey.current !== stateKey) {
       const savedPage = location.state.currentPage;
       const savedPageSize = location.state.pageSize;
       const savedSearchText = location.state.searchText;
       const savedTypeFilter = location.state.typeFilter;
       const savedStatusFilter = location.state.statusFilter;
       
-      console.log('🟡 DailyChallengeList - Found saved state to restore:', {
+      console.log('🟡 DailyChallengeList - Found new saved state to restore:', {
         savedPage,
         savedPageSize,
         savedSearchText,
         savedTypeFilter,
         savedStatusFilter,
-        hasRestored: hasRestoredState.current
       });
       
-      // Only restore if we haven't restored yet OR if the saved page is different from current
-      // This allows restoring even if component didn't unmount
-      if (!hasRestoredState.current || (savedPage !== currentPage)) {
-        console.log('✅ DailyChallengeList - Restoring state...');
-        
-        // Restore page and pageSize
-        if (savedPage && savedPage > 0) {
-          console.log('📄 Restoring page from', currentPage, 'to', savedPage);
-          setCurrentPage(savedPage);
-        }
-        if (savedPageSize && savedPageSize > 0) {
-          console.log('📏 Restoring pageSize to', savedPageSize);
-          setPageSize(savedPageSize);
-        }
-        
-        // Restore search text if available
-        if (savedSearchText !== undefined) {
-          console.log('🔍 Restoring searchText:', savedSearchText);
-          setSearchText(savedSearchText);
-          setSearchDebounce(savedSearchText);
-        }
-        
-        // Restore filters if available
-        if (savedTypeFilter && Array.isArray(savedTypeFilter)) {
-          console.log('🏷️ Restoring typeFilter:', savedTypeFilter);
-          setTypeFilter(savedTypeFilter);
-          setFilterDropdown(prev => ({ ...prev, selectedTypes: savedTypeFilter }));
-        }
-        if (savedStatusFilter && Array.isArray(savedStatusFilter)) {
-          console.log('📊 Restoring statusFilter:', savedStatusFilter);
-          setStatusFilter(savedStatusFilter);
-          setFilterDropdown(prev => ({ ...prev, selectedStatuses: savedStatusFilter }));
-        }
-        
-        // Mark as restored to avoid restoring again
-        hasRestoredState.current = true;
-        console.log('✅ DailyChallengeList - State restored successfully');
-      } else {
-        console.log('⏭️ DailyChallengeList - Skipping restore (already restored or same page)');
+      console.log('✅ DailyChallengeList - Restoring state...');
+      
+      // Set flag to prevent side effects during restoration
+      isRestoringState.current = true;
+      
+      // Restore page and pageSize FIRST (before searchText to avoid debounce reset)
+      if (savedPage && savedPage > 0) {
+        console.log('📄 Restoring page to', savedPage);
+        setCurrentPage(savedPage);
       }
-    } else {
-      console.log('ℹ️ DailyChallengeList - No saved state found in location.state');
+      if (savedPageSize && savedPageSize > 0) {
+        console.log('📏 Restoring pageSize to', savedPageSize);
+        setPageSize(savedPageSize);
+      }
+      
+      // Restore filters BEFORE searchText
+      if (savedTypeFilter && Array.isArray(savedTypeFilter)) {
+        console.log('🏷️ Restoring typeFilter:', savedTypeFilter);
+        setTypeFilter(savedTypeFilter);
+        setFilterDropdown(prev => ({ ...prev, selectedTypes: savedTypeFilter }));
+      }
+      if (savedStatusFilter && Array.isArray(savedStatusFilter)) {
+        console.log('📊 Restoring statusFilter:', savedStatusFilter);
+        setStatusFilter(savedStatusFilter);
+        setFilterDropdown(prev => ({ ...prev, selectedStatuses: savedStatusFilter }));
+      }
+      
+      // Restore search text LAST (after currentPage is set)
+      if (savedSearchText !== undefined) {
+        console.log('🔍 Restoring searchText:', savedSearchText);
+        setSearchText(savedSearchText);
+        setSearchDebounce(savedSearchText);
+      }
+      
+      // Mark this specific state as restored
+      restoredStateKey.current = stateKey;
+      
+      // Clear restoration flag after a short delay to allow all state updates to complete
+      setTimeout(() => {
+        isRestoringState.current = false;
+        console.log('✅ DailyChallengeList - State restored successfully, restoration flag cleared');
+      }, 500);
+    } else if (!stateKey && restoredStateKey.current) {
+      // Reset when location.state no longer has saved state
+      console.log('🔄 DailyChallengeList - Resetting restoredStateKey (no saved state)');
+      restoredStateKey.current = null;
+    } else if (stateKey && restoredStateKey.current === stateKey) {
+      console.log('⏭️ DailyChallengeList - Skipping restore (already restored this state)');
     }
-  }, [location.state, currentPage]);
+  }, [location.state]); // Only depend on location.state, not currentPage
 
   // Fetch class data on component mount if classId exists
   useEffect(() => {
@@ -693,7 +704,10 @@ const DailyChallengeList = ({ readOnly = false }) => {
       // This allows users to type spaces normally, but trims when they stop typing
       const trimmedValue = searchText.trim();
       setSearchDebounce(trimmedValue);
-      setCurrentPage(1);
+      // Only reset to page 1 if not restoring state (to preserve restored page)
+      if (!isRestoringState.current) {
+        setCurrentPage(1);
+      }
     }, 400); // Reduced delay for better responsiveness
 
     return () => clearTimeout(timer);
@@ -885,7 +899,14 @@ const DailyChallengeList = ({ readOnly = false }) => {
       statusFilter: statusFilter, // Save status filter
     };
     console.log('🔵 DailyChallengeList - Navigating to detail, saving state:', savedState);
-    navigate(`/teacher/daily-challenges/detail/${challenge.id}`, {
+    
+    // Determine route based on user role
+    const userRole = user?.role?.toLowerCase();
+    const detailPath = userRole === 'manager' 
+      ? `/manager/daily-challenges/detail/${challenge.id}`
+      : `/teacher/daily-challenges/detail/${challenge.id}`;
+    
+    navigate(detailPath, {
       state: savedState
     });
   };
@@ -1063,7 +1084,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                 <span className="lesson-text" style={{ transition: 'opacity 0.3s ease', display: 'block', whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: '100%', lineHeight: '1.4' }}>
                   {text}
                 </span>
-                {!readOnly && !isTeachingAssistant && (
+                {!readOnly && !isTeachingAssistant && !isManager && (
                   <Button
                     className="lesson-create-btn"
                     icon={<PlusOutlined />}
@@ -1164,6 +1185,41 @@ const DailyChallengeList = ({ readOnly = false }) => {
             }}
           >
             {getTypeLabelByCode(type)}
+          </span>
+        );
+      },
+    },
+    {
+      title: t('dailyChallenge.method') || 'Method',
+      key: 'method',
+      width: '10%',
+      align: 'center',
+      render: (_, record) => {
+        // Show empty state for lessons without challenges
+        if (record.isEmptyLesson) {
+          return (
+            <span>
+            </span>
+          );
+        }
+        
+        // Determine method from challengeMethod or challengeMode
+        const challengeMethod = record.challengeMethod || record.originalChallenge?.challengeMethod;
+        const challengeMode = record.challengeMode;
+        const isExam = challengeMethod === 'TEST' || challengeMode === 'exam';
+        
+        return (
+          <span
+            style={{
+              display: 'block',
+              fontSize: '18px',
+              fontWeight: 400,
+              color: '#000000'
+            }}
+          >
+            {isExam 
+              ?  'Exam'
+              : 'Normal'}
           </span>
         );
       },
@@ -1369,7 +1425,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               title={t('dailyChallenge.viewDetails')}
               className="action-btn-view"
             />
-            {!readOnly && !isTeachingAssistant && (
+            {!readOnly && !isTeachingAssistant && !isManager && (
               <>
                 <Button
                   type="text"
@@ -1517,7 +1573,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               </div>
             )}
           </div>
-          {!readOnly && !isTeachingAssistant && (
+          {!readOnly && !isTeachingAssistant && !isManager && (
             <div className="action-buttons" style={{ marginLeft: 'auto' }}>
               <Button 
                 icon={<PlusOutlined />}
@@ -1558,6 +1614,11 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   `${range[0]}-${range[1]} ${t('dailyChallenge.of')} ${total} ${t('dailyChallenge.challenges')}`,
                 className: `${theme}-pagination`,
                 pageSizeOptions: ['10', '20', '50', '100'],
+                locale: {
+                  jump_to: t('common.goTo'),
+                  page: t('common.page'),
+                  items_per_page: t('common.perPage'),
+                },
               }}
               scroll={{ x: 800 }}
               className={`daily-challenge-table ${theme}-daily-challenge-table`}

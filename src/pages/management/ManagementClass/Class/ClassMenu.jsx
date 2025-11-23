@@ -12,7 +12,6 @@ import {
   SolutionOutlined,
   EyeOutlined,
   BarChartOutlined,
-  ReadOutlined,
 } from "@ant-design/icons";
 import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
 import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
@@ -178,20 +177,24 @@ const ClassMenu = () => {
       title: t('classMenu.chaptersLessons'),
       description: t('classMenu.chaptersLessonsDescription'),
       icon: <BookOutlined style={{ fontSize: '48px', color: '#722ed1' }} />,
-      path: `${routePrefix}/chapters/${id}`,
+      path: (userRole === 'student' || userRole === 'test_taker')
+        ? `${routePrefix}/chapters-lessons/${id}`
+        : `${routePrefix}/chapters/${id}`,
       color: "#722ed1",
-      hideForRoles: ['student'],
+      // Show for all roles including student and test_taker
     },
     {
       id: "daily-challenge",
       title: t('classMenu.dailyChallenge'),
       description: (userRole === 'student' || userRole === 'test_taker')
         ? t('classMenu.dailyChallengeStudentDescription', 'View and take daily challenges') 
+        : (userRole === 'manager')
+        ? t('classMenu.dailyChallengeManagerDescription', 'View daily challenges')
         : t('classMenu.dailyChallengeDescription'),
       icon: <img src="/img/dc-icon.png" alt="daily-challenge" style={{ width: '60px', height: '60px' }} />,
-      path: (userRole === 'student' || userRole === 'test_taker') ? `${routePrefix}/daily-challenges/${id}` : `${routePrefix}/daily-challenges/${id}`,
+      path: `${routePrefix}/daily-challenges/${id}`,
       color: "#eb2f96",
-      hideForRoles: ['manager'], // Only hide for manager, allow student, test_taker, teacher, and teaching_assistant to see
+      // Show for all roles including manager
     },
     {
       id: "teachers",
@@ -221,11 +224,11 @@ const ClassMenu = () => {
   const studentExtras = [];
 
   // Filter menu items based on user role
-  // For test_taker: only show overview and daily challenge
+  // For test_taker: show overview, chapters-lessons, and daily challenge
   const menuItems = [...allMenuItems, ...studentExtras].filter(item => {
-    // Hide items for test_taker except overview and daily-challenge
+    // Hide items for test_taker except overview, chapters-lessons, and daily-challenge
     if (userRole === 'test_taker') {
-      if (item.id !== 'overview' && item.id !== 'daily-challenge') {
+      if (item.id !== 'overview' && item.id !== 'chapters-lessons' && item.id !== 'daily-challenge') {
         return false;
       }
     }

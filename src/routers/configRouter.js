@@ -246,10 +246,22 @@ const CONFIG_ROUTER = [
 		role: 'student',
 	},
 	
+	// Student Class Overview
+	{
+		show: false,
+		component: ClassOverview,
+		path: ROUTER_PAGE.STUDENT_CLASS_OVERVIEW,
+		menuName: 'Class Overview',
+		exact: true,
+		key: 'STUDENT_CLASS_OVERVIEW',
+		private: true,
+		role: 'student',
+	},
+	
 	// Student Class Chapters/Lessons
 	{
 		show: false,
-		component: ClassChapterLesson,
+		component: TeacherClassChapterList,
 		path: ROUTER_PAGE.STUDENT_CLASS_CHAPTERS_LESSONS,
 		menuName: 'Class Chapters/Lessons',
 		exact: true,
@@ -382,6 +394,49 @@ const CONFIG_ROUTER = [
 		menuName: 'Class Menu',
 		exact: true,
 		key: 'TEST_TAKER_CLASS_MENU',
+		private: true,
+		role: 'test_taker',
+	},
+	// Test Taker Class Chapters/Lessons
+	{
+		show: false,
+		component: TeacherClassChapterList,
+		path: ROUTER_PAGE.TEST_TAKER_CLASS_CHAPTERS_LESSONS,
+		menuName: 'Class Chapters/Lessons',
+		exact: true,
+		key: 'TEST_TAKER_CLASS_CHAPTERS_LESSONS',
+		private: true,
+		role: 'test_taker',
+	},
+	// Test Taker Class Chapters List
+	{
+		show: false,
+		component: TeacherClassChapterList,
+		path: ROUTER_PAGE.TEST_TAKER_CLASS_CHAPTERS,
+		menuName: 'Class Chapters',
+		exact: true,
+		key: 'TEST_TAKER_CLASS_CHAPTERS',
+		private: true,
+		role: 'test_taker',
+	},
+	// Test Taker Class Chapter Lessons List
+	{
+		show: false,
+		component: ClassChapterLesson,
+		path: ROUTER_PAGE.TEST_TAKER_CLASS_CHAPTER_LESSONS,
+		menuName: 'Class Chapter Lessons',
+		exact: true,
+		key: 'TEST_TAKER_CLASS_CHAPTER_LESSONS',
+		private: true,
+		role: 'test_taker',
+	},
+	{
+		show: false,
+		component: ClassOverview,
+		path: ROUTER_PAGE.TEST_TAKER_CLASS_OVERVIEW,
+		menuName: 'Class Overview',
+		exact: true,
+		key: 'TEST_TAKER_CLASS_OVERVIEW',
 		private: true,
 		role: 'test_taker',
 	},
@@ -1511,6 +1566,37 @@ const CONFIG_ROUTER = [
 		key: 'TEACHING_ASSISTANT_CLASS_DAILY_CHALLENGES',
 		private: true,
 		role: ['teaching_assistant'],
+	},
+	// Daily Challenge Routes for Manager
+	{
+		show: false,
+		component: DailyChallengeList,
+		path: ROUTER_PAGE.MANAGER_CLASS_DAILY_CHALLENGES,
+		menuName: 'Class Daily Challenges',
+		exact: true,
+		key: 'MANAGER_CLASS_DAILY_CHALLENGES',
+		private: true,
+		role: ['manager'],
+	},
+	{
+		show: false,
+		component: DailyChallengePerformance,
+		path: ROUTER_PAGE.MANAGER_DAILY_CHALLENGE_DETAIL,
+		menuName: 'Daily Challenge Performance',
+		exact: true,
+		key: 'MANAGER_DAILY_CHALLENGE_PERFORMANCE',
+		private: true,
+		role: ['manager'],
+	},
+	{
+		show: false,
+		component: DailyChallengeContent,
+		path: ROUTER_PAGE.MANAGER_DAILY_CHALLENGE_CONTENT,
+		menuName: 'Daily Challenge Content',
+		exact: true,
+		key: 'MANAGER_DAILY_CHALLENGE_CONTENT',
+		private: true,
+		role: ['manager'],
 	},
 	
 ];

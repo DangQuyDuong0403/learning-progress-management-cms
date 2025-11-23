@@ -248,14 +248,14 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 					label={t('teacherManagement.address')}
 				>
 					<TextArea 
-						rows={3}
-					
+						autoSize={{ minRows: 3, maxRows: 10 }}
+						style={{ resize: 'none' }}
 						className={`form-input ${theme}-form-input`}
 					/>
 				</Form.Item>
 
-				{/* Action Buttons */}
-				<Row gutter={16} style={{ marginTop: 32 }}>
+				{/* Action Buttons - Hidden, using modal footer buttons instead */}
+				<Row gutter={16} style={{ marginTop: 32, display: 'none' }}>
 					<Col span={12}>
 						<Button
 							type="default"

@@ -69,7 +69,7 @@ export default function Login() {
 			setTimeout(() => {
 				navigate('/reset-password');
 			}, 2000);
-		} else {
+			} else {
 				// Normal login success
 				spaceToast.success(response.message);
 				// Redirect based on role
@@ -78,7 +78,7 @@ export default function Login() {
 				
 				// Check if role is TEST_TAKER (uppercase or lowercase)
 				if (userRole === 'TEST_TAKER' || userRole === 'test_taker') {
-					redirectPath = '/test-taker/dashboard';
+					redirectPath = '/test-taker/classes';
 				} else if (userRole === 'STUDENT' || userRole === 'student') {
 					redirectPath = '/student/dashboard';
 				}

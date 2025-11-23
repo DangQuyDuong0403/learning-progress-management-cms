@@ -112,6 +112,7 @@ const DailyChallengeSubmissionDetail = () => {
   const userRole = useSelector((state) => state.auth?.user?.role);
   const normalizedRole = (userRole || '').toString().toLowerCase();
   const isStudent = normalizedRole === 'student' || normalizedRole === 'test_taker';
+  const isManager = normalizedRole === 'manager';
   const getFeedbackRouteBase = useCallback(() => {
     if (isStudent) {
       return normalizedRole === 'test_taker' ? '/test-taker' : '/student';
@@ -1673,13 +1674,20 @@ useEffect(() => {
 
     // Grammar & Vocabulary questions
     if (questions.length > 0) {
-      questions.forEach((q) => {
+      const start = questionNumber;
+      const end = start + questions.length - 1;
+      // Add individual questions directly (no header)
+      questions.forEach((q, qIdx) => {
         navigation.push({ 
           id: `gv-${q.id}`, 
           type: 'question', 
-          title: `Question ${questionNumber++}` 
+          title: `Question ${start + qIdx}`,
+          questionNumber: start + qIdx,
+          points: q.points || 0,
+          receivedScore: q.receivedScore || 0
         });
       });
+      questionNumber = end + 1;
     }
 
     // Reading sections
@@ -1688,11 +1696,28 @@ useEffect(() => {
         const count = s.questions?.length || 0;
         const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
+        // Add section header
         navigation.push({ 
           id: `reading-${idx + 1}`, 
-          type: 'section', 
-          title: `Reading ${idx + 1}: Question ${start}-${end}` 
+          type: 'section-header', 
+          title: `Reading ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'reading'
         });
+        // Add individual questions
+        if (s.questions && s.questions.length > 0) {
+          s.questions.forEach((q, qIdx) => {
+            navigation.push({ 
+              id: `reading-${idx + 1}-q-${q.id || qIdx}`, 
+              type: 'question', 
+              title: `Question ${start + qIdx}`,
+              parentSection: `reading-${idx + 1}`,
+              questionNumber: start + qIdx,
+              points: q.points || 0,
+              receivedScore: q.receivedScore || 0
+            });
+          });
+        }
         questionNumber = end + 1;
       });
     }
@@ -1703,11 +1728,28 @@ useEffect(() => {
         const count = s.questions?.length || 0;
         const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
+        // Add section header
         navigation.push({ 
           id: `listening-${idx + 1}`, 
-          type: 'section', 
-          title: `Listening ${idx + 1}: Question ${start}-${end}` 
+          type: 'section-header', 
+          title: `Listening ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'listening'
         });
+        // Add individual questions
+        if (s.questions && s.questions.length > 0) {
+          s.questions.forEach((q, qIdx) => {
+            navigation.push({ 
+              id: `listening-${idx + 1}-q-${q.id || qIdx}`, 
+              type: 'question', 
+              title: `Question ${start + qIdx}`,
+              parentSection: `listening-${idx + 1}`,
+              questionNumber: start + qIdx,
+              points: q.points || 0,
+              receivedScore: q.receivedScore || 0
+            });
+          });
+        }
         questionNumber = end + 1;
       });
     }
@@ -1715,10 +1757,17 @@ useEffect(() => {
     // Writing sections
     if (writingSections.length > 0) {
       writingSections.forEach((s, idx) => {
+        const received = (s.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+        const total = (s.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+        // Add section header with question-like style
         navigation.push({ 
           id: `writing-${idx + 1}`, 
-          type: 'section', 
-          title: `Writing ${idx + 1}` 
+          type: 'question', 
+          title: `Writing ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'writing',
+          points: total,
+          receivedScore: received
         });
       });
     }
@@ -1726,10 +1775,17 @@ useEffect(() => {
     // Speaking sections
     if (speakingSections.length > 0) {
       speakingSections.forEach((s, idx) => {
+        const received = (s.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+        const total = (s.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+        // Add section header with question-like style
         navigation.push({ 
           id: `speaking-${idx + 1}`, 
-          type: 'section', 
-          title: `Speaking ${idx + 1}` 
+          type: 'question', 
+          title: `Speaking ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'speaking',
+          points: total,
+          receivedScore: received
         });
       });
     }
@@ -2010,9 +2066,10 @@ useEffect(() => {
   };
 
   // Helper function to render section questions (used in Reading/Listening sections)
-  const renderSectionQuestion = (q, qIndex, sectionType = 'reading') => {
+  const renderSectionQuestion = (q, qIndex, sectionType = 'reading', sectionIndex = null) => {
     const questionText = q.questionText || q.question || '';
     const studentAnswer = studentAnswers?.[q.id];
+    const questionRefId = sectionIndex !== null ? `${sectionType}-${sectionIndex + 1}-q-${q.id || qIndex}` : null;
 
     if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE' || q.type === 'MULTIPLE_SELECT') {
       const options = q.options || [];
@@ -2022,16 +2079,19 @@ useEffect(() => {
       const correctKeys = isMulti ? options.filter(opt => opt.isCorrect).map(opt => opt.key) : [];
       
       return (
-        <div key={q.id} style={{
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{
           padding: '16px',
           background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
           borderRadius: '8px',
           border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
         }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
-            Question {qIndex + 1}:
+            {t('dailyChallenge.question')} {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
-              {(q.receivedScore || 0)} / {(q.points || 0)} points
+              {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
             </span>
           </div>
           <div className="question-text-content" style={{ marginBottom: '10px' }} dangerouslySetInnerHTML={{ __html: questionText }} />
@@ -2084,9 +2144,9 @@ useEffect(() => {
                 }}>
                   <input type={isMulti ? 'checkbox' : 'radio'} checked={isSelected || isCorrectMissing} disabled style={{ width: '18px', height: '18px', accentColor: isCorrectMissing ? '#faad14' : (isCorrectAnswer ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'))), cursor: 'not-allowed', opacity: 1 }} />
                   <span style={{ fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontSize: '16px' }}>
-                    {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? 'A' : 'B') : key}.
+                    {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' || opt === t('dailyChallenge.true') ? 'A' : 'B') : key}.
                   </span>
-                  <span className="option-text" style={{ flex: 1, lineHeight: '1.6', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontWeight: '350' }} dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? opt : text }} />
+                  <span className="option-text" style={{ flex: 1, lineHeight: '1.6', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontWeight: '350' }} dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? t('dailyChallenge.true') : opt === 'False' ? t('dailyChallenge.false') : opt) : text }} />
                   {isSelectedWrong && <CloseCircleOutlined style={{ fontSize: '22px', color: '#ff4d4f', marginLeft: 'auto', fontWeight: 'bold' }} />}
                   {(isUnanswered && !isMulti && isCorrectAnswer) && !isSelectedWrong && (
                     <CheckCircleOutlined style={{ fontSize: '20px', color: '#faad14', marginLeft: 'auto' }} />
@@ -2183,7 +2243,10 @@ useEffect(() => {
       };
 
       return (
-        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
@@ -2348,7 +2411,10 @@ useEffect(() => {
       const dropdownHtml = renderDropdownForSection();
 
       return (
-        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
@@ -2479,7 +2545,10 @@ useEffect(() => {
       };
 
       return (
-        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
@@ -2566,7 +2635,10 @@ useEffect(() => {
       const displayText = ((questionText).replace(/\[\[pos_.*?\]\]/g, '')).trim();
 
       return (
-        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
@@ -2649,11 +2721,11 @@ useEffect(() => {
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. Reading Section
+              {index + 1}. {t('dailyChallenge.readingSection')}
             </Typography.Text>
           </div>
           <div style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-            {sectionTotals.received} / {sectionTotals.total} points
+            {sectionTotals.received} / {sectionTotals.total} {t('dailyChallenge.points')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
@@ -2663,7 +2735,7 @@ useEffect(() => {
           <div style={{ flex: '1', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px' }}>
             <div style={{ padding: '20px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'reading'))}
+                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'reading', index))}
               </div>
             </div>
           </div>
@@ -2690,20 +2762,20 @@ useEffect(() => {
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. Listening Section
+              {index + 1}. {t('dailyChallenge.listeningSection')}
             </Typography.Text>
           </div>
           <div style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-            {sectionTotals.received} / {sectionTotals.total} points
+            {sectionTotals.received} / {sectionTotals.total} {t('dailyChallenge.points')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
           <div className="listening-passage-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
             <div style={{ background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', padding: '20px', marginBottom: '20px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, boxShadow: theme === 'sun' ? '0 2px 8px rgba(0, 0, 0, 0.1)' : '0 2px 8px rgba(0, 0, 0, 0.2)' }}>
-              <Typography.Text style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>Audio Transcript</Typography.Text>
+              <Typography.Text style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>{t('dailyChallenge.audioTranscript')}</Typography.Text>
               <audio controls style={{ width: '100%', marginBottom: '16px' }}>
                 <source src={section.audioUrl} type="audio/wav" />
-                Your browser does not support the audio element.
+                {t('dailyChallenge.browserNotSupportAudio')}
               </audio>
               <div className="passage-text-content" style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', textAlign: 'justify' }} dangerouslySetInnerHTML={{ __html: section.transcript || '' }} />
             </div>
@@ -2711,7 +2783,7 @@ useEffect(() => {
           <div style={{ flex: '1', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px' }}>
             <div style={{ padding: '20px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'listening'))}
+                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'listening', index))}
               </div>
             </div>
           </div>
@@ -2743,10 +2815,10 @@ useEffect(() => {
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. Writing Section
+              {index + 1}. {t('dailyChallenge.writingSection')}
             </Typography.Text>
           </div>
-          {!isStudent ? (
+          {!isStudent && !isManager ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {!hasExistingGradingForSection(section.id) ? (
                 <>
@@ -2765,7 +2837,7 @@ useEffect(() => {
                     onClick={() => handleOpenEditFeedback(section.id, 'section')}
                     style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
                   >
-                    Edit Score/Feedback
+                    {t('dailyChallenge.editScoreFeedback')}
                   </Button>
                 </>
               )}
@@ -2777,7 +2849,7 @@ useEffect(() => {
                 onClick={() => handleOpenEditFeedback(section.id, 'section')}
                 style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
               >
-                View Feedback
+                {t('dailyChallenge.viewFeedback')}
               </Button>
             )
           )}
@@ -2790,7 +2862,7 @@ useEffect(() => {
             <div style={{ padding: '20px' }}>
               {studentEssayText ? (
                 <div>
-                  <Typography.Text style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>Student's Essay:</Typography.Text>
+                  <Typography.Text style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>{t('dailyChallenge.studentsEssay')}</Typography.Text>
                   <div 
                     id={`essay-container-${section.id}`}
                     onMouseUp={(e) => {
@@ -3100,10 +3172,10 @@ useEffect(() => {
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: hasAudio ? '20px' : '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. {hasAudio ? 'Speaking With Audio Section' : 'Speaking Section'}
+              {index + 1}. {hasAudio ? t('dailyChallenge.speakingWithAudioSection') : t('dailyChallenge.speakingSection')}
             </Typography.Text>
           </div>
-          {!isStudent ? (
+          {!isStudent && !isManager ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {!hasExistingGradingForSection(section.id) ? (
                 <>
@@ -3130,7 +3202,7 @@ useEffect(() => {
                       padding: '0 12px'
                     }}
                   >
-                    Edit Score/Feedback
+                    {t('dailyChallenge.editScoreFeedback')}
                   </Button>
                 </>
               )}
@@ -3146,7 +3218,7 @@ useEffect(() => {
                   padding: '0 12px'
                 }}
               >
-                View Feedback
+                {t('dailyChallenge.viewFeedback')}
               </Button>
             )
           )}
@@ -3221,7 +3293,7 @@ useEffect(() => {
                     style={{ display: 'none' }}
                   >
                     <source src={section.audioUrl} type="audio/wav" />
-                    Your browser does not support the audio element.
+                    {t('dailyChallenge.browserNotSupportAudio')}
                   </audio>
 
                   {/* Audio Controls */}
@@ -3351,7 +3423,7 @@ useEffect(() => {
                         <source src={audioUrl} type="video/webm" />
                         <source src={audioUrl} type="video/mp4" />
                         <source src={audioUrl} type="video/ogg" />
-                        Your browser does not support the video element.
+                        {t('dailyChallenge.browserNotSupportVideo')}
                       </video>
                     );
                   } else {
@@ -3361,7 +3433,7 @@ useEffect(() => {
                         <source src={audioUrl} type="audio/mpeg" />
                         <source src={audioUrl} type="audio/wav" />
                         <source src={audioUrl} type="audio/mp3" />
-                        Your browser does not support the audio element.
+                        {t('dailyChallenge.browserNotSupportAudio')}
                       </audio>
                     );
                   }
@@ -3369,7 +3441,7 @@ useEffect(() => {
               </div>
             ) : (
               <Typography.Text type="secondary" style={{ fontSize: '14px', fontStyle: 'italic' }}>
-                {hasAudio ? 'No recording submitted' : 'No recording submitted'}
+                {t('dailyChallenge.noRecordingSubmitted')}
               </Typography.Text>
             )}
           </div>
@@ -3431,7 +3503,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -3439,7 +3511,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -3468,7 +3540,7 @@ useEffect(() => {
               gap: '14px', 
               marginTop: '12px' 
             }}>
-              {(q.type === 'TRUE_OR_FALSE' ? ['True', 'False'] : options).map((opt, idx) => {
+              {(q.type === 'TRUE_OR_FALSE' ? [t('dailyChallenge.true'), t('dailyChallenge.false')] : options).map((opt, idx) => {
                 let key, text;
                 if (q.type === 'TRUE_OR_FALSE') {
                   key = opt;
@@ -3536,7 +3608,7 @@ useEffect(() => {
                       fontWeight: '600',
                       fontSize: '16px'
                     }}>
-                      {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? 'A' : 'B') : key}.
+                      {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' || opt === t('dailyChallenge.true') ? 'A' : 'B') : key}.
                     </span>
                     <span 
                       className="option-text"
@@ -3546,7 +3618,7 @@ useEffect(() => {
                         color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                         fontWeight: '350'
                       }}
-                      dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? opt : text }}
+                      dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? t('dailyChallenge.true') : opt === 'False' ? t('dailyChallenge.false') : opt) : text }}
                     />
                     {isSelectedWrong && (
                       <CloseCircleOutlined style={{
@@ -3713,7 +3785,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -3721,7 +3793,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -3873,7 +3945,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -3881,7 +3953,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4039,7 +4111,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -4047,7 +4119,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4213,7 +4285,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -4221,7 +4293,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4379,7 +4451,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -4387,14 +4459,14 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
                 fontStyle: 'italic'
               }}>
-                Rewrite
+                {t('dailyChallenge.rewrite')}
               </Typography.Text>
             </div>
           </div>
@@ -4431,13 +4503,13 @@ useEffect(() => {
                 wordWrap: 'break-word',
                 cursor: 'not-allowed'
               }}>
-                {studentAnswerText || 'No answer provided'}
+                {studentAnswerText || t('dailyChallenge.noAnswerProvided')}
               </div>
             </div>
             {correctAnswersDisplay.length > 0 && (
               <div style={{ marginTop: '20px' }}>
                 <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '8px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                  Correct answer{correctAnswersDisplay.length > 1 ? 's' : ''}:
+                  {correctAnswersDisplay.length > 1 ? t('dailyChallenge.correctAnswers') : t('dailyChallenge.correctAnswer')}
                 </Typography.Text>
                 {correctAnswersDisplay.map((correctAnswer, idx) => (
                   <div key={idx} style={{
@@ -4506,7 +4578,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
             <Typography.Text style={{ 
               fontSize: '14px', 
@@ -4636,7 +4708,7 @@ useEffect(() => {
             </h2>
           </div>
           {/* Right actions */}
-            {!isStudent && (
+            {!isStudent && !isManager && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
                 <Button
                   icon={<FileTextOutlined />}
@@ -4848,7 +4920,7 @@ useEffect(() => {
                             }
                           }}
                         >
-                          {t('dailyChallenge.info', 'Info')}
+                          {t('dailyChallenge.info')}
                         </button>
                         <button
                           onClick={() => setActiveTab('questions')}
@@ -4890,7 +4962,7 @@ useEffect(() => {
                             }
                           }}
                         >
-                          {t('dailyChallenge.questions', 'Questions')}
+                          {t('dailyChallenge.questions')}
                         </button>
                       </div>
                     </div>
@@ -5646,7 +5718,7 @@ useEffect(() => {
                     /* Questions Tab */
                     <>
                       <div className="question-sidebar-header" style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.15)' : '2px solid rgba(138, 122, 255, 0.15)' }}>
-                        <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: 'rgb(24, 144, 255)', margin: 0 }}>Questions</h3>
+                        <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: 'rgb(24, 144, 255)', margin: 0 }}>{t('dailyChallenge.questions')}</h3>
                       </div>
                       <div style={{ 
                         maxHeight: 'calc(100vh - 280px)', 
@@ -5654,27 +5726,169 @@ useEffect(() => {
                         paddingRight: '8px'
                       }}>
                         <div className="question-sidebar-list">
-                          {getQuestionNavigation().map((item) => (
-                            <div
-                              key={item.id}
-                              className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
-                              onClick={() => scrollToQuestion(item.id)}
-                              style={{ 
-                                fontWeight: 'normal', 
-                                textAlign: 'center', 
-                                color: theme === 'sun' ? '#000000' : '#FFFFFF',
-                                padding: '10px',
-                                marginBottom: '4px',
-                                cursor: 'pointer',
-                                borderRadius: '4px',
-                                transition: 'none',
-                                transform: 'none',
-                                fontSize: '14px'
-                              }}
-                            >
-                              {item.title}
-                            </div>
-                          ))}
+                          {getQuestionNavigation().map((item) => {
+                            const isSectionHeader = item.type === 'section-header';
+                            const isNestedQuestion = item.type === 'question' && item.parentSection;
+                            const isWritingOrSpeaking = item.type === 'question' && (item.sectionType === 'writing' || item.sectionType === 'speaking');
+                            const isGrammarQuestion = item.type === 'question' && item.id?.startsWith('gv-');
+                            const shouldHaveQuestionStyle = isNestedQuestion || isWritingOrSpeaking || isGrammarQuestion;
+                            
+                            // Calculate points color and badge style
+                            const points = item.points || 0;
+                            const receivedScore = item.receivedScore || 0;
+                            let badgeConfig = {
+                              color: '#999999',
+                              bgColor: theme === 'sun' ? 'rgba(153, 153, 153, 0.1)' : 'rgba(153, 153, 153, 0.2)',
+                              borderColor: '#999999'
+                            }; // Default: xám (chưa làm)
+                            
+                            if (points > 0) {
+                              if (receivedScore === points) {
+                                // Xanh lá (đúng)
+                                badgeConfig = {
+                                  color: '#52c41a',
+                                  bgColor: theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.25)',
+                                  borderColor: '#52c41a'
+                                };
+                              } else if (receivedScore > 0 && receivedScore < points) {
+                                // Cam vàng (đúng 1 nửa)
+                                badgeConfig = {
+                                  color: '#faad14',
+                                  bgColor: theme === 'sun' ? 'rgba(250, 173, 20, 0.15)' : 'rgba(250, 173, 20, 0.25)',
+                                  borderColor: '#faad14'
+                                };
+                              } else if (receivedScore === 0) {
+                                // Xám (chưa làm)
+                                badgeConfig = {
+                                  color: '#999999',
+                                  bgColor: theme === 'sun' ? 'rgba(153, 153, 153, 0.1)' : 'rgba(153, 153, 153, 0.2)',
+                                  borderColor: '#999999'
+                                };
+                              } else {
+                                // Đỏ (sai)
+                                badgeConfig = {
+                                  color: '#ff4d4f',
+                                  bgColor: theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.25)',
+                                  borderColor: '#ff4d4f'
+                                };
+                              }
+                            }
+                            
+                            return (
+                              <div
+                                key={item.id}
+                                className={`question-sidebar-item ${item.type === 'section' || item.type === 'section-header' ? 'question-sidebar-section' : ''}`}
+                                onClick={() => {
+                                  if (isNestedQuestion && item.parentSection) {
+                                    // For nested questions, try to scroll to the question directly first
+                                    const questionElement = questionRefs.current[item.id];
+                                    if (questionElement) {
+                                      questionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    } else {
+                                      // Fallback: scroll to section if question ref not found
+                                      scrollToQuestion(item.parentSection);
+                                    }
+                                  } else {
+                                    scrollToQuestion(item.id);
+                                  }
+                                }}
+                                style={{ 
+                                  fontWeight: isSectionHeader ? 600 : 'normal', 
+                                  textAlign: shouldHaveQuestionStyle ? 'left' : 'center', 
+                                  color: theme === 'sun' ? '#000000' : '#FFFFFF',
+                                  padding: shouldHaveQuestionStyle ? '8px 10px 8px 24px' : '10px',
+                                  marginBottom: '4px',
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  transition: 'all 0.2s ease',
+                                  transform: 'none',
+                                  fontSize: isSectionHeader ? '15px' : '14px',
+                                  backgroundColor: isSectionHeader 
+                                    ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.12)' : 'rgba(138, 122, 255, 0.25)')
+                                    : 'transparent',
+                                  boxShadow: isSectionHeader 
+                                    ? (theme === 'sun' ? '0 2px 4px rgba(24, 144, 255, 0.1)' : '0 2px 4px rgba(138, 122, 255, 0.2)')
+                                    : 'none',
+                                  borderLeft: shouldHaveQuestionStyle ? `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` : 'none',
+                                  display: 'flex',
+                                  justifyContent: shouldHaveQuestionStyle ? 'space-between' : 'center',
+                                  alignItems: 'center',
+                                  position: 'relative'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (isSectionHeader) {
+                                    e.currentTarget.style.backgroundColor = theme === 'sun' 
+                                      ? 'rgba(24, 144, 255, 0.18)' 
+                                      : 'rgba(138, 122, 255, 0.35)';
+                                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                                      ? '0 3px 6px rgba(24, 144, 255, 0.15)' 
+                                      : '0 3px 6px rgba(138, 122, 255, 0.3)';
+                                  } else {
+                                    e.currentTarget.style.backgroundColor = theme === 'sun' 
+                                      ? 'rgba(24, 144, 255, 0.08)' 
+                                      : 'rgba(138, 122, 255, 0.15)';
+                                    e.currentTarget.style.transform = 'translateX(2px)';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (isSectionHeader) {
+                                    e.currentTarget.style.backgroundColor = theme === 'sun' 
+                                      ? 'rgba(24, 144, 255, 0.12)' 
+                                      : 'rgba(138, 122, 255, 0.25)';
+                                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                                      ? '0 2px 4px rgba(24, 144, 255, 0.1)' 
+                                      : '0 2px 4px rgba(138, 122, 255, 0.2)';
+                                  } else {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.transform = 'translateX(0)';
+                                  }
+                                }}
+                              >
+                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</span>
+                                {shouldHaveQuestionStyle && points > 0 && (
+                                  <span 
+                                    className="points-badge"
+                                    style={{ 
+                                      color: badgeConfig.color,
+                                      fontWeight: 600,
+                                      fontSize: '12px',
+                                      marginLeft: '8px',
+                                      padding: '4px 10px',
+                                      borderRadius: '14px',
+                                      backgroundColor: badgeConfig.bgColor,
+                                      border: `1.5px solid ${badgeConfig.borderColor}`,
+                                      minWidth: '50px',
+                                      textAlign: 'center',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      boxShadow: theme === 'sun' 
+                                        ? `0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 1px ${badgeConfig.borderColor}20` 
+                                        : `0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px ${badgeConfig.borderColor}30`,
+                                      transition: 'all 0.2s ease',
+                                      flexShrink: 0,
+                                      letterSpacing: '0.3px',
+                                      lineHeight: '1.2'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.transform = 'scale(1.05)';
+                                      e.currentTarget.style.boxShadow = theme === 'sun' 
+                                        ? `0 3px 6px rgba(0, 0, 0, 0.15), 0 0 0 2px ${badgeConfig.borderColor}30` 
+                                        : `0 3px 6px rgba(0, 0, 0, 0.4), 0 0 0 2px ${badgeConfig.borderColor}40`;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.transform = 'scale(1)';
+                                      e.currentTarget.style.boxShadow = theme === 'sun' 
+                                        ? `0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 1px ${badgeConfig.borderColor}20` 
+                                        : `0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px ${badgeConfig.borderColor}30`;
+                                    }}
+                                  >
+                                    {receivedScore}/{points}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </>
@@ -5802,6 +6016,7 @@ useEffect(() => {
           <Button 
             key="save" 
             type="primary" 
+            disabled={isManager}
             onClick={handleSaveFeedback}
             style={{
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
@@ -6312,6 +6527,7 @@ useEffect(() => {
           <Button 
             key="save" 
             type="primary" 
+            disabled={isManager}
             onClick={handleSaveScore}
             style={{
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
@@ -6409,7 +6625,7 @@ useEffect(() => {
           >
             {t('dailyChallenge.clear', 'Clear')}
           </Button>,
-          <Button key="save" type="primary" loading={savingFeedback} onClick={handleSaveOverallFeedback}
+          <Button key="save" type="primary" loading={savingFeedback} disabled={isManager} onClick={handleSaveOverallFeedback}
             style={{
               height: '36px',
               borderRadius: '6px',
@@ -6750,6 +6966,7 @@ useEffect(() => {
           <Button 
             key="save" 
             type="primary" 
+            disabled={isManager}
             onClick={handleSaveComment}
             style={{
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',

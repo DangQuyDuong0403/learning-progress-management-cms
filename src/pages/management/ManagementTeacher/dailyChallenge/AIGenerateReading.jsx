@@ -110,6 +110,7 @@ const AIGenerateReading = () => {
   const [showSpinner, setShowSpinner] = useState(true);
   const [spinnerCompleted, setSpinnerCompleted] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
+  const passageRef = useRef(null);
 
   // Helper function to extract backend error messages
   const getBackendMessage = useCallback((resOrErr) => {
@@ -443,6 +444,16 @@ const AIGenerateReading = () => {
       await new Promise(resolve => setTimeout(resolve, 300));
       setPassage(text);
       spaceToast.success(t('dailyChallenge.passageGenerated', 'Passage generated'));
+      // Scroll to passage after a short delay to ensure DOM is updated
+      setTimeout(() => {
+        if (passageRef.current) {
+          passageRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
     } catch (err) {
       console.error('Generate passage error:', err);
       const beErr = getBackendMessage(err);
@@ -1556,7 +1567,10 @@ const AIGenerateReading = () => {
             {/* Generated passage display - Only show after generation, below Generate Passage button */}
             {passageMode === 'generate' && passage && passage.trim() && (
               <>
-                <div className={`passage-ckeditor-wrapper ${theme}-passage-ckeditor-wrapper`} style={{
+                <div 
+                  ref={passageRef}
+                  className={`passage-ckeditor-wrapper ${theme}-passage-ckeditor-wrapper`} 
+                  style={{
                   marginTop: 0,
                   borderRadius: '12px',
                   border: theme === 'sun'
