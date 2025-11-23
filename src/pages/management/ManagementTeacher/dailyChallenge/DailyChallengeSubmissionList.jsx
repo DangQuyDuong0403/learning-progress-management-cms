@@ -799,7 +799,7 @@ const DailyChallengeSubmissionList = () => {
                 padding: '10px 0',
               }}
             >
-              Extend submissions deadline
+              {t('dailyChallenge.extendSubmissionsDeadline')}
             </div>
           }
           footer={[

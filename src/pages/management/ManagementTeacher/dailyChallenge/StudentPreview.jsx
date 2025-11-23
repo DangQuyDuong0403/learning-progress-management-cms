@@ -451,6 +451,7 @@ Good luck with your writing!`,
 
 // Section Question Component for Reading/Listening sections
 const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }) => {
+  const { t } = useTranslation();
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
   const [availableItems, setAvailableItems] = useState({});
@@ -556,7 +557,7 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
           fontSize: '20px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          {index + 1}. Reading Section
+          {index + 1}. {t('dailyChallenge.readingSection', 'Reading Section')}
         </Typography.Text>
         <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
           ({question.points} {question.points > 1 ? 'points' : 'point'})
@@ -644,7 +645,7 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                           color: '#000000'
                         }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                            Question {startQuestionNumber + qIndex}:
+                            {t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:
                           </div>
                           <div 
                             className="question-text-content"
@@ -722,7 +723,7 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                       color: '#000000'
                     }}>
                       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                        Question {startQuestionNumber + qIndex}:
+                        {t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:
                       </div>
                       <div>
                         {(() => {
@@ -938,7 +939,7 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                                 marginBottom: '12px'
                               }}>
                                 <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                                  Question {startQuestionNumber + qIndex}:
+                                  {t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:
                                 </div>
                                 <div>
                                   {parts.map((part, pIdx) => (
@@ -1104,7 +1105,7 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                       color: '#000000'
                     }}>
                       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                        Question {startQuestionNumber + qIndex}:
+                        {t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:
                       </div>
                       <div>
                         {(() => {
@@ -1257,7 +1258,7 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                       return (
                         <div style={{ marginBottom: '16px' }}>
                           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                            Question {startQuestionNumber + qIndex}:
+                            {t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:
                           </div>
                           <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
                             <div 
@@ -1427,7 +1428,7 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                           display: 'block',
                           marginBottom: '8px'
                         }}>
-                          Question {startQuestionNumber + qIndex}:
+                          {t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:
                         </Typography.Text>
                         <Typography.Text style={{ 
                           fontSize: '15px', 
@@ -1617,6 +1618,7 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
 
 // Listening Section Component
 const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 }) => {
+  const { t } = useTranslation();
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
   const [availableItems, setAvailableItems] = useState({});
@@ -1780,7 +1782,7 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
             fontSize: '20px', 
             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
           }}>
-            {index + 1}. Listening Section
+            {index + 1}. {t('dailyChallenge.listeningSection', 'Listening Section')}
           </Typography.Text>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
             ({question.points} {question.points > 1 ? 'points' : 'point'})
@@ -2032,7 +2034,7 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                         color: '#000000'
                       }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                          Question {startQuestionNumber + qIndex}:
+                          {t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:
                         </div>
                         <div>
                           {(() => {
@@ -2166,7 +2168,7 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                           <div style={{ marginBottom: '16px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '200px' }}>
                               <div style={{ padding: '16px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255,255,255,0.02)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255,255,255,0.1)'}` }}>
-                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {startQuestionNumber + qIndex}:</div>
+                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>{t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:</div>
                                 <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>
                                   {parts.map((part, pIdx) => (
                                     <React.Fragment key={pIdx}>
@@ -2221,7 +2223,7 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                         color: '#000000'
                       }}>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                          Question {startQuestionNumber + qIndex}:
+                          {t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:
                         </div>
                         <div>
                           {(() => {
@@ -2302,7 +2304,7 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
 
                         return (
                           <div style={{ marginBottom: '16px' }}>
-                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {startQuestionNumber + qIndex}:</div>
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>{t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:</div>
                             <div 
                               className="question-text-content"
                               style={{ 
@@ -2358,7 +2360,7 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                             display: 'block',
                             marginBottom: '8px'
                           }}>
-                            Question {startQuestionNumber + qIndex}:
+                            {t('dailyChallenge.question', 'Question')} {startQuestionNumber + qIndex}:
                           </Typography.Text>
                           <div 
                             className="question-text-content"
@@ -2588,6 +2590,7 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
 
 // Writing Section Component
 const WritingSectionItem = ({ question, index, theme }) => {
+  const { t } = useTranslation();
   const [essayText, setEssayText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [wordCount, setWordCount] = useState(0);
@@ -2691,7 +2694,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
             fontSize: '16px', 
             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
           }}>
-            {index + 1}. Writing Section
+            {index + 1}. {t('dailyChallenge.writingSection', 'Writing Section')}
           </Typography.Text>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
             ({question.points} {question.points > 1 ? 'points' : 'point'})
@@ -3068,6 +3071,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
 
 // Speaking Section Component
 const SpeakingSectionItem = ({ question, index, theme }) => {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -3203,7 +3207,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
             fontSize: '20px', 
             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
           }}>
-            {index + 1}. Speaking Section
+            {index + 1}. {t('dailyChallenge.speakingSection', 'Speaking Section')}
           </Typography.Text>
           <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
             ({question.points} {question.points > 1 ? 'points' : 'point'})
@@ -3477,6 +3481,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
 
 // Speaking With Audio Section Component
 const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -4069,6 +4074,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
 
 // Multiple Choice Container Component
 const MultipleChoiceContainer = ({ theme, data, questionNumber = 1 }) => {
+  const { t } = useTranslation();
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'What is the capital city of Vietnam?';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0
@@ -4113,7 +4119,7 @@ const MultipleChoiceContainer = ({ theme, data, questionNumber = 1 }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {questionNumber}
+          {t('dailyChallenge.question', 'Question')} {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4241,6 +4247,7 @@ const MultipleChoiceContainer = ({ theme, data, questionNumber = 1 }) => {
 
 // Multiple Select Container Component
 const MultipleSelectContainer = ({ theme, data, questionNumber = 2 }) => {
+  const { t } = useTranslation();
   const [selectedAnswers, setSelectedAnswers] = React.useState([]);
   const questionText = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
@@ -4291,7 +4298,7 @@ const MultipleSelectContainer = ({ theme, data, questionNumber = 2 }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {questionNumber}
+          {t('dailyChallenge.question', 'Question')} {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4418,6 +4425,7 @@ const MultipleSelectContainer = ({ theme, data, questionNumber = 2 }) => {
 
 // True/False Container Component
 const TrueFalseContainer = ({ theme, data, questionNumber = 3 }) => {
+  const { t } = useTranslation();
   const [selectedAnswer, setSelectedAnswer] = React.useState(null);
   const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
 
@@ -4459,7 +4467,7 @@ const TrueFalseContainer = ({ theme, data, questionNumber = 3 }) => {
             fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {questionNumber}
+          {t('dailyChallenge.question', 'Question')} {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4573,6 +4581,7 @@ const TrueFalseContainer = ({ theme, data, questionNumber = 3 }) => {
 
 // Dropdown Container Component
 const DropdownContainer = ({ theme, data, questionNumber = 5 }) => {
+  const { t } = useTranslation();
   const [selectedAnswers, setSelectedAnswers] = React.useState({});
   const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
   const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
@@ -4622,7 +4631,7 @@ const DropdownContainer = ({ theme, data, questionNumber = 5 }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {questionNumber}
+          {t('dailyChallenge.question', 'Question')} {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4675,6 +4684,7 @@ const DropdownContainer = ({ theme, data, questionNumber = 5 }) => {
 
 // Drag and Drop Container Component
 const DragDropContainer = ({ theme, data, questionNumber = 6 }) => {
+  const { t } = useTranslation();
   const [droppedItems, setDroppedItems] = React.useState({});
   // Use ALL values from API (including duplicates) as draggable options; fallback to a simple list
   const [availableItems, setAvailableItems] = React.useState(() => {
@@ -4801,7 +4811,7 @@ const DragDropContainer = ({ theme, data, questionNumber = 6 }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {questionNumber}
+          {t('dailyChallenge.question', 'Question')} {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -4992,6 +5002,7 @@ const DragDropContainer = ({ theme, data, questionNumber = 6 }) => {
 
 // Reorder Container Component
 const ReorderContainer = ({ theme, data, questionNumber = 7 }) => {
+  const { t } = useTranslation();
   const [sourceItems, setSourceItems] = React.useState(() => {
     const words = (data?.content?.data || [])
       .map(it => it.value)
@@ -5143,7 +5154,7 @@ const ReorderContainer = ({ theme, data, questionNumber = 7 }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {questionNumber}
+          {t('dailyChallenge.question', 'Question')} {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5368,6 +5379,7 @@ const ReorderContainer = ({ theme, data, questionNumber = 7 }) => {
 
 // Rewrite Container Component
 const RewriteContainer = ({ theme, data, questionNumber = 8 }) => {
+  const { t } = useTranslation();
   const [answer, setAnswer] = React.useState('');
   // Remove placeholder tokens but keep HTML formatting
   const questionText = (data?.questionText || data?.question || 'Rewrite the following sentence using different words:')
@@ -5411,7 +5423,7 @@ const RewriteContainer = ({ theme, data, questionNumber = 8 }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {questionNumber}
+          {t('dailyChallenge.question', 'Question')} {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5474,6 +5486,7 @@ const RewriteContainer = ({ theme, data, questionNumber = 8 }) => {
 
 // Fill in the Blank Container Component
 const FillBlankContainer = ({ theme, data, questionNumber = 4 }) => {
+  const { t } = useTranslation();
   const questionText = data?.questionText || data?.question || 'Fill in the blanks';
   // Parse questionText and render editable spans where [[pos_x]] appears
   const renderWithInputs = () => {
@@ -5578,7 +5591,7 @@ const FillBlankContainer = ({ theme, data, questionNumber = 4 }) => {
           fontSize: '16px', 
           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
         }}>
-          Question {questionNumber}
+          {t('dailyChallenge.question', 'Question')} {questionNumber}
         </Typography.Text>
         <Typography.Text style={{ 
           fontSize: '14px', 
@@ -5630,7 +5643,7 @@ const StudentPreview = () => {
   const questionRefs = useRef({});
   const [isAuthorized, setIsAuthorized] = useState(true); // Default to true to allow hooks to run
   
-  usePageTitle('Daily Challenge Preview');
+  usePageTitle(t('dailyChallenge.dailyChallengePreview', 'Daily Challenge Preview'));
   
   // Block TEACHING_ASSISTANT from accessing this page - double layer protection
   useEffect(() => {
@@ -5642,7 +5655,7 @@ const StudentPreview = () => {
     
     if (normalizedRole === 'teaching_assistant') {
       setIsAuthorized(false);
-      spaceToast.error('You do not have permission to access this page');
+      spaceToast.error(t('dailyChallenge.noPermissionToAccess', 'You do not have permission to access this page'));
       // Redirect to teaching assistant daily challenges list
       navigate('/teaching-assistant/daily-challenges', { replace: true });
       return;
@@ -5651,14 +5664,14 @@ const StudentPreview = () => {
     // Also block if role is explicitly not TEACHER
     if (normalizedRole !== 'teacher') {
       setIsAuthorized(false);
-      spaceToast.error('You do not have permission to access this page');
+      spaceToast.error(t('dailyChallenge.noPermissionToAccess', 'You do not have permission to access this page'));
       navigate('/choose-login', { replace: true });
       return;
     }
     
     // If role is teacher, allow access
     setIsAuthorized(true);
-  }, [normalizedRole, navigate]);
+  }, [normalizedRole, navigate, t]);
   
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -5861,7 +5874,7 @@ const StudentPreview = () => {
         const count = s.questions?.length || 0;
         const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
-        navigation.push({ id: `reading-${idx + 1}`, type: 'section', title: `Reading ${idx + 1}: Question ${start}-${end}` });
+        navigation.push({ id: `reading-${idx + 1}`, type: 'section', title: t('dailyChallenge.readingSectionTitle', `Reading ${idx + 1}: Question ${start}-${end}`, { index: idx + 1, start, end }) });
         questionNumber = end + 1;
       });
     }
@@ -5871,26 +5884,26 @@ const StudentPreview = () => {
         const count = s.questions?.length || 0;
       const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
-        navigation.push({ id: `listening-${idx + 1}`, type: 'section', title: `Listening ${idx + 1}: Question ${start}-${end}` });
+        navigation.push({ id: `listening-${idx + 1}`, type: 'section', title: t('dailyChallenge.listeningSectionTitle', `Listening ${idx + 1}: Question ${start}-${end}`, { index: idx + 1, start, end }) });
       questionNumber = end + 1;
       });
     }
     // Writing sections
     if (writingSections.length > 0) {
       writingSections.forEach((s, idx) => {
-        navigation.push({ id: `writing-${idx + 1}`, type: 'section', title: `Writing ${idx + 1}` });
+        navigation.push({ id: `writing-${idx + 1}`, type: 'section', title: t('dailyChallenge.writingSectionTitle', `Writing ${idx + 1}`, { index: idx + 1 }) });
       });
     }
     // Speaking sections
     if (speakingSections.length > 0) {
       speakingSections.forEach((s, idx) => {
-        navigation.push({ id: `speaking-${idx + 1}`, type: 'section', title: `Speaking ${idx + 1}` });
+        navigation.push({ id: `speaking-${idx + 1}`, type: 'section', title: t('dailyChallenge.speakingSectionTitle', `Speaking ${idx + 1}`, { index: idx + 1 }) });
       });
     }
     // Individual questions (GV etc.)
     if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR')) {
       questions.forEach((q) => {
-        navigation.push({ id: `q-${q.id}`, type: 'question', title: `Question ${questionNumber++}` });
+        navigation.push({ id: `q-${q.id}`, type: 'question', title: `${t('dailyChallenge.question', 'Question')} ${questionNumber++}` });
       });
     }
     return navigation;
@@ -5899,7 +5912,7 @@ const StudentPreview = () => {
   // Custom Header Component
   const subtitle = (challengeInfo.className && challengeInfo.challengeName)
     ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
-    : (challengeInfo.challengeName || 'Daily Challenge');
+    : (challengeInfo.challengeName || t('dailyChallenge.dailyChallenge', 'Daily Challenge'));
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>
       <nav className="themed-navbar">
@@ -6030,7 +6043,7 @@ const StudentPreview = () => {
         {/* Question Sidebar */}
         <div className={`question-sidebar ${theme}-question-sidebar ${isSidebarOpen ? 'open' : ''}`}>
           <div className="question-sidebar-header">
-            <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: '#000000' }}>Questions</h3>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: '#000000' }}>{t('dailyChallenge.questions', 'Questions')}</h3>
           </div>
           <div className="question-sidebar-list">
             {questionNav.map((item) => (
@@ -6048,7 +6061,7 @@ const StudentPreview = () => {
 
         <div className={`question-content-container ${isSidebarOpen ? 'with-sidebar' : ''}`} style={{ padding: '24px' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <LoadingWithEffect loading={loading} message="Loading questions...">
+            <LoadingWithEffect loading={loading} message={t('dailyChallenge.loadingQuestions', 'Loading questions...')}>
               <div className="questions-list">
                 {hasAnyQuestions ? (
                   <>
@@ -6141,7 +6154,7 @@ const StudentPreview = () => {
                         border: `1px dashed ${theme === 'sun' ? 'rgba(24, 144, 255, 0.4)' : 'rgba(138, 122, 255, 0.4)'}`
                       }}
                     >
-                       No question please create a new question to preview
+                       {t('dailyChallenge.noQuestionToPreview', 'No question please create a new question to preview')}
                     </div>
                   )
                 )}

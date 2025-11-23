@@ -149,6 +149,26 @@ const studentManagementApi = {
 		});
 	},
 
+	// Validate student import file without importing
+	validateImportFile: (formData) => {
+		const url = `/user/students/validate-import`;
+		console.log('ValidateImportFile API - URL:', url);
+		console.log('ValidateImportFile API - FormData:', formData);
+		
+		return axiosClient.post(url, formData, {
+			headers: {
+				'accept': '*/*',
+				// Don't set Content-Type, let axios handle it for FormData
+			},
+			responseType: 'blob', // Important for file download
+		}).catch(error => {
+			console.error('ValidateImportFile API Error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error status:', error.response?.status);
+			throw error;
+		});
+	},
+
 	// Upload avatar for student
 	uploadStudentAvatar: (userId, file) => {
 		const formData = new FormData();
