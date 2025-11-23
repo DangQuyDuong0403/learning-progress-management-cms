@@ -2665,6 +2665,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 								maxHeight: '180px',
 								overflowY: 'auto',
 								padding: '16px',
+								paddingBottom: '40px',
 								fontSize: '16px',
 								lineHeight: '1.8',
 								color: '#333',
@@ -2686,12 +2687,17 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 							{/* Character Counter for Question (600 max) */}
 							<div
 								style={{
-									marginTop: '6px',
-									marginRight: '16px',
-									textAlign: 'right',
+									position: 'absolute',
+									bottom: '8px',
+									right: '16px',
 									fontSize: '12px',
 									fontWeight: 600,
 									color: questionCharCount >= 600 ? '#ff4d4f' : '#595959',
+									pointerEvents: 'none',
+									zIndex: 10,
+									background: 'rgba(240, 247, 255, 0.9)',
+									padding: '2px 6px',
+									borderRadius: '4px',
 								}}>
 								{`${Math.min(questionCharCount, 600)}/600`}
 							</div>

@@ -19,8 +19,8 @@ const ROUTER_PAGE = {
 	// Student Dashboard
 	STUDENT_DASHBOARD: '/student/dashboard',
 	STUDENT_CLASS_MENU: '/student/classes/menu/:id',
+	STUDENT_CLASS_CHAPTERS_LESSONS: '/student/classes/chapters-lessons/:classId',
 	STUDENT_CLASS_OVERVIEW: '/student/classes/overview/:id',
-	STUDENT_CLASS_CHAPTERS_LESSONS: '/student/classes/chapters-lessons/:id',
 	STUDENT_CLASS_CHAPTERS: '/student/classes/chapters/:classId',
 	STUDENT_CLASS_CHAPTER_LESSONS: '/student/classes/chapters/:classId/:chapterId/lessons',
 	// Student Daily Challenge Routes
@@ -36,6 +36,9 @@ const ROUTER_PAGE = {
 	TEST_TAKER_DASHBOARD: '/test-taker/dashboard',
 	TEST_TAKER_CLASSES: '/test-taker/classes',
 	TEST_TAKER_CLASS_MENU: '/test-taker/classes/menu/:id',
+	TEST_TAKER_CLASS_CHAPTERS_LESSONS: '/test-taker/classes/chapters-lessons/:classId',
+	TEST_TAKER_CLASS_CHAPTERS: '/test-taker/classes/chapters/:classId',
+	TEST_TAKER_CLASS_CHAPTER_LESSONS: '/test-taker/classes/chapters/:classId/:chapterId/lessons',
 	TEST_TAKER_CLASS_OVERVIEW: '/test-taker/classes/overview/:id',
 	TEST_TAKER_CLASS_DAILY_CHALLENGES: '/test-taker/classes/daily-challenges/:classId',
 	TEST_TAKER_DAILY_CHALLENGE_TAKE: '/test-taker/daily-challenges/take/:id',
@@ -89,6 +92,9 @@ const ROUTER_PAGE = {
 	MANAGER_CLASS_CHAPTERS_EDIT_ORDER: '/manager/classes/chapters/:classId/edit-order',
 	MANAGER_CLASS_CHAPTER_LESSONS: '/manager/classes/chapters/:classId/:chapterId/lessons',
 	MANAGER_CLASS_CHAPTER_LESSONS_EDIT_ORDER: '/manager/classes/chapters/:classId/lessons/:chapterId/edit-order',
+	MANAGER_CLASS_DAILY_CHALLENGES: '/manager/classes/daily-challenges/:classId',
+	MANAGER_DAILY_CHALLENGE_DETAIL: '/manager/daily-challenges/detail/:id',
+	MANAGER_DAILY_CHALLENGE_CONTENT: '/manager/daily-challenges/detail/:id/content',
 	// Teacher Management Routes
 	TEACHER_DASHBOARD: '/teacher/dashboard',
 	TEACHER_CLASSES: '/teacher/classes',

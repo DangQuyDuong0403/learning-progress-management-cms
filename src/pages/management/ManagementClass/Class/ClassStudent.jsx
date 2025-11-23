@@ -850,8 +850,6 @@ const ClassStudent = () => {
           sortBy: sortConfig.sortBy,
           sortDir: sortConfig.sortDir
         });
-      } else {
-        throw new Error(response.message || 'Import failed');
       }
     } catch (error) {
       console.error('Error importing class students:', error);

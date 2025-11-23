@@ -327,6 +327,19 @@
   margin-right: 0px;
 }
 
+/* Hide ellipsis dropdown menu in actions column */
+.daily-challenge-table .ant-table-tbody > tr > td:last-child .ant-dropdown-trigger,
+.daily-challenge-table .ant-table-tbody > tr > td:last-child .ant-btn[aria-haspopup="true"],
+.daily-challenge-table .ant-table-tbody > tr > td:last-child .anticon-more {
+  display: none !important;
+}
+
+/* Ensure all action buttons are visible */
+.daily-challenge-table .ant-table-tbody > tr > td:last-child .ant-space {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+}
+
 .action-btn-view:hover {
   background: rgba(24, 144, 255, 0.1);
 }
