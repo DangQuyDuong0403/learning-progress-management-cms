@@ -7915,6 +7915,9 @@ const StudentDailyChallengeTake = () => {
   // Section scores - store scores for each section
   const [sectionScores, setSectionScores] = useState({});
   
+  // Track answered questions for sidebar indicators
+  const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
+  
   // Answer collection system: store answer getter functions from child components
   const answerCollectorsRef = useRef(new Map());
   // Answer restoration system: store answer setter functions from child components
@@ -10150,6 +10153,68 @@ const StudentDailyChallengeTake = () => {
     }
   };
 
+  // Helper function to check if a question has been answered
+  const isQuestionAnswered = useCallback((questionId) => {
+    if (!questionId) return false;
+    const getAnswerFn = answerCollectorsRef.current.get(questionId);
+    if (!getAnswerFn) return false;
+    
+    try {
+      const answerData = getAnswerFn();
+      if (!answerData || typeof answerData !== 'object') return false;
+      
+      const { answer, questionType } = answerData;
+      
+      // Check if answer exists and is not empty
+      if (answer === null || answer === undefined) return false;
+      
+      // For different question types, check differently
+      if (Array.isArray(answer)) {
+        return answer.length > 0 && answer.some(item => item !== null && item !== undefined && item !== '');
+      }
+      
+      if (typeof answer === 'object') {
+        // For object answers (like FILL_BLANK, DROPDOWN), check if any key has value
+        return Object.keys(answer).length > 0 && Object.values(answer).some(val => 
+          val !== null && val !== undefined && val !== ''
+        );
+      }
+      
+      // For string/number answers
+      if (typeof answer === 'string') {
+        return answer.trim().length > 0;
+      }
+      
+      return answer !== '' && answer !== 0;
+    } catch (error) {
+      return false;
+    }
+  }, []);
+
+  // Update answered questions state periodically
+  useEffect(() => {
+    const updateAnsweredQuestions = () => {
+      const answered = new Set();
+      
+      // Check all registered answer collectors
+      answerCollectorsRef.current.forEach((getAnswerFn, questionId) => {
+        if (isQuestionAnswered(questionId)) {
+          answered.add(questionId);
+        }
+      });
+      
+      setAnsweredQuestions(answered);
+    };
+
+    // Update immediately
+    updateAnsweredQuestions();
+
+    // Update periodically (every 500ms) to catch answer changes
+    const interval = setInterval(updateAnsweredQuestions, 500);
+
+    return () => clearInterval(interval);
+  }, [isQuestionAnswered]);
+
   // Build question navigation list (only single questions)
   const getQuestionNavigation = () => {
     const navigation = [];
@@ -10160,7 +10225,12 @@ const StudentDailyChallengeTake = () => {
         const count = s.questions?.length || 0;
         const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
-        navigation.push({ id: `reading-${idx + 1}`, type: 'section', title: `Reading ${idx + 1}: Question ${start}-${end}` });
+        navigation.push({ 
+          id: `reading-${idx + 1}`, 
+          type: 'section', 
+          title: `Reading ${idx + 1}: Question ${start}-${end}`,
+          questionIds: s.questions?.map(q => q.id) || []
+        });
         questionNumber = end + 1;
       });
     }
@@ -10170,20 +10240,35 @@ const StudentDailyChallengeTake = () => {
         const count = s.questions?.length || 0;
       const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
-        navigation.push({ id: `listening-${idx + 1}`, type: 'section', title: `Listening ${idx + 1}: Question ${start}-${end}` });
+        navigation.push({ 
+          id: `listening-${idx + 1}`, 
+          type: 'section', 
+          title: `Listening ${idx + 1}: Question ${start}-${end}`,
+          questionIds: s.questions?.map(q => q.id) || []
+        });
       questionNumber = end + 1;
       });
     }
     // Writing sections
     if (writingSections.length > 0) {
       writingSections.forEach((s, idx) => {
-        navigation.push({ id: `writing-${idx + 1}`, type: 'section', title: `Writing ${idx + 1}` });
+        navigation.push({ 
+          id: `writing-${idx + 1}`, 
+          type: 'section', 
+          title: `Writing ${idx + 1}`,
+          questionId: s.id
+        });
       });
     }
     // Speaking sections
     if (speakingSections.length > 0) {
       speakingSections.forEach((s, idx) => {
-        navigation.push({ id: `speaking-${idx + 1}`, type: 'section', title: `Speaking ${idx + 1}` });
+        navigation.push({ 
+          id: `speaking-${idx + 1}`, 
+          type: 'section', 
+          title: `Speaking ${idx + 1}`,
+          questionId: s.id
+        });
       });
     }
     // Individual questions (GV etc.)
@@ -10191,7 +10276,12 @@ const StudentDailyChallengeTake = () => {
       [...questions]
         .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)))
         .forEach((q) => {
-        navigation.push({ id: `q-${q.id}`, type: 'question', title: `Question ${questionNumber++}` });
+        navigation.push({ 
+          id: `q-${q.id}`, 
+          type: 'question', 
+          title: `Question ${questionNumber++}`,
+          questionId: q.id
+        });
         });
     }
     return navigation;
@@ -10489,16 +10579,58 @@ const StudentDailyChallengeTake = () => {
             <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: '#000000' }}>Questions</h3>
           </div>
           <div className="question-sidebar-list">
-            {questionNav.map((item) => (
-              <div
-                key={item.id}
-                className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
-                onClick={() => scrollToQuestion(item.id)}
-                style={{ fontWeight: 'normal', textAlign: 'center', color: '#000000' }}
-              >
-                {item.title}
-              </div>
-            ))}
+            {questionNav.map((item) => {
+              // Check if this item has been answered
+              let isAnswered = false;
+              if (item.questionId) {
+                isAnswered = answeredQuestions.has(item.questionId);
+              } else if (item.questionIds && Array.isArray(item.questionIds)) {
+                // For sections, check if all questions are answered
+                isAnswered = item.questionIds.length > 0 && item.questionIds.every(qId => answeredQuestions.has(qId));
+              }
+              
+              return (
+                <div
+                  key={item.id}
+                  className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
+                  onClick={() => scrollToQuestion(item.id)}
+                  style={{ 
+                    fontWeight: 'normal', 
+                    textAlign: 'center', 
+                    color: '#000000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s ease',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme === 'sun' 
+                      ? 'rgba(24, 144, 255, 0.08)' 
+                      : 'rgba(138, 122, 255, 0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <span style={{ textAlign: 'center', flex: 1 }}>{item.title}</span>
+                  {isAnswered && (
+                    <CheckOutlined 
+                      style={{ 
+                        color: '#52c41a',
+                        fontSize: '16px',
+                        position: 'absolute',
+                        right: '12px',
+                        flexShrink: 0
+                      }} 
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

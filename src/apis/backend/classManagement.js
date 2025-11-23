@@ -306,6 +306,20 @@ const classManagementApi = {
 		});
 	},
 
+	// Lấy danh sách học sinh có nguy cơ (At-risk Students Alert - reports API)
+	// Endpoint: GET /reports/class/{classId}/at-risk
+	getClassAtRiskStudents: (classId) => {
+		const url = `/reports/class/${classId}/at-risk`;
+		console.log('GetClassAtRiskStudents API - URL:', url);
+		console.log('GetClassAtRiskStudents API - Params:', { classId });
+
+		return axiosClient.get(url, {
+			headers: {
+				'accept': '*/*',
+			}
+		});
+	},
+
 	// Lấy danh sách teachers có thể thêm vào class
 	getAvailableTeachers: (params) => {
 		const queryParams = new URLSearchParams();

@@ -19,6 +19,7 @@ const ROUTER_PAGE = {
 	// Student Dashboard
 	STUDENT_DASHBOARD: '/student/dashboard',
 	STUDENT_CLASS_MENU: '/student/classes/menu/:id',
+	STUDENT_CLASS_OVERVIEW: '/student/classes/overview/:id',
 	STUDENT_CLASS_CHAPTERS_LESSONS: '/student/classes/chapters-lessons/:id',
 	STUDENT_CLASS_CHAPTERS: '/student/classes/chapters/:classId',
 	STUDENT_CLASS_CHAPTER_LESSONS: '/student/classes/chapters/:classId/:chapterId/lessons',
@@ -35,6 +36,7 @@ const ROUTER_PAGE = {
 	TEST_TAKER_DASHBOARD: '/test-taker/dashboard',
 	TEST_TAKER_CLASSES: '/test-taker/classes',
 	TEST_TAKER_CLASS_MENU: '/test-taker/classes/menu/:id',
+	TEST_TAKER_CLASS_OVERVIEW: '/test-taker/classes/overview/:id',
 	TEST_TAKER_CLASS_DAILY_CHALLENGES: '/test-taker/classes/daily-challenges/:classId',
 	TEST_TAKER_DAILY_CHALLENGE_TAKE: '/test-taker/daily-challenges/take/:id',
 	TEST_TAKER_DAILY_CHALLENGE_RESULT: '/test-taker/daily-challenges/result/:id',

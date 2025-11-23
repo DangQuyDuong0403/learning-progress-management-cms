@@ -541,7 +541,7 @@ const ManagerDashboard = () => {
                   {(overview.topSyllabus || []).map((syl, idx) => (
                     <div className="mdv2-table__row" key={syl.code || idx}>
                       <div>{syl.name}</div>
-                      <div><Tag color="blue">{syl.code}</Tag></div>
+                      <div>{syl.code}</div>
                       <div>{syl.classes ?? 0}</div>
                     </div>
                   ))}
@@ -574,17 +574,13 @@ const ManagerDashboard = () => {
                     <div>Classes</div>
                     <div>Status</div>
                   </div>
-                  {(overview.teacherWorkload || []).map((t, idx) => {
-                    const status = String(t.status || '').toUpperCase();
-                    const color = status.includes('OVER') ? 'red' : status.includes('UNDER') ? 'gold' : 'green';
-                    return (
-                      <div className="mdv2-table__row" key={t.teacherName || idx}>
-                        <div>{t.teacherName}</div>
-                        <div>{t.classes ?? 0}</div>
-                        <div><Tag color={color}>{t.status}</Tag></div>
-                      </div>
-                    );
-                  })}
+                  {(overview.teacherWorkload || []).map((t, idx) => (
+                    <div className="mdv2-table__row" key={t.teacherName || idx}>
+                      <div>{t.teacherName}</div>
+                      <div>{t.classes ?? 0}</div>
+                      <div>{t.status}</div>
+                    </div>
+                  ))}
                 </div>
               )}
             </Card>

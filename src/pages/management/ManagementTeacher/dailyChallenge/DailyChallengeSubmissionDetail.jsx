@@ -1673,13 +1673,20 @@ useEffect(() => {
 
     // Grammar & Vocabulary questions
     if (questions.length > 0) {
-      questions.forEach((q) => {
+      const start = questionNumber;
+      const end = start + questions.length - 1;
+      // Add individual questions directly (no header)
+      questions.forEach((q, qIdx) => {
         navigation.push({ 
           id: `gv-${q.id}`, 
           type: 'question', 
-          title: `Question ${questionNumber++}` 
+          title: `Question ${start + qIdx}`,
+          questionNumber: start + qIdx,
+          points: q.points || 0,
+          receivedScore: q.receivedScore || 0
         });
       });
+      questionNumber = end + 1;
     }
 
     // Reading sections
@@ -1688,11 +1695,28 @@ useEffect(() => {
         const count = s.questions?.length || 0;
         const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
+        // Add section header
         navigation.push({ 
           id: `reading-${idx + 1}`, 
-          type: 'section', 
-          title: `Reading ${idx + 1}: Question ${start}-${end}` 
+          type: 'section-header', 
+          title: `Reading ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'reading'
         });
+        // Add individual questions
+        if (s.questions && s.questions.length > 0) {
+          s.questions.forEach((q, qIdx) => {
+            navigation.push({ 
+              id: `reading-${idx + 1}-q-${q.id || qIdx}`, 
+              type: 'question', 
+              title: `Question ${start + qIdx}`,
+              parentSection: `reading-${idx + 1}`,
+              questionNumber: start + qIdx,
+              points: q.points || 0,
+              receivedScore: q.receivedScore || 0
+            });
+          });
+        }
         questionNumber = end + 1;
       });
     }
@@ -1703,11 +1727,28 @@ useEffect(() => {
         const count = s.questions?.length || 0;
         const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
+        // Add section header
         navigation.push({ 
           id: `listening-${idx + 1}`, 
-          type: 'section', 
-          title: `Listening ${idx + 1}: Question ${start}-${end}` 
+          type: 'section-header', 
+          title: `Listening ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'listening'
         });
+        // Add individual questions
+        if (s.questions && s.questions.length > 0) {
+          s.questions.forEach((q, qIdx) => {
+            navigation.push({ 
+              id: `listening-${idx + 1}-q-${q.id || qIdx}`, 
+              type: 'question', 
+              title: `Question ${start + qIdx}`,
+              parentSection: `listening-${idx + 1}`,
+              questionNumber: start + qIdx,
+              points: q.points || 0,
+              receivedScore: q.receivedScore || 0
+            });
+          });
+        }
         questionNumber = end + 1;
       });
     }
@@ -1715,10 +1756,17 @@ useEffect(() => {
     // Writing sections
     if (writingSections.length > 0) {
       writingSections.forEach((s, idx) => {
+        const received = (s.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+        const total = (s.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+        // Add section header with question-like style
         navigation.push({ 
           id: `writing-${idx + 1}`, 
-          type: 'section', 
-          title: `Writing ${idx + 1}` 
+          type: 'question', 
+          title: `Writing ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'writing',
+          points: total,
+          receivedScore: received
         });
       });
     }
@@ -1726,10 +1774,17 @@ useEffect(() => {
     // Speaking sections
     if (speakingSections.length > 0) {
       speakingSections.forEach((s, idx) => {
+        const received = (s.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
+        const total = (s.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+        // Add section header with question-like style
         navigation.push({ 
           id: `speaking-${idx + 1}`, 
-          type: 'section', 
-          title: `Speaking ${idx + 1}` 
+          type: 'question', 
+          title: `Speaking ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'speaking',
+          points: total,
+          receivedScore: received
         });
       });
     }
@@ -2010,9 +2065,10 @@ useEffect(() => {
   };
 
   // Helper function to render section questions (used in Reading/Listening sections)
-  const renderSectionQuestion = (q, qIndex, sectionType = 'reading') => {
+  const renderSectionQuestion = (q, qIndex, sectionType = 'reading', sectionIndex = null) => {
     const questionText = q.questionText || q.question || '';
     const studentAnswer = studentAnswers?.[q.id];
+    const questionRefId = sectionIndex !== null ? `${sectionType}-${sectionIndex + 1}-q-${q.id || qIndex}` : null;
 
     if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE' || q.type === 'MULTIPLE_SELECT') {
       const options = q.options || [];
@@ -2022,7 +2078,10 @@ useEffect(() => {
       const correctKeys = isMulti ? options.filter(opt => opt.isCorrect).map(opt => opt.key) : [];
       
       return (
-        <div key={q.id} style={{
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{
           padding: '16px',
           background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
           borderRadius: '8px',
@@ -2183,7 +2242,10 @@ useEffect(() => {
       };
 
       return (
-        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
@@ -2348,7 +2410,10 @@ useEffect(() => {
       const dropdownHtml = renderDropdownForSection();
 
       return (
-        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
@@ -2479,7 +2544,10 @@ useEffect(() => {
       };
 
       return (
-        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
@@ -2566,7 +2634,10 @@ useEffect(() => {
       const displayText = ((questionText).replace(/\[\[pos_.*?\]\]/g, '')).trim();
 
       return (
-        <div key={q.id} style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
+        <div 
+          key={q.id} 
+          ref={questionRefId ? (el => { if (el) questionRefs.current[questionRefId] = el; }) : null}
+          style={{ padding: '16px', background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
@@ -2663,7 +2734,7 @@ useEffect(() => {
           <div style={{ flex: '1', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px' }}>
             <div style={{ padding: '20px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'reading'))}
+                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'reading', index))}
               </div>
             </div>
           </div>
@@ -2711,7 +2782,7 @@ useEffect(() => {
           <div style={{ flex: '1', background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px' }}>
             <div style={{ padding: '20px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'listening'))}
+                {section.questions?.map((q, qIndex) => renderSectionQuestion(q, qIndex, 'listening', index))}
               </div>
             </div>
           </div>
@@ -5654,27 +5725,169 @@ useEffect(() => {
                         paddingRight: '8px'
                       }}>
                         <div className="question-sidebar-list">
-                          {getQuestionNavigation().map((item) => (
-                            <div
-                              key={item.id}
-                              className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
-                              onClick={() => scrollToQuestion(item.id)}
-                              style={{ 
-                                fontWeight: 'normal', 
-                                textAlign: 'center', 
-                                color: theme === 'sun' ? '#000000' : '#FFFFFF',
-                                padding: '10px',
-                                marginBottom: '4px',
-                                cursor: 'pointer',
-                                borderRadius: '4px',
-                                transition: 'none',
-                                transform: 'none',
-                                fontSize: '14px'
-                              }}
-                            >
-                              {item.title}
-                            </div>
-                          ))}
+                          {getQuestionNavigation().map((item) => {
+                            const isSectionHeader = item.type === 'section-header';
+                            const isNestedQuestion = item.type === 'question' && item.parentSection;
+                            const isWritingOrSpeaking = item.type === 'question' && (item.sectionType === 'writing' || item.sectionType === 'speaking');
+                            const isGrammarQuestion = item.type === 'question' && item.id?.startsWith('gv-');
+                            const shouldHaveQuestionStyle = isNestedQuestion || isWritingOrSpeaking || isGrammarQuestion;
+                            
+                            // Calculate points color and badge style
+                            const points = item.points || 0;
+                            const receivedScore = item.receivedScore || 0;
+                            let badgeConfig = {
+                              color: '#999999',
+                              bgColor: theme === 'sun' ? 'rgba(153, 153, 153, 0.1)' : 'rgba(153, 153, 153, 0.2)',
+                              borderColor: '#999999'
+                            }; // Default: xám (chưa làm)
+                            
+                            if (points > 0) {
+                              if (receivedScore === points) {
+                                // Xanh lá (đúng)
+                                badgeConfig = {
+                                  color: '#52c41a',
+                                  bgColor: theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.25)',
+                                  borderColor: '#52c41a'
+                                };
+                              } else if (receivedScore > 0 && receivedScore < points) {
+                                // Cam vàng (đúng 1 nửa)
+                                badgeConfig = {
+                                  color: '#faad14',
+                                  bgColor: theme === 'sun' ? 'rgba(250, 173, 20, 0.15)' : 'rgba(250, 173, 20, 0.25)',
+                                  borderColor: '#faad14'
+                                };
+                              } else if (receivedScore === 0) {
+                                // Xám (chưa làm)
+                                badgeConfig = {
+                                  color: '#999999',
+                                  bgColor: theme === 'sun' ? 'rgba(153, 153, 153, 0.1)' : 'rgba(153, 153, 153, 0.2)',
+                                  borderColor: '#999999'
+                                };
+                              } else {
+                                // Đỏ (sai)
+                                badgeConfig = {
+                                  color: '#ff4d4f',
+                                  bgColor: theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.25)',
+                                  borderColor: '#ff4d4f'
+                                };
+                              }
+                            }
+                            
+                            return (
+                              <div
+                                key={item.id}
+                                className={`question-sidebar-item ${item.type === 'section' || item.type === 'section-header' ? 'question-sidebar-section' : ''}`}
+                                onClick={() => {
+                                  if (isNestedQuestion && item.parentSection) {
+                                    // For nested questions, try to scroll to the question directly first
+                                    const questionElement = questionRefs.current[item.id];
+                                    if (questionElement) {
+                                      questionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    } else {
+                                      // Fallback: scroll to section if question ref not found
+                                      scrollToQuestion(item.parentSection);
+                                    }
+                                  } else {
+                                    scrollToQuestion(item.id);
+                                  }
+                                }}
+                                style={{ 
+                                  fontWeight: isSectionHeader ? 600 : 'normal', 
+                                  textAlign: shouldHaveQuestionStyle ? 'left' : 'center', 
+                                  color: theme === 'sun' ? '#000000' : '#FFFFFF',
+                                  padding: shouldHaveQuestionStyle ? '8px 10px 8px 24px' : '10px',
+                                  marginBottom: '4px',
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  transition: 'all 0.2s ease',
+                                  transform: 'none',
+                                  fontSize: isSectionHeader ? '15px' : '14px',
+                                  backgroundColor: isSectionHeader 
+                                    ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.12)' : 'rgba(138, 122, 255, 0.25)')
+                                    : 'transparent',
+                                  boxShadow: isSectionHeader 
+                                    ? (theme === 'sun' ? '0 2px 4px rgba(24, 144, 255, 0.1)' : '0 2px 4px rgba(138, 122, 255, 0.2)')
+                                    : 'none',
+                                  borderLeft: shouldHaveQuestionStyle ? `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` : 'none',
+                                  display: 'flex',
+                                  justifyContent: shouldHaveQuestionStyle ? 'space-between' : 'center',
+                                  alignItems: 'center',
+                                  position: 'relative'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (isSectionHeader) {
+                                    e.currentTarget.style.backgroundColor = theme === 'sun' 
+                                      ? 'rgba(24, 144, 255, 0.18)' 
+                                      : 'rgba(138, 122, 255, 0.35)';
+                                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                                      ? '0 3px 6px rgba(24, 144, 255, 0.15)' 
+                                      : '0 3px 6px rgba(138, 122, 255, 0.3)';
+                                  } else {
+                                    e.currentTarget.style.backgroundColor = theme === 'sun' 
+                                      ? 'rgba(24, 144, 255, 0.08)' 
+                                      : 'rgba(138, 122, 255, 0.15)';
+                                    e.currentTarget.style.transform = 'translateX(2px)';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (isSectionHeader) {
+                                    e.currentTarget.style.backgroundColor = theme === 'sun' 
+                                      ? 'rgba(24, 144, 255, 0.12)' 
+                                      : 'rgba(138, 122, 255, 0.25)';
+                                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                                      ? '0 2px 4px rgba(24, 144, 255, 0.1)' 
+                                      : '0 2px 4px rgba(138, 122, 255, 0.2)';
+                                  } else {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.transform = 'translateX(0)';
+                                  }
+                                }}
+                              >
+                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</span>
+                                {shouldHaveQuestionStyle && points > 0 && (
+                                  <span 
+                                    className="points-badge"
+                                    style={{ 
+                                      color: badgeConfig.color,
+                                      fontWeight: 600,
+                                      fontSize: '12px',
+                                      marginLeft: '8px',
+                                      padding: '4px 10px',
+                                      borderRadius: '14px',
+                                      backgroundColor: badgeConfig.bgColor,
+                                      border: `1.5px solid ${badgeConfig.borderColor}`,
+                                      minWidth: '50px',
+                                      textAlign: 'center',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      boxShadow: theme === 'sun' 
+                                        ? `0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 1px ${badgeConfig.borderColor}20` 
+                                        : `0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px ${badgeConfig.borderColor}30`,
+                                      transition: 'all 0.2s ease',
+                                      flexShrink: 0,
+                                      letterSpacing: '0.3px',
+                                      lineHeight: '1.2'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.transform = 'scale(1.05)';
+                                      e.currentTarget.style.boxShadow = theme === 'sun' 
+                                        ? `0 3px 6px rgba(0, 0, 0, 0.15), 0 0 0 2px ${badgeConfig.borderColor}30` 
+                                        : `0 3px 6px rgba(0, 0, 0, 0.4), 0 0 0 2px ${badgeConfig.borderColor}40`;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.transform = 'scale(1)';
+                                      e.currentTarget.style.boxShadow = theme === 'sun' 
+                                        ? `0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 1px ${badgeConfig.borderColor}20` 
+                                        : `0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px ${badgeConfig.borderColor}30`;
+                                    }}
+                                  >
+                                    {receivedScore}/{points}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </>
