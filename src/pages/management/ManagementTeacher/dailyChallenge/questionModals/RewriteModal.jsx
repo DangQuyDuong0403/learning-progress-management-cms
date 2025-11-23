@@ -673,18 +673,23 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
                   lastValidQuestionDataRef.current = editorData;
                 }}
               />
-            </div>
-            {/* Character Counter for Question (600 max) */}
-            <div
-              style={{
-                marginTop: '6px',
-                marginRight: '16px',
-                textAlign: 'right',
-                fontSize: '12px',
-                fontWeight: 600,
-                color: questionCharCount > 600 ? '#ff4d4f' : '#595959',
-              }}>
-              {`${Math.min(questionCharCount, 600)}/600`}
+              {/* Character Counter for Question (600 max) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '8px',
+                  right: '16px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: questionCharCount > 600 ? '#ff4d4f' : '#595959',
+                  pointerEvents: 'none',
+                  zIndex: 10,
+                  background: 'rgba(240, 247, 255, 0.9)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}>
+                {`${Math.min(questionCharCount, 600)}/600`}
+              </div>
             </div>
           </div>
           </div>

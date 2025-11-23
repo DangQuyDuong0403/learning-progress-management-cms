@@ -508,12 +508,17 @@ const handleSave = async () => {
                             />
 							{/* Character Counter for Question */}
 							<div style={{
-								marginTop: '6px',
-								marginRight: '16px',
-								textAlign: 'right',
+								position: 'absolute',
+								bottom: '8px',
+								right: '16px',
 								fontSize: '12px',
 								fontWeight: 600,
-								color: stripHtml(editorData).length > 600 ? '#ff4d4f' : '#595959'
+								color: stripHtml(editorData).length > 600 ? '#ff4d4f' : '#595959',
+								pointerEvents: 'none',
+								zIndex: 10,
+								background: 'rgba(240, 247, 255, 0.9)',
+								padding: '2px 6px',
+								borderRadius: '4px',
 							}}>
 								{`${Math.min(stripHtml(editorData).length, 600)}/600`}
 							</div>
