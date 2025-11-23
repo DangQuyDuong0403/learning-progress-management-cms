@@ -93,6 +93,7 @@ const TeacherList = () => {
 	});
 	const [templateLoading, setTemplateLoading] = useState(false);
 	const [fileValidationLoading, setFileValidationLoading] = useState(false);
+	const [validateLoading, setValidateLoading] = useState(false);
 	
 	// Refs for click outside detection
 	const filterContainerRef = useRef(null);
@@ -461,6 +462,118 @@ const TeacherList = () => {
 			console.error('Error importing teachers:', error);
 			spaceToast.error(error.response?.data?.error || error.message || t('teacherManagement.importError'));
 			setImportModal((prev) => ({ ...prev, uploading: false }));
+		}
+	};
+
+	// Handle validate import file
+	const handleValidateFile = async () => {
+		if (validateLoading) return;
+		if (importModal.fileList.length === 0) {
+			spaceToast.warning(t('teacherManagement.selectFileToValidate'));
+			return;
+		}
+
+		setValidateLoading(true);
+		
+		try {
+			const rawFile = importModal.fileList[0];
+			const file = rawFile.originFileObj || rawFile;
+			const allowedTypes = [
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				'application/vnd.ms-excel',
+				'text/csv'
+			];
+			if (!allowedTypes.includes(file.type) && !file.name?.match(/\.(xlsx|xls|csv)$/i)) {
+				spaceToast.error(t('teacherManagement.invalidFileType') || 'Please select a valid Excel (.xlsx, .xls) or CSV (.csv) file');
+				setValidateLoading(false);
+				return;
+			}
+			const maxSize = 10 * 1024 * 1024;
+			if (file.size > maxSize) {
+				spaceToast.error(t('teacherManagement.fileTooLarge') || 'File size must be less than 10MB');
+				setValidateLoading(false);
+				return;
+			}
+			
+			// Create FormData object
+			const formData = new FormData();
+			formData.append('file', file);
+			
+			// Call validate API with FormData
+			const response = await teacherManagementApi.validateImportFile(formData);
+
+			// API trả về file validation result dưới dạng blob
+			if (response.data instanceof Blob) {
+				// Tạo URL từ blob để download
+				const downloadUrl = window.URL.createObjectURL(response.data);
+				
+				// Tạo link download
+				const link = document.createElement('a');
+				link.setAttribute('href', downloadUrl);
+				link.setAttribute('download', `validation_teacher_result_${new Date().getTime()}.xlsx`);
+				link.setAttribute('target', '_blank');
+				link.style.visibility = 'hidden';
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				
+				// Cleanup URL
+				window.URL.revokeObjectURL(downloadUrl);
+				
+				spaceToast.success(t('teacherManagement.validateSuccess') + ' - ' + t('teacherManagement.fileDownloaded'));
+			} else {
+				// Nếu không phải blob, có thể là JSON response với URL
+				let downloadUrl;
+				
+				if (typeof response.data === 'string') {
+					downloadUrl = response.data;
+				} else if (response.data && response.data.url) {
+					downloadUrl = response.data.url;
+				}
+				
+				if (downloadUrl) {
+					const link = document.createElement('a');
+					link.setAttribute('href', downloadUrl);
+					link.setAttribute('download', `validation_teacher_result_${new Date().getTime()}.xlsx`);
+					link.setAttribute('target', '_blank');
+					link.style.visibility = 'hidden';
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+					
+					spaceToast.success(t('teacherManagement.validateSuccess') + ' - ' + t('teacherManagement.fileDownloaded'));
+				} else {
+					spaceToast.success(response.message || t('teacherManagement.validateSuccess'));
+				}
+			}
+		} catch (error) {
+			console.error('Error validating file:', error);
+			
+			// Xử lý lỗi chi tiết hơn
+			let errorMessage = t('teacherManagement.validateError');
+			
+			if (error.response?.data) {
+				if (error.response.data instanceof Blob) {
+					// Nếu lỗi trả về dưới dạng blob, đọc text để lấy thông báo lỗi
+					try {
+						const errorText = await error.response.data.text();
+						const errorJson = JSON.parse(errorText);
+						errorMessage = errorJson.error || errorJson.message || errorMessage;
+					} catch (parseError) {
+						errorMessage = error.message || errorMessage;
+					}
+				} else if (error.response.data.error) {
+					errorMessage = error.response.data.error;
+				} else if (error.response.data.message) {
+					errorMessage = error.response.data.message;
+				}
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+			
+			spaceToast.error(errorMessage);
+		} finally {
+			setValidateLoading(false);
 		}
 	};
 
@@ -1417,38 +1530,66 @@ const TeacherList = () => {
 					</div>
 				}
 				open={importModal.visible}
-				onOk={handleImportOk}
 				onCancel={handleImportCancel}
-				okText={t('teacherManagement.import')}
-				cancelText={t('common.cancel')}
 				width={600}
 				centered
-				confirmLoading={importModal.uploading}
-				okButtonProps={{
-					disabled: importModal.fileList.length === 0,
-					style: {
-						background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-						borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-						color: theme === 'sun' ? '#000' : '#fff',
-						borderRadius: '6px',
-						height: '32px',
-						fontWeight: '500',
-						fontSize: '16px',
-						padding: '4px 15px',
-						width: '100px',
-						transition: 'all 0.3s ease',
-						boxShadow: 'none'
-					},
-				}}
-				cancelButtonProps={{
-					style: {
-						height: '32px',
-						fontWeight: '500',
-						fontSize: '16px',
-						padding: '4px 15px',
-						width: '100px'
-					},
-				}}>
+				footer={[
+					<Button 
+						key="cancel" 
+						onClick={handleImportCancel}
+						style={{
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
+						}}>
+						{t('common.cancel')}
+					</Button>,
+					<Button 
+						key="validate" 
+						onClick={handleValidateFile}
+						loading={validateLoading}
+						disabled={validateLoading}
+						style={{
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '120px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none',
+							marginLeft: '8px'
+						}}>
+						{t('teacherManagement.validateFile')}
+					</Button>,
+					<Button 
+						key="import" 
+						type="primary"
+						onClick={handleImportOk}
+						loading={importModal.uploading}
+						disabled={importModal.uploading || importModal.fileList.length === 0}
+						style={{
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none',
+							marginLeft: '8px'
+						}}>
+						{t('teacherManagement.import')}
+					</Button>
+				]}>
 				<div style={{ padding: '20px 0' }}>
 					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
 						<Button
