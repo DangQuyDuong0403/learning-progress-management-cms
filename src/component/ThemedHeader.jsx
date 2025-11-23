@@ -511,7 +511,7 @@ export default function ThemedHeader({
         navigate('/teaching-assistant/dashboard');
         break;
       case 'test_taker':
-        navigate('/test-taker/dashboard');
+        navigate('/test-taker/classes');
         break;
       case 'manager':
         navigate('/manager/dashboard');

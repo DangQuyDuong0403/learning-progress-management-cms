@@ -29,6 +29,73 @@ const clampSuggestedScoreValue = (value) => {
 
 // WRITING_CRITERIA_KEYS will be defined inside component to use i18n
 
+// Helper function to parse recognizedText with punctuation and match with words array
+const parseTranscriptWithPunctuation = (recognizedText, words) => {
+  if (!recognizedText || !Array.isArray(words) || words.length === 0) {
+    return null;
+  }
+
+  // Create a map of words by their lowercase version for matching
+  // Use a list to preserve order and handle duplicates
+  const wordsList = words.map((w, idx) => ({
+    ...w,
+    wordLower: (w?.word || '').toLowerCase().trim(),
+    originalIndex: idx
+  }));
+
+  // Split recognizedText into tokens (words, punctuation, and spaces)
+  // This regex matches: words (including apostrophes), punctuation, and whitespace
+  const tokens = recognizedText.match(/\b[\w']+\b|[^\w\s']|\s+/g) || [];
+  
+  const result = [];
+  let wordsUsed = new Set();
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    
+    // Check if token is whitespace
+    if (/^\s+$/.test(token)) {
+      result.push({ type: 'space', content: token });
+      continue;
+    }
+
+    // Check if token is punctuation (anything that's not a word character or space)
+    if (/^[^\w\s]+$/.test(token)) {
+      result.push({ type: 'punctuation', content: token });
+      continue;
+    }
+
+    // Token is a word - try to match it with words array
+    const tokenLower = token.toLowerCase().trim();
+    let matchedWord = null;
+    let matchedIndex = -1;
+
+    // Find first unused word that matches (case-insensitive)
+    for (let j = 0; j < wordsList.length; j++) {
+      if (!wordsUsed.has(j) && wordsList[j].wordLower === tokenLower) {
+        matchedWord = wordsList[j];
+        matchedIndex = j;
+        wordsUsed.add(j);
+        break;
+      }
+    }
+    
+    if (matchedWord) {
+      result.push({
+        type: 'word',
+        content: token, // Use original casing from recognizedText
+        word: matchedWord,
+        index: matchedIndex
+      });
+    } else {
+      // Word not found in words array, add as plain text without score
+      result.push({ type: 'word', content: token, word: null, index: -1 });
+    }
+  }
+
+  return result;
+};
+
 // Helper functions to save/restore AI generated data from sessionStorage
 const getStorageKey = (submissionQuestionId) => {
   return `ai_feedback_${submissionQuestionId}`;
@@ -3330,72 +3397,192 @@ const AIGenerateFeedback = () => {
                                     gap: '8px 4px',
                                     alignItems: 'baseline'
                                   }}>
-                                    {speakingResult.words.map((w, idx) => {
-                                      const accuracyScore = Number.isFinite(Number(w?.accuracyScore)) ? Number(w.accuracyScore) : null;
-                                      const hasError = w?.errorType && w.errorType !== 'None' && w.errorType !== 'none' && w.errorType !== '';
-                                      
-                                      // Determine color based on accuracy score only
-                                      let wordColor = theme === 'sun' ? '#0f172a' : '#F3F4F6';
-                                      let scoreColor = theme === 'sun' ? '#666' : '#999';
-                                      
-                                      if (accuracyScore !== null) {
-                                        if (accuracyScore >= 80) {
-                                          wordColor = theme === 'sun' ? '#22C55E' : '#4ADE80'; // Green
-                                          scoreColor = theme === 'sun' ? '#16A34A' : '#22C55E';
-                                        } else if (accuracyScore >= 60) {
-                                          wordColor = theme === 'sun' ? '#F59E0B' : '#FBBF24'; // Orange
-                                          scoreColor = theme === 'sun' ? '#D97706' : '#F59E0B';
-                                        } else {
-                                          wordColor = theme === 'sun' ? '#EF4444' : '#F87171'; // Red
-                                          scoreColor = theme === 'sun' ? '#DC2626' : '#EF4444';
+                                    {(() => {
+                                      // Try to use recognizedText with punctuation if available
+                                      const parsedTokens = speakingResult?.recognizedText 
+                                        ? parseTranscriptWithPunctuation(speakingResult.recognizedText, speakingResult.words)
+                                        : null;
+
+                                      if (parsedTokens && parsedTokens.length > 0) {
+                                        // Render with punctuation from recognizedText
+                                        // Group words with their following punctuation
+                                        const elements = [];
+                                        let elementIdx = 0;
+                                        for (let i = 0; i < parsedTokens.length; i++) {
+                                          const token = parsedTokens[i];
+                                          
+                                          if (token.type === 'space') {
+                                            elements.push(
+                                              <span key={`token-${elementIdx++}`}>{token.content}</span>
+                                            );
+                                            continue;
+                                          }
+                                          
+                                          if (token.type === 'punctuation') {
+                                            // Standalone punctuation (shouldn't happen often, but handle it)
+                                            elements.push(
+                                              <span 
+                                                key={`token-${elementIdx++}`}
+                                                style={{
+                                                  color: theme === 'sun' ? '#0f172a' : '#F3F4F6',
+                                                  fontSize: '16px',
+                                                  fontWeight: 700,
+                                                  display: 'inline'
+                                                }}
+                                              >
+                                                {token.content}
+                                              </span>
+                                            );
+                                            continue;
+                                          }
+
+                                          // token.type === 'word'
+                                          const w = token.word;
+                                          const accuracyScore = w && Number.isFinite(Number(w?.accuracyScore)) ? Number(w.accuracyScore) : null;
+                                          
+                                          // Check if next token is punctuation to attach it
+                                          const nextToken = parsedTokens[i + 1];
+                                          const punctuationAfter = (nextToken && nextToken.type === 'punctuation') ? nextToken.content : '';
+                                          
+                                          // Determine color based on accuracy score only
+                                          let wordColor = theme === 'sun' ? '#0f172a' : '#F3F4F6';
+                                          let scoreColor = theme === 'sun' ? '#666' : '#999';
+                                          
+                                          if (accuracyScore !== null) {
+                                            if (accuracyScore >= 80) {
+                                              wordColor = theme === 'sun' ? '#15803D' : '#16A34A'; // Green - darker
+                                              scoreColor = theme === 'sun' ? '#166534' : '#15803D';
+                                            } else if (accuracyScore >= 60) {
+                                              wordColor = theme === 'sun' ? '#D97706' : '#F59E0B'; // Orange - darker
+                                              scoreColor = theme === 'sun' ? '#B45309' : '#D97706';
+                                            } else {
+                                              wordColor = theme === 'sun' ? '#DC2626' : '#EF4444'; // Red - darker
+                                              scoreColor = theme === 'sun' ? '#B91C1C' : '#DC2626';
+                                            }
+                                          }
+                                          
+                                          // Skip next token if it's punctuation (we're including it here)
+                                          if (punctuationAfter) {
+                                            i++; // Skip the punctuation token
+                                          }
+                                          
+                                          elements.push(
+                                            <span
+                                              key={`word-inline-${elementIdx++}`}
+                                              style={{
+                                                position: 'relative',
+                                                display: 'inline-flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                margin: '0 1px',
+                                                padding: '0 2px',
+                                                verticalAlign: 'baseline',
+                                                lineHeight: 1
+                                              }}
+                                            >
+                                              {/* Accuracy Score above word */}
+                                              <span
+                                                style={{
+                                                  fontSize: '11px',
+                                                  fontWeight: 500,
+                                                  color: scoreColor ? `${scoreColor}99` : (theme === 'sun' ? '#999' : '#888'),
+                                                  lineHeight: 1,
+                                                  marginBottom: '-2px',
+                                                  whiteSpace: 'nowrap',
+                                                }}
+                                              >
+                                                {accuracyScore !== null ? `${Math.round(accuracyScore)}%` : '-'}
+                                              </span>
+                                              {/* Word with punctuation attached */}
+                                              <span
+                                                style={{
+                                                  color: wordColor,
+                                                  fontWeight: 700,
+                                                  fontSize: '16px',
+                                                  lineHeight: 1.2,
+                                                  marginTop: '-1px'
+                                                }}
+                                              >
+                                                {token.content}
+                                                {punctuationAfter && (
+                                                  <span style={{ 
+                                                    color: wordColor,
+                                                    marginLeft: 0
+                                                  }}>
+                                                    {punctuationAfter}
+                                                  </span>
+                                                )}
+                                              </span>
+                                            </span>
+                                          );
                                         }
+                                        return elements;
+                                      } else {
+                                        // Fallback to original logic if recognizedText is not available
+                                        return speakingResult.words.map((w, idx) => {
+                                          const accuracyScore = Number.isFinite(Number(w?.accuracyScore)) ? Number(w.accuracyScore) : null;
+                                          
+                                          // Determine color based on accuracy score only
+                                          let wordColor = theme === 'sun' ? '#0f172a' : '#F3F4F6';
+                                          let scoreColor = theme === 'sun' ? '#666' : '#999';
+                                          
+                                          if (accuracyScore !== null) {
+                                            if (accuracyScore >= 80) {
+                                              wordColor = theme === 'sun' ? '#15803D' : '#16A34A'; // Green - darker
+                                              scoreColor = theme === 'sun' ? '#166534' : '#15803D';
+                                            } else if (accuracyScore >= 60) {
+                                              wordColor = theme === 'sun' ? '#D97706' : '#F59E0B'; // Orange - darker
+                                              scoreColor = theme === 'sun' ? '#B45309' : '#D97706';
+                                            } else {
+                                              wordColor = theme === 'sun' ? '#DC2626' : '#EF4444'; // Red - darker
+                                              scoreColor = theme === 'sun' ? '#B91C1C' : '#DC2626';
+                                            }
+                                          }
+                                          
+                                          return (
+                                            <span
+                                              key={`word-inline-${idx}`}
+                                              style={{
+                                                position: 'relative',
+                                                display: 'inline-flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                margin: '0 1px',
+                                                padding: '0 2px',
+                                                verticalAlign: 'baseline',
+                                                lineHeight: 1
+                                              }}
+                                            >
+                                              {/* Accuracy Score above word */}
+                                              <span
+                                                style={{
+                                                  fontSize: '11px',
+                                                  fontWeight: 500,
+                                                  color: scoreColor ? `${scoreColor}99` : (theme === 'sun' ? '#999' : '#888'),
+                                                  lineHeight: 1,
+                                                  marginBottom: '-2px',
+                                                  whiteSpace: 'nowrap',
+                                                }}
+                                              >
+                                                {accuracyScore !== null ? `${Math.round(accuracyScore)}%` : '-'}
+                                              </span>
+                                              {/* Word */}
+                                              <span
+                                                style={{
+                                                  color: wordColor,
+                                                  fontWeight: 700,
+                                                  fontSize: '18px',
+                                                  lineHeight: 1.2,
+                                                  marginTop: '-1px'
+                                                }}
+                                              >
+                                                {w?.word || ''}
+                                              </span>
+                                            </span>
+                                          );
+                                        });
                                       }
-                                      
-                                      // Note: errorType is only used for wavy underline, not for color
-                                      
-                                      return (
-                                        <span
-                                          key={`word-inline-${idx}`}
-                                          style={{
-                                            position: 'relative',
-                                            display: 'inline-flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            margin: '0 1px',
-                                            padding: '0 2px',
-                                            verticalAlign: 'baseline',
-                                            lineHeight: 1
-                                          }}
-                                        >
-                                          {/* Accuracy Score above word */}
-                                          <span
-                                            style={{
-                                              fontSize: '11px',
-                                              fontWeight: 500,
-                                              color: scoreColor ? `${scoreColor}99` : (theme === 'sun' ? '#999' : '#888'),
-                                              lineHeight: 1,
-                                              marginBottom: '-2px',
-                                              whiteSpace: 'nowrap',
-                                             
-                                            }}
-                                          >
-                                            {accuracyScore !== null ? `${Math.round(accuracyScore)}%` : '-'}
-                                          </span>
-                                          {/* Word */}
-                                          <span
-                                            style={{
-                                              color: wordColor,
-                                              fontWeight: 700,
-                                              fontSize: '14px',
-                                              lineHeight: 1.2,
-                                              marginTop: '-1px'
-                                            }}
-                                          >
-                                            {w?.word || ''}
-                                          </span>
-                                        </span>
-                                      );
-                                    })}
+                                    })()}
                                   </div>
                                 </div>
                               </div>

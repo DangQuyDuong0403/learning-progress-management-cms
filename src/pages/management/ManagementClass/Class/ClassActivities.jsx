@@ -1,15 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Typography,
-  Input,
   Pagination,
   DatePicker,
-  Button,
 } from "antd";
-import {
-  SearchOutlined,
-  FilterOutlined,
-} from "@ant-design/icons";
 import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
 import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
@@ -80,7 +74,6 @@ const ClassActivities = () => {
   const [loading, setLoading] = useState(false);
   const [activities, setActivities] = useState([]);
   const [classData, setClassData] = useState(null);
-  const [searchText, setSearchText] = useState("");
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -95,13 +88,6 @@ const ClassActivities = () => {
     startDate: null,
     endDate: null,
   });
-  const [filterDropdown, setFilterDropdown] = useState({
-    visible: false,
-    startDate: null,
-    endDate: null,
-  });
-  const filterContainerRef = useRef(null);
-  const prevSearchTextRef = useRef(searchText);
 
   const fetchClassData = useCallback(async () => {
     try {
@@ -135,25 +121,13 @@ const ClassActivities = () => {
   const fetchActivities = useCallback(async () => {
     setLoading(true);
     try {
-      // Reset pagination to page 1 if searchText changed
-      const currentPage = prevSearchTextRef.current !== searchText ? 1 : paginationCurrent;
-      if (prevSearchTextRef.current !== searchText) {
-        prevSearchTextRef.current = searchText;
-        setPagination(prev => ({
-          ...prev,
-          current: 1,
-        }));
-      }
-      
       const apiParams = {
-        page: currentPage - 1,
+        page: paginationCurrent - 1,
         size: paginationPageSize,
         sortBy: 'actionAt',
         sortDir: 'desc',
         startDate: filters.startDate ? filters.startDate.startOf('day').toISOString() : undefined,
         endDate: filters.endDate ? filters.endDate.endOf('day').toISOString() : undefined,
-        // Gửi searchText lên API nếu có - có thể dùng actionBy hoặc text parameter
-        ...(searchText && searchText.trim() ? { text: searchText.trim() } : {}),
       };
 
       const response = await classManagementApi.getClassHistory(id, apiParams);
@@ -221,18 +195,12 @@ const ClassActivities = () => {
     paginationPageSize,
     filters.startDate,
     filters.endDate,
-    searchText,
   ]);
 
   // Initial data loading
   useEffect(() => {
     fetchClassData();
   }, [fetchClassData]);
-
-  // Initialize prevSearchTextRef on mount
-  useEffect(() => {
-    prevSearchTextRef.current = searchText;
-  }, []);
 
   useEffect(() => {
     fetchActivities();
@@ -275,73 +243,20 @@ const ClassActivities = () => {
     }));
   };
 
-  // Handle filter changes
-  const handleFilterToggle = () => {
-    setFilterDropdown(prev => ({
-      ...prev,
-      visible: !prev.visible,
-      startDate: !prev.visible ? filters.startDate : prev.startDate,
-      endDate: !prev.visible ? filters.endDate : prev.endDate,
-    }));
-  };
-
-  const handleFilterDraftChange = (key, value) => {
-    setFilterDropdown(prev => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
-
-  const handleFilterReset = () => {
-    setFilterDropdown(prev => ({
-      ...prev,
-      startDate: null,
-      endDate: null,
-    }));
-  };
-
-  const handleFilterSubmit = () => {
+  // Handle date filter changes
+  const handleDateChange = (key, value) => {
     setFilters(prev => ({
       ...prev,
-      startDate: filterDropdown.startDate,
-      endDate: filterDropdown.endDate,
+      [key]: value,
     }));
     setPagination(prev => ({
       ...prev,
       current: 1,
     }));
-    setFilterDropdown(prev => ({
-      ...prev,
-      visible: false,
-    }));
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterDropdown.visible && filterContainerRef.current && !filterContainerRef.current.contains(event.target)) {
-        setFilterDropdown(prev => ({
-          ...prev,
-          visible: false,
-        }));
-      }
-    };
-
-    if (filterDropdown.visible) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [filterDropdown.visible]);
-
-  // Use activities directly from API (search is handled server-side)
+  // Use activities directly from API
   const displayedActivities = activities;
-
-  // Debug logs
-  console.log('🔍 Current pagination state:', pagination);
-  console.log('🔍 Activities count:', activities.length);
-  console.log('🔍 Search text:', searchText);
 
 
 
@@ -363,124 +278,34 @@ const ClassActivities = () => {
             </Typography.Title>
         </div>
 
-        {/* Search and Filter Section */}
-        <div className="search-section" style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap' }}>
-          <Input
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className={`search-input ${theme}-search-input`}
-            style={{ minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
-            allowClear
-            placeholder={t('classActivities.searchPlaceholder')}
-          />
-          <div ref={filterContainerRef} style={{ position: 'relative' }}>
-            <Button
-              icon={<FilterOutlined />}
-              onClick={handleFilterToggle}
-              className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''}`}
-              style={{
-                height: '40px',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              {t('classActivities.filter', { defaultValue: 'Filter' })}
-            </Button>
-
-            {filterDropdown.visible && (
-              <div
-                className={`filter-dropdown-panel ${theme}-filter-dropdown`}
-                style={{
-                  position: 'absolute',
-                  top: '48px',
-                  left: 0,
-                  zIndex: 100,
-                  background: theme === 'dark' ? '#1f2937' : '#ffffff',
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '8px',
-                  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.15)',
-                  minWidth: '320px',
-                  padding: '20px',
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span className="filter-text" style={{ fontWeight: 600 }}>
-                      {t('classActivities.startDate', { defaultValue: 'Start date' })}
-                    </span>
-                    <DatePicker
-                      value={filterDropdown.startDate}
-                      onChange={(date) => handleFilterDraftChange('startDate', date)}
-                      placeholder={t('classActivities.selectStartDate', { defaultValue: 'Select start date' })}
-                      format="YYYY-MM-DD"
-                      allowClear
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span className="filter-text" style={{ fontWeight: 600 }}>
-                      {t('classActivities.endDate', { defaultValue: 'End date' })}
-                    </span>
-                    <DatePicker
-                      value={filterDropdown.endDate}
-                      onChange={(date) => handleFilterDraftChange('endDate', date)}
-                      placeholder={t('classActivities.selectEndDate', { defaultValue: 'Select end date' })}
-                      format="YYYY-MM-DD"
-                      allowClear
-                    />
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginTop: '24px',
-                    borderTop: '1px solid #f0f0f0',
-                    paddingTop: '16px',
-                  }}
-                >
-                  <Button
-                    onClick={handleFilterReset}
-                    className={`filter-reset-button ${theme}-filter-reset-button`}
-                    style={{
-                      height: '32px',
-                      fontWeight: '500',
-                      fontSize: '16px',
-                      padding: '4px 15px',
-                      width: '100px',
-                    }}
-                  >
-                    {t('classActivities.reset', { defaultValue: 'Reset' })}
-                  </Button>
-                  <Button
-                    type="primary"
-                    onClick={handleFilterSubmit}
-                    className={`filter-submit-button ${theme}-filter-submit-button`}
-                    style={{
-                      background:
-                        theme === 'sun'
-                          ? 'rgb(113, 179, 253)'
-                          : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
-                      borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-                      color: theme === 'sun' ? '#000' : '#fff',
-                      borderRadius: '6px',
-                      height: '32px',
-                      fontWeight: '500',
-                      fontSize: '16px',
-                      padding: '4px 15px',
-                      width: '120px',
-                      transition: 'all 0.3s ease',
-                      boxShadow: 'none',
-                    }}
-                  >
-                    {t('classActivities.apply', { defaultValue: 'Apply' })}
-                  </Button>
-                </div>
-              </div>
-            )}
+        {/* Date Filter Section */}
+        <div className="date-filter-section" style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span className="filter-text" style={{ fontWeight: 600, fontSize: '14px' }}>
+              {t('classActivities.startDate', { defaultValue: 'Start date' })}
+            </span>
+            <DatePicker
+              value={filters.startDate}
+              onChange={(date) => handleDateChange('startDate', date)}
+              placeholder={t('classActivities.selectStartDate', { defaultValue: 'Select start date' })}
+              format="YYYY-MM-DD"
+              allowClear
+              style={{ height: '40px', width: '200px' }}
+            />
           </div>
-
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span className="filter-text" style={{ fontWeight: 600, fontSize: '14px' }}>
+              {t('classActivities.endDate', { defaultValue: 'End date' })}
+            </span>
+            <DatePicker
+              value={filters.endDate}
+              onChange={(date) => handleDateChange('endDate', date)}
+              placeholder={t('classActivities.selectEndDate', { defaultValue: 'Select end date' })}
+              format="YYYY-MM-DD"
+              allowClear
+              style={{ height: '40px', width: '200px' }}
+            />
+          </div>
         </div>
 
         {/* Activities Timeline Section */}
@@ -660,7 +485,6 @@ const ClassActivities = () => {
         </div>
 
         {/* Pagination Controls - Outside timeline section */}
-        {console.log('🔍 Pagination render check - total:', pagination.total, 'should show:', pagination.total > 0)}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'flex-end', 

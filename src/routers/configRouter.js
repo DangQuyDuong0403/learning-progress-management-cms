@@ -246,6 +246,18 @@ const CONFIG_ROUTER = [
 		role: 'student',
 	},
 	
+	// Student Class Overview
+	{
+		show: false,
+		component: ClassOverview,
+		path: ROUTER_PAGE.STUDENT_CLASS_OVERVIEW,
+		menuName: 'Class Overview',
+		exact: true,
+		key: 'STUDENT_CLASS_OVERVIEW',
+		private: true,
+		role: 'student',
+	},
+	
 	// Student Class Chapters/Lessons
 	{
 		show: false,
@@ -415,6 +427,16 @@ const CONFIG_ROUTER = [
 		menuName: 'Class Chapter Lessons',
 		exact: true,
 		key: 'TEST_TAKER_CLASS_CHAPTER_LESSONS',
+		private: true,
+		role: 'test_taker',
+	},
+	{
+		show: false,
+		component: ClassOverview,
+		path: ROUTER_PAGE.TEST_TAKER_CLASS_OVERVIEW,
+		menuName: 'Class Overview',
+		exact: true,
+		key: 'TEST_TAKER_CLASS_OVERVIEW',
 		private: true,
 		role: 'test_taker',
 	},
