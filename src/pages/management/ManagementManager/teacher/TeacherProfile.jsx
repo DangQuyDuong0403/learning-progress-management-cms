@@ -872,7 +872,7 @@ const TeacherProfile = () => {
 										{ max: 255, message: t('teacherManagement.addressMaxLength') },
 									]}
 								>
-									<Input placeholder={t('teacherManagement.enterAddress')} />
+									<Input />
 								</Form.Item>
 							</Col>
 						</Row>

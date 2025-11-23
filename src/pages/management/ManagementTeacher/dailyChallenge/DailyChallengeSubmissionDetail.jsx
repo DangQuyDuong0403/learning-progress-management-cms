@@ -112,6 +112,7 @@ const DailyChallengeSubmissionDetail = () => {
   const userRole = useSelector((state) => state.auth?.user?.role);
   const normalizedRole = (userRole || '').toString().toLowerCase();
   const isStudent = normalizedRole === 'student' || normalizedRole === 'test_taker';
+  const isManager = normalizedRole === 'manager';
   const getFeedbackRouteBase = useCallback(() => {
     if (isStudent) {
       return normalizedRole === 'test_taker' ? '/test-taker' : '/student';
@@ -2029,9 +2030,9 @@ useEffect(() => {
           border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
         }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
-            Question {qIndex + 1}:
+            {t('dailyChallenge.question')} {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
-              {(q.receivedScore || 0)} / {(q.points || 0)} points
+              {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
             </span>
           </div>
           <div className="question-text-content" style={{ marginBottom: '10px' }} dangerouslySetInnerHTML={{ __html: questionText }} />
@@ -2084,9 +2085,9 @@ useEffect(() => {
                 }}>
                   <input type={isMulti ? 'checkbox' : 'radio'} checked={isSelected || isCorrectMissing} disabled style={{ width: '18px', height: '18px', accentColor: isCorrectMissing ? '#faad14' : (isCorrectAnswer ? '#52c41a' : (isSelectedWrong ? '#ff4d4f' : (theme === 'sun' ? '#1890ff' : '#8B5CF6'))), cursor: 'not-allowed', opacity: 1 }} />
                   <span style={{ fontWeight: 600, color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontSize: '16px' }}>
-                    {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? 'A' : 'B') : key}.
+                    {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' || opt === t('dailyChallenge.true') ? 'A' : 'B') : key}.
                   </span>
-                  <span className="option-text" style={{ flex: 1, lineHeight: '1.6', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontWeight: '350' }} dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? opt : text }} />
+                  <span className="option-text" style={{ flex: 1, lineHeight: '1.6', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', fontWeight: '350' }} dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? t('dailyChallenge.true') : opt === 'False' ? t('dailyChallenge.false') : opt) : text }} />
                   {isSelectedWrong && <CloseCircleOutlined style={{ fontSize: '22px', color: '#ff4d4f', marginLeft: 'auto', fontWeight: 'bold' }} />}
                   {(isUnanswered && !isMulti && isCorrectAnswer) && !isSelectedWrong && (
                     <CheckCircleOutlined style={{ fontSize: '20px', color: '#faad14', marginLeft: 'auto' }} />
@@ -2649,11 +2650,11 @@ useEffect(() => {
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. Reading Section
+              {index + 1}. {t('dailyChallenge.readingSection')}
             </Typography.Text>
           </div>
           <div style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-            {sectionTotals.received} / {sectionTotals.total} points
+            {sectionTotals.received} / {sectionTotals.total} {t('dailyChallenge.points')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
@@ -2690,20 +2691,20 @@ useEffect(() => {
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: '20px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. Listening Section
+              {index + 1}. {t('dailyChallenge.listeningSection')}
             </Typography.Text>
           </div>
           <div style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-            {sectionTotals.received} / {sectionTotals.total} points
+            {sectionTotals.received} / {sectionTotals.total} {t('dailyChallenge.points')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
           <div className="listening-passage-scrollbar" style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, overflowY: 'auto', maxHeight: '600px', scrollbarWidth: 'thin', scrollbarColor: theme === 'sun' ? '#1890ff rgba(24, 144, 255, 0.2)' : '#8B5CF6 rgba(138, 122, 255, 0.2)' }}>
             <div style={{ background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', padding: '20px', marginBottom: '20px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`, boxShadow: theme === 'sun' ? '0 2px 8px rgba(0, 0, 0, 0.1)' : '0 2px 8px rgba(0, 0, 0, 0.2)' }}>
-              <Typography.Text style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>Audio Transcript</Typography.Text>
+              <Typography.Text style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>{t('dailyChallenge.audioTranscript')}</Typography.Text>
               <audio controls style={{ width: '100%', marginBottom: '16px' }}>
                 <source src={section.audioUrl} type="audio/wav" />
-                Your browser does not support the audio element.
+                {t('dailyChallenge.browserNotSupportAudio')}
               </audio>
               <div className="passage-text-content" style={{ fontSize: '15px', lineHeight: '1.8', color: theme === 'sun' ? '#333' : '#1F2937', textAlign: 'justify' }} dangerouslySetInnerHTML={{ __html: section.transcript || '' }} />
             </div>
@@ -2743,10 +2744,10 @@ useEffect(() => {
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. Writing Section
+              {index + 1}. {t('dailyChallenge.writingSection')}
             </Typography.Text>
           </div>
-          {!isStudent ? (
+          {!isStudent && !isManager ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {!hasExistingGradingForSection(section.id) ? (
                 <>
@@ -2765,7 +2766,7 @@ useEffect(() => {
                     onClick={() => handleOpenEditFeedback(section.id, 'section')}
                     style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
                   >
-                    Edit Score/Feedback
+                    {t('dailyChallenge.editScoreFeedback')}
                   </Button>
                 </>
               )}
@@ -2777,7 +2778,7 @@ useEffect(() => {
                 onClick={() => handleOpenEditFeedback(section.id, 'section')}
                 style={{ fontSize: '13px', height: '28px', padding: '0 12px' }}
               >
-                View Feedback
+                {t('dailyChallenge.viewFeedback')}
               </Button>
             )
           )}
@@ -2790,7 +2791,7 @@ useEffect(() => {
             <div style={{ padding: '20px' }}>
               {studentEssayText ? (
                 <div>
-                  <Typography.Text style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>Student's Essay:</Typography.Text>
+                  <Typography.Text style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>{t('dailyChallenge.studentsEssay')}</Typography.Text>
                   <div 
                     id={`essay-container-${section.id}`}
                     onMouseUp={(e) => {
@@ -3100,10 +3101,10 @@ useEffect(() => {
         <div className="question-header" style={{ paddingBottom: '14px', marginBottom: '16px', borderBottom: '2px solid', borderBottomColor: theme === 'sun' ? 'rgba(113, 179, 253, 0.25)' : 'rgba(138, 122, 255, 0.2)', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography.Text strong style={{ fontSize: hasAudio ? '20px' : '16px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-              {index + 1}. {hasAudio ? 'Speaking With Audio Section' : 'Speaking Section'}
+              {index + 1}. {hasAudio ? t('dailyChallenge.speakingWithAudioSection') : t('dailyChallenge.speakingSection')}
             </Typography.Text>
           </div>
-          {!isStudent ? (
+          {!isStudent && !isManager ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {!hasExistingGradingForSection(section.id) ? (
                 <>
@@ -3130,7 +3131,7 @@ useEffect(() => {
                       padding: '0 12px'
                     }}
                   >
-                    Edit Score/Feedback
+                    {t('dailyChallenge.editScoreFeedback')}
                   </Button>
                 </>
               )}
@@ -3146,7 +3147,7 @@ useEffect(() => {
                   padding: '0 12px'
                 }}
               >
-                View Feedback
+                {t('dailyChallenge.viewFeedback')}
               </Button>
             )
           )}
@@ -3221,7 +3222,7 @@ useEffect(() => {
                     style={{ display: 'none' }}
                   >
                     <source src={section.audioUrl} type="audio/wav" />
-                    Your browser does not support the audio element.
+                    {t('dailyChallenge.browserNotSupportAudio')}
                   </audio>
 
                   {/* Audio Controls */}
@@ -3351,7 +3352,7 @@ useEffect(() => {
                         <source src={audioUrl} type="video/webm" />
                         <source src={audioUrl} type="video/mp4" />
                         <source src={audioUrl} type="video/ogg" />
-                        Your browser does not support the video element.
+                        {t('dailyChallenge.browserNotSupportVideo')}
                       </video>
                     );
                   } else {
@@ -3361,7 +3362,7 @@ useEffect(() => {
                         <source src={audioUrl} type="audio/mpeg" />
                         <source src={audioUrl} type="audio/wav" />
                         <source src={audioUrl} type="audio/mp3" />
-                        Your browser does not support the audio element.
+                        {t('dailyChallenge.browserNotSupportAudio')}
                       </audio>
                     );
                   }
@@ -3369,7 +3370,7 @@ useEffect(() => {
               </div>
             ) : (
               <Typography.Text type="secondary" style={{ fontSize: '14px', fontStyle: 'italic' }}>
-                {hasAudio ? 'No recording submitted' : 'No recording submitted'}
+                {t('dailyChallenge.noRecordingSubmitted')}
               </Typography.Text>
             )}
           </div>
@@ -3431,7 +3432,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -3439,7 +3440,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -3468,7 +3469,7 @@ useEffect(() => {
               gap: '14px', 
               marginTop: '12px' 
             }}>
-              {(q.type === 'TRUE_OR_FALSE' ? ['True', 'False'] : options).map((opt, idx) => {
+              {(q.type === 'TRUE_OR_FALSE' ? [t('dailyChallenge.true'), t('dailyChallenge.false')] : options).map((opt, idx) => {
                 let key, text;
                 if (q.type === 'TRUE_OR_FALSE') {
                   key = opt;
@@ -3536,7 +3537,7 @@ useEffect(() => {
                       fontWeight: '600',
                       fontSize: '16px'
                     }}>
-                      {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? 'A' : 'B') : key}.
+                      {q.type === 'TRUE_OR_FALSE' ? (opt === 'True' || opt === t('dailyChallenge.true') ? 'A' : 'B') : key}.
                     </span>
                     <span 
                       className="option-text"
@@ -3546,7 +3547,7 @@ useEffect(() => {
                         color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                         fontWeight: '350'
                       }}
-                      dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? opt : text }}
+                      dangerouslySetInnerHTML={{ __html: q.type === 'TRUE_OR_FALSE' ? (opt === 'True' ? t('dailyChallenge.true') : opt === 'False' ? t('dailyChallenge.false') : opt) : text }}
                     />
                     {isSelectedWrong && (
                       <CloseCircleOutlined style={{
@@ -3713,7 +3714,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -3721,7 +3722,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -3873,7 +3874,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -3881,7 +3882,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4039,7 +4040,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -4047,7 +4048,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4213,7 +4214,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -4221,7 +4222,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4379,7 +4380,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              Question {questionNumber}
+              {t('dailyChallenge.question')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
@@ -4387,14 +4388,14 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
                 fontStyle: 'italic'
               }}>
-                Rewrite
+                {t('dailyChallenge.rewrite')}
               </Typography.Text>
             </div>
           </div>
@@ -4431,13 +4432,13 @@ useEffect(() => {
                 wordWrap: 'break-word',
                 cursor: 'not-allowed'
               }}>
-                {studentAnswerText || 'No answer provided'}
+                {studentAnswerText || t('dailyChallenge.noAnswerProvided')}
               </div>
             </div>
             {correctAnswersDisplay.length > 0 && (
               <div style={{ marginTop: '20px' }}>
                 <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '8px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                  Correct answer{correctAnswersDisplay.length > 1 ? 's' : ''}:
+                  {correctAnswersDisplay.length > 1 ? t('dailyChallenge.correctAnswers') : t('dailyChallenge.correctAnswer')}
                 </Typography.Text>
                 {correctAnswersDisplay.map((correctAnswer, idx) => (
                   <div key={idx} style={{
@@ -4506,7 +4507,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} points
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
               </Typography.Text>
             <Typography.Text style={{ 
               fontSize: '14px', 
@@ -4636,7 +4637,7 @@ useEffect(() => {
             </h2>
           </div>
           {/* Right actions */}
-            {!isStudent && (
+            {!isStudent && !isManager && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
                 <Button
                   icon={<FileTextOutlined />}
@@ -4848,7 +4849,7 @@ useEffect(() => {
                             }
                           }}
                         >
-                          {t('dailyChallenge.info', 'Info')}
+                          {t('dailyChallenge.info')}
                         </button>
                         <button
                           onClick={() => setActiveTab('questions')}
@@ -4890,7 +4891,7 @@ useEffect(() => {
                             }
                           }}
                         >
-                          {t('dailyChallenge.questions', 'Questions')}
+                          {t('dailyChallenge.questions')}
                         </button>
                       </div>
                     </div>
@@ -5646,7 +5647,7 @@ useEffect(() => {
                     /* Questions Tab */
                     <>
                       <div className="question-sidebar-header" style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.15)' : '2px solid rgba(138, 122, 255, 0.15)' }}>
-                        <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: 'rgb(24, 144, 255)', margin: 0 }}>Questions</h3>
+                        <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: 'rgb(24, 144, 255)', margin: 0 }}>{t('dailyChallenge.questions')}</h3>
                       </div>
                       <div style={{ 
                         maxHeight: 'calc(100vh - 280px)', 
@@ -5802,6 +5803,7 @@ useEffect(() => {
           <Button 
             key="save" 
             type="primary" 
+            disabled={isManager}
             onClick={handleSaveFeedback}
             style={{
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
@@ -6312,6 +6314,7 @@ useEffect(() => {
           <Button 
             key="save" 
             type="primary" 
+            disabled={isManager}
             onClick={handleSaveScore}
             style={{
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
@@ -6409,7 +6412,7 @@ useEffect(() => {
           >
             {t('dailyChallenge.clear', 'Clear')}
           </Button>,
-          <Button key="save" type="primary" loading={savingFeedback} onClick={handleSaveOverallFeedback}
+          <Button key="save" type="primary" loading={savingFeedback} disabled={isManager} onClick={handleSaveOverallFeedback}
             style={{
               height: '36px',
               borderRadius: '6px',
@@ -6750,6 +6753,7 @@ useEffect(() => {
           <Button 
             key="save" 
             type="primary" 
+            disabled={isManager}
             onClick={handleSaveComment}
             style={{
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',

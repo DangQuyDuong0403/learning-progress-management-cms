@@ -130,7 +130,8 @@ const StudentDailyChallengeList = () => {
   const [allChallenges, setAllChallenges] = useState([]);
   const [searchDebounce, setSearchDebounce] = useState("");
   const [loadingChallenges, setLoadingChallenges] = useState(new Set());
-  const hasRestoredState = useRef(false); // Track if we've already restored state from location
+  const restoredStateKey = useRef(null); // Track which location.state we've already restored
+  const isRestoringState = useRef(false); // Flag to prevent side effects during state restoration
 
   // Removed filter dropdown logic per request
 
@@ -350,67 +351,73 @@ const StudentDailyChallengeList = () => {
     setDailyChallenges(paged);
   }, [filteredAllChallenges, currentPage, pageSize, computePagedRows]);
 
-  // Reset hasRestoredState when location.state changes from having currentPage to not having it
-  // This allows restoring again when navigating back with new state
-  useEffect(() => {
-    // If location.state no longer has currentPage, reset the flag
-    if (!location.state?.currentPage && hasRestoredState.current) {
-      console.log('🔄 StudentDailyChallengeList - Resetting hasRestoredState (no saved state)');
-      hasRestoredState.current = false;
-    }
-  }, [location.state]);
-
   // Restore pagination and filters from location.state when navigating back
-  // Only restore once when component mounts with saved state
+  // Only restore once for each unique location.state
   useEffect(() => {
     console.log('🟢 StudentDailyChallengeList - Location state changed:', location.state);
-    console.log('🟢 StudentDailyChallengeList - hasRestoredState.current:', hasRestoredState.current);
-    console.log('🟢 StudentDailyChallengeList - Current page before restore:', currentPage);
     
-    if (location.state?.currentPage) {
+    // Create a unique key from location.state to track if we've restored this specific state
+    const stateKey = location.state?.currentPage 
+      ? JSON.stringify({
+          currentPage: location.state.currentPage,
+          pageSize: location.state.pageSize,
+          searchText: location.state.searchText,
+        })
+      : null;
+    
+    console.log('🟢 StudentDailyChallengeList - State key:', stateKey);
+    console.log('🟢 StudentDailyChallengeList - Restored key:', restoredStateKey.current);
+    
+    // Only restore if we have saved state AND haven't restored this specific state yet
+    if (stateKey && restoredStateKey.current !== stateKey) {
       const savedPage = location.state.currentPage;
       const savedPageSize = location.state.pageSize;
       const savedSearchText = location.state.searchText;
       
-      console.log('🟡 StudentDailyChallengeList - Found saved state to restore:', {
+      console.log('🟡 StudentDailyChallengeList - Found new saved state to restore:', {
         savedPage,
         savedPageSize,
         savedSearchText,
-        hasRestored: hasRestoredState.current
       });
       
-      // Only restore if we haven't restored yet OR if the saved page is different from current
-      // This allows restoring even if component didn't unmount
-      if (!hasRestoredState.current || (savedPage !== currentPage)) {
-        console.log('✅ StudentDailyChallengeList - Restoring state...');
-        
-        // Restore page and pageSize
-        if (savedPage && savedPage > 0) {
-          console.log('📄 Restoring page from', currentPage, 'to', savedPage);
-          setCurrentPage(savedPage);
-        }
-        if (savedPageSize && savedPageSize > 0) {
-          console.log('📏 Restoring pageSize to', savedPageSize);
-          setPageSize(savedPageSize);
-        }
-        
-        // Restore search text if available
-        if (savedSearchText !== undefined) {
-          console.log('🔍 Restoring searchText:', savedSearchText);
-          setSearchText(savedSearchText);
-          setSearchDebounce(savedSearchText);
-        }
-        
-        // Mark as restored to avoid restoring again
-        hasRestoredState.current = true;
-        console.log('✅ StudentDailyChallengeList - State restored successfully');
-      } else {
-        console.log('⏭️ StudentDailyChallengeList - Skipping restore (already restored or same page)');
+      console.log('✅ StudentDailyChallengeList - Restoring state...');
+      
+      // Set flag to prevent side effects during restoration
+      isRestoringState.current = true;
+      
+      // Restore page and pageSize FIRST (before searchText to avoid debounce reset)
+      if (savedPage && savedPage > 0) {
+        console.log('📄 Restoring page to', savedPage);
+        setCurrentPage(savedPage);
       }
-    } else {
-      console.log('ℹ️ StudentDailyChallengeList - No saved state found in location.state');
+      if (savedPageSize && savedPageSize > 0) {
+        console.log('📏 Restoring pageSize to', savedPageSize);
+        setPageSize(savedPageSize);
+      }
+      
+      // Restore search text LAST (after currentPage is set)
+      if (savedSearchText !== undefined) {
+        console.log('🔍 Restoring searchText:', savedSearchText);
+        setSearchText(savedSearchText);
+        setSearchDebounce(savedSearchText);
+      }
+      
+      // Mark this specific state as restored
+      restoredStateKey.current = stateKey;
+      
+      // Clear restoration flag after a short delay to allow all state updates to complete
+      setTimeout(() => {
+        isRestoringState.current = false;
+        console.log('✅ StudentDailyChallengeList - State restored successfully, restoration flag cleared');
+      }, 500);
+    } else if (!stateKey && restoredStateKey.current) {
+      // Reset when location.state no longer has saved state
+      console.log('🔄 StudentDailyChallengeList - Resetting restoredStateKey (no saved state)');
+      restoredStateKey.current = null;
+    } else if (stateKey && restoredStateKey.current === stateKey) {
+      console.log('⏭️ StudentDailyChallengeList - Skipping restore (already restored this state)');
     }
-  }, [location.state, currentPage]);
+  }, [location.state]); // Only depend on location.state, not currentPage
 
   // Keep totalItems in sync with filtered total and correct currentPage bounds
   useEffect(() => {
@@ -429,7 +436,10 @@ const StudentDailyChallengeList = () => {
       // This allows users to type spaces normally, but trims when they stop typing
       const trimmedValue = searchText.trim();
       setSearchDebounce(trimmedValue);
-      setCurrentPage(1);
+      // Only reset to page 1 if not restoring state (to preserve restored page)
+      if (!isRestoringState.current) {
+        setCurrentPage(1);
+      }
     }, 400); // Reduced from 500ms to 300ms for better responsiveness
 
     return () => clearTimeout(timer);
@@ -1087,6 +1097,11 @@ const StudentDailyChallengeList = () => {
                   `${range[0]}-${range[1]} ${t('dailyChallenge.of')} ${total} ${t('dailyChallenge.challenges')}`,
                 className: `${theme}-pagination`,
                 pageSizeOptions: ['10', '20', '50', '100'],
+                locale: {
+                  jump_to: t('common.goTo'),
+                  page: t('common.page'),
+                  items_per_page: t('common.perPage'),
+                },
               }}
               scroll={{ x: 800 }}
               className={`daily-challenge-table ${theme}-daily-challenge-table`}

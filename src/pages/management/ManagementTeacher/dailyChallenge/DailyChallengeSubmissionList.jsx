@@ -43,6 +43,7 @@ const DailyChallengeSubmissionList = () => {
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount, dailyChallengeData } = useDailyChallengeMenu();
+  const isManager = (user?.role || '').toLowerCase() === 'manager';
   
   // Set page title
   usePageTitle('Daily Challenge Management / Submissions');
@@ -744,30 +745,32 @@ const DailyChallengeSubmissionList = () => {
             style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
             allowClear
           />
-          <Space>
-            <Button
-              icon={<ClockCircleOutlined />}
-              onClick={() => openExtendModal()}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-              }}
-            >
-              {t('dailyChallenge.extendSubmissions', 'Extend submissions')}
-            </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={openResetModal}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                fontWeight: 500,
-              }}
-            >
-              {t('dailyChallenge.resetSubmissions', 'Reset submissions')}
-            </Button>
-          </Space>
+          {!isManager && (
+            <Space>
+              <Button
+                icon={<ClockCircleOutlined />}
+                onClick={() => openExtendModal()}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                }}
+              >
+                {t('dailyChallenge.extendSubmissions', 'Extend submissions')}
+              </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={openResetModal}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                }}
+              >
+                {t('dailyChallenge.resetSubmissions', 'Reset submissions')}
+              </Button>
+            </Space>
+          )}
         </div>
 
         {/* Table Section */}
@@ -1172,14 +1175,6 @@ const DailyChallengeSubmissionList = () => {
                 >
                   {resetEligibleRows.map((item) => {
                     const checked = resetSelectedSubmissionIds.includes(item.submissionId);
-                    const statusText =
-                      typeof item.submissionStatus === 'string'
-                        ? item.submissionStatus.charAt(0).toUpperCase() +
-                          item.submissionStatus.slice(1).toLowerCase()
-                        : '-';
-                    const submittedAtText = formatDateTimeVi(item.submittedAt);
-                    const startAtText = formatDateTimeVi(item.startDate);
-                    const endAtText = formatDateTimeVi(item.endDate);
                     return (
                       <div
                         key={item.submissionId}
@@ -1209,24 +1204,8 @@ const DailyChallengeSubmissionList = () => {
                             <Typography.Text strong style={{ fontSize: 16 }}>
                               {item.studentName || `ID ${item.submissionId}`}
                             </Typography.Text>
-                            {item.studentCode && (
-                              <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                                {t('dailyChallenge.studentCodeLabel', 'Student code')}: {item.studentCode}
-                              </Typography.Text>
-                            )}
-                            <div style={{ marginTop: 8 }}>
-                              <Tag color="blue" style={{ borderRadius: 999 }}>
-                                {statusText}
-                              </Tag>
-                            </div>
-                            <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-                              {t('dailyChallenge.start', 'Start')}: {startAtText}
-                            </Typography.Text>
                             <Typography.Text type="secondary" style={{ marginTop: 4, display: 'block' }}>
-                              {t('dailyChallenge.end', 'End')}: {endAtText}
-                            </Typography.Text>
-                            <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-                              {t('dailyChallenge.submittedAtLabel', 'Submitted at')}: {submittedAtText}
+                              {item.studentCode ? `${t('dailyChallenge.code', 'Code')}: ${item.studentCode}` : t('dailyChallenge.noStudentCode', 'No student code')}
                             </Typography.Text>
                           </div>
                         </div>

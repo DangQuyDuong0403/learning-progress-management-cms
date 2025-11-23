@@ -27,12 +27,7 @@ const clampSuggestedScoreValue = (value) => {
   return Math.max(0, Math.min(10, numeric));
 };
 
-const WRITING_CRITERIA_KEYS = [
-  { key: 'taskResponse', label: 'Task Response' },
-  { key: 'cohesionCoherence', label: 'Cohesion & Coherence' },
-  { key: 'lexicalResource', label: 'Lexical Resource' },
-  { key: 'grammaticalRangeAccuracy', label: 'Grammatical Range & Accuracy' },
-];
+// WRITING_CRITERIA_KEYS will be defined inside component to use i18n
 
 // Helper functions to save/restore AI generated data from sessionStorage
 const getStorageKey = (submissionQuestionId) => {
@@ -77,6 +72,14 @@ const clearAIGeneratedData = (submissionQuestionId) => {
 // left = student's submission (writing/listening) and right = score + feedback (with AI assist)
 const AIGenerateFeedback = () => {
   const { t } = useTranslation();
+  
+  // Define WRITING_CRITERIA_KEYS with i18n
+  const WRITING_CRITERIA_KEYS = [
+    { key: 'taskResponse', label: t('dailyChallenge.taskResponse') },
+    { key: 'cohesionCoherence', label: t('dailyChallenge.cohesionCoherence') },
+    { key: 'lexicalResource', label: t('dailyChallenge.lexicalResource') },
+    { key: 'grammaticalRangeAccuracy', label: t('dailyChallenge.grammaticalRangeAccuracy') },
+  ];
   const navigate = useNavigate();
   const location = useLocation();
   const { theme } = useTheme();
@@ -407,9 +410,9 @@ const AIGenerateFeedback = () => {
       setShowCommentSidebar(false);
       setCommentPopover({ visible: false, x: 0, y: 0, feedback: null });
 
-      spaceToast.success('Cleared. Click Save to apply.');
+      spaceToast.success(t('dailyChallenge.cleared'));
     } catch {}
-  }, [sectionType, section?.id, prefill?.section?.id, submissionQuestionId, prefill?.submissionQuestionId]);
+  }, [sectionType, section?.id, prefill?.section?.id, submissionQuestionId, prefill?.submissionQuestionId, t]);
   // Right panel mode: null (choose), 'manual', 'ai'
   const [rightMode, setRightMode] = useState(null);
   const [hasAIGenerated, setHasAIGenerated] = useState(false);
@@ -492,7 +495,7 @@ const AIGenerateFeedback = () => {
     }
     // Check if input exceeds questionWeight
     if (raw > questionWeight) {
-      setScoreError(`Points not to exceed ${questionWeight}`);
+      setScoreError(t('dailyChallenge.pointsNotToExceed', { max: questionWeight }));
       // Still clamp the value but show error
       const clamped = Math.max(0, Math.min(questionWeight, raw));
       setScore(clamped);
@@ -501,7 +504,7 @@ const AIGenerateFeedback = () => {
       const clamped = Math.max(0, Math.min(questionWeight, raw));
       setScore(clamped);
     }
-  }, [questionWeight]);
+  }, [questionWeight, t]);
   useEffect(() => {
     if (sectionType !== 'writing' || rightMode !== 'manual') return;
     setWritingCriteria((prev) => {
@@ -522,7 +525,7 @@ const AIGenerateFeedback = () => {
       }
       return next;
     });
-  }, [sectionType, rightMode]);
+  }, [sectionType, rightMode, WRITING_CRITERIA_KEYS]);
   const handleWritingCriteriaFeedbackChange = useCallback((criteriaKey, newFeedback) => {
     setWritingCriteria((prev) => {
       const prevSafe = prev || {};
@@ -2006,7 +2009,7 @@ const AIGenerateFeedback = () => {
         setGenerationProgress(100);
         // Small delay to show 100% before closing
         await new Promise(resolve => setTimeout(resolve, 300));
-        spaceToast.success(getBackendMessage(res) || 'AI feedback generated');
+        spaceToast.success(getBackendMessage(res) || t('dailyChallenge.aiFeedbackGenerated'));
       } else if (sectionType === 'speaking') {
         // Speaking pronunciation assessment
         const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio;
@@ -2118,7 +2121,7 @@ const AIGenerateFeedback = () => {
         setGenerationProgress(100);
         // Small delay to show 100% before closing
         await new Promise(resolve => setTimeout(resolve, 300));
-        spaceToast.success(getBackendMessage(res) || 'Pronunciation assessed');
+        spaceToast.success(getBackendMessage(res) || t('dailyChallenge.pronunciationAssessed'));
       } else {
         spaceToast.error('AI grading hiện chỉ hỗ trợ cho Writing và Speaking');
       }
@@ -2138,7 +2141,7 @@ const AIGenerateFeedback = () => {
       console.error('=== END ERROR LOG ===');
       
       const beErr = getBackendMessage(e);
-      spaceToast.error(beErr || e?.message || 'Failed to generate AI feedback');
+      spaceToast.error(beErr || e?.message || t('dailyChallenge.failedToGenerateAIFeedback'));
     } finally {
       setIsGenerating(false);
       setGenerationProgress(0);
@@ -2183,14 +2186,14 @@ const AIGenerateFeedback = () => {
       clearAIGeneratedData(writingSubmissionQuestionId);
       // Reset hasClearedData flag after successful save
       setHasClearedData(false);
-      spaceToast.success(beMsg || 'Saved');
+      spaceToast.success(beMsg || t('dailyChallenge.saved'));
       handleBack();
     } catch (e) {
-      spaceToast.error(getBackendMessage(e) || 'Save failed');
+      spaceToast.error(getBackendMessage(e) || t('dailyChallenge.saveFailed'));
     } finally {
       setSaving(false);
     }
-  }, [submissionQuestionId, prefill?.submissionQuestionId, section, writingSectionFeedbacks, score, buildFeedbackPayloadForSave, handleBack, getBackendMessage]);
+  }, [submissionQuestionId, prefill?.submissionQuestionId, section, writingSectionFeedbacks, score, buildFeedbackPayloadForSave, handleBack, getBackendMessage, t]);
 
   return (
     <ThemedLayout
@@ -2261,7 +2264,7 @@ const AIGenerateFeedback = () => {
               {/* Right actions */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
                 <Button onClick={handleClear} icon={<CloseCircleOutlined />} style={{ height: 40, borderRadius: 8 }}>
-                  Clear
+                  {t('dailyChallenge.clear')}
                 </Button>
                 <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving} style={{ height: 40, borderRadius: 8, padding: '0 24px', border: 'none', background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)', color: '#000' }}>
                   {t('common.save')}
@@ -2382,7 +2385,7 @@ const AIGenerateFeedback = () => {
                 minHeight: 540,
               }}
             >
-              <Title level={3} style={{ textAlign: 'center', color: primaryColor, marginTop: 0 }}>Student Submission</Title>
+              <Title level={3} style={{ textAlign: 'center', color: primaryColor, marginTop: 0 }}>{t('dailyChallenge.studentSubmission')}</Title>
               <div ref={leftContainerRef} style={{ marginTop: 12, fontSize: 15, lineHeight: 1.8, position: 'relative' }}>
                 {sectionType === 'writing' ? (
                   <>
@@ -2519,7 +2522,7 @@ const AIGenerateFeedback = () => {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 8, position: 'relative' }}>
-                        <Typography.Text strong>Teacher Comment</Typography.Text>
+                        <Typography.Text strong>{t('dailyChallenge.teacherComment')}</Typography.Text>
                         <Button 
                           type="text" 
                           icon={<CloseCircleOutlined />} 
@@ -2531,8 +2534,8 @@ const AIGenerateFeedback = () => {
                         {stripHtmlToText(commentPopover.feedback.comment)}
                       </div>
                       <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment}>Delete</Button>
-                        <Button onClick={handleEditCommentFromSidebar}>Edit Comment</Button>
+                        <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment}>{t('common.delete')}</Button>
+                        <Button onClick={handleEditCommentFromSidebar}>{t('dailyChallenge.editComment')}</Button>
                       </div>
                     </div>
                   )}
@@ -2550,7 +2553,7 @@ const AIGenerateFeedback = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                                 <span style={{ fontSize: 18, color: theme === 'sun' ? '#8B5CF6' : '#A78BFA' }}>🎵</span>
                                 <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                                  Audio File
+                                  {t('dailyChallenge.audioFile')}
                                 </Typography.Text>
                               </div>
                               <audio controls src={section.sectionsUrl} style={{ width: '100%' }} />
@@ -2594,14 +2597,14 @@ const AIGenerateFeedback = () => {
                             marginTop: 16,
                           }}>
                             <Typography.Text style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', display: 'block' }}>
-                              Student's Recording:
+                              {t('dailyChallenge.studentsRecording')}
                             </Typography.Text>
                             {(() => {
                               const recordingUrl = studentAnswer?.audioUrl || studentAnswer?.audio;
                               if (!recordingUrl) {
                                 return (
                                   <Typography.Text type="secondary" style={{ fontSize: '14px', fontStyle: 'italic' }}>
-                                    No recording submitted
+                                    {t('dailyChallenge.noRecordingSubmitted')}
                                   </Typography.Text>
                                 );
                               }
@@ -2744,7 +2747,7 @@ const AIGenerateFeedback = () => {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <span style={{ fontSize: 22 }}>✍️</span>
-                        <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>Add feedback manually</Typography.Text>
+                        <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.addFeedbackManually')}</Typography.Text>
                       </div>
                     </Card>
                     <Card
@@ -2768,7 +2771,7 @@ const AIGenerateFeedback = () => {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <ThunderboltOutlined style={{ fontSize: 22, color: primaryColor }} />
-                        <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>Generate with AI</Typography.Text>
+                        <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.generateWithAI')}</Typography.Text>
                       </div>
                     </Card>
                   </div>
@@ -2807,7 +2810,7 @@ const AIGenerateFeedback = () => {
                       {t('common.back') || 'Back'}
                     </Button>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Text strong>Weight</Text>
+                      <Text strong>{t('dailyChallenge.weight')}</Text>
                       <Input
                         type="number"
                         value={score}
@@ -2853,7 +2856,7 @@ const AIGenerateFeedback = () => {
                         color: theme === 'sun' ? '#1E40AF' : '#8377A0',
                         marginBottom: 12
                       }}>
-                        <Text strong>Pronunciation result</Text>
+                        <Text strong>{t('dailyChallenge.pronunciationResult')}</Text>
                       </div>
                       <div style={{
                         display: 'grid',
@@ -2861,23 +2864,23 @@ const AIGenerateFeedback = () => {
                         gap: 12
                       }}>
                         {[{
-                          label: 'Pronunciation',
+                          label: t('dailyChallenge.pronunciation'),
                           key: 'pronunciationScore',
                           value: manualSpeakingScores.pronunciationScore ?? null
                         },{
-                          label: 'Accuracy',
+                          label: t('dailyChallenge.accuracy'),
                           key: 'accuracyScore',
                           value: manualSpeakingScores.accuracyScore ?? null
                         },{
-                          label: 'Fluency',
+                          label: t('dailyChallenge.fluency'),
                           key: 'fluencyScore',
                           value: manualSpeakingScores.fluencyScore ?? null
                         },{
-                          label: 'Completeness',
+                          label: t('dailyChallenge.completeness'),
                           key: 'completenessScore',
                           value: manualSpeakingScores.completenessScore ?? null
                         },{
-                          label: 'Prosody',
+                          label: t('dailyChallenge.prosody'),
                           key: 'prosodyScore',
                           value: manualSpeakingScores.prosodyScore ?? null
                         }].map((item, idx) => {
@@ -2931,7 +2934,7 @@ const AIGenerateFeedback = () => {
                             }}
                           >
                             <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
-                              Polished Transcript
+                              {t('dailyChallenge.polishedTranscript')}
                             </Text>
                             <div style={{
                               fontSize: 14,
@@ -2949,7 +2952,7 @@ const AIGenerateFeedback = () => {
                     </div>
                   )}
                   <div style={{ marginTop: 16 }}>
-                    <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Feedback</Text>
+                    <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>{t('dailyChallenge.feedback')}</Text>
                     <div
                       style={{
                         borderRadius: 16,
@@ -3001,7 +3004,7 @@ const AIGenerateFeedback = () => {
                   {/* Writing criteria editors */}
                   {sectionType === 'writing' && (
                     <div>
-                      <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Criteria Feedback</Text>
+                      <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>{t('dailyChallenge.criteriaFeedback')}</Text>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {WRITING_CRITERIA_KEYS.map((item) => {
                           const data = writingCriteria?.[item.key] || {};
@@ -3129,7 +3132,7 @@ const AIGenerateFeedback = () => {
                             gap: 6
                           }}
                         >
-                          Edit
+                          {t('common.edit')}
                         </Button>
                       )}
                       {hasAIGenerated && sectionType === 'speaking' && (
@@ -3156,7 +3159,7 @@ const AIGenerateFeedback = () => {
                             gap: 6
                           }}
                         >
-                          Edit
+                          {t('common.edit')}
                         </Button>
                       )}
                     </div>
@@ -3208,9 +3211,9 @@ const AIGenerateFeedback = () => {
                           >
                             <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
                           </div>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>AI Speaking Assistant</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.aiSpeakingAssistant')}</div>
                           <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
-                            Assess pronunciation accuracy and fluency from the student's recording
+                            {t('dailyChallenge.assessPronunciation')}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                             <Button
@@ -3230,7 +3233,7 @@ const AIGenerateFeedback = () => {
                                 boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                               }}
                             >
-                              Generate with AI
+                              {t('dailyChallenge.generateWithAI')}
                             </Button>
                             <Typography.Text style={{
                               fontSize: '12px',
@@ -3241,7 +3244,7 @@ const AIGenerateFeedback = () => {
                               display: 'block',
                               width: '100%'
                             }}>
-                              The generated content is for reference only.
+                              {t('dailyChallenge.theGeneratedContentIsForReferenceOnly')}
                             </Typography.Text>
                           </div>
                         </div>
@@ -3254,7 +3257,7 @@ const AIGenerateFeedback = () => {
                             gap: 8,
                             color: theme === 'sun' ? '#1E40AF' : '#8377A0'
                           }}>
-                            <Text strong>Pronunciation result</Text>
+                            <Text strong>{t('dailyChallenge.pronunciationResult')}</Text>
                           </div>
                           <div style={{
                             marginTop: 8,
@@ -3263,19 +3266,19 @@ const AIGenerateFeedback = () => {
                             gap: 12
                           }}>
                             {[{
-                              label: 'Pronunciation',
+                              label: t('dailyChallenge.pronunciation'),
                               value: Number.isFinite(Number(speakingResult?.pronunciationScore)) ? speakingResult.pronunciationScore : '-'
                             },{
-                              label: 'Accuracy',
+                              label: t('dailyChallenge.accuracy'),
                               value: Number.isFinite(Number(speakingResult?.accuracyScore)) ? speakingResult.accuracyScore : '-'
                             },{
-                              label: 'Fluency',
+                              label: t('dailyChallenge.fluency'),
                               value: Number.isFinite(Number(speakingResult?.fluencyScore)) ? speakingResult.fluencyScore : '-'
                             },{
-                              label: 'Completeness',
+                              label: t('dailyChallenge.completeness'),
                               value: Number.isFinite(Number(speakingResult?.completenessScore)) ? speakingResult.completenessScore : '-'
                             },{
-                              label: 'Prosody',
+                              label: t('dailyChallenge.prosody'),
                               value: Number.isFinite(Number(speakingResult?.prosodyScore)) ? speakingResult.prosodyScore : '-'
                             }].map((item, idx) => {
                               const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
@@ -3313,7 +3316,7 @@ const AIGenerateFeedback = () => {
                                 }}
                               >
                                 <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
-                                  Actual Audio Transcript
+                                  {t('dailyChallenge.actualAudioTranscript')}
                                 </Text>
                                 <div style={{ 
                                   lineHeight: 4,
@@ -3413,7 +3416,7 @@ const AIGenerateFeedback = () => {
                                 }}
                               >
                                 <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
-                                  Polished Transcript
+                                  {t('dailyChallenge.polishedTranscript')}
                                 </Text>
                                 <div style={{
                                   fontSize: 14,
@@ -3430,7 +3433,7 @@ const AIGenerateFeedback = () => {
                           </div>
                           {/* Score moved to header row next to Back button */}
                           <div style={{ marginTop: 4 }}>
-                      <Text strong>Feedback</Text>
+                      <Text strong>{t('dailyChallenge.feedback')}</Text>
                       {sectionType === 'writing' ? (
                         <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
                           <CKEditor
@@ -3473,7 +3476,7 @@ const AIGenerateFeedback = () => {
                           )}
                           {!feedback && (
                             <div style={{ fontSize: 14, lineHeight: 1.7, color: theme === 'sun' ? '#999' : '#666', fontStyle: 'italic' }}>
-                              No feedback available
+                              {t('dailyChallenge.noFeedbackAvailable')}
                             </div>
                           )}
                         </div>
@@ -3515,9 +3518,9 @@ const AIGenerateFeedback = () => {
                       >
                         <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
                       </div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>AI Writing Assistant</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.aiWritingAssistant')}</div>
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
-                        Get comprehensive feedback on your writing with detailed analysis and suggestions
+                        {t('dailyChallenge.getComprehensiveFeedback')}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                         <Button
@@ -3537,7 +3540,7 @@ const AIGenerateFeedback = () => {
                             boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                           }}
                         >
-                          Generate with AI
+                          {t('dailyChallenge.generateWithAI')}
                         </Button>
                         <Typography.Text style={{
                           fontSize: '12px',
@@ -3548,7 +3551,7 @@ const AIGenerateFeedback = () => {
                           display: 'block',
                           width: '100%'
                         }}>
-                          The generated content is for reference only.
+                          {t('dailyChallenge.theGeneratedContentIsForReferenceOnly')}
                         </Typography.Text>
                       </div>
                     </div>
@@ -3558,7 +3561,7 @@ const AIGenerateFeedback = () => {
                       {/* Feedback first */}
                       <div>
                         <div style={{ marginBottom: 12 }}>
-                          <Text strong style={{ fontSize: 14, display: 'block' }}>Feedback</Text>
+                          <Text strong style={{ fontSize: 14, display: 'block' }}>{t('dailyChallenge.feedback')}</Text>
                         </div>
                         <div
                           style={{
@@ -3599,7 +3602,7 @@ const AIGenerateFeedback = () => {
                             )}
                             {!feedback && (
                               <div style={{ fontSize: 14, lineHeight: 1.7, color: theme === 'sun' ? '#999' : '#666', fontStyle: 'italic' }}>
-                                No feedback available
+                                {t('dailyChallenge.noFeedbackAvailable')}
                               </div>
                             )}
                           </div>
@@ -3608,7 +3611,7 @@ const AIGenerateFeedback = () => {
                       {/* Criteria feedback cards */}
                       {writingCriteria && (
                         <div>
-                          <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Criteria Feedback</Text>
+                          <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>{t('dailyChallenge.criteriaFeedback')}</Text>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             {WRITING_CRITERIA_KEYS.map((item) => {
                               const data = writingCriteria?.[item.key];
@@ -3681,9 +3684,9 @@ const AIGenerateFeedback = () => {
                       >
                         <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
                       </div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>AI Speaking Assistant</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.aiSpeakingAssistant')}</div>
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
-                        Regenerate pronunciation analysis for another take
+                        {t('dailyChallenge.regeneratePronunciationAnalysis')}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                         <Button
@@ -3752,9 +3755,9 @@ const AIGenerateFeedback = () => {
                       >
                         <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
                       </div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>AI Writing Assistant</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.aiWritingAssistant')}</div>
                       <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
-                        You can regenerate suggestions if you want a different take.
+                        {t('dailyChallenge.regenerateSuggestions')}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
                         <Button
@@ -3810,7 +3813,7 @@ const AIGenerateFeedback = () => {
                           boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                         }}
                       >
-                        {hasAIGenerated ? 'Regenerate with AI' : 'Generate with AI'}
+                        {hasAIGenerated ? t('dailyChallenge.regenerateWithAI') : t('dailyChallenge.generateWithAI')}
                       </Button>
                     </div>
                   )}
@@ -3824,7 +3827,7 @@ const AIGenerateFeedback = () => {
       <Modal
         title={
           <div style={{ fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)', textAlign: 'center', padding: '10px 0' }}>
-            {commentModal.isEdit ? 'Edit Comment' : 'Add Comment'}
+            {commentModal.isEdit ? t('dailyChallenge.editComment') : t('dailyChallenge.addComment')}
           </div>
         }
         open={commentModal.visible}
@@ -3860,7 +3863,7 @@ const AIGenerateFeedback = () => {
               else { e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)'; }
             }}
           >
-            {commentModal.isEdit ? 'Update' : 'Add'}
+            {commentModal.isEdit ? t('dailyChallenge.update') : t('dailyChallenge.add')}
           </Button>
         ]}
       >
@@ -3899,7 +3902,7 @@ const AIGenerateFeedback = () => {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(0, 0, 0, 0.1)'}` }}>
             <div>
-              <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? '#333' : '#1F2937' }}>Teacher Comment</Typography.Text>
+              <Typography.Text strong style={{ fontSize: '16px', color: theme === 'sun' ? '#333' : '#1F2937' }}>{t('dailyChallenge.teacherComment')}</Typography.Text>
               <div style={{ fontSize: '12px', color: theme === 'sun' ? '#999' : '#777', marginTop: '4px' }}>
                 {selectedComment.timestamp ? new Date(selectedComment.timestamp).toLocaleDateString() : new Date().toLocaleDateString()} {new Date(selectedComment.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
@@ -3913,10 +3916,10 @@ const AIGenerateFeedback = () => {
 
           <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <Button danger icon={<DeleteOutlined />} onClick={handleDeleteComment} style={{ borderRadius: '8px', fontWeight: 500, fontSize: '14px', height: '36px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Delete
+              {t('common.delete')}
             </Button>
             <Button type="default" onClick={handleEditCommentFromSidebar} style={{ borderRadius: '8px', fontWeight: 500, fontSize: '14px', height: '36px', display: 'flex', alignItems: 'center', gap: '8px', border: `2px solid ${theme === 'sun' ? 'rgba(113, 179, 253, 0.4)' : 'rgba(138, 122, 255, 0.4)'}`, background: theme === 'sun' ? 'rgba(113, 179, 253, 0.1)' : 'rgba(138, 122, 255, 0.1)', color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-              Edit Comment
+              {t('dailyChallenge.editComment')}
             </Button>
           </div>
         </div>
@@ -3933,7 +3936,7 @@ const AIGenerateFeedback = () => {
               textAlign: 'center',
               padding: '10px 0',
             }}>
-            Edit AI Feedback
+            {t('dailyChallenge.editAIFeedback')}
           </div>
         }
         open={editModalVisible}
@@ -3950,7 +3953,7 @@ const AIGenerateFeedback = () => {
               padding: '4px 15px',
               width: '100px'
             }}>
-            {t('common.cancel') || 'Cancel'}
+            {t('common.cancel')}
           </Button>,
           <Button 
             key="save" 
@@ -4001,7 +4004,7 @@ const AIGenerateFeedback = () => {
                 }
               }
               setEditModalVisible(false);
-              spaceToast.success('Feedback updated');
+              spaceToast.success(t('dailyChallenge.feedbackUpdated'));
             }}
             style={{
               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
@@ -4042,29 +4045,29 @@ const AIGenerateFeedback = () => {
                 e.target.style.boxShadow = 'none';
               }
             }}>
-            {t('common.save') || 'Save'}
+            {t('common.save')}
           </Button>
         ]}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Speaking Scores - hiển thị trước Feedback cho speaking */}
           {sectionType === 'speaking' && (
             <div>
-              <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Pronunciation Scores</Text>
+              <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>{t('dailyChallenge.pronunciationScores')}</Text>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
                 {[{
-                  label: 'Pronunciation',
+                  label: t('dailyChallenge.pronunciation'),
                   key: 'pronunciationScore',
                 },{
-                  label: 'Accuracy',
+                  label: t('dailyChallenge.accuracy'),
                   key: 'accuracyScore',
                 },{
-                  label: 'Fluency',
+                  label: t('dailyChallenge.fluency'),
                   key: 'fluencyScore',
                 },{
-                  label: 'Completeness',
+                  label: t('dailyChallenge.completeness'),
                   key: 'completenessScore',
                 },{
-                  label: 'Prosody',
+                  label: t('dailyChallenge.prosody'),
                   key: 'prosodyScore',
                 }].map((item, idx) => {
                   const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
@@ -4118,7 +4121,7 @@ const AIGenerateFeedback = () => {
 
           {/* Feedback */}
           <div>
-            <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Feedback</Text>
+            <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>{t('dailyChallenge.feedback')}</Text>
             <div
               style={{
                 borderRadius: 12,
@@ -4168,7 +4171,7 @@ const AIGenerateFeedback = () => {
           {/* Writing Criteria */}
           {sectionType === 'writing' && (
             <div>
-              <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>Criteria Feedback</Text>
+              <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>{t('dailyChallenge.criteriaFeedback')}</Text>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
                 {WRITING_CRITERIA_KEYS.map((item) => {
                   const data = editWritingCriteria?.[item.key] || {};
@@ -4308,12 +4311,12 @@ const AIGenerateFeedback = () => {
                 {/* Title */}
                 <div>
                   <Title level={3} style={{ margin: 0, marginBottom: '8px', fontSize: '24px', fontWeight: 700, color: primaryColor }}>
-                    {t('dailyChallenge.aiThinking') || 'AI is thinking...'}
+                    {t('dailyChallenge.aiIsThinking')}
                   </Title>
                   <div style={{ fontSize: '15px', color: theme === 'sun' ? '#64748b' : '#94a3b8', fontWeight: 500 }}>
                     {sectionType === 'speaking' 
-                      ? 'Analyzing pronunciation and generating feedback...'
-                      : 'Analyzing writing and generating comprehensive feedback...'}
+                      ? t('dailyChallenge.analyzingPronunciation')
+                      : t('dailyChallenge.analyzingWriting')}
                   </div>
                 </div>
 
@@ -4400,12 +4403,12 @@ const AIGenerateFeedback = () => {
                     minHeight: '18px'
                   }}>
                     {generationProgress < 30 
-                      ? (sectionType === 'speaking' ? 'Processing audio...' : 'Analyzing text...') :
+                      ? (sectionType === 'speaking' ? t('dailyChallenge.processingAudio') : t('dailyChallenge.analyzingText')) :
                      generationProgress < 60 
-                      ? (sectionType === 'speaking' ? 'Assessing pronunciation...' : 'Evaluating criteria...') :
+                      ? (sectionType === 'speaking' ? t('dailyChallenge.assessingPronunciation') : t('dailyChallenge.evaluatingCriteria')) :
                      generationProgress < 90 
-                      ? 'Generating feedback...' :
-                     'Almost done...'}
+                      ? t('dailyChallenge.generatingFeedback') :
+                     t('dailyChallenge.almostDone')}
                   </div>
                 </div>
               </div>

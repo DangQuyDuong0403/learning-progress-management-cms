@@ -1367,18 +1367,68 @@ const TeacherList = () => {
 			{/* Add/Edit Teacher Modal */}
 			<Modal
 				title={
-					editingTeacher
-						? t('teacherManagement.editTeacher')
-						: t('teacherManagement.addTeacher')
+					<div style={{
+						fontSize: '28px',
+						fontWeight: '600',
+						color: '#1890ff',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{editingTeacher
+							? t('teacherManagement.editTeacher')
+							: t('teacherManagement.addTeacher')}
+					</div>
 				}
 				open={isModalVisible}
 				onCancel={handleModalClose}
-				footer={null}
+				footer={
+					<div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+						<Button 
+							key="cancel" 
+							onClick={handleModalClose}
+							style={{
+								height: '32px',
+								fontWeight: '500',
+								fontSize: '14px',
+								padding: '4px 15px',
+								width: '80px'
+							}}>
+							{t('common.cancel')}
+						</Button>
+						<Button 
+							key="submit" 
+							type="primary"
+							onClick={() => {
+								// Find and submit the form
+								const form = document.querySelector('.teacher-form form');
+								if (form) {
+									// Trigger form submit by clicking the hidden submit button
+									const submitButton = form.querySelector('button[type="submit"]');
+									if (submitButton && !submitButton.disabled) {
+										submitButton.click();
+									}
+								}
+							}}
+							style={{
+								background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+								borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+								color: theme === 'sun' ? '#000' : '#fff',
+								borderRadius: '6px',
+								height: '32px',
+								fontWeight: '500',
+								fontSize: '14px',
+								padding: '4px 15px',
+								width: '80px'
+							}}>
+							{editingTeacher ? t('common.update') : t('common.save')}
+						</Button>
+					</div>
+				}
 				width={800}
 				destroyOnClose
 				style={{ top: 20 }}
 				bodyStyle={{
-					maxHeight: 'calc(70vh + 30px)',
+					maxHeight: 'calc(90vh - 150px)',
 					overflowY: 'auto',
 					padding: '24px',
 				}}>
