@@ -142,10 +142,10 @@ const ClassReport = () => {
           // Process role distribution
           if (members.roleDistribution && Array.isArray(members.roleDistribution)) {
             const roleMap = {
-              'TEACHER': { name: 'Teachers', color: ROLE_COLORS[0] },
-              'STUDENT': { name: 'Students', color: ROLE_COLORS[1] },
-              'TEACHING_ASSISTANT': { name: 'Teaching Assistants', color: ROLE_COLORS[2] },
-              'TEST_TAKER': { name: 'Test Takers', color: ROLE_COLORS[3] },
+              'TEACHER': { name: t('classReport.teachers'), color: ROLE_COLORS[0] },
+              'STUDENT': { name: t('classReport.students'), color: ROLE_COLORS[1] },
+              'TEACHING_ASSISTANT': { name: t('classReport.teachingAssistants'), color: ROLE_COLORS[2] },
+              'TEST_TAKER': { name: t('classReport.testTakers'), color: ROLE_COLORS[3] },
             };
             
             const distribution = members.roleDistribution
@@ -184,7 +184,7 @@ const ClassReport = () => {
     };
 
     loadAllData();
-  }, [id]);
+  }, [id, t]);
 
   // Load challenge progress by all skills
   useEffect(() => {
@@ -417,19 +417,19 @@ const ClassReport = () => {
         skill: skillLabel,
         draftValue,
         draftCount,
-        draftLabel: draftCount ? `Draft (${draftCount})` : '',
+        draftLabel: draftCount ? `${t('classReport.draft')} (${draftCount})` : '',
         publishedValue,
         publishedCount,
-        publishedLabel: publishedCount ? `Published (${publishedCount})` : '',
+        publishedLabel: publishedCount ? `${t('classReport.published')} (${publishedCount})` : '',
         inProgressValue,
         inProgressCount,
-        inProgressLabel: inProgressCount ? `In Progress (${inProgressCount})` : '',
+        inProgressLabel: inProgressCount ? `${t('classReport.inProgress')} (${inProgressCount})` : '',
         finishedValue,
         finishedCount,
-        finishedLabel: finishedCount ? `Finished (${finishedCount})` : '',
+        finishedLabel: finishedCount ? `${t('classReport.finished')} (${finishedCount})` : '',
       };
     });
-  }, [challengeProgressSource]);
+  }, [challengeProgressSource, t]);
 
   const renderStackLabel = (labelKey) => (props) => {
     const { x, y, width, height, payload } = props;
@@ -506,12 +506,12 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
   const challengeProgressLegendPayload = useMemo(
     () => [
       // Use green & blue tones similar to Role Distribution
-      { value: 'Finished', type: 'square', dataKey: 'finishedValue', color: '#34d399' }, // green
-      { value: 'Published', type: 'square', dataKey: 'publishedValue', color: '#ffcc80' }, // pastel yellow-orange
-      { value: 'In Progress', type: 'square', dataKey: 'inProgressValue', color: '#80b9ff' }, // blue
-      { value: 'Draft', type: 'square', dataKey: 'draftValue', color: '#d4d4d8' }, // neutral lighter gray
+      { value: t('classReport.finished'), type: 'square', dataKey: 'finishedValue', color: '#34d399' }, // green
+      { value: t('classReport.published'), type: 'square', dataKey: 'publishedValue', color: '#ffcc80' }, // pastel yellow-orange
+      { value: t('classReport.inProgress'), type: 'square', dataKey: 'inProgressValue', color: '#80b9ff' }, // blue
+      { value: t('classReport.draft'), type: 'square', dataKey: 'draftValue', color: '#d4d4d8' }, // neutral lighter gray
     ],
-    []
+    [t]
   );
 
   // Custom legend for "Challenge Progress by All Skills"
@@ -679,7 +679,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
         key: 'averageScore',
         title: t('classReport.averageScore'),
         value: `${Number(overviewData.averageScore ?? 0).toFixed(1)}%`,
-        subtitle: 'Class average',
+        subtitle: t('classReport.classAverage'),
         icon: <TrophyOutlined style={{ color: '#f59e0b' }} />,
         bg: '#fff7ed',
       },
@@ -687,7 +687,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
         key: 'completionPercentage',
         title: t('classReport.completionPercentage', 'Completion %'),
         value: `${Number(overviewData.completionPercentage ?? 0).toFixed(1)}%`,
-        subtitle: 'Overall completion',
+        subtitle: t('classReport.overallCompletion'),
         icon: <CheckCircleOutlined style={{ color: '#22c55e' }} />,
         bg: '#ecfdf5',
       },
@@ -695,7 +695,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
         key: 'lessons',
         title: t('classReport.lessons', 'Lessons'),
         value: `${overviewData.totalLessonsLearned ?? 0}/${overviewData.totalLessons ?? 0}`,
-        subtitle: 'Learned / Total',
+        subtitle: t('classReport.learnedTotal'),
         icon: <BookOutlined style={{ color: '#6366f1' }} />,
         bg: '#eef2ff',
       },
@@ -703,7 +703,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
         key: 'dailyChallenges',
         title: t('classReport.totalDailyChallenges', 'Daily Challenges'),
         value: overviewData.totalDailyChallenges ?? 0,
-        subtitle: 'Total DCs',
+        subtitle: t('classReport.totalDCs'),
         icon: <FileTextOutlined style={{ color: '#ec4899' }} />,
         bg: '#fdf2f8',
       },
@@ -746,10 +746,10 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#8b5cf6', fontSize: 20 }} />
-                <div className="crv2-title">Role Distribution</div>
+                <div className="crv2-title">{t('classReport.roleDistribution')}</div>
               </div>
               {roleDistributionData.length === 0 ? (
-                <Empty description="No data" />
+                <Empty description={t('classReport.noData')} />
               ) : (
                 <div style={{ width: '100%', height: 380 }}>
                   <ResponsiveContainer>
@@ -772,8 +772,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                       <Legend verticalAlign="bottom" align="center" layout="horizontal" wrapperStyle={{ marginTop: 12 }} />
                       <ReTooltip 
                         formatter={(value, name, props) => {
-                          // Hiển thị số lượng khi hover
-                          return [`${value} members`, name];
+                          return [`${value} ${t('classReport.members')}`, name];
                         }}
                       />
                     </PieChart>
@@ -796,10 +795,10 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <BarChartOutlined style={{ color: '#10b981', fontSize: 20 }} />
-                <div className="crv2-title">Teacher Activity</div>
+                <div className="crv2-title">{t('classReport.teacherActivity')}</div>
               </div>
               {teacherActivityData.length === 0 ? (
-                <Empty description="No activity data" />
+                <Empty description={t('classReport.noActivityData')} />
               ) : (
                 <div style={{ width: '100%', height: 380 }}>
                   <ResponsiveContainer>
@@ -809,8 +808,8 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                       <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                       <Legend />
                       <ReTooltip />
-                      <Bar dataKey="creatingAssignments" fill="#90caf9" radius={[6, 6, 0, 0]} name="Creating" />
-                      <Bar dataKey="gradingAssignments" fill="#a5d6a7" radius={[6, 6, 0, 0]} name="Grading" />
+                      <Bar dataKey="creatingAssignments" fill="#90caf9" radius={[6, 6, 0, 0]} name={t('classReport.creating')} />
+                      <Bar dataKey="gradingAssignments" fill="#a5d6a7" radius={[6, 6, 0, 0]} name={t('classReport.grading')} />
                     </ReBarChart>
                   </ResponsiveContainer>
                 </div>
@@ -836,7 +835,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <TrophyOutlined style={{ color: '#f59e0b', fontSize: 20 }} />
-                  <div className="crv2-title">Top Students by Score</div>
+                  <div className="crv2-title">{t('classReport.topStudentsByScore')}</div>
                 </div>
                 <Select
                   value={sortBy}
@@ -844,22 +843,22 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                   style={{ width: 150 }}
                   size="small"
                 >
-                  <Select.Option value="averageScore">Average Score</Select.Option>
-                  <Select.Option value="improvementScore">Improvement Score</Select.Option>
+                  <Select.Option value="averageScore">{t('classReport.averageScore')}</Select.Option>
+                  <Select.Option value="improvementScore">{t('classReport.improvementScore')}</Select.Option>
                 </Select>
               </div>
               {topStudentsByScore.length === 0 ? (
-                <Empty description="No student data" />
+                <Empty description={t('classReport.noStudentData')} />
               ) : (
                 <div className="crv2-table crv2-scroll">
                   <div className="crv2-table__head" style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1fr' }}>
-                    <div>Rank</div>
-                    <div>Student</div>
-                    <div>Average Score</div>
-                    <div>Total Submissions</div>
-                    <div>On Time</div>
-                    <div>Late</div>
-                    <div>Improvement Score</div>
+                    <div>{t('classReport.rank')}</div>
+                    <div>{t('classReport.student')}</div>
+                    <div>{t('classReport.averageScore')}</div>
+                    <div>{t('classReport.totalSubmissions')}</div>
+                    <div>{t('classReport.onTime')}</div>
+                    <div>{t('classReport.late')}</div>
+                    <div>{t('classReport.improvementScore')}</div>
                   </div>
                   {topStudentsByScore.map((student, idx) => (
                     <div className="crv2-table__row" key={student.id || student.userId || idx} style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1fr' }}>
@@ -905,13 +904,13 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <FileTextOutlined style={{ color: '#ec4899', fontSize: 20 }} />
-                  <div className="crv2-title">Daily Challenges Analysis</div>
+                  <div className="crv2-title">{t('classReport.dailyChallengesAnalysis')}</div>
                 </div>
                 <Select
                   value={selectedSkill}
                   onChange={setSelectedSkill}
                   style={{ width: 200 }}
-                  placeholder="Select skill"
+                  placeholder={t('classReport.selectSkill')}
                 >
                   {availableSkills.map(skill => (
                     <Select.Option key={skill} value={skill}>{formatSkillName(skill)}</Select.Option>
@@ -919,7 +918,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                 </Select>
               </div>
               {dailyChallengesChartData.length === 0 ? (
-                <Empty description="No daily challenge data" />
+                <Empty description={t('classReport.noDailyChallengeData')} />
               ) : (
                 <div style={{ width: '100%', height: 400 }}>
                   <ResponsiveContainer>
@@ -934,13 +933,13 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                         angle={0}
                         textAnchor="middle"
                         height={60}
-                        label={{ value: 'Daily Challenges', position: 'insideBottom', offset: 10 }}
+                        label={{ value: t('classReport.dailyChallenges'), position: 'insideBottom', offset: 10 }}
                       />
                       <YAxis 
                         yAxisId="left"
                         allowDecimals={false}
                         tick={{ fontSize: 12 }}
-                        label={{ value: 'Quantity', angle: -90, position: 'insideLeft' }}
+                        label={{ value: t('classReport.quantity'), angle: -90, position: 'insideLeft' }}
                       />
                       <YAxis 
                         yAxisId="right"
@@ -948,29 +947,29 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                         domain={[0, 'dataMax']}
                         tick={{ fontSize: 12 }}
                         tickFormatter={(v) => `${Number(v).toFixed(1)}`}
-                        label={{ value: 'Average Score', angle: 90, position: 'insideRight' }}
+                        label={{ value: t('classReport.averageScore'), angle: 90, position: 'insideRight' }}
                       />
                       <ReTooltip 
                         formatter={(value, name) => {
                           if (name === 'averageScore') {
-                            return [`${Number(value).toFixed(2)}`, 'Average Score'];
+                            return [`${Number(value).toFixed(2)}`, t('classReport.averageScore')];
                           }
                           if (name === 'onTimeSubmissions') {
-                            return [value, 'On Time'];
+                            return [value, t('classReport.onTime')];
                           }
                           if (name === 'lateSubmissions') {
-                            return [value, 'Late'];
+                            return [value, t('classReport.late')];
                           }
                           if (name === 'notSubmitted') {
-                            return [value, 'Not Submitted'];
+                            return [value, t('classReport.notSubmitted')];
                           }
                           return [value, name];
                         }}
                       />
                       <Legend wrapperStyle={{ marginTop: 20 }} />
-                      <Bar yAxisId="left" dataKey="onTimeSubmissions" stackId="submissions" fill="#a5d6a7" name="On Time" />
-                      <Bar yAxisId="left" dataKey="lateSubmissions" stackId="submissions" fill="#ef9a9a" name="Late" />
-                      <Bar yAxisId="left" dataKey="notSubmitted" stackId="submissions" fill="#fbbf24" name="Not Submitted" />
+                      <Bar yAxisId="left" dataKey="onTimeSubmissions" stackId="submissions" fill="#a5d6a7" name={t('classReport.onTime')} />
+                      <Bar yAxisId="left" dataKey="lateSubmissions" stackId="submissions" fill="#ef9a9a" name={t('classReport.late')} />
+                      <Bar yAxisId="left" dataKey="notSubmitted" stackId="submissions" fill="#fbbf24" name={t('classReport.notSubmitted')} />
                       <Line 
                         yAxisId="right"
                         type="monotone" 
@@ -979,7 +978,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                         strokeWidth={2.5}
                         dot={{ r: 4, fill: '#81d4fa' }}
                         activeDot={{ r: 6, fill: '#4fc3f7' }}
-                        name="Average Score"
+                        name={t('classReport.averageScore')}
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
@@ -1005,10 +1004,10 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                <div className="crv2-title">Challenge Progress by All Skills</div>
+                <div className="crv2-title">{t('classReport.challengeProgressByAllSkills')}</div>
               </div>
               {challengeProgressData.length === 0 ? (
-                <Empty description="No challenge progress data" />
+                <Empty description={t('classReport.noChallengeProgressData')} />
               ) : (
                 <div
                   style={{
@@ -1031,16 +1030,16 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                       <YAxis type="category" dataKey="skill" tick={<ChallengeProgressSkillTick />} width={130} />
                       <ReTooltip content={renderChallengeProgressTooltip} />
                       <Legend wrapperStyle={{ marginTop: 12 }} content={renderChallengeProgressLegend} />
-                      <Bar dataKey="finishedValue" name="Finished" stackId="progress" fill="#34d399">
+                      <Bar dataKey="finishedValue" name={t('classReport.finished')} stackId="progress" fill="#34d399">
                         <LabelList content={renderStackLabel('finishedLabel')} />
                       </Bar>
-                      <Bar dataKey="publishedValue" name="Published" stackId="progress" fill="#ffcc80">
+                      <Bar dataKey="publishedValue" name={t('classReport.published')} stackId="progress" fill="#ffcc80">
                         <LabelList content={renderStackLabel('publishedLabel')} />
                       </Bar>
-                      <Bar dataKey="inProgressValue" name="In Progress" stackId="progress" fill="#80b9ff">
+                      <Bar dataKey="inProgressValue" name={t('classReport.inProgress')} stackId="progress" fill="#80b9ff">
                         <LabelList content={renderStackLabel('inProgressLabel')} />
                       </Bar>
-                      <Bar dataKey="draftValue" name="Draft" stackId="progress" fill="#d4d4d8">
+                      <Bar dataKey="draftValue" name={t('classReport.draft')} stackId="progress" fill="#d4d4d8">
                         <LabelList content={renderStackLabel('draftLabel')} />
                       </Bar>
                     </ReBarChart>
@@ -1062,7 +1061,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <WarningOutlined style={{ color: '#ef4444', fontSize: 20 }} />
-                <div className="crv2-title">At-risk Students</div>
+                <div className="crv2-title">{t('classReport.atRiskStudents')}</div>
                 <div style={{ 
                   marginLeft: 'auto', 
                   padding: '4px 12px', 
@@ -1072,11 +1071,11 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                   fontWeight: 600,
                   color: '#dc2626'
                 }}>
-                  {atRiskSummary?.totalStudents ?? 0} student(s) need attention
+                  {atRiskSummary?.totalStudents ?? 0} {t('classReport.studentsNeedAttention')}
                 </div>
               </div>
               {(!atRiskStudents || atRiskStudents.length === 0) ? (
-                <Empty description="No at-risk students" />
+                <Empty description={t('classReport.noAtRiskStudents')} />
               ) : (
                 <div
                   className={isAtRiskScrollable ? 'crv2-at-risk-scroll' : ''}
@@ -1096,28 +1095,28 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                       student.riskTypes.forEach((type) => {
                         switch (type) {
                           case 'LOW_SCORES':
-                            scoreRisks.push('3 consecutive challenges < 6 points');
+                            scoreRisks.push(t('classReport.threeConsecutiveChallenges'));
                             break;
                           case 'FREQUENT_LATE_SUBMISSIONS':
-                            submissionRisks.push('≥ 50% challenges submitted late');
+                            submissionRisks.push(t('classReport.fiftyPercentLate'));
                             break;
                           case 'SUSPECTED_CHEATING':
                             hasCheatingFlag = true;
                             break;
                           case 'DECLINING_VOCABULARY':
-                            skillRisks.push('Grammar & Vocabulary score dropping');
+                            skillRisks.push(t('classReport.grammarVocabularyDropping'));
                             break;
                           case 'DECLINING_READING':
-                            skillRisks.push('Reading score dropping');
+                            skillRisks.push(t('classReport.readingDropping'));
                             break;
                           case 'DECLINING_LISTENING':
-                            skillRisks.push('Listening score dropping');
+                            skillRisks.push(t('classReport.listeningDropping'));
                             break;
                           case 'DECLINING_WRITING':
-                            skillRisks.push('Writing score dropping');
+                            skillRisks.push(t('classReport.writingDropping'));
                             break;
                           case 'DECLINING_SPEAKING':
-                            skillRisks.push('Speaking score dropping');
+                            skillRisks.push(t('classReport.speakingDropping'));
                             break;
                           default:
                             break;
@@ -1165,7 +1164,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                                   letterSpacing: 0.4,
                                 }}
                               >
-                                Analyzed last {student.recentChallengesAnalyzed} challenges
+                                {t('classReport.analyzedLastChallenges', { count: student.recentChallengesAnalyzed })}
                               </span>
                             ) : null}
                           </div>
@@ -1173,13 +1172,13 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
 
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                           <div style={{ minWidth: 140 }}>
-                            <div style={{ fontSize: 12, color: '#6b7280' }}>Recent Avg Score</div>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>{t('classReport.recentAvgScore')}</div>
                             <div style={{ fontWeight: 600, fontSize: 18, color: '#0f172a' }}>
                               {Number(student.recentAverageScore ?? 0).toFixed(2)}
                             </div>
                           </div>
                           <div style={{ minWidth: 120 }}>
-                            <div style={{ fontSize: 12, color: '#6b7280' }}>Late Submissions</div>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>{t('classReport.lateSubmissions')}</div>
                             <div style={{ fontWeight: 600, fontSize: 18, color: '#dc2626' }}>
                               {student.lateSubmissionsCount ?? 0}
                             </div>
@@ -1189,13 +1188,13 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                         <div style={{ fontSize: 13, color: '#111827', display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {scoreRisks.length > 0 && (
                             <div>
-                              <span style={{ fontWeight: 600 }}>Score pattern: </span>
+                              <span style={{ fontWeight: 600 }}>{t('classReport.scorePattern')} </span>
                               <span>{scoreRisks.join('; ')}</span>
                             </div>
                           )}
                           {submissionRisks.length > 0 && (
                             <div>
-                              <span style={{ fontWeight: 600 }}>Submission behavior: </span>
+                              <span style={{ fontWeight: 600 }}>{t('classReport.submissionBehavior')} </span>
                               <span>{submissionRisks.join('; ')}</span>
                             </div>
                           )}
@@ -1210,13 +1209,13 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                               backgroundColor: '#fafafa',
                             }}>
                               <div>
-                                <span style={{ fontWeight: 600 }}>Skill trends: </span>
+                                <span style={{ fontWeight: 600 }}>{t('classReport.skillTrends')} </span>
                                 {skillRisks.length > 0 && (
                                   <span>{skillRisks.join('; ')}</span>
                                 )}
                                 {decliningSkills.length > 0 && skillRisks.length === 0 && (
                                   <span>
-                                    {decliningSkills.map((skill, idx) => skill.skillName || 'Unknown Skill').join('; ')} score dropping
+                                    {decliningSkills.map((skill, idx) => skill.skillName || t('classReport.unknownSkill')).join('; ')} {t('classReport.scoreDropping')}
                                   </span>
                                 )}
                               </div>
@@ -1257,7 +1256,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                                         }}
                                       >
                                         <div style={{ minWidth: 140 }}>
-                                          <div style={{ fontSize: 12, color: '#6b7280' }}>Latest Score</div>
+                                          <div style={{ fontSize: 12, color: '#6b7280' }}>{t('classReport.latestScore')}</div>
                                           <div style={{ fontWeight: 600, fontSize: 18, color: isSevere ? '#dc2626' : '#f59e0b' }}>
                                             {latestScore.toFixed(2)}
                                           </div>
@@ -1269,7 +1268,7 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                                           </div>
                                         </div>
                                         <div style={{ minWidth: 120 }}>
-                                          <div style={{ fontSize: 12, color: '#6b7280' }}>Average Score</div>
+                                          <div style={{ fontSize: 12, color: '#6b7280' }}>{t('classReport.averageScore')}</div>
                                           <div style={{ fontWeight: 600, fontSize: 18, color: '#0f172a' }}>
                                             {averageScore.toFixed(2)}
                                           </div>
@@ -1290,11 +1289,11 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                                 alignItems: 'center',
                               }}
                             >
-                              <span style={{ fontWeight: 600 }}>Cheating signals:</span>
+                              <span style={{ fontWeight: 600 }}>{t('classReport.cheatingSignals')}</span>
                               <span>
                                 {[
-                                  hasCheatingFlag ? 'Suspicious behavior detected' : null,
-                                  hasCheatingSignals ? 'Activity anomalies recorded' : null,
+                                  hasCheatingFlag ? t('classReport.suspiciousBehaviorDetected') : null,
+                                  hasCheatingSignals ? t('classReport.activityAnomaliesRecorded') : null,
                                 ]
                                   .filter(Boolean)
                                   .join(' · ')}
