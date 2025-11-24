@@ -1716,7 +1716,7 @@ useEffect(() => {
               points: q.points || 0,
               receivedScore: q.receivedScore || 0
             });
-          });
+        });
         }
         questionNumber = end + 1;
       });
@@ -1748,7 +1748,7 @@ useEffect(() => {
               points: q.points || 0,
               receivedScore: q.receivedScore || 0
             });
-          });
+        });
         }
         questionNumber = end + 1;
       });
@@ -5775,8 +5775,8 @@ useEffect(() => {
                             }
                             
                             return (
-                              <div
-                                key={item.id}
+                            <div
+                              key={item.id}
                                 className={`question-sidebar-item ${item.type === 'section' || item.type === 'section-header' ? 'question-sidebar-section' : ''}`}
                                 onClick={() => {
                                   if (isNestedQuestion && item.parentSection) {
@@ -5792,16 +5792,16 @@ useEffect(() => {
                                     scrollToQuestion(item.id);
                                   }
                                 }}
-                                style={{ 
+                              style={{ 
                                   fontWeight: isSectionHeader ? 600 : 'normal', 
                                   textAlign: shouldHaveQuestionStyle ? 'left' : 'center', 
-                                  color: theme === 'sun' ? '#000000' : '#FFFFFF',
+                                color: theme === 'sun' ? '#000000' : '#FFFFFF',
                                   padding: shouldHaveQuestionStyle ? '8px 10px 8px 24px' : '10px',
-                                  marginBottom: '4px',
-                                  cursor: 'pointer',
+                                marginBottom: '4px',
+                                cursor: 'pointer',
                                   borderRadius: '6px',
                                   transition: 'all 0.2s ease',
-                                  transform: 'none',
+                                transform: 'none',
                                   fontSize: isSectionHeader ? '15px' : '14px',
                                   backgroundColor: isSectionHeader 
                                     ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.12)' : 'rgba(138, 122, 255, 0.25)')
@@ -5886,7 +5886,7 @@ useEffect(() => {
                                     {receivedScore}/{points}
                                   </span>
                                 )}
-                              </div>
+                            </div>
                             );
                           })}
                         </div>
