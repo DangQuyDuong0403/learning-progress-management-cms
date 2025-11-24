@@ -18,6 +18,8 @@ import dayjs from 'dayjs';
 const { Option } = Select;
 const { TextArea } = Input;
 
+const trimIfString = (value) => (typeof value === 'string' ? value.trim() : value);
+
 const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
@@ -41,16 +43,26 @@ const TeacherForm = ({ teacher, onClose, onSuccess }) => {
 		setIsButtonDisabled(true);
 		
 		try {
+			const sanitizedValues = {
+				...values,
+				fullName: trimIfString(values.fullName),
+				email: trimIfString(values.email),
+				phoneNumber: trimIfString(values.phoneNumber),
+				address: trimIfString(values.address),
+				roleName: trimIfString(values.roleName),
+				gender: trimIfString(values.gender),
+			};
+
 			// Format data according to API requirements
 			const processedData = {
-				roleName: values.roleName || "TEACHER", // Use selected role or default to TEACHER
-				email: values.email,
-				fullName: values.fullName,
+				roleName: sanitizedValues.roleName || "TEACHER", // Use selected role or default to TEACHER
+				email: sanitizedValues.email,
+				fullName: sanitizedValues.fullName,
 				avatarUrl: "string", // Always send "string" as per API example
-				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null,
-				address: values.address || "",
-				phoneNumber: values.phoneNumber,
-				gender: values.gender || "MALE", // Default to MALE if not specified
+				dateOfBirth: sanitizedValues.dateOfBirth ? sanitizedValues.dateOfBirth.toISOString() : null,
+				address: sanitizedValues.address || "",
+				phoneNumber: sanitizedValues.phoneNumber,
+				gender: sanitizedValues.gender || "MALE", // Default to MALE if not specified
 			};
 
 			if (teacher) {

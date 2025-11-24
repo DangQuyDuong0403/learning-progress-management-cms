@@ -38,6 +38,8 @@ import ThemedLayout from '../../../../component/ThemedLayout';
 import levelManagementApi from '../../../../apis/backend/levelManagement';
 import EditEmailModal from './EditEmailModal';
 
+const trimIfString = (value) => (typeof value === 'string' ? value.trim() : value);
+
 const StudentProfile = () => {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
@@ -362,22 +364,34 @@ const StudentProfile = () => {
 	const handleEditSubmit = async (values) => {
 		setEditLoading(true);
 		try {
+			const sanitizedValues = {
+				...values,
+				roleName: trimIfString(values.roleName),
+				fullName: trimIfString(values.fullName),
+				phoneNumber: trimIfString(values.phoneNumber),
+				gender: trimIfString(values.gender),
+				address: trimIfString(values.address),
+				parentName: trimIfString(values.parentName),
+				parentEmail: trimIfString(values.parentEmail),
+				parentPhone: trimIfString(values.parentPhone),
+				relationship: trimIfString(values.relationship),
+			};
 			// Format the data according to the API requirements
 			const studentData = {
-				roleName: values.roleName,
-				fullName: values.fullName,
+				roleName: sanitizedValues.roleName,
+				fullName: sanitizedValues.fullName,
 				avatarUrl: student.avatarUrl , // Send current avatar URL
-				dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
-				address: values.address || null,
-				phoneNumber: values.phoneNumber || null,
-				gender: values.gender || null,
+				dateOfBirth: sanitizedValues.dateOfBirth ? sanitizedValues.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]') : null,
+				address: sanitizedValues.address || null,
+				phoneNumber: sanitizedValues.phoneNumber || null,
+				gender: sanitizedValues.gender || null,
 				parentInfo: {
-					parentName: values.parentName || "",
-					parentEmail: values.parentEmail || null,
-					parentPhone: values.parentPhone || "",
-					relationship: values.relationship || null,
+					parentName: sanitizedValues.parentName || "",
+					parentEmail: sanitizedValues.parentEmail || null,
+					parentPhone: sanitizedValues.parentPhone || "",
+					relationship: sanitizedValues.relationship || null,
 				},
-				levelId: values.levelId,
+				levelId: sanitizedValues.levelId,
 				email: student.email, // Always include email for backend
 			};
 			
