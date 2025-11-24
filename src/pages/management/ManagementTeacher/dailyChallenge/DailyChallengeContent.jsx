@@ -100,7 +100,7 @@ const processPassageContent = (content, theme, challengeType) => {
 
 // Sortable Passage Item Component
 const SortablePassageItem = memo(
-  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType, activeDragDimensions }) => {
+  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType, activeDragDimensions, isManager }) => {
     const [showTranscript, setShowTranscript] = useState(false);
     const [showMore, setShowMore] = useState(false);
     const passageContentRef = useRef(null);
@@ -212,16 +212,18 @@ const SortablePassageItem = memo(
       >
         <div className="passage-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-            <div className='drag-handle' {...attributes} {...listeners}>
-              <SwapOutlined
-                rotate={90}
-                style={{
-                  fontSize: '20px',
-                  color: '#999',
-                  cursor: 'grab',
-                }}
-              />
-            </div>
+            {!isManager && (
+              <div className='drag-handle' {...attributes} {...listeners}>
+                <SwapOutlined
+                  rotate={90}
+                  style={{
+                    fontSize: '20px',
+                    color: '#999',
+                    cursor: 'grab',
+                  }}
+                />
+              </div>
+            )}
             <Typography.Text strong>
               {challengeType === 'WR' 
                 ? 'Writing Part' 
@@ -238,33 +240,35 @@ const SortablePassageItem = memo(
             >
               {passage.weight} weight
             </div>
-            <Space size="small">
-              <Tooltip title="Edit">
-                <Button
-                  type="text"
-                  icon={<EditOutlined />}
-                  onClick={handleEdit}
-                  size="small"
-                />
-              </Tooltip>
-              <Tooltip title="Delete">
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  onClick={handleDelete}
-                  size="small"
-                  danger
-                />
-              </Tooltip>
-              <Tooltip title="Duplicate">
-                <Button
-                  type="text"
-                  icon={<CopyOutlined />}
-                  onClick={handleDuplicate}
-                  size="small"
-                />
-              </Tooltip>
-            </Space>
+            {!isManager && (
+              <Space size="small">
+                <Tooltip title="Edit">
+                  <Button
+                    type="text"
+                    icon={<EditOutlined />}
+                    onClick={handleEdit}
+                    size="small"
+                  />
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <Button
+                    type="text"
+                    icon={<DeleteOutlined />}
+                    onClick={handleDelete}
+                    size="small"
+                    danger
+                  />
+                </Tooltip>
+                <Tooltip title="Duplicate">
+                  <Button
+                    type="text"
+                    icon={<CopyOutlined />}
+                    onClick={handleDuplicate}
+                    size="small"
+                  />
+                </Tooltip>
+              </Space>
+            )}
           </div>
         </div>
 
@@ -1058,7 +1062,8 @@ const SortablePassageItem = memo(
       prevProps.passage.content === nextProps.passage.content &&
       prevProps.passage.weight === nextProps.passage.weight &&
       prevProps.theme === nextProps.theme &&
-      prevProps.index === nextProps.index
+      prevProps.index === nextProps.index &&
+      prevProps.isManager === nextProps.isManager
     );
   }
 );
@@ -1234,7 +1239,7 @@ const renderRearrangeQuestionInline = (question, theme) => {
 
 // Sortable Question Item Component
 const SortableQuestionItem = memo(
-  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t, challengeType, activeDragDimensions }) => {
+  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t, challengeType, activeDragDimensions, isManager }) => {
     // Optimized: Only animate during active sorting/dragging to reduce lag
     const animateLayoutChanges = useCallback((args) => {
       const { isSorting, wasDragging } = args;
@@ -2114,49 +2119,53 @@ const SortableQuestionItem = memo(
       >
         <div className="question-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-            <div className='drag-handle' {...attributes} {...listeners}>
-              <SwapOutlined
-                rotate={90}
-                style={{
-                  fontSize: '20px',
-                  color: '#999',
-                  cursor: 'grab',
-                }}
-              />
-            </div>
+            {!isManager && (
+              <div className='drag-handle' {...attributes} {...listeners}>
+                <SwapOutlined
+                  rotate={90}
+                  style={{
+                    fontSize: '20px',
+                    color: '#999',
+                    cursor: 'grab',
+                  }}
+                />
+              </div>
+            )}
             <Typography.Text strong>{index + 1}. {getQuestionTypeLabel(question.type, t)}</Typography.Text>
           </div>
           <div className="question-controls">
             <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
               {question.weight} weight
             </div>
-            <Space size="small">
-              <Tooltip title="Edit">
-                <Button
-                  type="text"
-                  icon={<EditOutlined />}
-                  onClick={handleEdit}
-                  size="small"
-                />
-              </Tooltip>
-              <Tooltip title="Delete">
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  onClick={handleDelete}
-                  size="small"
-                  danger
-                />
-              </Tooltip>
-              <Tooltip title="Duplicate">
-                <Button
-                  type="text"
-                  icon={<CopyOutlined />}
-                  onClick={handleDuplicate}
-                  size="small"
-                />
-              </Tooltip>
-            </Space>
+            {!isManager && (
+              <Space size="small">
+                <Tooltip title="Edit">
+                  <Button
+                    type="text"
+                    icon={<EditOutlined />}
+                    onClick={handleEdit}
+                    size="small"
+                  />
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <Button
+                    type="text"
+                    icon={<DeleteOutlined />}
+                    onClick={handleDelete}
+                    size="small"
+                    danger
+                  />
+                </Tooltip>
+                <Tooltip title="Duplicate">
+                  <Button
+                    type="text"
+                    icon={<CopyOutlined />}
+                    onClick={handleDuplicate}
+                    size="small"
+                  />
+                </Tooltip>
+              </Space>
+            )}
           </div>
         </div>
 
@@ -2842,6 +2851,7 @@ const SortableQuestionItem = memo(
       prevProps.onEditQuestion === nextProps.onEditQuestion &&
       prevProps.onDuplicateQuestion === nextProps.onDuplicateQuestion &&
       prevProps.onPointsChange === nextProps.onPointsChange &&
+      prevProps.isManager === nextProps.isManager &&
       JSON.stringify(prevProps.question.shuffledWords) === JSON.stringify(nextProps.question.shuffledWords) &&
       JSON.stringify(prevProps.question.correctAnswers) === JSON.stringify(nextProps.question.correctAnswers)
     );
@@ -2869,6 +2879,7 @@ const DailyChallengeContent = () => {
   const { theme } = useTheme();
   const { id } = useParams();
   const { user } = useSelector((state) => state.auth);
+  const isManager = user?.role?.toLowerCase() === 'manager';
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
   
   // Get data from navigation state or fetch from API
@@ -3293,6 +3304,7 @@ const DailyChallengeContent = () => {
   };
 
   const handleAddQuestion = useCallback(() => {
+    if (isManager) return;
     const challengeType = challengeDetails?.challengeType;
     
     if (challengeType === 'RE' || challengeType === 'LI') {
@@ -3328,7 +3340,7 @@ const DailyChallengeContent = () => {
       // For other challenge types (GV, etc.), open question type modal
       setQuestionTypeModalVisible(true);
     }
-  }, [challengeDetails, id, challengeInfo, navigate, user]);
+  }, [challengeDetails, id, challengeInfo, navigate, user, isManager]);
 
 
   const handleQuestionTypeClick = useCallback((questionType) => {
@@ -3992,8 +4004,9 @@ const DailyChallengeContent = () => {
   }, [handleSaveChanges]);
 
   const handleOpenSettings = useCallback(() => {
+    if (isManager) return;
     setSettingsModalVisible(true);
-  }, []);
+  }, [isManager]);
 
   const handleCloseSettings = useCallback(() => {
     setSettingsModalVisible(false);
@@ -4714,7 +4727,7 @@ const DailyChallengeContent = () => {
             )}
 
             {/* Add Question/Passage Button - only visible in draft */}
-            {status === 'draft' && (
+            {status === 'draft' && !isManager && (
               <Button 
                 icon={<PlusOutlined />}
                 className={`create-button ${theme}-create-button`}
@@ -4737,7 +4750,7 @@ const DailyChallengeContent = () => {
             )}
             
             {/* Save Dropdown - hidden when IN_PROGRESS or FINISHED */}
-            {status !== 'finished' && status !== 'in-progress' && (
+            {status !== 'finished' && status !== 'in-progress' && !isManager && (
             <Dropdown
               menu={{ 
                 items: (
@@ -4907,31 +4920,35 @@ const DailyChallengeContent = () => {
                         : '2px solid rgba(138, 122, 255, 0.15)'
                     }}>
                       {/* Settings Icon - Left */}
-                      <Tooltip title={t('dailyChallenge.editSettings') || 'Edit Settings'} placement="right">
-                        <div
-                          onClick={handleOpenSettings}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'rotate(90deg) scale(1.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'rotate(0deg) scale(1)';
-                          }}
-                        >
-                          <SettingOutlined
+                      {!isManager ? (
+                        <Tooltip title={t('dailyChallenge.editSettings') || 'Edit Settings'} placement="right">
+                          <div
+                            onClick={handleOpenSettings}
                             style={{
-                              fontSize: '24px',
-                              color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.3s ease',
                             }}
-                          />
-                          </div>
-                      </Tooltip>
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'rotate(90deg) scale(1.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'rotate(0deg) scale(1)';
+                            }}
+                          >
+                            <SettingOutlined
+                              style={{
+                                fontSize: '24px',
+                                color: theme === 'sun' ? '#1890ff' : '#8377A0',
+                              }}
+                            />
+                            </div>
+                        </Tooltip>
+                      ) : (
+                        <div style={{ width: '40px', height: '40px' }} />
+                      )}
 
                       {/* Collapse Icon - Right */}
                       <Tooltip title={t('common.collapse') || 'Collapse'} placement="left">
@@ -5212,6 +5229,7 @@ const DailyChallengeContent = () => {
                       t={t}
                       challengeType={challengeDetails?.challengeType}
                       activeDragDimensions={activeDragDimensions}
+                      isManager={isManager}
                     />
                   ))}
 
@@ -5230,6 +5248,7 @@ const DailyChallengeContent = () => {
                       t={t}
                       challengeType={challengeDetails?.challengeType}
                       activeDragDimensions={activeDragDimensions}
+                      isManager={isManager}
                     />
                   ))}
                 </SortableContext>
