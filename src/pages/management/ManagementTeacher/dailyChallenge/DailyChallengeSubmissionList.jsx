@@ -42,8 +42,9 @@ const DailyChallengeSubmissionList = () => {
   const { id } = useParams();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
+  const normalizedRole = (user?.role || '').toLowerCase();
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount, dailyChallengeData } = useDailyChallengeMenu();
-  const isManager = (user?.role || '').toLowerCase() === 'manager';
+  const isManager = normalizedRole === 'manager';
   
   // Set page title
   usePageTitle('Daily Challenge Management / Submissions');
@@ -186,21 +187,18 @@ const DailyChallengeSubmissionList = () => {
 
     const getBackPath = () => {
       // Always navigate back to the performance (detail) page for this challenge
-      const userRole = user?.role?.toLowerCase();
       const challengeId = challengeInfo.challengeId || id;
       const qs = new URLSearchParams();
       if (challengeInfo.classId) qs.set('classId', challengeInfo.classId);
       if (challengeInfo.className) qs.set('className', challengeInfo.className);
       if (challengeInfo.challengeName) qs.set('challengeName', challengeInfo.challengeName);
       const suffix = qs.toString() ? `?${qs.toString()}` : '';
-      if (userRole === 'teacher') {
-        return `/teacher/daily-challenges/detail/${challengeId}${suffix}`;
-      }
-      if (userRole === 'teaching_assistant') {
-        return `/teaching-assistant/daily-challenges/detail/${challengeId}${suffix}`;
-      }
-      // Fallback: teacher path
-      return `/teacher/daily-challenges/detail/${challengeId}${suffix}`;
+      const rolePrefix = normalizedRole === 'manager'
+        ? '/manager'
+        : normalizedRole === 'teaching_assistant'
+          ? '/teaching-assistant'
+          : '/teacher';
+      return `${rolePrefix}/daily-challenges/detail/${challengeId}${suffix}`;
     };
 
     const getSubtitle = () => {
@@ -220,7 +218,7 @@ const DailyChallengeSubmissionList = () => {
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id, location.state, location.search, user, dailyChallengeData?.subtitle, dailyChallengeData?.className]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id, location.state, location.search, normalizedRole, dailyChallengeData?.subtitle, dailyChallengeData?.className]);
 
   // Update total count in floating menu
   useEffect(() => {
@@ -237,9 +235,14 @@ const DailyChallengeSubmissionList = () => {
     const classId = location.state?.classId || params.get('classId') || null;
     const className = location.state?.className || params.get('className') || null;
     const challengeName = location.state?.challengeName || params.get('challengeName') || null;
+    const rolePrefix = normalizedRole === 'manager'
+      ? '/manager'
+      : normalizedRole === 'teaching_assistant'
+        ? '/teaching-assistant'
+        : '/teacher';
 
     navigate(
-      `/teacher/daily-challenges/detail/${id}/submissions/${submission.submissionId}`,
+      `${rolePrefix}/daily-challenges/detail/${id}/submissions/${submission.submissionId}`,
       {
         state: {
           studentName: submission?.studentName || null,

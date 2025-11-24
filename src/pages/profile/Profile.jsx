@@ -257,7 +257,7 @@ export default function Profile() {
                 {/* Name and Status Row */}
                 <div className={`name-status-row-new ${theme}-name-status-row-new`}>
                   <h2 className={`student-name-new ${theme}-student-name-new`}>
-                    Hello {profileData?.fullName || user?.fullName || ''}
+                    {profileData?.fullName || user?.fullName || ''}
                   </h2>
                   <div className={`status-badges-new ${theme}-status-badges-new`}>
                     <span className={`role-badge-new ${theme}-role-badge-new`}>

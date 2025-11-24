@@ -12,7 +12,8 @@ export default function EditEmailModal({
   currentEmail,
   studentId 
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const getText = (vi, en) => (i18n.language?.startsWith('vi') ? vi : en);
   const { theme } = useTheme();
   const [form] = Form.useForm();
   const [showConfirmationMessage, setShowConfirmationMessage] = useState(false);
@@ -43,7 +44,9 @@ export default function EditEmailModal({
       console.log('Student ID:', studentId);
       
       if (!validateEmail(values.email)) {
-        spaceToast.error(t('messages.invalidEmail'));
+        const invalidMsg = getText('Email không hợp lệ', 'Invalid email');
+        form.setFields([{ name: 'email', errors: [invalidMsg] }]);
+        spaceToast.error(invalidMsg);
         return;
       }
 
@@ -64,23 +67,22 @@ export default function EditEmailModal({
       console.log('=== END DEBUG ===');
 
       if (response.success) {
-        spaceToast.success('Email update request sent successfully!');
+        spaceToast.success(getText('Yêu cầu cập nhật email đã được gửi!', 'Email update request sent successfully!'));
         // Không đóng modal ngay, hiển thị thông báo chờ xác nhận
         setShowConfirmationMessage(true);
         // KHÔNG gọi onSuccess ở đây vì email chưa được confirm
         // Email sẽ chỉ được cập nhật sau khi user confirm từ email
       } else {
-        spaceToast.error(response.message || 'Failed to update email');
+        spaceToast.error(response.message || getText('Cập nhật email thất bại', 'Failed to update email'));
       }
     } catch (error) {
       console.error('Update Email Error:', error);
       
       // Xử lý error từ API response
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message;
-      
+      const backendMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      const errorMessage = backendMessage || getText('Có lỗi xảy ra khi cập nhật email', 'Failed to update email');
       spaceToast.error(errorMessage);
+      form.setFields([{ name: 'email', errors: [errorMessage] }]);
     } finally {
       setLoading(false);
     }
@@ -112,7 +114,7 @@ export default function EditEmailModal({
       onCancel={handleCancel}
       width={500}
       okText={showConfirmationMessage ? t('common.ok') : t('common.update')}
-      cancelText={showConfirmationMessage ? undefined : t('common.close')}
+      cancelText={showConfirmationMessage ? undefined : getText(t('common.close'), 'Close')}
       confirmLoading={loading}
       okButtonProps={{
         style: {
@@ -148,7 +150,7 @@ export default function EditEmailModal({
           <Form.Item
             label={
               <span>
-                {t('common.email')}
+                {getText(t('common.email'), 'Email')}
                 <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
               </span>
             }
@@ -156,15 +158,15 @@ export default function EditEmailModal({
             rules={[
               {
                 required: true,
-                message: 'Email is required',
+                message: getText('Vui lòng nhập email', 'Email is required'),
               },
               {
                 type: 'email',
-                message: 'Please enter a valid email',
+                message: getText('Vui lòng nhập email hợp lệ', 'Please enter a valid email'),
               },
             ]}
             required={false}>
-            <Input placeholder="Enter email" />
+            <Input placeholder={getText('Nhập email', 'Enter email')} />
           </Form.Item>
         </Form>
       ) : (
@@ -173,7 +175,7 @@ export default function EditEmailModal({
             📧
           </div>
           <h3 style={{ color: '#1890ff', marginBottom: '16px' }}>
-            {t('common.emailChangeRequestSent')}
+            {getText(t('common.emailChangeRequestSent'), 'Email change request sent')}
           </h3>
         </div>
       )}
