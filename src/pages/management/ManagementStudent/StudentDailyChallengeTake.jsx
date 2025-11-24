@@ -44,6 +44,16 @@ const AutoSaveTriggerContext = createContext(null);
 // Context to indicate view-only mode for child components
 const ViewOnlyContext = createContext(false);
 
+// Utility: strip HTML tags, nbsp, and collapse whitespace for comparison
+const stripHtmlContent = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 // Memoized HTML renderer to keep DOM stable and preserve text selection
 const MemoizedHTML = React.memo(
   function MemoizedHTML({ html, className, style }) {
@@ -5553,7 +5563,8 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
         ...opt,
         valueKey,
         displayKey,
-        text
+        text,
+        plainText: stripHtmlContent(text)
       };
     });
   }, [optionsFromApi, data?.content?.data]);
@@ -5579,11 +5590,13 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
     const unregister = registerAnswerRestorer(data.id, (restored) => {
       if (typeof restored === 'string' && restored) {
         const normalized = String(restored).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-        const match = normalizedOptions.find(o =>
-          o.text === normalized ||
-          o.valueKey === normalized ||
-          o.displayKey === normalized
-        );
+        const match = normalizedOptions.find((o) => {
+          const optionPlain = o.plainText || stripHtmlContent(o.text);
+          return optionPlain === normalized ||
+            o.text === normalized ||
+            o.valueKey === normalized ||
+            o.displayKey === normalized;
+        });
         setSelectedAnswer(match ? match.valueKey : normalized);
       }
     });
@@ -5781,7 +5794,8 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
         ...opt,
         valueKey,
         displayKey,
-        text
+        text,
+        plainText: stripHtmlContent(text)
       };
     });
   }, [optionsFromApi, data?.content?.data]);
@@ -5808,11 +5822,13 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
       if (Array.isArray(restored)) {
         const keys = restored.map(val => {
           const normalized = String(val).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-          const match = normalizedOptions.find(o =>
-            o.text === normalized ||
-            o.valueKey === normalized ||
-            o.displayKey === normalized
-          );
+          const match = normalizedOptions.find((o) => {
+            const optionPlain = o.plainText || stripHtmlContent(o.text);
+            return optionPlain === normalized ||
+              o.text === normalized ||
+              o.valueKey === normalized ||
+              o.displayKey === normalized;
+          });
           return match ? match.valueKey : normalized;
         });
         setSelectedAnswers(keys);

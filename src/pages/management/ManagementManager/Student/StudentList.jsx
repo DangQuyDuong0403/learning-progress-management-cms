@@ -46,6 +46,8 @@ import { FILE_NAME_PREFIXES, formatDateForFilename } from "../../../../constants
 const { Option } = Select;
 const { Title, Text } = Typography;
 
+const trimIfString = (value) => (typeof value === "string" ? value.trim() : value);
+
 const StudentList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -939,24 +941,40 @@ const StudentList = () => {
     
     try {
       const values = await form.validateFields();
+
+      const sanitizedValues = {
+        ...values,
+        email: trimIfString(values.email),
+        fullName: trimIfString(values.fullName),
+        address: trimIfString(values.address),
+        phoneNumber: trimIfString(values.phoneNumber),
+        gender: trimIfString(values.gender),
+        roleName: trimIfString(values.roleName),
+        parentInfo: {
+          parentName: trimIfString(values.parentInfo?.parentName),
+          parentEmail: trimIfString(values.parentInfo?.parentEmail),
+          parentPhone: trimIfString(values.parentInfo?.parentPhone),
+          relationship: trimIfString(values.parentInfo?.relationship),
+        },
+      };
       
       // Format the data according to CreateStudentRequest schema from API
       const studentData = {
-        roleName: values.roleName, // STUDENT or TEST_TAKER
-        email: values.email,
-        fullName: values.fullName,
+        roleName: sanitizedValues.roleName, // STUDENT or TEST_TAKER
+        email: sanitizedValues.email,
+        fullName: sanitizedValues.fullName,
         avatarUrl: "string", // Always send "string" as per API example
-        dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS') + 'Z' : null,
-        address: values.address || null,
-        phoneNumber: values.phoneNumber || null,
-        gender: values.gender || null, // MALE, FEMALE, OTHER
+        dateOfBirth: sanitizedValues.dateOfBirth ? sanitizedValues.dateOfBirth.format('YYYY-MM-DDTHH:mm:ss.SSS') + 'Z' : null,
+        address: sanitizedValues.address || null,
+        phoneNumber: sanitizedValues.phoneNumber || null,
+        gender: sanitizedValues.gender || null, // MALE, FEMALE, OTHER
         parentInfo: {
-          parentName: values.parentInfo?.parentName || "",
-          parentEmail: values.parentInfo?.parentEmail || null,
-          parentPhone: values.parentInfo?.parentPhone || "",
-          relationship: values.parentInfo?.relationship || null,
+          parentName: sanitizedValues.parentInfo?.parentName || "",
+          parentEmail: sanitizedValues.parentInfo?.parentEmail || null,
+          parentPhone: sanitizedValues.parentInfo?.parentPhone || "",
+          relationship: sanitizedValues.parentInfo?.relationship || null,
         },
-        levelId: values.levelId,
+        levelId: sanitizedValues.levelId,
       };
       
       console.log('Student form values:', studentData);
@@ -975,7 +993,7 @@ const StudentList = () => {
             form.resetFields();
             
             // Show success toast
-            spaceToast.success(`Add student "${values.fullName}" successfully`);
+            spaceToast.success(`Add student "${sanitizedValues.fullName}" successfully`);
             
             // Navigate to student profile if student ID is available
             if (response.data && response.data.id) {
