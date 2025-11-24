@@ -39,6 +39,8 @@ import EditEmailModal from './EditEmailModal';
 
 const { Title } = Typography;
 
+const trimIfString = (value) => (typeof value === 'string' ? value.trim() : value);
+
 const TeacherProfile = () => {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
@@ -232,15 +234,23 @@ const TeacherProfile = () => {
 	const handleEditSubmit = async (values) => {
 		setEditLoading(true);
 		try {
+		const sanitizedValues = {
+			...values,
+			roleName: trimIfString(values.roleName),
+			fullName: trimIfString(values.fullName),
+			phoneNumber: trimIfString(values.phoneNumber),
+			address: trimIfString(values.address),
+			gender: trimIfString(values.gender),
+		};
 		// Format the data according to the API requirements
 		const teacherData = {
-			roleName: values.roleName || "TEACHER",
-			fullName: values.fullName,
+			roleName: sanitizedValues.roleName || "TEACHER",
+			fullName: sanitizedValues.fullName,
 			avatarUrl: teacher.avatarUrl || "/img/avatar_1.png", // Send current avatar URL
-			dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null,
-			address: values.address || "",
-			phoneNumber: values.phoneNumber,
-			gender: values.gender || "MALE",
+			dateOfBirth: sanitizedValues.dateOfBirth ? sanitizedValues.dateOfBirth.toISOString() : null,
+			address: sanitizedValues.address || "",
+			phoneNumber: sanitizedValues.phoneNumber,
+			gender: sanitizedValues.gender || "MALE",
 			email: teacher.email, // Always include email for backend
 		};
 			
