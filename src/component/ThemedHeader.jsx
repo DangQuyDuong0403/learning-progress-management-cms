@@ -2,22 +2,19 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
-import { Switch, Tooltip, Button } from 'antd';
-import { SunOutlined, MoonOutlined, ArrowLeftOutlined, SettingOutlined, CloseOutlined } from '@ant-design/icons';
+import { Tooltip, Button } from 'antd';
+import { ArrowLeftOutlined, SettingOutlined, CloseOutlined } from '@ant-design/icons';
 import { logoutApi, logout, getUserProfile } from '../redux/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useClassMenu } from '../contexts/ClassMenuContext';
 import { useSyllabusMenu } from '../contexts/SyllabusMenuContext';
 import { useDailyChallengeMenu } from '../contexts/DailyChallengeMenuContext';
-import LanguageToggle from './LanguageToggle';
 import { spaceToast } from './SpaceToastify';
 import { notificationApi } from '../apis/apis';
 import ROUTER_PAGE from '../constants/router';
 import './ThemedHeader.css';
 
 export default function ThemedHeader({
-  hideThemeToggle = false,
-  hideLanguageToggle = false,
   extraLeftContent = null,
   extraRightContent = null,
 }) {
@@ -26,7 +23,7 @@ export default function ThemedHeader({
   const { t } = useTranslation();
   const { user, refreshToken, profileData } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  const { theme, toggleTheme, isSunTheme } = useTheme();
+  const { theme } = useTheme();
   const { isInClassMenu, classData } = useClassMenu();
   const { isInSyllabusMenu, syllabusData } = useSyllabusMenu();
   const { isInDailyChallengeMenu, dailyChallengeData } = useDailyChallengeMenu();
@@ -965,48 +962,6 @@ export default function ThemedHeader({
           
           <div className="themed-navbar-actions">
             <ul className="themed-navbar-nav">
-              {/* Theme Toggle Switch */}
-              {!hideThemeToggle && (
-                <li className="themed-nav-item">
-                  <Tooltip 
-                    title={isSunTheme ? t('header.switchToSpace') : t('header.switchToSun')}
-                    placement="bottom"
-                  >
-                    <div className="theme-switch-container">
-                      <Switch
-                        checked={isSunTheme}
-                        onChange={toggleTheme}
-                        size="default"
-                        className={`theme-switch ${theme}-theme-switch`}
-                        checkedChildren={
-                          <SunOutlined 
-                            style={{ 
-                              color: '#fff',
-                              filter: 'drop-shadow(0 0 3px rgba(255, 215, 0, 0.8))'
-                            }} 
-                          />
-                        }
-                        unCheckedChildren={
-                          <MoonOutlined 
-                            style={{ 
-                              color: '#fff',
-                              filter: 'drop-shadow(0 0 3px rgba(77, 208, 255, 0.8))'
-                            }} 
-                          />
-                        }
-                      />
-                    </div>
-                  </Tooltip>
-                </li>
-              )}
-
-              {/* Language Toggle */}
-              {!hideLanguageToggle && (
-                <li className="themed-nav-item">
-                  <LanguageToggle />
-                </li>
-              )}
-
               {/* Notifications */}
               <li className="themed-nav-item dropdown">
                 <button
