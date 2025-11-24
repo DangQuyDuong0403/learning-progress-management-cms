@@ -95,6 +95,8 @@ const ROUTER_PAGE = {
 	MANAGER_CLASS_DAILY_CHALLENGES: '/manager/classes/daily-challenges/:classId',
 	MANAGER_DAILY_CHALLENGE_DETAIL: '/manager/daily-challenges/detail/:id',
 	MANAGER_DAILY_CHALLENGE_CONTENT: '/manager/daily-challenges/detail/:id/content',
+	MANAGER_DAILY_CHALLENGE_SUBMISSIONS: '/manager/daily-challenges/detail/:id/submissions',
+	MANAGER_DAILY_CHALLENGE_SUBMISSION_DETAIL: '/manager/daily-challenges/detail/:id/submissions/:submissionId',
 	// Teacher Management Routes
 	TEACHER_DASHBOARD: '/teacher/dashboard',
 	TEACHER_CLASSES: '/teacher/classes',

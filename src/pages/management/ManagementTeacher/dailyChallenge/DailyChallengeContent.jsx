@@ -2879,7 +2879,8 @@ const DailyChallengeContent = () => {
   const { theme } = useTheme();
   const { id } = useParams();
   const { user } = useSelector((state) => state.auth);
-  const isManager = user?.role?.toLowerCase() === 'manager';
+  const normalizedRole = (user?.role || '').toLowerCase();
+  const isManager = normalizedRole === 'manager';
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
   
   // Get data from navigation state or fetch from API
@@ -4563,7 +4564,12 @@ const DailyChallengeContent = () => {
 
   // Handle back button click - Navigate to Performance page with state
   const handleBackToDailyChallenges = () => {
-    navigate(`/teacher/daily-challenges/detail/${id}`, {
+    const rolePrefix = normalizedRole === 'manager'
+      ? '/manager'
+      : normalizedRole === 'teaching_assistant'
+        ? '/teaching-assistant'
+        : '/teacher';
+    navigate(`${rolePrefix}/daily-challenges/detail/${id}`, {
       state: challengeInfo
     });
   };

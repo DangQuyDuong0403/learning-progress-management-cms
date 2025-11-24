@@ -1598,6 +1598,26 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['manager'],
 	},
+	{
+		show: false,
+		component: DailyChallengeSubmissionList,
+		path: ROUTER_PAGE.MANAGER_DAILY_CHALLENGE_SUBMISSIONS,
+		menuName: 'Daily Challenge Submissions',
+		exact: true,
+		key: 'MANAGER_DAILY_CHALLENGE_SUBMISSIONS',
+		private: true,
+		role: ['manager'],
+	},
+	{
+		show: false,
+		component: DailyChallengeSubmissionDetail,
+		path: ROUTER_PAGE.MANAGER_DAILY_CHALLENGE_SUBMISSION_DETAIL,
+		menuName: 'Daily Challenge Submission Detail',
+		exact: true,
+		key: 'MANAGER_DAILY_CHALLENGE_SUBMISSION_DETAIL',
+		private: true,
+		role: ['manager'],
+	},
 	
 ];
 

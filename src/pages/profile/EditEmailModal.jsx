@@ -35,6 +35,12 @@ export default function EditEmailModal({
       const values = await form.validateFields();
       
       if (!validateEmail(values.email)) {
+        form.setFields([
+          {
+            name: 'email',
+            errors: [t('messages.invalidEmail')],
+          },
+        ]);
         spaceToast.error(t('messages.invalidEmail'));
         return;
       }
@@ -70,9 +76,12 @@ export default function EditEmailModal({
       }
       
       spaceToast.error(errorMessage);
-      
-      // Đóng modal khi có lỗi
-      handleCancel();
+      form.setFields([
+        {
+          name: 'email',
+          errors: [errorMessage || t('messages.invalidEmail')],
+        },
+      ]);
     }
   };
 
