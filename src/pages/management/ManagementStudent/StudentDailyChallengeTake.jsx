@@ -10589,45 +10589,44 @@ const StudentDailyChallengeTake = () => {
                 isAnswered = item.questionIds.length > 0 && item.questionIds.every(qId => answeredQuestions.has(qId));
               }
               
+              const answeredBackground = theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.25)';
+              const defaultBackground = 'transparent';
+              const answeredTextColor = theme === 'sun' ? '#0f5132' : '#d1fae5';
+              
               return (
                 <div
                   key={item.id}
                   className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
                   onClick={() => scrollToQuestion(item.id)}
                   style={{ 
-                    fontWeight: 'normal', 
+                    fontWeight: isAnswered ? 600 : 'normal', 
                     textAlign: 'center', 
-                    color: '#000000',
+                    color: isAnswered ? answeredTextColor : '#000000',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: '10px 12px',
                     cursor: 'pointer',
-                    borderRadius: '4px',
+                    borderRadius: '6px',
                     transition: 'all 0.2s ease',
-                    position: 'relative'
+                    position: 'relative',
+                    backgroundColor: isAnswered ? answeredBackground : defaultBackground,
+                    borderLeft: isAnswered ? '4px solid #52c41a' : '4px solid transparent',
+                    boxShadow: isAnswered ? '0 2px 6px rgba(82, 196, 26, 0.15)' : 'none',
+                    marginBottom: '8px'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = theme === 'sun' 
-                      ? 'rgba(24, 144, 255, 0.08)' 
-                      : 'rgba(138, 122, 255, 0.15)';
+                    e.currentTarget.style.backgroundColor = isAnswered
+                      ? answeredBackground
+                      : (theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.08)' 
+                          : 'rgba(138, 122, 255, 0.15)');
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.backgroundColor = isAnswered ? answeredBackground : defaultBackground;
                   }}
                 >
                   <span style={{ textAlign: 'center', flex: 1 }}>{item.title}</span>
-                  {isAnswered && (
-                    <CheckOutlined 
-                      style={{ 
-                        color: '#52c41a',
-                        fontSize: '16px',
-                        position: 'absolute',
-                        right: '12px',
-                        flexShrink: 0
-                      }} 
-                    />
-                  )}
                 </div>
               );
             })}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Row, Col, Empty, Tag } from 'antd';
 import LoadingWithEffect from '../../../component/spinner/LoadingWithEffect';
 import { 
@@ -35,13 +35,38 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import ThemedLayout from '../../../component/ThemedLayout';
 import { managerDashboardApi } from '../../../apis/apis';
 import './ManagerDashboardV2.css';
+import { useTranslation } from 'react-i18next';
 
 const ROLE_COLORS = ['#c0aaff', '#80b9ff', '#7dd3b8', '#ffc98a', '#f79ac0', '#9aa7ff'];
 // Reuse pastel palette from pie for a consistent look
 const FUNNEL_COLORS = ROLE_COLORS;
 
+const ROLE_TEXTS = {
+  student: { en: 'Student', vi: 'Học viên' },
+  teacher: { en: 'Teacher', vi: 'Giáo viên' },
+  manager: { en: 'Manager', vi: 'Quản lý' },
+  admin: { en: 'Admin', vi: 'Quản trị viên' },
+  test_taker: { en: 'Test Taker', vi: 'Thí sinh' },
+  teaching_assistant: { en: 'Teaching Assistant', vi: 'Trợ giảng' },
+};
+
+const ALERT_TEXTS = {
+  danger: { en: 'Danger', vi: 'Nguy hiểm' },
+  warning: { en: 'Warning', vi: 'Cảnh báo' },
+  success: { en: 'Success', vi: 'Thành công' },
+  info: { en: 'Info', vi: 'Thông tin' },
+};
+
+const TEACHER_STATUS_TEXTS = {
+  normal: { en: 'Normal', vi: 'Bình thường' },
+  busy: { en: 'Busy', vi: 'Bận' },
+  overloaded: { en: 'Overloaded', vi: 'Quá tải' },
+  critical: { en: 'Critical', vi: 'Khẩn cấp' },
+};
+
 const ManagerDashboard = () => {
   const { theme } = useTheme();
+  const { i18n } = useTranslation();
   const [overview, setOverview] = useState(null);
   const [usersReport, setUsersReport] = useState(null);
   const [syllabusReport, setSyllabusReport] = useState(null);
@@ -58,6 +83,69 @@ const ManagerDashboard = () => {
     levels: false,
     classes: false,
   });
+
+  const translate = useCallback(
+    (englishText, vietnameseText) => {
+      const lang = i18n.language || 'en';
+      if (lang.startsWith('vi')) {
+        return vietnameseText || englishText;
+      }
+      if (lang.startsWith('en')) {
+        return englishText;
+      }
+      // Fallback shows both languages for unexpected locales
+      return vietnameseText ? `${englishText} / ${vietnameseText}` : englishText;
+    },
+    [i18n.language]
+  );
+
+  const formatEnumLabel = useCallback((text = '') => {
+    const safe = String(text || '');
+    return safe
+      .toLowerCase()
+      .split('_')
+      .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ''))
+      .join(' ');
+  }, []);
+
+  const localizeRole = useCallback(
+    (role) => {
+      const key = String(role || '').toLowerCase();
+      const entry = ROLE_TEXTS[key];
+      if (entry) {
+        return translate(entry.en, entry.vi);
+      }
+      const fallback = formatEnumLabel(role);
+      return translate(fallback, fallback);
+    },
+    [formatEnumLabel, translate]
+  );
+
+  const localizeAlertType = useCallback(
+    (type) => {
+      const key = String(type || '').toLowerCase();
+      const entry = ALERT_TEXTS[key];
+      if (entry) {
+        return translate(entry.en, entry.vi);
+      }
+      const fallback = formatEnumLabel(type);
+      return translate(fallback, fallback);
+    },
+    [formatEnumLabel, translate]
+  );
+
+  const localizeTeacherStatus = useCallback(
+    (status) => {
+      const key = String(status || '').toLowerCase();
+      const entry = TEACHER_STATUS_TEXTS[key];
+      if (entry) {
+        return translate(entry.en, entry.vi);
+      }
+      const fallback = formatEnumLabel(status);
+      return translate(fallback, fallback);
+    },
+    [formatEnumLabel, translate]
+  );
 
   // Custom rectangular shape for funnel slices (square ends)
   const RectFunnelShape = (props) => {
@@ -126,7 +214,7 @@ const ManagerDashboard = () => {
       }
       fetchedTabsRef.current[tab] = true;
     } catch (error) {
-      setTabError(error?.message || 'Failed to load data');
+      setTabError(error?.message || translate('Failed to load data', 'Không tải được dữ liệu'));
     } finally {
       setTabLoading(false);
     }
@@ -217,13 +305,16 @@ const ManagerDashboard = () => {
     return (overview?.summary?.roleRatios || []).map((r) => ({ name: r.role, value: r.count, percentage: r.percentage }));
   }, [usersReport, overview?.summary?.roleRatios]);
 
-  const tabs = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'users', label: 'Users' },
-    { key: 'syllabus', label: 'Syllabus' },
-    { key: 'levels', label: 'Levels' },
-    { key: 'classes', label: 'Classes' },
-  ];
+  const tabs = useMemo(
+    () => [
+      { key: 'overview', label: translate('Overview', 'Tổng quan') },
+      { key: 'users', label: translate('Users', 'Người dùng') },
+      { key: 'syllabus', label: translate('Syllabus', 'Giáo trình') },
+      { key: 'levels', label: translate('Levels', 'Cấp độ') },
+      { key: 'classes', label: translate('Classes', 'Lớp học') },
+    ],
+    [translate]
+  );
 
   const renderSummaryCards = (cards = []) => (
     <Row gutter={[12, 16]} style={{ marginBottom: 24 }}>
@@ -276,40 +367,40 @@ const ManagerDashboard = () => {
 
   const renderOverviewTab = () => {
     if (!overview) {
-      return <Empty description="No overview data" />;
+      return <Empty description={translate('No overview data', 'Không có dữ liệu tổng quan')} />;
     }
 
     const summary = overview.summary || {};
     const overviewCards = [
       {
         key: 'totalStudents',
-        title: 'Total students',
+        title: translate('Total students', 'Tổng số học viên'),
         value: summary.totalStudents ?? 0,
-        subtitle: 'All students',
+        subtitle: translate('All students', 'Tất cả học viên'),
         icon: <UserOutlined style={{ color: '#2b6cb0' }} />,
         bg: '#d6e6fb'
       },
       {
         key: 'newStudents30d',
-        title: 'New (30d)',
+        title: translate('New (30d)', 'Học viên mới (30 ngày)'),
         value: summary.newStudents30d ?? 0,
-        subtitle: 'Last 30 days',
+        subtitle: translate('Last 30 days', '30 ngày gần đây'),
         icon: <UserOutlined style={{ color: '#6b46c1' }} />,
         bg: '#efe1ff'
       },
       {
         key: 'completionRate',
-        title: 'Completion rate',
+        title: translate('Completion rate', 'Tỉ lệ hoàn thành'),
         value: `${Number(summary.completionRate ?? 0).toFixed(1)}%`,
-        subtitle: 'Average completion',
+        subtitle: translate('Average completion', 'Mức hoàn thành trung bình'),
         icon: <BarChartOutlined style={{ color: '#1f7a3e' }} />,
         bg: '#dff7e8'
       },
       {
         key: 'activeClasses',
-        title: 'Active classes',
+        title: translate('Active classes', 'Lớp đang hoạt động'),
         value: summary.activeClasses ?? 0,
-        subtitle: 'Running now',
+        subtitle: translate('Running now', 'Đang diễn ra'),
         icon: <HomeOutlined style={{ color: '#0f766e' }} />,
         bg: '#d1fae5'
       },
@@ -343,10 +434,12 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#8b5cf6', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Role distribution</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Role distribution', 'Phân bổ vai trò')}
+                </div>
               </div>
               {roleRatios.length === 0 ? (
-                <Empty description="No data" />
+                <Empty description={translate('No data', 'Không có dữ liệu')} />
               ) : (
                 <div style={{ width: '100%', height: 380 }}>
                   <ResponsiveContainer>
@@ -358,14 +451,25 @@ const ManagerDashboard = () => {
                         cx="50%"
                         cy="46%"
                         outerRadius={110}
-                        label={({ role, percentage }) => `${role} (${Number(percentage ?? 0).toFixed(1)}%)`}
+                        label={({ role, percentage }) => `${localizeRole(role)} (${Number(percentage ?? 0).toFixed(1)}%)`}
                       >
                         {roleRatios.map((entry, index) => (
                           <Cell key={`overview-role-${index}`} fill={ROLE_COLORS[index % ROLE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Legend verticalAlign="bottom" align="center" layout="horizontal" wrapperStyle={{ marginTop: 12 }} />
-                      <ReTooltip formatter={(value, name) => [value, name]} />
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        layout="horizontal"
+                        wrapperStyle={{ marginTop: 12 }}
+                        formatter={(value) => localizeRole(value)}
+                      />
+                      <ReTooltip
+                        formatter={(value, name, props) => {
+                          const pct = props?.payload?.percentage;
+                          return [`${value} (${Number(pct ?? 0).toFixed(1)}%)`, localizeRole(name)];
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -386,19 +490,18 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <AlertOutlined style={{ color: '#ef4444', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Alerts</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Alerts', 'Cảnh báo')}
+                </div>
               </div>
               {(!overview.alerts || overview.alerts.length === 0) ? (
-                <Empty description="No alerts" />
+                <Empty description={translate('No alerts', 'Không có cảnh báo')} />
               ) : (
                 <div style={{ maxHeight: 320, overflow: 'auto', paddingRight: 4 }}>
                   {(overview.alerts || []).map((al, idx) => (
                     <div className="mdv2-alert" key={idx}>
-                      <div className="mdv2-alert__type">{al.type}</div>
+                      <div className="mdv2-alert__type">{localizeAlertType(al.type)}</div>
                       <div className="mdv2-alert__msg">{al.message}</div>
-                      {al.actionUrl ? (
-                        <a className="mdv2-alert__action" href={al.actionUrl} target="_blank" rel="noreferrer">Action</a>
-                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -422,10 +525,12 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Growth trend (30 days)</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Growth trend (30 days)', 'Xu hướng tăng trưởng (30 ngày)')}
+                </div>
               </div>
               {growthTrendData.length === 0 ? (
-                <Empty description="No data" />
+                <Empty description={translate('No data', 'Không có dữ liệu')} />
               ) : (
                 <div style={{ width: '100%', height: 320 }}>
                   <ResponsiveContainer>
@@ -456,10 +561,12 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <FunnelPlotOutlined style={{ color: '#a78bfa', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Level funnel</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Level funnel', 'Phễu cấp độ')}
+                </div>
               </div>
               {(!overview.levelFunnel || overview.levelFunnel.length === 0) ? (
-                <Empty description="No data" />
+                <Empty description={translate('No data', 'Không có dữ liệu')} />
               ) : (
                 <div style={{ width: '100%', height: 320 }}>
                   <ResponsiveContainer>
@@ -467,7 +574,10 @@ const ManagerDashboard = () => {
                       <ReTooltip
                         formatter={(value, name, props) => {
                           const p = props?.payload || {};
-                          return [`${p.trueValue ?? 0} students`, p.name];
+                          return [
+                            `${p.trueValue ?? 0} ${translate('students', 'học viên')}`,
+                            p.name,
+                          ];
                         }}
                         contentStyle={{ fontSize: 12 }}
                       />
@@ -527,16 +637,18 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <ReadOutlined style={{ color: '#7c3aed', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Top syllabus</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Top syllabus', 'Giáo trình nổi bật')}
+                </div>
               </div>
               {(!overview.topSyllabus || overview.topSyllabus.length === 0) ? (
-                <Empty description="No syllabus data" />
+                <Empty description={translate('No syllabus data', 'Không có dữ liệu giáo trình')} />
               ) : (
                 <div className="mdv2-table" style={{ maxHeight: 360, overflow: 'auto', paddingRight: 4 }}>
                   <div className="mdv2-table__head">
-                    <div>Name</div>
-                    <div>Code</div>
-                    <div>Classes</div>
+                    <div>{translate('Name', 'Tên')}</div>
+                    <div>{translate('Code', 'Mã')}</div>
+                    <div>{translate('Classes', 'Lớp học')}</div>
                   </div>
                   {(overview.topSyllabus || []).map((syl, idx) => (
                     <div className="mdv2-table__row" key={syl.code || idx}>
@@ -563,22 +675,24 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#10b981', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Teacher workload</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Teacher workload', 'Khối lượng giáo viên')}
+                </div>
               </div>
               {(!overview.teacherWorkload || overview.teacherWorkload.length === 0) ? (
-                <Empty description="No workload data" />
+                <Empty description={translate('No workload data', 'Không có dữ liệu công việc')} />
               ) : (
                 <div className="mdv2-table" style={{ maxHeight: 360, overflow: 'auto', paddingRight: 4 }}>
                   <div className="mdv2-table__head">
-                    <div>Teacher</div>
-                    <div>Classes</div>
-                    <div>Status</div>
+                    <div>{translate('Teacher', 'Giáo viên')}</div>
+                    <div>{translate('Classes', 'Lớp học')}</div>
+                    <div>{translate('Status', 'Trạng thái')}</div>
                   </div>
                   {(overview.teacherWorkload || []).map((t, idx) => (
                     <div className="mdv2-table__row" key={t.teacherName || idx}>
                       <div>{t.teacherName}</div>
                       <div>{t.classes ?? 0}</div>
-                      <div>{t.status}</div>
+                      <div>{localizeTeacherStatus(t.status)}</div>
                     </div>
                   ))}
                 </div>
@@ -592,40 +706,40 @@ const ManagerDashboard = () => {
 
   const renderUsersTab = () => {
     if (!usersReport) {
-      return <Empty description="No user data" />;
+      return <Empty description={translate('No user data', 'Không có dữ liệu người dùng')} />;
     }
 
     const summary = usersReport.summary || {};
     const userCards = [
       {
         key: 'activeUsers',
-        title: 'Active users',
+        title: translate('Active users', 'Người dùng đang hoạt động'),
         value: summary.activeUsers ?? 0,
-        subtitle: 'Currently active',
+        subtitle: translate('Currently active', 'Đang hoạt động'),
         icon: <TeamOutlined style={{ color: '#22c55e' }} />,
         bg: '#ecfdf5'
       },
       {
         key: 'newUsers30d',
-        title: 'New (30d)',
+        title: translate('New (30d)', 'Người dùng mới (30 ngày)'),
         value: summary.newUsers30d ?? 0,
-        subtitle: 'Joined last 30 days',
+        subtitle: translate('Joined last 30 days', 'Gia nhập 30 ngày gần đây'),
         icon: <UserOutlined style={{ color: '#6366f1' }} />,
         bg: '#eef2ff'
       },
       {
         key: 'atRiskStudents',
-        title: 'At-risk students',
+        title: translate('At-risk students', 'Học viên có nguy cơ'),
         value: summary.atRiskStudents ?? 0,
-        subtitle: 'Need attention',
+        subtitle: translate('Need attention', 'Cần chú ý'),
         icon: <AlertOutlined style={{ color: '#ef4444' }} />,
         bg: '#fee2e2'
       },
       {
         key: 'totalUsers',
-        title: 'Total users',
+        title: translate('Total users', 'Tổng người dùng'),
         value: summary.totalUsers ?? 0,
-        subtitle: 'All accounts',
+        subtitle: translate('All accounts', 'Tất cả tài khoản'),
         icon: <UserOutlined style={{ color: '#0ea5e9' }} />,
         bg: '#e0f2fe'
       },
@@ -651,10 +765,12 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#8b5cf6', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Role distribution</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Role distribution', 'Phân bổ vai trò')}
+                </div>
               </div>
               {rolePieData.length === 0 ? (
-                <Empty description="No data" />
+                <Empty description={translate('No data', 'Không có dữ liệu')} />
               ) : (
                 <div style={{ width: '100%', height: 360 }}>
                   <ResponsiveContainer>
@@ -666,17 +782,25 @@ const ManagerDashboard = () => {
                         cx="50%"
                         cy="46%"
                         outerRadius={110}
-                        label={({ name, percentage }) => `${name} (${Number(percentage ?? 0).toFixed(1)}%)`}
+                        label={({ name, percentage }) => `${localizeRole(name)} (${Number(percentage ?? 0).toFixed(1)}%)`}
                       >
                         {rolePieData.map((entry, index) => (
                           <Cell key={`users-role-${index}`} fill={ROLE_COLORS[index % ROLE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Legend verticalAlign="bottom" align="center" layout="horizontal" wrapperStyle={{ marginTop: 12 }} />
-                      <ReTooltip formatter={(value, name, props) => {
-                        const pct = props?.payload?.percentage;
-                        return [`${value} (${(pct ?? 0).toFixed(1)}%)`, name];
-                      }} />
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        layout="horizontal"
+                        wrapperStyle={{ marginTop: 12 }}
+                        formatter={(value) => localizeRole(value)}
+                      />
+                      <ReTooltip
+                        formatter={(value, name, props) => {
+                          const pct = props?.payload?.percentage;
+                          return [`${value} (${(pct ?? 0).toFixed(1)}%)`, localizeRole(name)];
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -695,10 +819,12 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <AlertOutlined style={{ color: '#f97316', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Status breakdown</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Status breakdown', 'Trạng thái tài khoản')}
+                </div>
               </div>
               {(!statusBreakdown || Object.keys(statusBreakdown).length === 0) ? (
-                <Empty description="No status data" />
+                <Empty description={translate('No status data', 'Không có dữ liệu trạng thái')} />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {Object.entries(statusBreakdown).map(([status, count]) => (
@@ -718,31 +844,31 @@ const ManagerDashboard = () => {
 
   const renderSyllabusTab = () => {
     if (!syllabusReport) {
-      return <Empty description="No syllabus data" />;
+      return <Empty description={translate('No syllabus data', 'Không có dữ liệu giáo trình')} />;
     }
 
     const cards = [
       {
         key: 'totalSyllabuses',
-        title: 'Syllabuses',
+        title: translate('Syllabuses', 'Giáo trình'),
         value: syllabusReport.totalSyllabuses ?? 0,
-        subtitle: 'Available syllabuses',
+        subtitle: translate('Available syllabuses', 'Giáo trình đang có'),
         icon: <ReadOutlined style={{ color: '#6366f1' }} />,
         bg: '#eef2ff'
       },
       {
         key: 'totalChapters',
-        title: 'Chapters',
+        title: translate('Chapters', 'Chương'),
         value: syllabusReport.totalChapters ?? 0,
-        subtitle: 'Across syllabuses',
+        subtitle: translate('Across syllabuses', 'Trên tất cả giáo trình'),
         icon: <FileTextOutlined style={{ color: '#0ea5e9' }} />,
         bg: '#e0f2fe'
       },
       {
         key: 'totalLessons',
-        title: 'Lessons',
+        title: translate('Lessons', 'Bài học'),
         value: syllabusReport.totalLessons ?? 0,
-        subtitle: 'Learning units',
+        subtitle: translate('Learning units', 'Đơn vị học tập'),
         icon: <BookOutlined style={{ color: '#f97316' }} />,
         bg: '#fff7ed'
       },
@@ -760,7 +886,7 @@ const ManagerDashboard = () => {
 
     const levelDonutData = Object.values(
       processedSyllabuses.reduce((acc, item) => {
-        const key = item.levelName || 'Unknown';
+        const key = item.levelName || translate('Unknown', 'Không xác định');
         acc[key] = acc[key] || { level: key, value: 0 };
         acc[key].value += 1;
         return acc;
@@ -780,7 +906,7 @@ const ManagerDashboard = () => {
       <>
         {renderSummaryCards(cards)}
         {processedSyllabuses.length === 0 ? (
-          <Empty description="No syllabus usage" />
+          <Empty description={translate('No syllabus usage', 'Không có dữ liệu sử dụng giáo trình')} />
         ) : (
           <>
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -797,10 +923,12 @@ const ManagerDashboard = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                     <ReadOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Usage by syllabus</div>
+                    <div className="manager-dashboard-v2__title">
+                      {translate('Usage by syllabus', 'Mức sử dụng theo giáo trình')}
+                    </div>
                   </div>
                   {usageChartData.length === 0 ? (
-                    <Empty description="No usage data" />
+                    <Empty description={translate('No usage data', 'Không có dữ liệu sử dụng')} />
                   ) : (
                     <div style={{ width: '100%', height: 280 }}>
                       <ResponsiveContainer>
@@ -829,10 +957,12 @@ const ManagerDashboard = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                     <BarChartOutlined style={{ color: '#a855f7', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Average completion</div>
+                    <div className="manager-dashboard-v2__title">
+                      {translate('Average completion', 'Tỉ lệ hoàn thành trung bình')}
+                    </div>
                   </div>
                   {completionChartData.length === 0 ? (
-                    <Empty description="No completion data" />
+                    <Empty description={translate('No completion data', 'Không có dữ liệu hoàn thành')} />
                   ) : (
                     <div style={{ width: '100%', height: 280 }}>
                       <ResponsiveContainer>
@@ -868,10 +998,12 @@ const ManagerDashboard = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                     <FunnelPlotOutlined style={{ color: '#10b981', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Syllabus by level</div>
+                    <div className="manager-dashboard-v2__title">
+                      {translate('Syllabus by level', 'Giáo trình theo cấp độ')}
+                    </div>
                   </div>
                   {levelDonutData.length === 0 ? (
-                    <Empty description="No level data" />
+                    <Empty description={translate('No level data', 'Không có dữ liệu cấp độ')} />
                   ) : (
                     <div style={{ width: '100%', height: 280 }}>
                       <ResponsiveContainer>
@@ -911,10 +1043,12 @@ const ManagerDashboard = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                     <BarChartOutlined style={{ color: '#f97316', fontSize: 20 }} />
-                    <div className="manager-dashboard-v2__title">Chapters vs lessons</div>
+                    <div className="manager-dashboard-v2__title">
+                      {translate('Chapters vs lessons', 'Chương so với bài học')}
+                    </div>
                   </div>
                   {contentStackedData.length === 0 ? (
-                    <Empty description="No content data" />
+                    <Empty description={translate('No content data', 'Không có dữ liệu nội dung')} />
                   ) : (
                     <div style={{ width: '100%', height: 280 }}>
                       <ResponsiveContainer>
@@ -945,15 +1079,17 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <ReadOutlined style={{ color: '#7c3aed', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Detailed syllabus list</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Detailed syllabus list', 'Danh sách giáo trình chi tiết')}
+                </div>
               </div>
               <div className="mdv2-table mdv2-scroll">
                 <div className="mdv2-table__head" style={{ gridTemplateColumns: '2fr 1fr 0.8fr 1.2fr 1fr' }}>
-                  <div>Syllabus</div>
-                  <div>Level</div>
-                  <div>Content</div>
-                  <div>Usage</div>
-                  <div>Completion</div>
+                  <div>{translate('Syllabus', 'Giáo trình')}</div>
+                  <div>{translate('Level', 'Cấp độ')}</div>
+                  <div>{translate('Content', 'Nội dung')}</div>
+                  <div>{translate('Usage', 'Sử dụng')}</div>
+                  <div>{translate('Completion', 'Hoàn thành')}</div>
                 </div>
                 {processedSyllabuses.map((syl, idx) => {
                   const completion = Number(syl.avgCompletion ?? 0);
@@ -968,12 +1104,15 @@ const ManagerDashboard = () => {
                       <div style={{ fontWeight: 500 }}>{syl.syllabusName}</div>
                       <div><Tag color="blue" style={{ margin: 0 }}>{syl.levelName}</Tag></div>
                       <div style={{ fontSize: 12, color: '#6b7280' }}>
-                        {syl.chapters ?? 0}ch / {syl.lessons ?? 0}ls
+                        {`${syl.chapters ?? 0} ${translate('chapters', 'chương')} / ${syl.lessons ?? 0} ${translate('lessons', 'bài')}`}
                       </div>
                       <div>
                         {usageClasses > 0 ? (
                           <Tag color="green" style={{ margin: 0, fontWeight: 600 }}>
-                            {usageClasses} {usageClasses === 1 ? 'class' : 'classes'}
+                            {usageClasses}{' '}
+                            {usageClasses === 1
+                              ? translate('class', 'lớp')
+                              : translate('classes', 'lớp')}
                           </Tag>
                         ) : (
                           <span style={{ color: '#9ca3af' }}>0</span>
@@ -993,34 +1132,34 @@ const ManagerDashboard = () => {
 
   const renderLevelsTab = () => {
     if (!levelReport || processedLevels.length === 0) {
-      return <Empty description="No level data" />;
+      return <Empty description={translate('No level data', 'Không có dữ liệu cấp độ')} />;
     }
 
     const cards = [
       {
         key: 'totalLevels',
-        title: 'Levels',
+        title: translate('Levels', 'Cấp độ'),
         value: levelReport.totalLevels ?? 0,
-        subtitle: 'Learning tracks',
+        subtitle: translate('Learning tracks', 'Lộ trình học tập'),
         icon: <FunnelPlotOutlined style={{ color: '#a855f7' }} />,
         bg: '#f5f3ff'
       },
       {
         key: 'levelStudents',
-        title: 'Students',
+        title: translate('Students', 'Học viên'),
         value: levelReport.totalStudentsAcrossLevels ?? 0,
-        subtitle: 'Across levels',
+        subtitle: translate('Across levels', 'Trên mọi cấp độ'),
         icon: <TeamOutlined style={{ color: '#22c55e' }} />,
         bg: '#ecfdf5'
       },
       {
         key: 'avgCompletion',
-        title: 'Avg completion',
+        title: translate('Avg completion', 'Hoàn thành trung bình'),
         value: `${(
           processedLevels.reduce((sum, lv) => sum + (lv.completion ?? 0), 0) /
           (processedLevels.length || 1)
         ).toFixed(1)}%`,
-        subtitle: 'Mean completion rate',
+        subtitle: translate('Mean completion rate', 'Tỉ lệ hoàn thành trung bình'),
         icon: <BarChartOutlined style={{ color: '#0ea5e9' }} />,
         bg: '#e0f2fe'
       },
@@ -1062,7 +1201,9 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Resource Allocation by Level</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Resource Allocation by Level', 'Phân bổ nguồn lực theo cấp độ')}
+                </div>
               </div>
               <div style={{ width: '100%', height: 320 }}>
                 <ResponsiveContainer>
@@ -1094,10 +1235,12 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <BarChartOutlined style={{ color: '#a855f7', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Average completion</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Average completion', 'Tỉ lệ hoàn thành trung bình')}
+                </div>
               </div>
               {completionTrend.length === 0 ? (
-                <Empty description="No completion data" />
+                <Empty description={translate('No completion data', 'Không có dữ liệu hoàn thành')} />
               ) : (
                 <div style={{ width: '100%', height: 320 }}>
                   <ResponsiveContainer>
@@ -1109,7 +1252,12 @@ const ManagerDashboard = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={140} />
-                      <ReTooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Completion']} />
+                      <ReTooltip
+                        formatter={(value) => [
+                          `${Number(value).toFixed(1)}%`,
+                          translate('Completion', 'Hoàn thành'),
+                        ]}
+                      />
                       <Bar dataKey="completion" radius={[0, 6, 6, 0]} fill="#22c55e" />
                     </ReBarChart>
                   </ResponsiveContainer>
@@ -1133,7 +1281,9 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#22c55e', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Students distribution by level</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Students distribution by level', 'Phân bổ học viên theo cấp độ')}
+                </div>
               </div>
               <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
@@ -1172,7 +1322,9 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <FunnelPlotOutlined style={{ color: '#a78bfa', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Level funnel</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Level funnel', 'Phễu cấp độ')}
+                </div>
                     </div>
               <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
@@ -1180,7 +1332,10 @@ const ManagerDashboard = () => {
                     <ReTooltip
                       formatter={(value, name, props) => {
                         const p = props?.payload || {};
-                        return [`${p.trueValue ?? 0} students`, p.name];
+                        return [
+                          `${p.trueValue ?? 0} ${translate('students', 'học viên')}`,
+                          p.name,
+                        ];
                       }}
                       contentStyle={{ fontSize: 12 }}
                     />
@@ -1228,16 +1383,18 @@ const ManagerDashboard = () => {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <TeamOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-            <div className="manager-dashboard-v2__title">Level details</div>
+            <div className="manager-dashboard-v2__title">
+              {translate('Level details', 'Chi tiết cấp độ')}
+            </div>
           </div>
           <div className="mdv2-level-summary" style={{ marginTop: 16 }}>
             <div className="mdv2-level-summary__head">
-              <div>Level</div>
-              <div>Students</div>
-              <div>Teachers</div>
-              <div>Classes</div>
-              <div>Syllabuses</div>
-              <div>Completion</div>
+              <div>{translate('Level', 'Cấp độ')}</div>
+              <div>{translate('Students', 'Học viên')}</div>
+              <div>{translate('Teachers', 'Giáo viên')}</div>
+              <div>{translate('Classes', 'Lớp học')}</div>
+              <div>{translate('Syllabuses', 'Giáo trình')}</div>
+              <div>{translate('Completion', 'Hoàn thành')}</div>
             </div>
             {processedLevels.map((lv, idx) => {
               const completion = Number(lv.completion ?? 0);
@@ -1261,32 +1418,32 @@ const ManagerDashboard = () => {
 
   const renderClassesTab = () => {
     if (!classesReport) {
-      return <Empty description="No class data" />;
+      return <Empty description={translate('No class data', 'Không có dữ liệu lớp học')} />;
     }
 
     const summary = classesReport.summary || {};
     const cards = [
       {
         key: 'activeClasses',
-        title: 'Active classes',
+        title: translate('Active classes', 'Lớp đang hoạt động'),
         value: summary.activeClasses ?? 0,
-        subtitle: 'Running now',
+        subtitle: translate('Running now', 'Đang diễn ra'),
         icon: <HomeOutlined style={{ color: '#22c55e' }} />,
         bg: '#ecfdf5'
       },
       {
         key: 'completedClasses',
-        title: 'Completed classes',
+        title: translate('Completed classes', 'Lớp đã hoàn thành'),
         value: summary.completedClasses ?? 0,
-        subtitle: 'Finished',
+        subtitle: translate('Finished', 'Đã kết thúc'),
         icon: <HomeOutlined style={{ color: '#6366f1' }} />,
         bg: '#eef2ff'
       },
       {
         key: 'avgStudentsPerClass',
-        title: 'Avg students/class',
+        title: translate('Avg students/class', 'Sĩ số trung bình'),
         value: Number(summary.avgStudentsPerClass ?? 0).toFixed(1),
-        subtitle: 'Density',
+        subtitle: translate('Density', 'Mật độ'),
         icon: <TeamOutlined style={{ color: '#0ea5e9' }} />,
         bg: '#e0f2fe'
       },
@@ -1296,7 +1453,7 @@ const ManagerDashboard = () => {
       return (
         <>
           {renderSummaryCards(cards)}
-          <Empty description="No top classes" />
+          <Empty description={translate('No top classes', 'Không có lớp học nổi bật')} />
         </>
       );
     }
@@ -1336,7 +1493,9 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <HomeOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Student count by class</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Student count by class', 'Sĩ số theo lớp')}
+                </div>
                     </div>
               <div style={{ width: '100%', height: 360 }}>
                 <ResponsiveContainer>
@@ -1365,7 +1524,9 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <TeamOutlined style={{ color: '#22c55e', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Student share by class</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Student share by class', 'Tỉ trọng học viên theo lớp')}
+                </div>
               </div>
               <div style={{ width: '100%', height: 360 }}>
                 <ResponsiveContainer>
@@ -1407,7 +1568,9 @@ const ManagerDashboard = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <BarChartOutlined style={{ color: '#f97316', fontSize: 20 }} />
-                <div className="manager-dashboard-v2__title">Scale vs quality</div>
+                <div className="manager-dashboard-v2__title">
+                  {translate('Scale vs quality', 'Quy mô và chất lượng')}
+                </div>
               </div>
               <div style={{ width: '100%', height: 360 }}>
                 <ResponsiveContainer>
@@ -1417,7 +1580,20 @@ const ManagerDashboard = () => {
                     <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 12 }} />
                     <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v.toFixed(0)}%`} />
                     <Legend />
-                    <ReTooltip formatter={(value, name) => name === 'avgScore' ? [`${Number(value).toFixed(1)}%`, 'Avg score'] : [value, name]} />
+                    <ReTooltip
+                      formatter={(value, name) => {
+                        if (name === 'avgScore') {
+                          return [
+                            `${Number(value).toFixed(1)}%`,
+                            translate('Avg score', 'Điểm trung bình'),
+                          ];
+                        }
+                        if (name === 'students') {
+                          return [value, translate('Students', 'Học viên')];
+                        }
+                        return [value, name];
+                      }}
+                    />
                     <Bar yAxisId="left" dataKey="students" fill="#6366f1" radius={[6, 6, 0, 0]} />
                     <Line yAxisId="right" type="monotone" dataKey="avgScore" stroke="#22c55e" strokeWidth={2.2} dot={{ r: 4 }} />
                   </ComposedChart>
@@ -1438,14 +1614,16 @@ const ManagerDashboard = () => {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <HomeOutlined style={{ color: '#6366f1', fontSize: 20 }} />
-            <div className="manager-dashboard-v2__title">Top classes</div>
+            <div className="manager-dashboard-v2__title">
+              {translate('Top classes', 'Lớp học nổi bật')}
+            </div>
           </div>
           <div className="mdv2-table mdv2-scroll">
             <div className="mdv2-table__head" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr' }}>
-              <div>Class</div>
-              <div>Students</div>
-              <div>Avg score</div>
-              <div>Completion</div>
+              <div>{translate('Class', 'Lớp')}</div>
+              <div>{translate('Students', 'Học viên')}</div>
+              <div>{translate('Avg score', 'Điểm trung bình')}</div>
+              <div>{translate('Completion', 'Hoàn thành')}</div>
             </div>
             {processedTopClasses.map((c, idx) => {
               const completion = Number(c.completionRate ?? 0) * 100;
@@ -1506,7 +1684,10 @@ const ManagerDashboard = () => {
             </div>
           )}
 
-          <LoadingWithEffect loading={tabLoading} message="Loading...">
+          <LoadingWithEffect
+            loading={tabLoading}
+            message={translate('Loading...', 'Đang tải...')}
+          >
             {renderTabContent()}
           </LoadingWithEffect>
         </div>
