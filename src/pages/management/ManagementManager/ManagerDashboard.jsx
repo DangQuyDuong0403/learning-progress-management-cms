@@ -41,6 +41,29 @@ const ROLE_COLORS = ['#c0aaff', '#80b9ff', '#7dd3b8', '#ffc98a', '#f79ac0', '#9a
 // Reuse pastel palette from pie for a consistent look
 const FUNNEL_COLORS = ROLE_COLORS;
 
+const ROLE_TEXTS = {
+  student: { en: 'Student', vi: 'Học viên' },
+  teacher: { en: 'Teacher', vi: 'Giáo viên' },
+  manager: { en: 'Manager', vi: 'Quản lý' },
+  admin: { en: 'Admin', vi: 'Quản trị viên' },
+  test_taker: { en: 'Test Taker', vi: 'Thí sinh' },
+  teaching_assistant: { en: 'Teaching Assistant', vi: 'Trợ giảng' },
+};
+
+const ALERT_TEXTS = {
+  danger: { en: 'Danger', vi: 'Nguy hiểm' },
+  warning: { en: 'Warning', vi: 'Cảnh báo' },
+  success: { en: 'Success', vi: 'Thành công' },
+  info: { en: 'Info', vi: 'Thông tin' },
+};
+
+const TEACHER_STATUS_TEXTS = {
+  normal: { en: 'Normal', vi: 'Bình thường' },
+  busy: { en: 'Busy', vi: 'Bận' },
+  overloaded: { en: 'Overloaded', vi: 'Quá tải' },
+  critical: { en: 'Critical', vi: 'Khẩn cấp' },
+};
+
 const ManagerDashboard = () => {
   const { theme } = useTheme();
   const { i18n } = useTranslation();
@@ -74,6 +97,54 @@ const ManagerDashboard = () => {
       return vietnameseText ? `${englishText} / ${vietnameseText}` : englishText;
     },
     [i18n.language]
+  );
+
+  const formatEnumLabel = useCallback((text = '') => {
+    const safe = String(text || '');
+    return safe
+      .toLowerCase()
+      .split('_')
+      .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ''))
+      .join(' ');
+  }, []);
+
+  const localizeRole = useCallback(
+    (role) => {
+      const key = String(role || '').toLowerCase();
+      const entry = ROLE_TEXTS[key];
+      if (entry) {
+        return translate(entry.en, entry.vi);
+      }
+      const fallback = formatEnumLabel(role);
+      return translate(fallback, fallback);
+    },
+    [formatEnumLabel, translate]
+  );
+
+  const localizeAlertType = useCallback(
+    (type) => {
+      const key = String(type || '').toLowerCase();
+      const entry = ALERT_TEXTS[key];
+      if (entry) {
+        return translate(entry.en, entry.vi);
+      }
+      const fallback = formatEnumLabel(type);
+      return translate(fallback, fallback);
+    },
+    [formatEnumLabel, translate]
+  );
+
+  const localizeTeacherStatus = useCallback(
+    (status) => {
+      const key = String(status || '').toLowerCase();
+      const entry = TEACHER_STATUS_TEXTS[key];
+      if (entry) {
+        return translate(entry.en, entry.vi);
+      }
+      const fallback = formatEnumLabel(status);
+      return translate(fallback, fallback);
+    },
+    [formatEnumLabel, translate]
   );
 
   // Custom rectangular shape for funnel slices (square ends)
@@ -380,14 +451,25 @@ const ManagerDashboard = () => {
                         cx="50%"
                         cy="46%"
                         outerRadius={110}
-                        label={({ role, percentage }) => `${role} (${Number(percentage ?? 0).toFixed(1)}%)`}
+                        label={({ role, percentage }) => `${localizeRole(role)} (${Number(percentage ?? 0).toFixed(1)}%)`}
                       >
                         {roleRatios.map((entry, index) => (
                           <Cell key={`overview-role-${index}`} fill={ROLE_COLORS[index % ROLE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Legend verticalAlign="bottom" align="center" layout="horizontal" wrapperStyle={{ marginTop: 12 }} />
-                      <ReTooltip formatter={(value, name) => [value, name]} />
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        layout="horizontal"
+                        wrapperStyle={{ marginTop: 12 }}
+                        formatter={(value) => localizeRole(value)}
+                      />
+                      <ReTooltip
+                        formatter={(value, name, props) => {
+                          const pct = props?.payload?.percentage;
+                          return [`${value} (${Number(pct ?? 0).toFixed(1)}%)`, localizeRole(name)];
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -418,13 +500,8 @@ const ManagerDashboard = () => {
                 <div style={{ maxHeight: 320, overflow: 'auto', paddingRight: 4 }}>
                   {(overview.alerts || []).map((al, idx) => (
                     <div className="mdv2-alert" key={idx}>
-                      <div className="mdv2-alert__type">{al.type}</div>
+                      <div className="mdv2-alert__type">{localizeAlertType(al.type)}</div>
                       <div className="mdv2-alert__msg">{al.message}</div>
-                      {al.actionUrl ? (
-                        <a className="mdv2-alert__action" href={al.actionUrl} target="_blank" rel="noreferrer">
-                          {translate('Action', 'Xem')}
-                        </a>
-                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -615,7 +692,7 @@ const ManagerDashboard = () => {
                     <div className="mdv2-table__row" key={t.teacherName || idx}>
                       <div>{t.teacherName}</div>
                       <div>{t.classes ?? 0}</div>
-                      <div>{t.status}</div>
+                      <div>{localizeTeacherStatus(t.status)}</div>
                     </div>
                   ))}
                 </div>
@@ -705,17 +782,25 @@ const ManagerDashboard = () => {
                         cx="50%"
                         cy="46%"
                         outerRadius={110}
-                        label={({ name, percentage }) => `${name} (${Number(percentage ?? 0).toFixed(1)}%)`}
+                        label={({ name, percentage }) => `${localizeRole(name)} (${Number(percentage ?? 0).toFixed(1)}%)`}
                       >
                         {rolePieData.map((entry, index) => (
                           <Cell key={`users-role-${index}`} fill={ROLE_COLORS[index % ROLE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Legend verticalAlign="bottom" align="center" layout="horizontal" wrapperStyle={{ marginTop: 12 }} />
-                      <ReTooltip formatter={(value, name, props) => {
-                        const pct = props?.payload?.percentage;
-                        return [`${value} (${(pct ?? 0).toFixed(1)}%)`, name];
-                      }} />
+                      <Legend
+                        verticalAlign="bottom"
+                        align="center"
+                        layout="horizontal"
+                        wrapperStyle={{ marginTop: 12 }}
+                        formatter={(value) => localizeRole(value)}
+                      />
+                      <ReTooltip
+                        formatter={(value, name, props) => {
+                          const pct = props?.payload?.percentage;
+                          return [`${value} (${(pct ?? 0).toFixed(1)}%)`, localizeRole(name)];
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
