@@ -42,13 +42,14 @@ const TeacherClassChapterList = () => {
 	
 	// Determine which layout to use based on user role
 	const userRole = user?.role?.toLowerCase();
-	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant' || userRole === 'student') 
+	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant' || userRole === 'student' || userRole === 'test_taker') 
 		? ThemedLayoutNoSidebar 
 		: ThemedLayoutWithSidebar;
 	
-	// Check if user is MANAGER, STUDENT or TEACHING_ASSISTANT (view-only access for TA)
+	// Check if user is MANAGER, STUDENT, TEST_TAKER or TEACHING_ASSISTANT (view-only access for TA)
 	const isManager = userRole === 'manager';
 	const isStudent = userRole === 'student';
+	const isTestTaker = userRole === 'test_taker';
 	const isTeachingAssistant = userRole === 'teaching_assistant';
 
 	// Check URL path and redirect if student tries to access manager routes
@@ -106,6 +107,8 @@ const TeacherClassChapterList = () => {
 				return '/teaching-assistant/classes';
 			case 'student':
 				return '/student/classes';
+			case 'test_taker':
+				return '/test-taker/classes';
 			default:
 				return '/manager/classes';
 		}
@@ -634,7 +637,7 @@ const TeacherClassChapterList = () => {
 						</Space>
 					</Col>
 					<Col>
-				{!isManager && !isStudent && !isTeachingAssistant && (
+				{!isManager && !isStudent && !isTestTaker && !isTeachingAssistant && (
 							<Space>
 								<Button
 									icon={<DownloadOutlined />}

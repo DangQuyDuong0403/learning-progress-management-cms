@@ -1134,9 +1134,7 @@ const StudentList = () => {
         
         // Refresh the list to get updated data from server
         fetchStudents(pagination.current, pagination.pageSize, searchValue, statusFilter, roleNameFilter, sortBy, sortDir);
-      } else {
-        throw new Error(response.message || 'Import failed');
-      }
+      } 
     } catch (error) {
       console.error('Error importing students:', error);
       spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || t('studentManagement.importError'));

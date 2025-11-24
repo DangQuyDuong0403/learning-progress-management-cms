@@ -2543,6 +2543,7 @@ useEffect(() => {
 								maxHeight: '180px',
 								overflowY: 'auto',
 								padding: '16px',
+								paddingBottom: '40px',
 								fontSize: '16px',
 								lineHeight: '1.8',
 								color: '#333',
@@ -2564,12 +2565,17 @@ useEffect(() => {
 						{/* Character Counter for Question (1000 max) */}
 						<div
 							style={{
-								marginTop: '6px',
-								marginRight: '16px',
-								textAlign: 'right',
+								position: 'absolute',
+								bottom: '8px',
+								right: '16px',
 								fontSize: '12px',
 								fontWeight: 600,
 								color: questionCharCount >= 1000 ? '#ff4d4f' : '#595959',
+								pointerEvents: 'none',
+								zIndex: 10,
+								background: 'rgba(240, 247, 255, 0.9)',
+								padding: '2px 6px',
+								borderRadius: '4px',
 							}}>
 							{`${Math.min(questionCharCount, 1000)}/1000`}
 						</div>

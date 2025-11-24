@@ -618,19 +618,19 @@ export default function ThemedHeader({
   const getRoleDisplayName = () => {
     switch (user?.role) {
       case 'ADMIN':
-        return 'Admin';
+        return t('header.roleAdmin');
       case 'MANAGER':
-        return 'Manager';
+        return t('header.roleManager');
       case 'TEACHER':
-        return 'Teacher';
+        return t('header.roleTeacher');
       case 'TEACHING_ASSISTANT':
-        return 'Teaching Assistant';
+        return t('header.roleTeachingAssistant');
       case 'STUDENT':
-        return 'Student';
+        return t('header.roleStudent');
       case 'TEST_TAKER':
-        return 'Test Taker';
+        return t('header.roleTestTaker');
       default:
-        return 'User';
+        return t('header.roleUser');
     }
   };
 
