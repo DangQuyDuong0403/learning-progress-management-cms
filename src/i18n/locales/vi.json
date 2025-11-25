@@ -2522,6 +2522,7 @@
     "confirm": "Xác nhận",
     "aiGenerationSettings": "Cài đặt tạo câu hỏi AI",
     "questionSettings": "Cài đặt câu hỏi",
+    "generateQuestionsFromFile": "Tạo câu hỏi từ file",
     "chapter": "Chương",
     "lesson": "Bài học",
     "level": "Cấp độ",

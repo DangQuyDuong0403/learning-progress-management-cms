@@ -2536,6 +2536,7 @@
     "confirm": "Confirm",
     "aiGenerationSettings": "AI Generation Settings",
     "questionSettings": "Question Settings",
+    "generateQuestionsFromFile": "Generate Questions from File",
     "chapter": "Chapter",
     "lesson": "Lesson",
     "level": "Level",

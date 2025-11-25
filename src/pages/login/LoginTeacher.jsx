@@ -176,7 +176,7 @@ export default function LoginTeacher() {
                                             <div className='mb-3'>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                     <label htmlFor='loginUsername' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
-                                                        {t('login.username')}
+                                                        {t('login.username')} 	<span style={{ color: 'red' }}>*</span>
                                                     </label>
                                                     <Input
                                                         id='loginUsername'
@@ -191,7 +191,7 @@ export default function LoginTeacher() {
                                             <div className='mb-4'>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                     <label htmlFor='loginPassword' className='form-label' style={{...getLabelStyle(isSunTheme), width: '90%', textAlign: 'left'}}>
-                                                        {t('login.password')}
+                                                        {t('login.password')} 	<span style={{ color: 'red' }}>*</span>
                                                     </label>
                                                     <Input.Password
                                                         id='loginPassword'

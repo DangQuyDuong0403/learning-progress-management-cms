@@ -2516,7 +2516,11 @@ const AIGenerateQuestions = () => {
                 }}
               >
                 <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>
-                  {t('dailyChallenge.questionSettings', 'Question Settings')}
+                  {questionSettingsMode === 'upload' 
+                    ? t('dailyChallenge.generateQuestionsFromFile', 'Generate Questions from File')
+                    : questionSettingsMode === 'manual'
+                    ? t('dailyChallenge.questionSettings', 'Question Settings')
+                    : t('dailyChallenge.questionSettings', 'Question Settings')}
                 </Title>
 
                 {/* Hidden input to allow direct upload from the option card */}
