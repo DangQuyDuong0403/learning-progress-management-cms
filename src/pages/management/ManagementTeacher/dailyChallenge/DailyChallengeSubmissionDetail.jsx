@@ -113,6 +113,18 @@ const DailyChallengeSubmissionDetail = () => {
   const normalizedRole = (userRole || '').toString().toLowerCase();
   const isStudent = normalizedRole === 'student' || normalizedRole === 'test_taker';
   const isManager = normalizedRole === 'manager';
+  const getSubmissionRoutePrefix = useCallback(() => {
+    if (isStudent) {
+      return normalizedRole === 'test_taker' ? '/test-taker' : '/student';
+    }
+    if (normalizedRole === 'teaching_assistant') {
+      return '/teaching-assistant';
+    }
+    if (isManager) {
+      return '/manager';
+    }
+    return '/teacher';
+  }, [isStudent, isManager, normalizedRole]);
   const getFeedbackRouteBase = useCallback(() => {
     if (isStudent) {
       return normalizedRole === 'test_taker' ? '/test-taker' : '/student';
@@ -1641,7 +1653,7 @@ useEffect(() => {
     if (className) qs.set('className', className);
     if (challengeName) qs.set('challengeName', challengeName);
     const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    const backPath = `/teacher/daily-challenges/detail/${id}/submissions${suffix}`;
+    const backPath = `${getSubmissionRoutePrefix()}/daily-challenges/detail/${id}/submissions${suffix}`;
     // Priority: Use location.state if available (when navigating back from AIGenerateFeedback)
     // Otherwise preserve subtitle/className from dailyChallengeData
     let preservedSubtitle = dailyChallengeData?.subtitle || null;
@@ -1663,7 +1675,7 @@ useEffect(() => {
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, id, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName, location?.state?.classId, location.search]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, getSubmissionRoutePrefix, id, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName, location?.state?.classId, location.search]);
 
   // Build question navigation list (must be before early return)
   const getQuestionNavigation = useCallback(() => {

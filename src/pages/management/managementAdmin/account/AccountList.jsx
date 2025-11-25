@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import {
@@ -34,6 +34,13 @@ import accountManagementApi from '../../../../apis/backend/accountManagement';
 import { useSelector } from 'react-redux';
 
 const { Option } = Select;
+
+const renderRequiredLabel = (label) => (
+	<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+		<span>{label}</span>
+		<span style={{ color: '#ef4444' }}>*</span>
+	</span>
+);
 
 const AccountList = () => {
 	const { t } = useTranslation();
@@ -232,6 +239,24 @@ const AccountList = () => {
 			document.removeEventListener('mousedown', handleClickOutside);
 		};
 	}, [filterDropdown.visible]);
+
+	const emailRules = useMemo(
+		() => [
+			{ required: true, message: t('accountManagement.emailRequired') },
+			{ type: 'email', message: t('accountManagement.emailInvalid') },
+			{
+				validator: (_, value) => {
+					if (!value) return Promise.resolve();
+					const normalized = value.trim().toLowerCase();
+					if (normalized.endsWith('.com.com')) {
+						return Promise.reject(new Error(t('accountManagement.emailInvalid')));
+					}
+					return Promise.resolve();
+				},
+			},
+		],
+		[t]
+	);
 
 	const handleSearch = (value) => {
 		setSearchText(value);
@@ -1130,8 +1155,11 @@ const AccountList = () => {
 							<Row gutter={16}>
 								<Col span={24}>
 									<Form.Item
-										label={t('accountManagement.email')}
-										name='email'>
+										label={renderRequiredLabel(t('accountManagement.email'))}
+										name='email'
+										rules={emailRules}
+										required
+									>
 										<Input placeholder={t('accountManagement.emailPlaceholder')} />
 									</Form.Item>
 								</Col>
@@ -1142,8 +1170,11 @@ const AccountList = () => {
 								<Row gutter={16}>
 									<Col span={12}>
 										<Form.Item
-											label={t('accountManagement.firstName')}
-											name='firstName'>
+											label={renderRequiredLabel(t('accountManagement.firstName'))}
+											name='firstName'
+											rules={[{ required: true, message: t('accountManagement.firstNameRequired') }]}
+											required
+										>
 											<Input
 												placeholder={t('accountManagement.firstNamePlaceholder')}
 											/>
@@ -1151,8 +1182,11 @@ const AccountList = () => {
 									</Col>
 									<Col span={12}>
 										<Form.Item
-											label={t('accountManagement.lastName')}
-											name='lastName'>
+											label={renderRequiredLabel(t('accountManagement.lastName'))}
+											name='lastName'
+											rules={[{ required: true, message: t('accountManagement.lastNameRequired') }]}
+											required
+										>
 											<Input
 												placeholder={t('accountManagement.lastNamePlaceholder')}
 											/>
@@ -1163,15 +1197,21 @@ const AccountList = () => {
 								<Row gutter={16}>
 									<Col span={12}>
 										<Form.Item
-											label={t('accountManagement.email')}
-											name='email'>
+											label={renderRequiredLabel(t('accountManagement.email'))}
+											name='email'
+											rules={emailRules}
+											required
+										>
 											<Input placeholder={t('accountManagement.emailPlaceholder')} />
 										</Form.Item>
 									</Col>
 									<Col span={12}>
 										<Form.Item
-											label={t('accountManagement.role')}
-											name='roleName'>
+											label={renderRequiredLabel(t('accountManagement.role'))}
+											name='roleName'
+											rules={[{ required: true, message: t('accountManagement.roleRequired') }]}
+											required
+										>
 											<Select value='MANAGER' disabled style={{ color: '#666' }}>
 												<Option value='MANAGER'>
 													{t('accountManagement.manager')}
@@ -1187,15 +1227,21 @@ const AccountList = () => {
 						<Row gutter={16}>
 							<Col span={12}>
 								<Form.Item
-									label={t('accountManagement.email')}
-									name='email'>
+									label={renderRequiredLabel(t('accountManagement.email'))}
+									name='email'
+									rules={emailRules}
+									required
+								>
 									<Input placeholder={t('accountManagement.emailPlaceholder')} />
 								</Form.Item>
 							</Col>
 							<Col span={12}>
 								<Form.Item
-									label={t('accountManagement.role')}
-									name='roleName'>
+									label={renderRequiredLabel(t('accountManagement.role'))}
+									name='roleName'
+									rules={[{ required: true, message: t('accountManagement.roleRequired') }]}
+									required
+								>
 									<Select placeholder={t('accountManagement.selectRole')}>
 										<Option value='ADMIN'>
 											{t('accountManagement.admin')}

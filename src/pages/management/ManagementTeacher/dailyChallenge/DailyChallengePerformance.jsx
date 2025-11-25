@@ -808,7 +808,10 @@ const DailyChallengePerformance = () => {
             onClick={() => {
               // Preserve pagination state from location.state when navigating to submissions
               const savedState = location.state || {};
-              navigate(`/teacher/daily-challenges/detail/${id}/submissions`, {
+              const submissionsPath = userRole === 'manager'
+                ? `/manager/daily-challenges/detail/${id}/submissions`
+                : `/teacher/daily-challenges/detail/${id}/submissions`;
+              navigate(submissionsPath, {
                 state: {
                   ...challengeInfo,
                   ...savedState, // Preserve pagination state

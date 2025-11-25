@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Row, Col, Empty } from 'antd';
 import {
   UserOutlined,
@@ -29,6 +29,7 @@ import {
   CartesianGrid
 } from 'recharts';
 import './AdminDashboard.css';
+import { useTranslation } from 'react-i18next';
 dayjs.extend(relativeTime);
 
 const ROLE_COLORS = ['#c0aaff', '#80b9ff', '#7dd3b8', '#ffc98a', '#f79ac0', '#9aa7ff'];
@@ -38,8 +39,24 @@ const STATUS_COLORS = {
   INACTIVE: '#f7b7cf'
 };
 
+const ROLE_TEXTS = {
+  student: { en: 'Student', vi: 'Học viên' },
+  teacher: { en: 'Teacher', vi: 'Giáo viên' },
+  manager: { en: 'Manager', vi: 'Quản lý' },
+  admin: { en: 'Admin', vi: 'Quản trị viên' },
+  test_taker: { en: 'Test Taker', vi: 'Thí sinh' },
+  teaching_assistant: { en: 'Teaching Assistant', vi: 'Trợ giảng' },
+};
+
+const STATUS_TEXTS = {
+  active: { en: 'Active', vi: 'Hoạt động' },
+  pending: { en: 'Pending', vi: 'Đang chờ' },
+  inactive: { en: 'Inactive', vi: 'Ngừng hoạt động' },
+};
+
 const AdminDashboard = () => {
   const { theme } = useTheme();
+  const { i18n } = useTranslation();
 
   const [loading, setLoading] = useState(false);
   const [dashboard, setDashboard] = useState({ summary: null, roleBreakdown: [], statusBreakdown: [], recentAccounts: [] });
@@ -89,28 +106,38 @@ const AdminDashboard = () => {
     fetchGrowth();
   }, []);
 
+  const translate = useCallback(
+    (englishText, vietnameseText) => {
+      const lang = i18n.language || 'en';
+      if (lang.startsWith('vi')) return vietnameseText || englishText;
+      if (lang.startsWith('en')) return englishText;
+      return vietnameseText ? `${englishText} / ${vietnameseText}` : englishText;
+    },
+    [i18n.language]
+  );
+
   const summaryCards = useMemo(() => {
     const s = dashboard.summary || {};
     const total = s.totalAccounts ?? 0;
     const pct = (v) => {
       const denominator = total || 0;
-      if (!denominator) return '0% of total';
+      if (!denominator) return translate('0% of total', '0% tổng số');
       const p = ((v ?? 0) / denominator) * 100;
-      return `${p.toFixed(1)}% of total`;
+      return `${p.toFixed(1)}% ${translate('of total', 'tổng số')}`;
     };
 
     return [
       {
         key: 'totalAccounts',
-        title: 'Total accounts',
+        title: translate('Total accounts', 'Tổng tài khoản'),
         value: s.totalAccounts ?? 0,
-        subtitle: 'All users',
+        subtitle: translate('All users', 'Tất cả người dùng'),
         icon: <UserOutlined style={{ color: '#2b6cb0' }} />,
         bg: '#d6e6fb'
       },
       {
         key: 'activeAccounts',
-        title: 'Active',
+        title: translate('Active', 'Hoạt động'),
         value: s.activeAccounts ?? 0,
         subtitle: pct(s.activeAccounts),
         icon: <UsergroupAddOutlined style={{ color: '#1f7a3e' }} />,
@@ -118,7 +145,7 @@ const AdminDashboard = () => {
       },
       {
         key: 'pendingAccounts',
-        title: 'Pending',
+        title: translate('Pending', 'Đang chờ'),
         value: s.pendingAccounts ?? 0,
         subtitle: pct(s.pendingAccounts),
         icon: <ClockCircleOutlined style={{ color: '#b28000' }} />,
@@ -126,22 +153,22 @@ const AdminDashboard = () => {
       },
       {
         key: 'inactiveAccounts',
-        title: 'Inactive',
+        title: translate('Inactive', 'Ngừng hoạt động'),
         value: s.inactiveAccounts ?? 0,
-        subtitle: 'Locked accounts',
+        subtitle: translate('Locked accounts', 'Tài khoản bị khóa'),
         icon: <CloseCircleOutlined style={{ color: '#a11a2b' }} />,
         bg: '#ffd9df'
       },
       {
         key: 'newToday',
-        title: 'Today',
+        title: translate('Today', 'Hôm nay'),
         value: s.newToday ?? 0,
-        subtitle: 'New accounts',
+        subtitle: translate('New accounts', 'Tài khoản mới'),
         icon: <UserAddOutlined style={{ color: '#6b46c1' }} />,
         bg: '#efe1ff'
       }
     ];
-  }, [dashboard.summary]);
+  }, [dashboard.summary, translate]);
 
   const roleRows = useMemo(() => {
     return (dashboard.roleBreakdown || []).map((r, idx) => ({
@@ -198,6 +225,32 @@ const AdminDashboard = () => {
       .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ''))
       .join(' ');
   };
+
+  const localizeRole = useCallback(
+    (role) => {
+      const key = String(role || '').toLowerCase();
+      const entry = ROLE_TEXTS[key];
+      if (entry) {
+        return translate(entry.en, entry.vi);
+      }
+      const fallback = formatEnumLabel(role);
+      return translate(fallback, fallback);
+    },
+    [translate]
+  );
+
+  const localizeStatus = useCallback(
+    (status) => {
+      const key = String(status || '').toLowerCase();
+      const entry = STATUS_TEXTS[key];
+      if (entry) {
+        return translate(entry.en, entry.vi);
+      }
+      const fallback = formatEnumLabel(status);
+      return translate(fallback, fallback);
+    },
+    [translate]
+  );
 
   
 
@@ -279,10 +332,12 @@ const AdminDashboard = () => {
                 }}>
                   <UserSwitchOutlined style={{ color: '#8b5cf6', fontSize: 20 }} />
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>Role distribution</div>
+                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>
+                  {translate('Role distribution', 'Phân bổ vai trò')}
+                </div>
               </div>
               {rolePieData.length === 0 && !loading ? (
-                <Empty description="No data" />
+                <Empty description={translate('No data', 'Không có dữ liệu')} />
               ) : (
                 <div style={{ width: '100%', height: 380, overflow: 'visible' }}>
                   <ResponsiveContainer>
@@ -294,7 +349,7 @@ const AdminDashboard = () => {
                         cx="50%"
                         cy="46%"
                         outerRadius={105}
-                        label={({ name, percentage }) => `${formatEnumLabel(name)} (${(percentage ?? 0).toFixed(1)}%)`}
+                        label={({ name, percentage }) => `${localizeRole(name)} (${(percentage ?? 0).toFixed(1)}%)`}
                       >
                         {rolePieData.map((entry, index) => (
                           <Cell key={`cell-role-${index}`} fill={ROLE_COLORS[index % ROLE_COLORS.length]} />
@@ -305,12 +360,14 @@ const AdminDashboard = () => {
                         align="center"
                         layout="horizontal"
                         wrapperStyle={{ marginTop: 12 }}
-                        formatter={(value) => formatEnumLabel(value)}
+                        formatter={(value) => localizeRole(value)}
                       />
-                      <ReTooltip formatter={(value, name, props) => {
-                        const pct = props?.payload?.percentage;
-                        return [`${value} (${(pct ?? 0).toFixed(1)}%)`, formatEnumLabel(name)];
-                      }} />
+                      <ReTooltip
+                        formatter={(value, name, props) => {
+                          const pct = props?.payload?.percentage;
+                          return [`${value} (${(pct ?? 0).toFixed(1)}%)`, localizeRole(name)];
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -340,10 +397,12 @@ const AdminDashboard = () => {
                 }}>
                   <StockOutlined style={{ color: '#10b981', fontSize: 20 }} />
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>Account status</div>
+                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>
+                  {translate('Account status', 'Trạng thái tài khoản')}
+                </div>
               </div>
               {statusPieData.length === 0 && !loading ? (
-                <Empty description="No data" />
+                <Empty description={translate('No data', 'Không có dữ liệu')} />
               ) : (
                 <div style={{ width: '100%', height: 380, overflow: 'visible' }}>
                   <ResponsiveContainer>
@@ -355,7 +414,7 @@ const AdminDashboard = () => {
                         cx="50%"
                         cy="46%"
                         outerRadius={105}
-                        label={({ name, percentage }) => `${formatEnumLabel(name)} (${(percentage ?? 0).toFixed(1)}%)`}
+                        label={({ name, percentage }) => `${localizeStatus(name)} (${(percentage ?? 0).toFixed(1)}%)`}
                       >
                         {statusPieData.map((entry, index) => (
                           <Cell key={`cell-status-${index}`} fill={STATUS_COLORS[entry.name] || '#bfbfbf'} />
@@ -366,12 +425,14 @@ const AdminDashboard = () => {
                         align="center"
                         layout="horizontal"
                         wrapperStyle={{ marginTop: 12 }}
-                        formatter={(value) => formatEnumLabel(value)}
+                        formatter={(value) => localizeStatus(value)}
                       />
-                      <ReTooltip formatter={(value, name, props) => {
-                        const pct = props?.payload?.percentage;
-                        return [`${value} (${(pct ?? 0).toFixed(1)}%)`, formatEnumLabel(name)];
-                      }} />
+                      <ReTooltip
+                        formatter={(value, name, props) => {
+                          const pct = props?.payload?.percentage;
+                          return [`${value} (${(pct ?? 0).toFixed(1)}%)`, localizeStatus(name)];
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -404,10 +465,12 @@ const AdminDashboard = () => {
                 }}>
                   <BarChartOutlined style={{ color: '#6366f1', fontSize: 20 }} />
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>Account growth (30 days)</div>
+                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>
+                  {translate('Account growth (30 days)', 'Tăng trưởng tài khoản (30 ngày)')}
+                </div>
               </div>
               {lineChartData.length === 0 && !growthLoading ? (
-                <Empty description="No data" />
+                <Empty description={translate('No data', 'Không có dữ liệu')} />
               ) : (
                 <div style={{ width: '100%', height: 360 }}>
                   <ResponsiveContainer>
@@ -415,8 +478,8 @@ const AdminDashboard = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis dataKey="label" tick={{ fontSize: 12 }} angle={-30} textAnchor="end" height={60} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                      <ReTooltip formatter={(value, name) => [value, formatEnumLabel(name)]} />
-                      <Legend formatter={(value) => formatEnumLabel(value)} />
+                      <ReTooltip formatter={(value, name) => [value, localizeRole(name)]} />
+                      <Legend formatter={(value) => localizeRole(value)} />
                       {growthSeries.map((series) => (
                         <Line
                           key={series.role}
@@ -458,11 +521,13 @@ const AdminDashboard = () => {
                 }}>
                   <UserAddOutlined style={{ color: '#fb923c', fontSize: 20 }} />
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>Recent accounts</div>
+                <div style={{ fontWeight: 700, fontSize: 20, color: '#111827' }}>
+                  {translate('Recent accounts', 'Tài khoản mới')}
+                </div>
               </div>
 
               {(!dashboard.recentAccounts || dashboard.recentAccounts.length === 0) && !loading ? (
-                <Empty description="No recent accounts" />
+                <Empty description={translate('No recent accounts', 'Không có tài khoản mới')} />
               ) : (
                 <div style={{ maxHeight: 420, overflow: 'auto', paddingRight: 4 }}>
                   {(dashboard.recentAccounts || []).map((acc, idx) => {
@@ -502,13 +567,13 @@ const AdminDashboard = () => {
                             padding: '6px 10px', borderRadius: 10,
                             background: roleBg, color: roleColor, fontWeight: 700, fontSize: 12
                           }}>
-                            {formatEnumLabel(acc.role)}
+                            {localizeRole(acc.role)}
                           </span>
                           <span style={{
                             padding: '6px 10px', borderRadius: 10,
                             background: statusBg, color: statusColor, fontWeight: 700, fontSize: 12
                           }}>
-                            {formatEnumLabel(acc.status)}
+                            {localizeStatus(acc.status)}
                           </span>
                         </div>
                         <div style={{ marginTop: 8, color: '#6b7280', fontSize: 13 }}>

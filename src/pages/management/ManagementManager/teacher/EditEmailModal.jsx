@@ -6,7 +6,8 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import authApi from '../../../../apis/backend/auth';
 
 const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const getText = (vi, en) => (i18n.language?.startsWith('vi') ? vi : en);
   const { theme } = useTheme();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,9 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
       console.log('Teacher EditEmailModal - Teacher ID:', teacherId);
       
       if (!validateEmail(values.email)) {
-        spaceToast.error(t('messages.invalidEmail'));
+        const invalidMsg = getText('Email không hợp lệ', 'Invalid email');
+        form.setFields([{ name: 'email', errors: [invalidMsg] }]);
+        spaceToast.error(invalidMsg);
         return;
       }
 
@@ -57,20 +60,20 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
       console.log('=== END DEBUG ===');
       
       if (response.success) {
-        spaceToast.success('Email update request sent successfully!');
+        spaceToast.success(getText('Yêu cầu cập nhật email đã được gửi!', 'Email update request sent successfully!'));
         setShowConfirmationMessage(true); // Show confirmation message instead of closing
       } else {
-        spaceToast.error(response.message || 'Failed to update email');
+        spaceToast.error(response.message || getText('Cập nhật email thất bại', 'Failed to update email'));
       }
     } catch (error) {
       console.error('Teacher EditEmailModal - Error:', error);
       console.error('Teacher EditEmailModal - Error response:', error.response?.data);
       
       // Show backend error message if available
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message;
+      const backendMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      const errorMessage = backendMessage || getText('Có lỗi xảy ra khi cập nhật email', 'Failed to update email');
       spaceToast.error(errorMessage);
+      form.setFields([{ name: 'email', errors: [errorMessage] }]);
     } finally {
       setLoading(false);
     }
@@ -93,7 +96,7 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
           textAlign: 'center',
           padding: '10px 0',
         }}>
-          {t('common.editEmail')}
+          {getText(t('common.editEmail'), 'Edit Email')}
         </div>
       }
       open={isVisible}
@@ -101,7 +104,7 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
       onCancel={handleCancel}
       width={500}
       okText={showConfirmationMessage ? t('common.ok') : t('common.update')}
-      cancelText={showConfirmationMessage ? undefined : t('common.close')}
+      cancelText={showConfirmationMessage ? undefined : getText(t('common.close'), 'Close')}
       confirmLoading={loading}
       okButtonProps={{
         style: {
@@ -140,7 +143,7 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
           <Form.Item
             label={
               <span>
-                {t('common.email')}
+                {getText(t('common.email'), 'Email')}
                 <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
               </span>
             }
@@ -148,15 +151,15 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
             rules={[
               {
                 required: true,
-                message: 'Email is required',
+                message: getText('Vui lòng nhập email', 'Email is required'),
               },
               {
                 type: 'email',
-                message: 'Please enter a valid email',
+                message: getText('Vui lòng nhập email hợp lệ', 'Please enter a valid email'),
               },
             ]}
             required={false}>
-            <Input placeholder="Enter email" />
+            <Input placeholder={getText('Nhập email', 'Enter email')} />
           </Form.Item>
         </Form>
       ) : (
@@ -165,7 +168,7 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
             📧
           </div>
           <h3 style={{ color: '#1890ff', marginBottom: '16px' }}>
-            {t('common.emailChangeRequestSent')}
+            {getText(t('common.emailChangeRequestSent'), 'Email change request sent')}
           </h3>
         </div>
       )}
