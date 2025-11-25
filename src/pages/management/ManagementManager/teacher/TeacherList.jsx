@@ -1328,12 +1328,12 @@ const TeacherList = () => {
 							onClick={handleImport}>
 							{t('teacherManagement.importTeachers')}
 						</Button>
-						<Button
-							icon={<PlusOutlined />}
-							className={`create-button ${theme}-create-button`}
-							onClick={handleAdd}>
-							{t('teacherManagement.addTeacher')}
-						</Button>
+					<Button
+						icon={<PlusOutlined />}
+						className={`create-button ${theme}-create-button`}
+						onClick={handleAdd}>
+						{t('teacherManagement.createTeacher')}
+					</Button>
 					</div>
 				</div>
 
@@ -1374,9 +1374,9 @@ const TeacherList = () => {
 						textAlign: 'center',
 						padding: '10px 0'
 					}}>
-						{editingTeacher
-							? t('teacherManagement.editTeacher')
-							: t('teacherManagement.addTeacher')}
+					{editingTeacher
+						? t('teacherManagement.editTeacher')
+						: t('teacherManagement.createTeacher')}
 					</div>
 				}
 				open={isModalVisible}

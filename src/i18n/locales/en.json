@@ -1113,6 +1113,7 @@
     "joinDate": "Join Date",
     "actions": "Actions",
     "viewDetails": "View Details",
+    "viewProfile": "View Profile",
     "removeFromClass": "Remove from Class",
     "addStudentsToClass": "Add students to class",
     "selectedStudents": "selected",
@@ -1589,6 +1590,7 @@
   "syllabusManagement": {
     "title": "Syllabus Management",
     "addSyllabus": "Add Syllabus",
+    "createSyllabus": "Create Syllabus",
     "editSyllabus": "Edit Syllabus",
     "deleteSyllabus": "Delete Syllabus",
     "syllabus": "Syllabus",
@@ -2921,6 +2923,7 @@
   "teacherManagement": {
     "title": "Teacher Management",
     "addTeacher": "Add Teacher",
+    "createTeacher": "Create Teacher",
     "editTeacher": "Edit Teacher",
     "deleteTeacher": "Delete Teacher",
     "teacherList": "Teacher List",

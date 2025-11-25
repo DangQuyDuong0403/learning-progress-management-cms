@@ -918,7 +918,12 @@ const AIGenerateQuestions = () => {
 
   // Handle save
   const handleSave = useCallback(async () => {
-    
+    // Client-side validation: if no questions, show friendly message instead of backend error
+    if (!Array.isArray(questions) || questions.length === 0) {
+      spaceToast.warning(t('dailyChallenge.noQuestionsToSave') || 'No question to save');
+      return;
+    }
+
     try {
       setSaving(true);
 

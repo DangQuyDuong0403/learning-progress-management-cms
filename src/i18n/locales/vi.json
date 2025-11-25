@@ -1106,6 +1106,7 @@
     "joinDate": "Ngày tham gia",
     "actions": "Thao tác",
     "viewDetails": "Xem chi tiết",
+    "viewProfile": "Xem hồ sơ",
     "removeFromClass": "Xóa khỏi lớp",
     "addStudentsToClass": "Thêm học sinh vào lớp",
     "selectedStudents": "đã chọn",
@@ -1579,6 +1580,7 @@
   "syllabusManagement": {
     "title": "Quản lý giáo trình",
     "addSyllabus": "Thêm giáo trình",
+    "createSyllabus": "Tạo giáo trình",
     "editSyllabus": "Chỉnh sửa giáo trình",
     "syllabusCode": "Mã giáo trình",
     "deleteSyllabus": "Xóa giáo trình",
@@ -2908,6 +2910,7 @@
   "teacherManagement": {
     "title": "Quản lý giáo viên",
     "addTeacher": "Thêm giáo viên",
+    "createTeacher": "Tạo giáo viên",
     "clickToChangeAvatar": "Nhấn để đổi ảnh đại diện",
     "editTeacher": "Chỉnh sửa giáo viên",
     "deleteTeacher": "Xóa giáo viên",

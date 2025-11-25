@@ -608,12 +608,14 @@ const StudentProfile = () => {
 							{t('studentManagement.resetPasswordByTeacher')}
 						</Button>
 					)}
-					<Button
-						icon={<BarChartOutlined />}
-						onClick={handleViewLearningProgress}
-						className={`progress-button ${theme}-progress-button`}>
-						{t('studentManagement.studentLearningProgressOverview')}
-					</Button>
+					{student?.roleName === 'STUDENT' && (
+						<Button
+							icon={<BarChartOutlined />}
+							onClick={handleViewLearningProgress}
+							className={`progress-button ${theme}-progress-button`}>
+							{t('studentManagement.studentLearningProgressOverview')}
+						</Button>
+					)}
 					{student?.status === 'PENDING' && (
 						<Button
 							icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />}
