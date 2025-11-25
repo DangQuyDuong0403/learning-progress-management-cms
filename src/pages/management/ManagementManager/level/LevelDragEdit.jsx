@@ -699,7 +699,7 @@ const LevelDragEdit = () => {
 		<Modal
 			title={
 				<div style={{ textAlign: 'center', fontSize: '28px', fontWeight: '600', color: 'rgb(24, 144, 255)' }}>
-					{t('levelManagement.editLevel')}
+					{editingLevel ? t('levelManagement.editLevel') : t('levelManagement.addLevel')}
 				</div>
 			}
 			open={isModalVisible}

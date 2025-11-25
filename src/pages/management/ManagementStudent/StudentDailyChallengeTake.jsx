@@ -10610,10 +10610,10 @@ const StudentDailyChallengeTake = () => {
               const answeredTextColor = theme === 'sun' ? '#0f5132' : '#d1fae5';
               
               return (
-                <div
-                  key={item.id}
-                  className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
-                  onClick={() => scrollToQuestion(item.id)}
+              <div
+                key={item.id}
+                className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
+                onClick={() => scrollToQuestion(item.id)}
                   style={{ 
                     fontWeight: isAnswered ? 600 : 'normal', 
                     textAlign: 'center', 
@@ -10643,7 +10643,7 @@ const StudentDailyChallengeTake = () => {
                   }}
                 >
                   <span style={{ textAlign: 'center', flex: 1 }}>{item.title}</span>
-                </div>
+              </div>
               );
             })}
           </div>
