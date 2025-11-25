@@ -1372,9 +1372,9 @@ const AccountList = () => {
 				title={
 					<div
 						style={{
-							fontSize: '26px',
+							fontSize: '28px',
 							fontWeight: '600',
-							color: 'rgb(113, 179, 253)',
+							color: 'rgb(24, 144, 255)',
 							textAlign: 'center',
 							padding: '10px 0',
 						}}>

@@ -1154,7 +1154,13 @@ const AIGenerateListening = () => {
                 className={`prompt-description-card ${theme}-prompt-description-card`}
                 style={{ borderRadius: '16px', border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.25)' : '2px solid rgba(138, 122, 255, 0.2)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}
               >
-                <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>{t('dailyChallenge.questionSettings', 'Question Settings')}</Title>
+                <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>
+                  {questionSettingsMode === 'upload' 
+                    ? t('dailyChallenge.generateQuestionsFromFile', 'Generate Questions from File')
+                    : questionSettingsMode === 'manual'
+                    ? t('dailyChallenge.questionSettings', 'Question Settings')
+                    : t('dailyChallenge.questionSettings', 'Question Settings')}
+                </Title>
                 <input
                   ref={uploadInputRef}
                   type="file"
