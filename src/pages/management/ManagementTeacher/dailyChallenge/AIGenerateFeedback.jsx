@@ -152,6 +152,12 @@ const AIGenerateFeedback = () => {
   const { theme } = useTheme();
   const { id: challengeId, submissionId: routeSubmissionId, submissionQuestionId: routeSubmissionQuestionId } = useParams();
   const { user } = useSelector((state) => state.auth);
+  
+  // Check if user is in read-only mode (Student, Test Taker, Manager)
+  const isReadOnly = useMemo(() => {
+    const role = user?.role?.toLowerCase();
+    return role === 'student' || role === 'test_taker' || role === 'manager';
+  }, [user?.role]);
 
   // From navigation state or query params if provided
   const params = new URLSearchParams(location.search || '');
@@ -1975,9 +1981,24 @@ const AIGenerateFeedback = () => {
 
   const handleBack = useCallback(() => {
     const role = user?.role?.toLowerCase();
-    const path = role === 'teaching_assistant'
-      ? `/teaching-assistant/daily-challenges/detail/${challengeId}/submissions/${submissionId}`
-      : `/teacher/daily-challenges/detail/${challengeId}/submissions/${submissionId}`;
+    let path = '';
+    
+    // Determine path based on role
+    if (role === 'teaching_assistant') {
+      path = `/teaching-assistant/daily-challenges/detail/${challengeId}/submissions/${submissionId}`;
+    } else if (role === 'test_taker') {
+      // For test takers, use test-taker route
+      path = `/test-taker/daily-challenges/detail/${challengeId}/submissions/${submissionId}`;
+    } else if (role === 'student') {
+      // For students, use student route
+      path = `/student/daily-challenges/detail/${challengeId}/submissions/${submissionId}`;
+    } else if (role === 'manager') {
+      // For managers, go back to teacher view
+      path = `/teacher/daily-challenges/detail/${challengeId}/submissions/${submissionId}`;
+    } else {
+      // Default to teacher path
+      path = `/teacher/daily-challenges/detail/${challengeId}/submissions/${submissionId}`;
+    }
     
     // Preserve class context through navigation - read from multiple sources
     const currentParams = new URLSearchParams(location.search || '');
@@ -2223,13 +2244,69 @@ const AIGenerateFeedback = () => {
 
       if (!writingSubmissionQuestionId) {
         spaceToast.error('Không tìm thấy submissionQuestionId của section để lưu chấm điểm');
+        setSaving(false);
         return;
+      }
+
+      // Validation: Check score
+      const numericScore = Number(score);
+      if (!Number.isFinite(numericScore) || numericScore < 0 || numericScore > questionWeight) {
+        const sectionName = sectionType === 'speaking' 
+          ? t('dailyChallenge.speakingSection') 
+          : sectionType === 'writing'
+          ? t('dailyChallenge.writingSection')
+          : sectionType === 'listening'
+          ? t('dailyChallenge.listeningSection')
+          : t('dailyChallenge.readingSection');
+        spaceToast.error(t('dailyChallenge.pleaseEnterValidScore', { max: questionWeight, section: sectionName }));
+        setSaving(false);
+        return;
+      }
+
+      // Validation: Check feedback
+      const feedbackText = typeof feedback === 'string' ? feedback.trim() : '';
+      const hasFeedback = feedbackText.length > 0;
+      
+      // For Writing: also check criteria feedback
+      let hasCriteriaFeedback = false;
+      if (sectionType === 'writing' && writingCriteria) {
+        const criteriaKeys = ['taskResponse', 'cohesionCoherence', 'lexicalResource', 'grammaticalRangeAccuracy'];
+        hasCriteriaFeedback = criteriaKeys.some(key => {
+          const criteriaData = writingCriteria[key];
+          const criteriaText = typeof criteriaData?.feedback === 'string' ? criteriaData.feedback.trim() : '';
+          return criteriaText.length > 0;
+        });
+      }
+
+      // For Speaking: check if there's any feedback content
+      if (sectionType === 'speaking') {
+        if (!hasFeedback) {
+          spaceToast.error(t('dailyChallenge.pleaseEnterFeedback', { section: t('dailyChallenge.speakingSection') }));
+          setSaving(false);
+          return;
+        }
+      } else if (sectionType === 'writing') {
+        // For Writing: require either overall feedback or at least one criteria feedback
+        if (!hasFeedback && !hasCriteriaFeedback) {
+          spaceToast.error(t('dailyChallenge.pleaseEnterFeedbackOrCriteria'));
+          setSaving(false);
+          return;
+        }
+      } else {
+        // For other types (listening, etc.)
+        if (!hasFeedback) {
+          const sectionName = sectionType === 'listening' 
+            ? t('dailyChallenge.listeningSection') 
+            : t('dailyChallenge.readingSection');
+          spaceToast.error(t('dailyChallenge.pleaseEnterFeedback', { section: sectionName }));
+          setSaving(false);
+          return;
+        }
       }
 
       // Build payload (BE updated)
       // Keep HTML formatting from CKEditor (bold, italic, lists, etc.)
       const cleanedFeedback = buildFeedbackPayloadForSave();
-      const numericScore = Number(score);
       const sectionKey = section?.id;
       const highlightComments = sectionKey && Array.isArray(writingSectionFeedbacks?.[sectionKey])
         ? writingSectionFeedbacks[sectionKey].map(fb => ({
@@ -2242,7 +2319,7 @@ const AIGenerateFeedback = () => {
         : [];
 
       const payload = {
-        receivedWeight: Number.isFinite(numericScore) ? numericScore : 0,
+        receivedWeight: numericScore,
         feedback: cleanedFeedback,
         highlightComments,
       };
@@ -2260,7 +2337,7 @@ const AIGenerateFeedback = () => {
     } finally {
       setSaving(false);
     }
-  }, [submissionQuestionId, prefill?.submissionQuestionId, section, writingSectionFeedbacks, score, buildFeedbackPayloadForSave, handleBack, getBackendMessage, t]);
+  }, [submissionQuestionId, prefill?.submissionQuestionId, section, writingSectionFeedbacks, score, questionWeight, sectionType, feedback, writingCriteria, buildFeedbackPayloadForSave, handleBack, getBackendMessage, t]);
 
   return (
     <ThemedLayout
@@ -2329,14 +2406,16 @@ const AIGenerateFeedback = () => {
                 </h2>
               </div>
               {/* Right actions */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
-                <Button onClick={handleClear} icon={<CloseCircleOutlined />} style={{ height: 40, borderRadius: 8 }}>
-                  {t('dailyChallenge.clear')}
-                </Button>
-                <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving} style={{ height: 40, borderRadius: 8, padding: '0 24px', border: 'none', background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)', color: '#000' }}>
-                  {t('common.save')}
-                </Button>
-              </div>
+              {!isReadOnly && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+                  <Button onClick={handleClear} icon={<CloseCircleOutlined />} style={{ height: 40, borderRadius: 8 }}>
+                    {t('dailyChallenge.clear')}
+                  </Button>
+                  <Button icon={<SaveOutlined />} onClick={handleSave} loading={saving} style={{ height: 40, borderRadius: 8, padding: '0 24px', border: 'none', background: theme === 'sun' ? 'linear-gradient(135deg, #66AEFF, #3C99FF)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)', color: '#000' }}>
+                    {t('common.save')}
+                  </Button>
+                </div>
+              )}
             </div>
           </nav>
         </header>
@@ -2494,7 +2573,7 @@ const AIGenerateFeedback = () => {
                           cursor: 'text',
                         }}
                         onMouseUp={(e) => {
-                          if (section?.id && !isImageOnly) {
+                          if (section?.id && !isImageOnly && !isReadOnly) {
                             handleTextSelection(section.id, e.currentTarget);
                           }
                         }}
@@ -2526,7 +2605,7 @@ const AIGenerateFeedback = () => {
                   })()}
                   
                   {/* Floating Toolbar for text selection (same as DailyChallengeSubmissionDetail) */}
-                  {textSelection.visible && textSelection.sectionId === section?.id && (
+                  {!isReadOnly && textSelection.visible && textSelection.sectionId === section?.id && (
                     <div
                       style={{
                         position: 'absolute',
@@ -2722,7 +2801,7 @@ const AIGenerateFeedback = () => {
                       dangerouslySetInnerHTML={{ __html: section?.transcript || section?.sectionsContent || '' }}
                     />
                     {/* Floating Toolbar for text selection */}
-                    {textSelection.visible && textSelection.sectionId === section?.id && (
+                    {!isReadOnly && textSelection.visible && textSelection.sectionId === section?.id && (
                       <div
                         style={{
                           position: 'absolute',
@@ -2786,7 +2865,7 @@ const AIGenerateFeedback = () => {
             >
 
               {/* Mode chooser */}
-              {rightMode === null && (
+              {rightMode === null && !isReadOnly && (
                 <div style={{ padding: 16, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 420 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 520 }}>
                     <Card
@@ -2849,33 +2928,35 @@ const AIGenerateFeedback = () => {
               {rightMode === 'manual' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                    <Button
-                      icon={<ArrowLeftOutlined />}
-                      onClick={() => {
-                        // Clear data when going back to mode chooser from manual mode
-                        // This ensures fresh start when user selects AI mode
-                        setFeedback('');
-                        setWritingCriteria(null);
-                        setHasAIGenerated(false);
-                        setIsEditMode(false); // Reset to add mode when going back to mode chooser
-                        // Clear speaking data when back to mode chooser
-                        if (sectionType === 'speaking') {
-                          setSpeakingResult(null);
-                          setManualSpeakingScores({
-                            pronunciationScore: null,
-                            accuracyScore: null,
-                            fluencyScore: null,
-                            completenessScore: null,
-                            prosodyScore: null,
-                          });
-                        }
-                        setRightMode(null);
-                      }}
-                      className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                      style={{ height: 32, borderRadius: 8, fontWeight: 500, fontSize: 14 }}
-                    >
-                      {t('common.back') || 'Back'}
-                    </Button>
+                    {!isReadOnly && (
+                      <Button
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => {
+                          // Clear data when going back to mode chooser from manual mode
+                          // This ensures fresh start when user selects AI mode
+                          setFeedback('');
+                          setWritingCriteria(null);
+                          setHasAIGenerated(false);
+                          setIsEditMode(false); // Reset to add mode when going back to mode chooser
+                          // Clear speaking data when back to mode chooser
+                          if (sectionType === 'speaking') {
+                            setSpeakingResult(null);
+                            setManualSpeakingScores({
+                              pronunciationScore: null,
+                              accuracyScore: null,
+                              fluencyScore: null,
+                              completenessScore: null,
+                              prosodyScore: null,
+                            });
+                          }
+                          setRightMode(null);
+                        }}
+                        className={`class-menu-back-button ${theme}-class-menu-back-button`}
+                        style={{ height: 32, borderRadius: 8, fontWeight: 500, fontSize: 14 }}
+                      >
+                        {t('common.back') || 'Back'}
+                      </Button>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Text strong>{t('dailyChallenge.weight')}</Text>
                       <Input
@@ -2887,6 +2968,7 @@ const AIGenerateFeedback = () => {
                         step={0.1}
                         placeholder="0"
                         status={scoreError ? 'error' : ''}
+                        disabled={isReadOnly}
                         style={{
                           width: 120,
                           borderRadius: 8,
@@ -2971,6 +3053,7 @@ const AIGenerateFeedback = () => {
                               value={item.value === null || item.value === undefined ? '' : item.value}
                               onChange={(e) => handleManualSpeakingScoreChange(item.key, e.target.value)}
                               placeholder="0"
+                              disabled={isReadOnly}
                               style={{
                                 width: '100%',
                                 borderRadius: 8,
@@ -3051,9 +3134,11 @@ const AIGenerateFeedback = () => {
                         editor={ClassicEditor}
                         data={feedback}
                         onChange={(event, editor) => setFeedback(editor.getData())}
+                        disabled={isReadOnly}
                         config={{
                           toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
-                          removePlugins: ['StickyToolbar']
+                          removePlugins: ['StickyToolbar'],
+                          isReadOnly: isReadOnly
                         }}
                         onReady={(editor) => {
                           try {
@@ -3097,9 +3182,11 @@ const AIGenerateFeedback = () => {
                                   editor={ClassicEditor}
                                   data={data?.feedback || ''}
                                   onChange={(event, editor) => handleWritingCriteriaFeedbackChange(item.key, editor.getData())}
+                                  disabled={isReadOnly}
                                   config={{
                                     toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
-                                    removePlugins: ['StickyToolbar']
+                                    removePlugins: ['StickyToolbar'],
+                                    isReadOnly: isReadOnly
                                   }}
                                   onReady={(editor) => {
                                     try {
@@ -3127,7 +3214,7 @@ const AIGenerateFeedback = () => {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     {/* Only show Back button when not in edit mode (edit mode = has existing data from prefill/API) */}
                     {/* In add mode (fresh generation), show Back button even after generating */}
-                    {!isEditMode ? (
+                    {!isReadOnly && !isEditMode ? (
                       <div style={{ display: 'flex' }}>
                         <Button
                           icon={<ArrowLeftOutlined />}
@@ -3168,6 +3255,7 @@ const AIGenerateFeedback = () => {
                           step={0.1}
                           placeholder="0"
                           status={scoreError ? 'error' : ''}
+                          disabled={isReadOnly}
                           style={{
                             width: 120,
                             borderRadius: 8,
@@ -3181,7 +3269,7 @@ const AIGenerateFeedback = () => {
                           / {questionWeight}
                         </span>
                       </div>
-                      {hasAIGenerated && sectionType === 'writing' && (
+                      {!isReadOnly && hasAIGenerated && sectionType === 'writing' && (
                         <Button
                           icon={<EditOutlined />}
                           onClick={() => {
@@ -3202,7 +3290,7 @@ const AIGenerateFeedback = () => {
                           {t('common.edit')}
                         </Button>
                       )}
-                      {hasAIGenerated && sectionType === 'speaking' && (
+                      {!isReadOnly && hasAIGenerated && sectionType === 'speaking' && (
                         <Button
                           icon={<EditOutlined />}
                           onClick={() => {
@@ -3283,25 +3371,27 @@ const AIGenerateFeedback = () => {
                             {t('dailyChallenge.assessPronunciation')}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-                            <Button
-                              type="primary"
-                              icon={<ThunderboltOutlined />}
-                              loading={isGenerating}
-                              onClick={handleGenerateAI}
-                              style={{
-                                height: 40,
-                                borderRadius: 8,
-                                padding: '0 16px',
-                                background: theme === 'sun'
-                                  ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                                  : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                                border: 'none',
-                                color: '#000',
-                                boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
-                              }}
-                            >
-                              {t('dailyChallenge.generateWithAI')}
-                            </Button>
+                            {!isReadOnly && (
+                              <Button
+                                type="primary"
+                                icon={<ThunderboltOutlined />}
+                                loading={isGenerating}
+                                onClick={handleGenerateAI}
+                                style={{
+                                  height: 40,
+                                  borderRadius: 8,
+                                  padding: '0 16px',
+                                  background: theme === 'sun'
+                                    ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                                  border: 'none',
+                                  color: '#000',
+                                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                                }}
+                              >
+                                {t('dailyChallenge.generateWithAI')}
+                              </Button>
+                            )}
                             <Typography.Text style={{
                               fontSize: '12px',
                               fontStyle: 'italic',
@@ -3627,9 +3717,11 @@ const AIGenerateFeedback = () => {
                             editor={ClassicEditor}
                             data={feedback}
                             onChange={(event, editor) => setFeedback(editor.getData())}
+                            disabled={isReadOnly}
                             config={{
                               toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
-                              removePlugins: ['StickyToolbar']
+                              removePlugins: ['StickyToolbar'],
+                              isReadOnly: isReadOnly
                             }}
                             onReady={(editor) => {
                               try {
@@ -3840,7 +3932,7 @@ const AIGenerateFeedback = () => {
                     </>
                   )}
 
-                  {sectionType === 'speaking' && hasAIGenerated && (
+                  {!isReadOnly && sectionType === 'speaking' && hasAIGenerated && (
                     <div
                       style={{
                         marginTop: 12,
@@ -3911,7 +4003,7 @@ const AIGenerateFeedback = () => {
                   )}
                   {/* Button stays at very bottom (speaking handled by hero panels) */}
                   {sectionType === 'writing' ? (
-                    hasAIGenerated ? (
+                    !isReadOnly && hasAIGenerated ? (
                     <div
                       style={{
                         marginTop: 12,
@@ -3982,27 +4074,29 @@ const AIGenerateFeedback = () => {
                     ) : null
                   ) : (
                     sectionType === 'speaking' ? null :
-                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
-                      <Button
-                        type="primary"
-                        icon={<ThunderboltOutlined />}
-                        loading={isGenerating}
-                        onClick={handleGenerateAI}
-                        style={{
-                          height: 40,
-                          borderRadius: 8,
-                          padding: '0 16px',
-                          background: theme === 'sun'
-                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                          border: 'none',
-                          color: '#000',
-                          boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
-                        }}
-                      >
-                        {hasAIGenerated ? t('dailyChallenge.regenerateWithAI') : t('dailyChallenge.generateWithAI')}
-                      </Button>
-                    </div>
+                    !isReadOnly && (
+                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                        <Button
+                          type="primary"
+                          icon={<ThunderboltOutlined />}
+                          loading={isGenerating}
+                          onClick={handleGenerateAI}
+                          style={{
+                            height: 40,
+                            borderRadius: 8,
+                            padding: '0 16px',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                              : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                            border: 'none',
+                            color: '#000',
+                            boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                          }}
+                        >
+                          {hasAIGenerated ? t('dailyChallenge.regenerateWithAI') : t('dailyChallenge.generateWithAI')}
+                        </Button>
+                      </div>
+                    )
                   )}
                 </div>
               )}
