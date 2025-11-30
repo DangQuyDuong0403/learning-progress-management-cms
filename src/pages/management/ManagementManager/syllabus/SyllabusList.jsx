@@ -1243,7 +1243,7 @@ const SyllabusList = () => {
 									className="create-button"
 									onClick={handleAdd}
 								>
-									{t('syllabusManagement.addSyllabus')}
+									{t('syllabusManagement.createSyllabus')}
 								</Button>
 							)}
 						</Space>

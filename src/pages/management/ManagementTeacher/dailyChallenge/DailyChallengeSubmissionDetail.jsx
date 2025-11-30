@@ -4753,11 +4753,7 @@ useEffect(() => {
                 boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
                 }}
               >
-                {(() => {
-                  const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
-                  const hasScore = submissionData?.submission?.score != null && submissionData?.submission?.score !== undefined;
-                  return (hasFeedback || hasScore) ? t('dailyChallenge.editGrading', 'Edit Grading') : t('dailyChallenge.finalizeGrading', 'Finalize Grading');
-                })()}
+                {t('dailyChallenge.finalizeGrading', 'Finalize Grading')}
             </Button>
           </div>
             )}
@@ -6610,11 +6606,7 @@ useEffect(() => {
               padding: '6px 0'
             }}
           >
-            {(() => {
-              const hasFeedback = teacherFeedback && teacherFeedback.replace(/<[^>]*>/g,'').trim().length > 0;
-              const hasScore = submissionData?.submission?.score != null && submissionData?.submission?.score !== undefined;
-              return (hasFeedback || hasScore) ? t('dailyChallenge.editGrading', 'Edit Grading') : t('dailyChallenge.addGrading', 'Add Grading');
-            })()}
+            {t('dailyChallenge.finalizeGrading', 'Finalize Grading')}
           </div>
         }
         open={overallFeedbackModalVisible}

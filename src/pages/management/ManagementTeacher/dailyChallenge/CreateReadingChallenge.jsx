@@ -1334,8 +1334,8 @@ const CreateReadingChallenge = () => {
               }}
             >
               {isSaving 
-                ? (isWritingChallenge ? t('dailyChallenge.savingWritingPrompt', 'Saving Writing Prompt...') : t('dailyChallenge.savingChallenge', 'Saving Challenge...'))
-                : (isWritingChallenge ? t('dailyChallenge.saveWritingPrompt', 'Save Writing Prompt') : t('dailyChallenge.saveChallenge', 'Save Challenge'))
+                ? t('dailyChallenge.savingQuestion', 'Saving Question...')
+                : t('dailyChallenge.saveQuestion', 'Save Question')
               }
                 </Button>
           </div>

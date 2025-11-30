@@ -918,7 +918,12 @@ const AIGenerateQuestions = () => {
 
   // Handle save
   const handleSave = useCallback(async () => {
-    
+    // Client-side validation: if no questions, show friendly message instead of backend error
+    if (!Array.isArray(questions) || questions.length === 0) {
+      spaceToast.warning(t('dailyChallenge.noQuestionsToSave') || 'No question to save');
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -2516,7 +2521,11 @@ const AIGenerateQuestions = () => {
                 }}
               >
                 <Title level={3} style={{ margin: 0, fontSize: '26px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, textAlign: 'center' }}>
-                  {t('dailyChallenge.questionSettings', 'Question Settings')}
+                  {questionSettingsMode === 'upload' 
+                    ? t('dailyChallenge.generateQuestionsFromFile', 'Generate Questions from File')
+                    : questionSettingsMode === 'manual'
+                    ? t('dailyChallenge.questionSettings', 'Question Settings')
+                    : t('dailyChallenge.questionSettings', 'Question Settings')}
                 </Title>
 
                 {/* Hidden input to allow direct upload from the option card */}

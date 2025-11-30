@@ -4217,7 +4217,7 @@ const AIGenerateFeedback = () => {
               textAlign: 'center',
               padding: '10px 0',
             }}>
-            {t('dailyChallenge.editAIFeedback')}
+            Edit feedback
           </div>
         }
         open={editModalVisible}
@@ -4239,7 +4239,16 @@ const AIGenerateFeedback = () => {
           <Button 
             key="save" 
             type="primary" 
+            
             onClick={() => {
+              // Validate feedback is not empty (strip HTML and whitespace)
+              const currentHtml = sectionType === 'writing' ? editFeedback : editSpeakingFeedback;
+              const plain = stripHtmlToText(currentHtml || '').trim();
+              if (!plain) {
+                spaceToast.error('Feedback cannot be blank');
+                return;
+              }
+
               if (sectionType === 'writing') {
                 setFeedback(editFeedback);
                 setWritingCriteria(editWritingCriteria);
@@ -4423,10 +4432,25 @@ const AIGenerateFeedback = () => {
                       editor={ClassicEditor}
                       data={sectionType === 'writing' ? editFeedback : editSpeakingFeedback}
                       onChange={(event, editor) => {
-                        if (sectionType === 'writing') {
-                          setEditFeedback(editor.getData());
-                        } else {
-                          setEditSpeakingFeedback(editor.getData());
+                        try {
+                          const data = editor.getData() || '';
+                          const plain = stripHtmlToText(data).trim();
+                          if (plain.length > 5000) {
+                            spaceToast.error('Nội dung tối đa 5000 ký tự');
+                            // revert editor content to previous state
+                            const revert = sectionType === 'writing' ? (editFeedback || '') : (editSpeakingFeedback || '');
+                            try { editor.setData(revert); } catch {}
+                            return;
+                          }
+                          if (sectionType === 'writing') {
+                            setEditFeedback(data);
+                          } else {
+                            setEditSpeakingFeedback(data);
+                          }
+                        } catch (e) {
+                          // fallback: just set normally
+                          if (sectionType === 'writing') setEditFeedback(editor.getData());
+                          else setEditSpeakingFeedback(editor.getData());
                         }
                       }}
                       config={{
@@ -4479,13 +4503,31 @@ const AIGenerateFeedback = () => {
                             editor={ClassicEditor}
                             data={currentFeedback}
                             onChange={(event, editor) => {
-                              setEditWritingCriteria(prev => ({
-                                ...(prev || {}),
-                                [item.key]: {
-                                  ...(prev?.[item.key] || {}),
-                                  feedback: editor.getData()
+                              try {
+                                const data = editor.getData() || '';
+                                const plain = stripHtmlToText(data).trim();
+                                if (plain.length > 5000) {
+                                  spaceToast.error('Nội dung tối đa 5000 ký tự');
+                                  const prevVal = (editWritingCriteria && editWritingCriteria[item.key] && editWritingCriteria[item.key].feedback) || '';
+                                  try { editor.setData(prevVal); } catch {}
+                                  return;
                                 }
-                              }));
+                                setEditWritingCriteria(prev => ({
+                                  ...(prev || {}),
+                                  [item.key]: {
+                                    ...(prev?.[item.key] || {}),
+                                    feedback: data
+                                  }
+                                }));
+                              } catch (e) {
+                                setEditWritingCriteria(prev => ({
+                                  ...(prev || {}),
+                                  [item.key]: {
+                                    ...(prev?.[item.key] || {}),
+                                    feedback: editor.getData()
+                                  }
+                                }));
+                              }
                             }}
                             config={{
                               toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },

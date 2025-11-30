@@ -1186,11 +1186,11 @@
 }
 
 .settings-input::placeholder {
-	color: rgba(0, 0, 0, 0.5) !important;
+	color: rgba(0, 0, 0, 0.35) !important;
 }
 
 .sun-theme .settings-input::placeholder {
-	color: rgba(0, 0, 0, 0.5) !important;
+	color: rgba(0, 0, 0, 0.35) !important;
 }
 
 /* ===== RESPONSIVE ===== */
