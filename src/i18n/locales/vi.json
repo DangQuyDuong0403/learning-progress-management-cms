@@ -807,6 +807,7 @@
     "exportAll": "Xuất tất cả học sinh",
     "exportSuccess": "Xuất dữ liệu thành công",
     "exportError": "Lỗi khi xuất dữ liệu",
+    "noDataToExport": "Không có dữ liệu để xuất",
     "exportInProgress": "Đang xuất dữ liệu...",
     "studentsSelected": "học sinh đã chọn",
     "activeAll": "Kích hoạt tất cả",
@@ -1179,6 +1180,7 @@
     "exportDescription": "Chọn xuất tất cả học sinh trong lớp này",
     "exportAll": "Xuất tất cả học sinh",
     "exportError": "Lỗi xuất dữ liệu",
+    "noDataToExport": "Không có dữ liệu để xuất",
     "fileSelected": "Đã chọn file",
     "importError": "Lỗi nhập dữ liệu",
     "deleteError": "Không thể xóa học sinh"
@@ -2972,6 +2974,7 @@
     "success": "thành công",
     "exportAll": "Xuất tất cả giáo viên",
     "exportError": "Lỗi khi xuất dữ liệu",
+    "noDataToExport": "Không có dữ liệu để xuất",
     "exportSuccess": "Xuất dữ liệu thành công",
     "importTeachers": "Nhập giáo viên",
     "importSuccess": "Nhập giáo viên thành công",

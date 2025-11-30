@@ -3075,6 +3075,10 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [recordingType, setRecordingType] = useState('audio'); // 'audio' | 'video'
+  const [recordingMode, setRecordingMode] = useState(null); // current mode if actively recording
+  const [livePreviewStream, setLivePreviewStream] = useState(null);
+  const liveVideoRef = useRef(null);
 
   const toPlainText = (html) => {
     if (!html) return '';
@@ -3097,30 +3101,70 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  const startRecording = () => {
-    navigator.mediaDevices.getUserMedia({ audio: true })
+  useEffect(() => {
+    if (liveVideoRef.current) {
+      if (livePreviewStream) {
+        liveVideoRef.current.srcObject = livePreviewStream;
+      } else {
+        liveVideoRef.current.srcObject = null;
+      }
+    }
+  }, [livePreviewStream]);
+
+  useEffect(() => {
+    return () => {
+      if (livePreviewStream) {
+        livePreviewStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [livePreviewStream]);
+
+  const startRecording = (mode = 'audio') => {
+    if (uploadedFiles.length > 0) {
+      alert('Please remove the uploaded files before recording');
+      return;
+    }
+    const constraints = mode === 'video'
+      ? { audio: true, video: { width: 1280, height: 720, facingMode: 'user' } }
+      : { audio: true };
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      alert('Browser does not support recording audio or video.');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia(constraints)
       .then(stream => {
         const mediaRecorder = new MediaRecorder(stream);
         mediaRecorderRef.current = mediaRecorder;
 
         audioChunksRef.current = [];
+        setRecordingMode(mode);
+        setRecordingType(mode);
+        if (mode === 'video') {
+          setLivePreviewStream(stream);
+        } else {
+          setLivePreviewStream(null);
+        }
 
         mediaRecorder.ondataavailable = (event) => {
           audioChunksRef.current.push(event.data);
         };
 
         mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
+          const mimeType = mode === 'video' ? 'video/webm' : 'audio/webm';
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
           const url = URL.createObjectURL(audioBlob);
           setAudioUrl(url);
+          setIsRecording(false);
+          setRecordingMode(null);
+          setLivePreviewStream(null);
         };
 
         mediaRecorder.start();
         setIsRecording(true);
       })
       .catch(err => {
-        console.error('Error accessing microphone:', err);
-        alert('Could not access microphone. Please check permissions.');
+        console.error('Error accessing media devices:', err);
+        alert('Could not access microphone/camera. Please check permissions.');
       });
   };
 
@@ -3129,6 +3173,8 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       setIsRecording(false);
+      setRecordingMode(null);
+      setLivePreviewStream(null);
     }
   };
 
@@ -3263,13 +3309,30 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
             border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
             textAlign: 'center'
           }}>
-            {/* Recorded Audio Display */}
-            {audioUrl && (
+            {/* Recorded Media Display - Only show if no uploaded files */}
+            {audioUrl && uploadedFiles.length === 0 && (
               <div style={{ marginBottom: '20px' }}>
-                <audio controls style={{ width: '100%', height: '40px' }}>
-                  <source src={audioUrl} type="audio/mpeg" />
-                  Your browser does not support the audio element.
-                </audio>
+                {recordingType === 'video' ? (
+                  <video 
+                    controls 
+                    preload="metadata"
+                    style={{ width: '100%', borderRadius: '8px', maxHeight: '360px' }} 
+                    src={audioUrl}
+                    playsInline
+                  >
+                    Your browser does not support the video element.
+                  </video>
+                ) : (
+                  <audio 
+                    controls 
+                    preload="metadata"
+                    type="audio/webm"
+                    style={{ width: '100%', height: '40px' }} 
+                    src={audioUrl}
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                )}
                 <button
                   onClick={removeRecording}
                   style={{
@@ -3299,66 +3362,96 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
               </div>
             )}
 
-            {/* Mic Button - Large and Centered */}
-            <button
-              onClick={isRecording ? stopRecording : startRecording}
-              style={{
-                width: '120px',
-                height: '120px',
-                borderRadius: '50%',
-                border: 'none',
-                background: isRecording 
-                  ? '#ff4d4f'
-                  : 'rgb(227, 244, 255)',
-                color: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px',
-                boxShadow: isRecording
-                  ? '0 0 20px rgba(255, 77, 79, 0.5)'
-                  : '0 4px 12px rgba(24, 144, 255, 0.3)',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                if (!isRecording) {
-                  e.target.style.transform = 'scale(1.05)';
-                  e.target.style.boxShadow = '0 6px 16px rgba(24, 144, 255, 0.4)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isRecording) {
-                  e.target.style.transform = 'scale(1)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(24, 144, 255, 0.3)';
-                }
-              }}
-            >
-              <img 
-                src="/img/icon-mic.png" 
-                alt="Microphone" 
-                style={{ 
-                  width: '60px',
-                  height: '60px',
-                  filter: 'none'
-                }} 
-              />
-            </button>
+            {isRecording && recordingMode === 'video' && livePreviewStream && (
+              <div style={{ marginBottom: '16px' }}>
+                <video
+                  ref={liveVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  style={{
+                    width: '100%',
+                    maxHeight: '320px',
+                    borderRadius: '12px',
+                    background: '#000'
+                  }}
+                />
+                <div style={{ marginTop: '6px', fontSize: '13px', color: theme === 'sun' ? '#1E40AF' : '#8B5CF6' }}>
+                  Đang ghi hình...
+                </div>
+              </div>
+            )}
 
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
-              marginBottom: '8px'
-            }}>
-              {isRecording ? 'Recording...' : 'Click to start recording'}
-            </div>
-            <div style={{
-              fontSize: '12px',
-              color: theme === 'sun' ? '#666' : '#999'
-            }}>
-              {isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response'}
-            </div>
+            {/* Recording Controls */}
+            {uploadedFiles.length === 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '16px',
+                  flexWrap: 'wrap'
+                }}>
+                  {['audio', 'video'].map((mode) => {
+                    const isModeRecording = isRecording && recordingMode === mode;
+                    const disabled = isRecording && recordingMode !== mode;
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => {
+                          if (isModeRecording) {
+                            stopRecording();
+                          } else if (!isRecording) {
+                            startRecording(mode);
+                          }
+                        }}
+                        disabled={disabled}
+                        style={{
+                          width: '120px',
+                          height: '120px',
+                          borderRadius: '50%',
+                          border: 'none',
+                          background: disabled
+                            ? '#d9d9d9'
+                            : (isModeRecording ? '#ff4d4f' : 'rgb(227, 244, 255)'),
+                          color: disabled ? '#666' : '#0f172a',
+                          cursor: disabled ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          margin: '0 8px 16px',
+                          boxShadow: disabled
+                            ? 'none'
+                            : (isModeRecording
+                              ? '0 0 20px rgba(255, 77, 79, 0.5)'
+                              : '0 4px 12px rgba(24, 144, 255, 0.3)'),
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        <span style={{ fontSize: '32px' }}>
+                          {mode === 'audio' ? '🎙' : '📹'}
+                        </span>
+                        <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                          {isModeRecording
+                            ? 'Stop'
+                            : mode === 'audio' ? 'Record Audio' : 'Record Video'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: theme === 'sun' ? '#666' : '#999',
+                  textAlign: 'center'
+                }}>
+                  {isRecording 
+                    ? (recordingMode === 'video' ? 'Click the video button to stop' : 'Click the audio button to stop')
+                    : 'Choose audio or video to record'}
+                </div>
+              </div>
+            )}
 
             {/* Upload Section - Similar to Writing */}
             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}` }}>
@@ -3368,7 +3461,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                 color: theme === 'sun' ? '#333' : '#1F2937',
                 marginBottom: '16px'
               }}>
-                Upload Audio File (Optional):
+                Upload Audio/Video File (Optional):
               </div>
               
               <div style={{
@@ -3377,7 +3470,7 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                 <input
                   type="file"
                   id="speaking-audio-upload"
-                  accept="audio/*"
+                  accept="audio/*,video/*"
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                 />
@@ -3415,13 +3508,15 @@ const SpeakingSectionItem = ({ question, index, theme }) => {
                     color: theme === 'sun' ? '#1E40AF' : '#8377A0',
                     marginBottom: '4px'
                   }}>
-                    Upload Audio
+                    Upload {recordingType === 'video' ? 'Video' : 'Audio'}
                   </div>
                   <div style={{ 
                     fontSize: '13px',
                     color: theme === 'sun' ? '#666' : '#999'
                   }}>
-                    Upload MP3 audio file (Max 5MB)
+                    {recordingType === 'video' 
+                      ? 'Upload MP4/WebM video file (Max 50MB)'
+                      : 'Upload MP3 audio file (Max 5MB)'}
                   </div>
                 </label>
               </div>
@@ -3490,6 +3585,10 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [recordingType, setRecordingType] = useState('audio'); // 'audio' | 'video'
+  const [recordingMode, setRecordingMode] = useState(null); // current mode if actively recording
+  const [livePreviewStream, setLivePreviewStream] = useState(null);
+  const liveVideoRef = useRef(null);
 
   const toPlainText = (html) => {
     if (!html) return '';
@@ -3513,30 +3612,70 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
   const audioChunksRef = useRef([]);
   const audioRef = useRef(null);
 
-  const startRecording = () => {
-    navigator.mediaDevices.getUserMedia({ audio: true })
+  useEffect(() => {
+    if (liveVideoRef.current) {
+      if (livePreviewStream) {
+        liveVideoRef.current.srcObject = livePreviewStream;
+      } else {
+        liveVideoRef.current.srcObject = null;
+      }
+    }
+  }, [livePreviewStream]);
+
+  useEffect(() => {
+    return () => {
+      if (livePreviewStream) {
+        livePreviewStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [livePreviewStream]);
+
+  const startRecording = (mode = 'audio') => {
+    if (uploadedFiles.length > 0) {
+      alert('Please remove the uploaded files before recording');
+      return;
+    }
+    const constraints = mode === 'video'
+      ? { audio: true, video: { width: 1280, height: 720, facingMode: 'user' } }
+      : { audio: true };
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      alert('Browser does not support recording audio or video.');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia(constraints)
       .then(stream => {
         const mediaRecorder = new MediaRecorder(stream);
         mediaRecorderRef.current = mediaRecorder;
 
         audioChunksRef.current = [];
+        setRecordingMode(mode);
+        setRecordingType(mode);
+        if (mode === 'video') {
+          setLivePreviewStream(stream);
+        } else {
+          setLivePreviewStream(null);
+        }
 
         mediaRecorder.ondataavailable = (event) => {
           audioChunksRef.current.push(event.data);
         };
 
         mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
+          const mimeType = mode === 'video' ? 'video/webm' : 'audio/webm';
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
           const url = URL.createObjectURL(audioBlob);
           setAudioUrl(url);
+          setIsRecording(false);
+          setRecordingMode(null);
+          setLivePreviewStream(null);
         };
 
         mediaRecorder.start();
         setIsRecording(true);
       })
       .catch(err => {
-        console.error('Error accessing microphone:', err);
-        alert('Could not access microphone. Please check permissions.');
+        console.error('Error accessing media devices:', err);
+        alert('Could not access microphone/camera. Please check permissions.');
       });
   };
 
@@ -3545,6 +3684,8 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       setIsRecording(false);
+      setRecordingMode(null);
+      setLivePreviewStream(null);
     }
   };
 
@@ -3566,6 +3707,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
 
   const removeRecording = () => {
     setAudioUrl(null);
+    setRecordingType('audio');
   };
 
   const togglePlayPause = () => {
@@ -3705,7 +3847,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
               color: theme === 'sun' ? '#1E40AF' : '#1F2937',
               textAlign: 'left'
             }}>
-              🎤 Maximum limit 3 minutes
+              {recordingType === 'video' ? '📹' : '🎤'} Maximum limit 3 minutes
             </div>
 
             {/* Audio Player */}
@@ -3856,13 +3998,30 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
             border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
             textAlign: 'center'
           }}>
-            {/* Recorded Audio Display */}
-            {audioUrl && (
+            {/* Recorded Media Display - Only show if no uploaded files */}
+            {audioUrl && uploadedFiles.length === 0 && (
               <div style={{ marginBottom: '20px' }}>
-                <audio controls style={{ width: '100%', height: '40px' }}>
-                  <source src={audioUrl} type="audio/mpeg" />
-                  Your browser does not support the audio element.
-                </audio>
+                {recordingType === 'video' ? (
+                  <video 
+                    controls 
+                    preload="metadata"
+                    style={{ width: '100%', borderRadius: '8px', maxHeight: '360px' }} 
+                    src={audioUrl}
+                    playsInline
+                  >
+                    Your browser does not support the video element.
+                  </video>
+                ) : (
+                  <audio 
+                    controls 
+                    preload="metadata"
+                    type="audio/webm"
+                    style={{ width: '100%', height: '40px' }} 
+                    src={audioUrl}
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                )}
                 <button
                   onClick={removeRecording}
                   style={{
@@ -3892,66 +4051,96 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
               </div>
             )}
 
-            {/* Mic Button - Large and Centered */}
-            <button
-              onClick={isRecording ? stopRecording : startRecording}
-              style={{
-                width: '120px',
-                height: '120px',
-                borderRadius: '50%',
-                border: 'none',
-                background: isRecording 
-                  ? '#ff4d4f'
-                  : 'rgb(227, 244, 255)',
-                color: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px',
-                boxShadow: isRecording
-                  ? '0 0 20px rgba(255, 77, 79, 0.5)'
-                  : '0 4px 12px rgba(24, 144, 255, 0.3)',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                if (!isRecording) {
-                  e.target.style.transform = 'scale(1.05)';
-                  e.target.style.boxShadow = '0 6px 16px rgba(24, 144, 255, 0.4)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isRecording) {
-                  e.target.style.transform = 'scale(1)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(24, 144, 255, 0.3)';
-                }
-              }}
-            >
-              <img 
-                src="/img/icon-mic.png" 
-                alt="Microphone" 
-                style={{ 
-                  width: '60px',
-                  height: '60px',
-                  filter: 'none'
-                }} 
-              />
-            </button>
+            {isRecording && recordingMode === 'video' && livePreviewStream && (
+              <div style={{ marginBottom: '16px' }}>
+                <video
+                  ref={liveVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  style={{
+                    width: '100%',
+                    maxHeight: '320px',
+                    borderRadius: '12px',
+                    background: '#000'
+                  }}
+                />
+                <div style={{ marginTop: '6px', fontSize: '13px', color: theme === 'sun' ? '#1E40AF' : '#8B5CF6' }}>
+                  Đang ghi hình...
+                </div>
+              </div>
+            )}
 
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
-              marginBottom: '8px'
-            }}>
-              {isRecording ? 'Recording...' : 'Click to start recording'}
-            </div>
-            <div style={{
-              fontSize: '12px',
-              color: theme === 'sun' ? '#666' : '#999'
-            }}>
-              {isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response'}
-            </div>
+            {/* Recording Controls */}
+            {uploadedFiles.length === 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '16px',
+                  flexWrap: 'wrap'
+                }}>
+                  {['audio', 'video'].map((mode) => {
+                    const isModeRecording = isRecording && recordingMode === mode;
+                    const disabled = isRecording && recordingMode !== mode;
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => {
+                          if (isModeRecording) {
+                            stopRecording();
+                          } else if (!isRecording) {
+                            startRecording(mode);
+                          }
+                        }}
+                        disabled={disabled}
+                        style={{
+                          width: '120px',
+                          height: '120px',
+                          borderRadius: '50%',
+                          border: 'none',
+                          background: disabled
+                            ? '#d9d9d9'
+                            : (isModeRecording ? '#ff4d4f' : 'rgb(227, 244, 255)'),
+                          color: disabled ? '#666' : '#0f172a',
+                          cursor: disabled ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          margin: '0 8px 16px',
+                          boxShadow: disabled
+                            ? 'none'
+                            : (isModeRecording
+                              ? '0 0 20px rgba(255, 77, 79, 0.5)'
+                              : '0 4px 12px rgba(24, 144, 255, 0.3)'),
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        <span style={{ fontSize: '32px' }}>
+                          {mode === 'audio' ? '🎙' : '📹'}
+                        </span>
+                        <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                          {isModeRecording
+                            ? 'Stop'
+                            : mode === 'audio' ? 'Record Audio' : 'Record Video'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: theme === 'sun' ? '#666' : '#999',
+                  textAlign: 'center'
+                }}>
+                  {isRecording 
+                    ? (recordingMode === 'video' ? 'Click the video button to stop' : 'Click the audio button to stop')
+                    : 'Choose audio or video to record'}
+                </div>
+              </div>
+            )}
 
             {/* Upload Section - Similar to Writing */}
             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}` }}>
@@ -3961,7 +4150,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
                 color: theme === 'sun' ? '#333' : '#1F2937',
                 marginBottom: '16px'
               }}>
-                Upload Audio File (Optional):
+                Upload Audio/Video File (Optional):
               </div>
               
               <div style={{
@@ -3970,7 +4159,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme }) => {
                 <input
                   type="file"
                   id="speaking-with-audio-upload"
-                  accept="audio/*"
+                  accept="audio/*,video/*"
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                 />

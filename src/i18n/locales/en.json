@@ -817,6 +817,7 @@
     "exportAll": "Export All Students",
     "exportSuccess": "Data exported successfully",
     "exportError": "Error exporting data",
+    "noDataToExport": "No data available to export",
     "exportInProgress": "Export in progress...",
     "studentsSelected": "students selected",
     "activeAll": "Active All",
@@ -1186,6 +1187,7 @@
     "exportDescription": "Choose to export all students in this class",
     "exportAll": "Export All Students",
     "exportError": "Error exporting data",
+    "noDataToExport": "No data available to export",
     "fileSelected": "File selected",
     "importError": "Error importing data",
     "deleteError": "Failed to remove student"
@@ -2983,6 +2985,7 @@
     "deactivateTeacherSuccess": "Teacher deactivated",
     "exportAll": "Export All Teachers",
     "exportError": "Error exporting data",
+    "noDataToExport": "No data available to export",
     "exportSuccess": "Data exported successfully",
     "importTeachers": "Import Teachers",
     "importSuccess": "Teachers imported successfully",

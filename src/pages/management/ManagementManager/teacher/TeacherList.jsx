@@ -957,6 +957,12 @@ const TeacherList = () => {
 
 
 	const handleExportAll = async () => {
+		// Validate: Check if there is any data to export
+		if (totalTeachers === 0 || teachers.length === 0) {
+			spaceToast.error(t('teacherManagement.noDataToExport') || 'No data available to export');
+			return;
+		}
+		
 		setExportLoading(true);
 		
 		try {
