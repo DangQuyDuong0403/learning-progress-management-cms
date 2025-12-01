@@ -51,7 +51,7 @@ const ChapterListPage = () => {
 	const [chapters, setChapters] = useState([]);
 	const [syllabusInfo, setSyllabusInfo] = useState(null);
 	const [searchText, setSearchText] = useState('');
-	const [searchTimeout, setSearchTimeout] = useState(null);
+	const [debouncedSearchText, setDebouncedSearchText] = useState('');
 	const [totalElements, setTotalElements] = useState(0);
 	const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 	const [activeTab, setActiveTab] = useState('chapters');
@@ -166,9 +166,9 @@ const ChapterListPage = () => {
 	}, [syllabusId]);
 
 	useEffect(() => {
-		fetchChapters(1, pagination.pageSize, searchText);
+		fetchChapters(1, pagination.pageSize, debouncedSearchText);
 		fetchSyllabusInfo();
-	}, [fetchChapters, fetchSyllabusInfo, searchText, pagination.pageSize]);
+	}, [fetchChapters, fetchSyllabusInfo, debouncedSearchText, pagination.pageSize]);
 
 	// Enter syllabus menu mode when component mounts and syllabusInfo is available
 	useEffect(() => {
@@ -187,14 +187,14 @@ const ChapterListPage = () => {
 		};
 	}, [syllabusInfo?.id, enterSyllabusMenu, exitSyllabusMenu]);
 
-	// Cleanup timeout on unmount
+	// Debounce search text (1s)
 	useEffect(() => {
-		return () => {
-			if (searchTimeout) {
-				clearTimeout(searchTimeout);
-			}
-		};
-	}, [searchTimeout]);
+		const handler = setTimeout(() => {
+			setDebouncedSearchText(searchText.trim());
+		}, 1000);
+
+		return () => clearTimeout(handler);
+	}, [searchText]);
 
 
 	const handleDelete = async () => {
@@ -254,23 +254,11 @@ const ChapterListPage = () => {
 
 	const handleSearch = (value) => {
 		setSearchText(value);
-		
-		// Clear existing timeout
-		if (searchTimeout) {
-			clearTimeout(searchTimeout);
-		}
-		
-		// Set new timeout for 1 second delay
-		const newTimeout = setTimeout(() => {
-			// Reset to first page when searching
-			fetchChapters(1, pagination.pageSize, value);
-		}, 1000);
-		
-		setSearchTimeout(newTimeout);
+		setPagination((prev) => ({ ...prev, current: 1 }));
 	};
 
 	const handleTableChange = (pagination) => {
-		fetchChapters(pagination.current, pagination.pageSize, searchText);
+		fetchChapters(pagination.current, pagination.pageSize, debouncedSearchText);
 	};
 
 	// Checkbox logic
@@ -284,8 +272,8 @@ const ChapterListPage = () => {
 				};
 				
 				// Add search parameter if provided
-				if (searchText && searchText.trim()) {
-					params.searchText = searchText.trim();
+				if (debouncedSearchText && debouncedSearchText.trim()) {
+					params.searchText = debouncedSearchText.trim();
 				}
 
 				const response = await syllabusManagementApi.getChaptersBySyllabusId(syllabusId, params);
@@ -503,7 +491,7 @@ const ChapterListPage = () => {
 
 			if (response.success) {
 				// Refresh the list to get updated data from server
-				fetchChapters(pagination.current, pagination.pageSize, searchText);
+				fetchChapters(pagination.current, pagination.pageSize, debouncedSearchText);
 				
 				// Use backend message if available, otherwise fallback to translation
 				const successMessage = response.message || t('chapterManagement.importSuccess');

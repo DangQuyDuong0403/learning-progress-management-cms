@@ -1002,6 +1002,12 @@ const ClassStudent = () => {
   };
 
   const handleExportAll = async () => {
+    // Validate: Check if there is any data to export
+    if (pagination.total === 0 || students.length === 0) {
+      spaceToast.error(t('classDetail.noDataToExport') || 'No data available to export');
+      return;
+    }
+    
     setExportLoading(true);
     
     try {

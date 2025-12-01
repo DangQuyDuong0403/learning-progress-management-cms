@@ -906,7 +906,11 @@ const SortablePassageItem = memo(
                           style={{ 
                             marginBottom: '16px', 
                             fontSize: '15px', 
-                            lineHeight: '1.8'
+                            lineHeight: '1.8',
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word',
+                            wordBreak: 'break-word',
+                            whiteSpace: 'pre-wrap'
                           }}
                           dangerouslySetInnerHTML={{ __html: question.questionText || question.question }}
                         />
@@ -1939,7 +1943,11 @@ const SortableQuestionItem = memo(
             style={{ 
               marginBottom: '16px', 
               fontSize: '15px', 
-              lineHeight: '1.8'
+              lineHeight: '1.8',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              whiteSpace: 'pre-wrap'
             }}
             dangerouslySetInnerHTML={{ __html: displayText }}
           />
@@ -1952,7 +1960,7 @@ const SortableQuestionItem = memo(
               borderRadius: '12px',
               padding: '16px'
             }}>
-              <style>{`.rewrite-answer p{margin-top:0;margin-bottom:0}`}</style>
+              <style>{`.rewrite-answer p{margin-top:0;margin-bottom:0;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;white-space:pre-wrap}`}</style>
               <div style={{ 
                 fontSize: '14px', 
                 fontWeight: 600, 
@@ -2001,7 +2009,11 @@ const SortableQuestionItem = memo(
                       style={{ 
                         flex: 1,
                         lineHeight: '1.4',
-                        fontWeight: 400
+                        fontWeight: 400,
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap'
                       }}
                       className="rewrite-answer"
                       dangerouslySetInnerHTML={{ __html: item.value }} 
@@ -2021,7 +2033,7 @@ const SortableQuestionItem = memo(
               borderRadius: '12px',
               padding: '16px'
             }}>
-              <style>{`.rewrite-answer p{margin-top:0;margin-bottom:0}`}</style>
+              <style>{`.rewrite-answer p{margin-top:0;margin-bottom:0;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;white-space:pre-wrap}`}</style>
               <div style={{ 
                 fontSize: '14px', 
                 fontWeight: 600, 
@@ -2075,6 +2087,10 @@ const SortableQuestionItem = memo(
                         lineHeight: '1.4',
                         marginBottom: '0px',
                         fontWeight: 400,
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap'
                       }}
                       className="rewrite-answer"
                       dangerouslySetInnerHTML={{ __html: ans.answer }} 

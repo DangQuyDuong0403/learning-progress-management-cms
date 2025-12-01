@@ -616,7 +616,10 @@ export default function ThemedHeader({
   };
 
   const getRoleDisplayName = () => {
-    switch (user?.role) {
+    // Normalize role to uppercase for consistent comparison
+    const normalizedRole = user?.role?.toUpperCase();
+    
+    switch (normalizedRole) {
       case 'ADMIN':
         return t('header.roleAdmin');
       case 'MANAGER':

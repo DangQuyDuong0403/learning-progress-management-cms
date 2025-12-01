@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import TeacherForm from './TeacherForm';
-import AssignTeacherToClass from './AssignTeacherToClass';
+import AssignTeacherToClass from './AssignTeacherToClassModal';
 import './TeacherList.css';
 import ThemedLayout from '../../../../component/ThemedLayout';
 import LoadingWithEffect from '../../../../component/spinner/LoadingWithEffect';
@@ -957,6 +957,12 @@ const TeacherList = () => {
 
 
 	const handleExportAll = async () => {
+		// Validate: Check if there is any data to export
+		if (totalTeachers === 0 || teachers.length === 0) {
+			spaceToast.error(t('teacherManagement.noDataToExport') || 'No data available to export');
+			return;
+		}
+		
 		setExportLoading(true);
 		
 		try {

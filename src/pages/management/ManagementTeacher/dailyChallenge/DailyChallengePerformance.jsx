@@ -15,7 +15,7 @@ import {
   CartesianGrid,
   Legend
 } from 'recharts';
-import "./DailyChallengePerformanceReport.css";
+import "./DailyChallengePerformance.css";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
