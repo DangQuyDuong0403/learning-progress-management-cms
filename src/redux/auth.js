@@ -258,12 +258,10 @@ const authSlice = createSlice({
 				if (action.payload?.accessToken) {
 					state.accessToken = action.payload.accessToken;
 					localStorage.setItem('accessToken', action.payload.accessToken);
-					console.log('✅ Redux: Updated accessToken');
 				}
 				if (action.payload?.refreshToken) {
 					state.refreshToken = action.payload.refreshToken;
 					localStorage.setItem('refreshToken', action.payload.refreshToken);
-					console.log('✅ Redux: Updated refreshToken');
 				}
 			})
 			.addCase(refreshToken.rejected, (state, action) => {

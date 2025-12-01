@@ -2113,76 +2113,9 @@ const AIGenerateFeedback = () => {
         
         // Log request payload
         const requestPayload = { audioUrl, questionText: cleanedQuestionText, referenceText: refText };
-        console.log('=== SPEAKING AI GENERATE - REQUEST ===');
-        console.log('Request Payload:', requestPayload);
-        console.log('Audio URL:', audioUrl);
-        console.log('Question Text:', cleanedQuestionText);
-        console.log('Reference Text:', refText);
-        
         const res = await dailyChallengeApi.assessPronunciation(requestPayload);
         
-        // Log toàn bộ response từ backend
-        console.log('=== SPEAKING AI GENERATE - FULL RESPONSE ===');
-        console.log('Full Response Object:', res);
-        console.log('Response Data:', res?.data);
-        console.log('Response Data.data:', res?.data?.data);
-        console.log('Response Status:', res?.status);
-        console.log('Response Headers:', res?.headers);
-        
-        // Log response wrapper fields (nếu có)
-        if (res?.data) {
-          console.log('=== RESPONSE WRAPPER ===');
-          console.log('Trace ID:', res.data.traceId);
-          console.log('Success:', res.data.success);
-          console.log('Message:', res.data.message);
-          console.log('Error:', res.data.error);
-          console.log('Start Date:', res.data.startDate);
-          console.log('End Date:', res.data.endDate);
-          console.log('Status:', res.data.status);
-          console.log('Timestamp:', res.data.timestamp);
-          console.log('Path:', res.data.path);
-          console.log('Request ID:', res.data.requestId);
-        }
-        
         const data = res?.data?.data || res?.data || {};
-        
-        // Log data đã extract
-        console.log('=== EXTRACTED DATA ===');
-        console.log('Extracted Data:', data);
-        console.log('Pronunciation Score:', data?.pronunciationScore);
-        console.log('Accuracy Score:', data?.accuracyScore);
-        console.log('Fluency Score:', data?.fluencyScore);
-        console.log('Completeness Score:', data?.completenessScore);
-        console.log('Prosody Score:', data?.prosodyScore);
-        console.log('Recognized Text:', data?.recognizedText);
-        console.log('Reference Text:', data?.referenceText);
-        console.log('Feedback:', data?.feedback);
-        console.log('Words Array:', data?.words);
-        console.log('Words Count:', Array.isArray(data?.words) ? data.words.length : 0);
-        
-        // Log chi tiết từng word
-        if (Array.isArray(data?.words) && data.words.length > 0) {
-          console.log('=== WORD DETAILS ===');
-          data.words.forEach((word, index) => {
-            console.log(`Word ${index + 1}:`, {
-              word: word?.word,
-              accuracyScore: word?.accuracyScore,
-              errorType: word?.errorType,
-              position: word?.position,
-              duration: word?.duration
-            });
-          });
-        }
-        
-        // Log JSON stringified để xem toàn bộ structure
-        console.log('=== FULL DATA JSON ===');
-        console.log(JSON.stringify(data, null, 2));
-        
-        // Log full response JSON
-        console.log('=== FULL RESPONSE JSON ===');
-        console.log(JSON.stringify(res?.data, null, 2));
-        
-        console.log('=== END SPEAKING AI GENERATE LOG ===');
         
         setSpeakingResult(data || null);
         // Map to right panel

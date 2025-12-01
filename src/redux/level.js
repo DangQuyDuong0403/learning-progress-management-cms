@@ -121,9 +121,7 @@ export const createLevel = createAsyncThunk(
   'level/createLevel',
   async (levelData, { rejectWithValue }) => {
     try {
-      console.log('Creating level with data:', levelData);
       const response = await levelManagementApi.createLevel(levelData);
-      console.log('Create level response:', response);
       return response;
     } catch (error) {
       console.error('Error creating level:', error);
@@ -136,9 +134,7 @@ export const updateLevel = createAsyncThunk(
   'level/updateLevel',
   async ({ id, ...updateData }, { rejectWithValue }) => {
     try {
-      console.log('Updating level with ID:', id, 'Data:', updateData);
       const response = await levelManagementApi.updateLevel(id, updateData);
-      console.log('Update level response:', response);
       return response;
     } catch (error) {
       console.error('Error updating level:', error);

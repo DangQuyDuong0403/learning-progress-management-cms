@@ -47,12 +47,6 @@ const EnhancedPrivateRoute = ({ children, requiredRole = null }) => {
         const mustChangePassword = localStorage.getItem('mustChangePassword') === 'true';
         const userRole = getRoleFromToken(accessToken);
 
-        console.log('EnhancedPrivateRoute - Token validation:', {
-          mustChangePassword,
-          userRole,
-          currentPath: location.pathname
-        });
-
         // 5. Kiểm tra nếu phải đổi mật khẩu
         if (mustChangePassword) {
           // Chỉ cho phép truy cập các routes liên quan đến reset password

@@ -78,14 +78,8 @@ const SimpleDailyChallengeModal = ({
     try {
       const values = await form.validateFields();
       
-      console.log('Creating challenge with data:', values);
-      console.log('Form values:', form.getFieldsValue());
-      console.log('lessonData:', lessonData);
-      
       // Ensure challengeType is set - use from lessonData if not in form values
       const challengeType = values.challengeType || lessonData?.challengeType;
-      
-      console.log('Final challengeType:', challengeType);
       
       const challengeData = {
         challengeName: values.challengeName,
@@ -94,12 +88,8 @@ const SimpleDailyChallengeModal = ({
         challengeType: challengeType,
       };
 
-      console.log('Challenge data to send:', challengeData);
-
       // Call the actual API
       const response = await dailyChallengeApi.createDailyChallenge(challengeData);
-      
-      console.log('Create challenge API response:', response);
       
       // Extract challenge ID and other data from response
       let createdChallenge = challengeData;

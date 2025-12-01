@@ -123,10 +123,8 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 			setTimeout(() => {
 				if (questionData) {
 					// Edit mode - load existing data
-					console.log('TrueFalseModal - Loading question data:', questionData);
                     // Read from question or questionText field
                     const q = questionData.question || questionData.questionText || '';
-                    console.log('TrueFalseModal - Question text:', q, 'Length:', q.length);
                     setEditorData(q);
                     editorDataRef.current = q;
 					hasLoadedDataRef.current = true;
@@ -134,7 +132,6 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 					if (editorRef.current) {
 						try {
 							editorRef.current.setData(q);
-							console.log('TrueFalseModal - Set data to editor directly (editor already ready)');
 						} catch (e) {
 							console.error('TrueFalseModal - Error setting data to editor:', e);
 						}
@@ -142,7 +139,6 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 					// Determine correct answer from various possible shapes
 					let derivedAnswer = null;
 					const correctAnswerValue = questionData.correctAnswer;
-					console.log('TrueFalseModal - correctAnswer value:', correctAnswerValue, 'type:', typeof correctAnswerValue);
 					if (correctAnswerValue === true || correctAnswerValue === 'True') {
 						derivedAnswer = 'True';
 					} else if (correctAnswerValue === false || correctAnswerValue === 'False') {
@@ -170,7 +166,6 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 					}
 
 					setCorrectAnswer(derivedAnswer);
-					console.log('TrueFalseModal - Derived correctAnswer:', derivedAnswer);
                     setWeight((questionData && (questionData.weight ?? questionData.points)) || 1);
 				} else {
 					// Add mode - reset to defaults
@@ -197,7 +192,6 @@ const TrueFalseModal = ({ visible, onCancel, onSave, questionData = null, saving
 					try {
 						const dataToSet = editorDataRef.current;
 						editorRef.current.setData(dataToSet);
-						console.log('TrueFalseModal - Synced editorData to editor (editor ready, data loaded)');
 						// Mark as loaded so we don't keep setting
 						hasLoadedDataRef.current = false;
 					} catch (e) {
@@ -476,14 +470,12 @@ const handleSave = async () => {
                                 onChange={handleEditorChange}
                                 onReady={(editor) => {
                                     editorRef.current = editor;
-                                    console.log('TrueFalseModal - Editor ready, editorDataRef:', editorDataRef.current ? 'has data' : 'empty', 'hasLoadedDataRef:', hasLoadedDataRef.current);
                                     
                                     // Set initial data from ref if available (for edit mode)
                                     const initialData = editorDataRef.current || editorData || '';
                                     if (initialData) {
                                         try { 
                                             editor.setData(initialData);
-                                            console.log('TrueFalseModal - Editor ready, set initial data (length):', initialData.length);
                                             hasLoadedDataRef.current = false;
                                         } catch (e) {
                                             console.error('TrueFalseModal - Error setting initial data:', e);
@@ -494,7 +486,6 @@ const handleSave = async () => {
                                             if (editorRef.current && editorDataRef.current) {
                                                 try {
                                                     editorRef.current.setData(editorDataRef.current);
-                                                    console.log('TrueFalseModal - Editor ready, set data after delay (length):', editorDataRef.current.length);
                                                     hasLoadedDataRef.current = false;
                                                 } catch (e) {
                                                     console.error('TrueFalseModal - Error setting data after delay:', e);
@@ -502,7 +493,7 @@ const handleSave = async () => {
                                             }
                                         }, 300);
                                     } else {
-                                        console.log('TrueFalseModal - Editor ready, no data to set (new question)');
+                                        console.warn('TrueFalseModal - Editor ready, no data to set (new question)');
                                     }
                                 }}
                             />
