@@ -197,7 +197,6 @@ const ClassStudent = () => {
   const fetchClassData = useCallback(async () => {
     try {
       const response = await classManagementApi.getClassDetail(id);
-      console.log('Class detail response:', response);
       const data = response?.data?.data ?? response?.data ?? null;
       if (data) {
         const mapped = {
@@ -241,9 +240,7 @@ const ClassStudent = () => {
         sortDir: params.sortDir !== undefined ? params.sortDir : 'desc',
       };
       
-      console.log('Fetching students with params:', apiParams);
       const response = await classManagementApi.getClassStudents(id, apiParams);
-      console.log('Students response:', response);
       
       if (response.success) {
         setStudents(response.data || []);
@@ -277,21 +274,7 @@ const ClassStudent = () => {
         roleName: ['STUDENT', 'TEST_TAKER'], // Get both students and test takers
       };
       
-      console.log('=== FETCHING AVAILABLE STUDENTS ===');
-      console.log('Params sent to API:', JSON.stringify(params, null, 2));
-      console.log('Page (0-based):', page);
-      console.log('Size:', availableStudentsPagination.size);
-      
       const response = await studentManagementApi.getStudents(params);
-      console.log('=== Available students response (FULL) ===', response);
-      console.log('Response type:', typeof response);
-      console.log('Response keys:', Object.keys(response || {}));
-      console.log('Response.success:', response?.success);
-      console.log('Response.data:', response?.data);
-      console.log('Response.totalElements:', response?.totalElements);
-      console.log('Response.page:', response?.page);
-      console.log('Response.size:', response?.size);
-      
       // Check if response structure is correct
       if (!response) {
         console.error('❌ Response is null or undefined!');
@@ -324,13 +307,6 @@ const ClassStudent = () => {
       const responsePage = response.page || response.data?.page || 0;
       const responseSize = response.size || response.data?.size || 10;
       
-      console.log('=== PARSED RESPONSE ===');
-      console.log('All students (raw from API):', allStudents);
-      console.log('All students count:', allStudents.length);
-      console.log('Total elements:', totalElements);
-      console.log('Response page:', responsePage);
-      console.log('Response size:', responseSize);
-      
       if (allStudents.length === 0 && totalElements > 0) {
         console.warn('⚠️ WARNING: API returned 0 students but totalElements > 0!');
         console.warn('This might indicate a pagination issue or filter problem');
@@ -338,19 +314,13 @@ const ClassStudent = () => {
       
       // Filter out students who are already in the class
       const currentStudentIds = students.map(s => s.userId);
-      console.log('Current student IDs in class:', currentStudentIds);
-      console.log('Current students count in class:', currentStudentIds.length);
       
       const filteredStudents = allStudents.filter(student => 
         !currentStudentIds.includes(student.userId)
       );
       
-      console.log('Filtered students count (after removing existing):', filteredStudents.length);
-      console.log('Filtered students:', filteredStudents);
-      
       // Map the response to match our expected format
       const mappedStudents = filteredStudents.map(student => {
-          console.log('Mapping student:', student);
           const userId = student.userId || student.id;
           if (!userId) {
             console.warn('Student without userId:', student);
@@ -388,18 +358,6 @@ const ClassStudent = () => {
         // 2. OR if we haven't reached the total yet ((page + 1) * prev.size < totalElements)
         // But we need to be careful: if all students in this page are filtered out, we should still try next page
         const hasMore = allStudents.length === prev.size || (page + 1) * prev.size < totalElements;
-        
-        console.log('Pagination update:', {
-          page,
-          currentLoaded,
-          totalElements,
-          allStudentsLength: allStudents.length,
-          mappedStudentsLength: mappedStudents.length,
-          hasMore,
-          size: prev.size,
-          condition1: allStudents.length === prev.size,
-          condition2: (page + 1) * prev.size < totalElements
-        });
         
         return {
           ...prev,
@@ -492,7 +450,6 @@ const ClassStudent = () => {
 
 
   const handleStudentSearch = (value) => {
-    console.log('Search input:', value);
     setStudentSearchText(value); // Save search text to state
     
     // Clear previous timeout
@@ -502,7 +459,6 @@ const ClassStudent = () => {
     
     // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(() => {
-      console.log('Executing search after timeout for:', value);
       // Reset pagination on new search
       setAvailableStudentsPagination({
         page: 0,
@@ -545,7 +501,6 @@ const ClassStudent = () => {
       for (const selector of selectors) {
         const element = document.querySelector(selector);
         if (element && element.scrollHeight > element.clientHeight) {
-          console.log('Found scrollable element:', selector);
           return element;
         }
       }
@@ -556,7 +511,6 @@ const ClassStudent = () => {
       scrollableElement = findScrollableElement();
       
       if (!scrollableElement) {
-        console.log('Scrollable element not found, will retry...');
         return false;
       }
 
@@ -569,25 +523,8 @@ const ClassStudent = () => {
         // Load more when scrolled to 70% of the list
         const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
         
-        console.log('Scroll detected:', {
-          scrollTop,
-          scrollHeight,
-          clientHeight,
-          scrollPercentage,
-          hasMore: availableStudentsPagination.hasMore,
-          loadingMore,
-          searchLoading
-        });
-        
         if (scrollPercentage >= 0.7) {
           if (availableStudentsPagination.hasMore && !loadingMore && !searchLoading) {
-            console.log('Loading more students from scroll listener...', {
-              hasMore: availableStudentsPagination.hasMore,
-              loadingMore,
-              searchLoading,
-              nextPage: availableStudentsPagination.page + 1,
-              scrollPercentage
-            });
             const nextPage = availableStudentsPagination.page + 1;
             fetchAvailableStudents(studentSearchText, nextPage, true);
           }
@@ -595,7 +532,6 @@ const ClassStudent = () => {
       };
 
       scrollableElement.addEventListener('scroll', scrollHandler, { passive: true });
-      console.log('Scroll listener attached to:', scrollableElement);
       return true;
     };
 
@@ -633,7 +569,6 @@ const ClassStudent = () => {
   }, [isModalVisible, availableStudentsPagination.hasMore, availableStudentsPagination.page, loadingMore, searchLoading, studentSearchText, fetchAvailableStudents]);
 
   const handleSelectStudent = (selectedIds) => {
-    console.log("Students selected:", selectedIds);
     
     // Convert selected IDs to student objects
     const newSelectedStudents = selectedIds.map(id => 
@@ -645,7 +580,6 @@ const ClassStudent = () => {
 
 
   const handleDeleteStudent = (student) => {
-    console.log("Delete button clicked for student:", student);
     setButtonLoading(prev => ({ ...prev, delete: true }));
     setTimeout(() => {
       setStudentToDelete(student);
@@ -657,11 +591,9 @@ const ClassStudent = () => {
   const handleConfirmDelete = async () => {
     if (studentToDelete) {
       try {
-        console.log("Confirm delete for student:", studentToDelete);
         
         // Call API to remove student from class
         const response = await classManagementApi.removeStudentFromClass(id, studentToDelete.userId);
-        console.log("Remove student response:", response);
         
         if (response.success) {
           // Remove student from local state for better UX
@@ -688,7 +620,6 @@ const ClassStudent = () => {
   };
 
   const handleCancelDelete = () => {
-    console.log("Delete cancelled");
     setIsDeleteModalVisible(false);
     setStudentToDelete(null);
   };
@@ -732,14 +663,9 @@ const ClassStudent = () => {
       // Call validate API with FormData
       const response = await classManagementApi.validateClassStudentsImport(id, formData);
 
-      console.log('DEBUG - Validation response:', response);
-      console.log('DEBUG - Response type:', typeof response);
-      console.log('DEBUG - Response data:', response?.data);
-
       // API returns full response object when responseType: 'blob' is set
       // The blob data is in response.data
       if (response && response.data && response.data instanceof Blob) {
-        console.log('DEBUG - Response data is blob, creating download...');
         
         // Create download link directly from blob
         const url = window.URL.createObjectURL(response.data);
@@ -757,7 +683,6 @@ const ClassStudent = () => {
           const elapsed = Date.now() - downloadStartTime;
           
           if (elapsed > 2000) { // 2 seconds should be enough for most files
-            console.log('DEBUG - Validation download completed');
             setImportModal(prev => ({ ...prev, validating: false }));
             spaceToast.success('Validation completed successfully');
             document.body.removeChild(link);
@@ -777,7 +702,6 @@ const ClassStudent = () => {
         // Fallback: if still loading after 15 seconds, assume download completed
         setTimeout(() => {
           if (importModal.validating) {
-            console.log('DEBUG - Fallback timeout reached for validation');
             setImportModal(prev => ({ ...prev, validating: false }));
             spaceToast.success('Validation download completed');
             document.body.removeChild(link);
@@ -975,7 +899,6 @@ const ClassStudent = () => {
       // Fallback: if still loading after 15 seconds, assume download completed
       setTimeout(() => {
         if (templateLoading) {
-          console.log('DEBUG - Fallback timeout reached, removing loading state');
           setTemplateLoading(false);
           spaceToast.success('Template download completed');
           document.body.removeChild(link);
@@ -1029,7 +952,6 @@ const ClassStudent = () => {
       // Add roleName filter for students
       exportParams.roleName = ['STUDENT', 'TEST_TAKER'];
 
-      console.log('Exporting all class students with current filters:', exportParams);
       
       const response = await studentManagementApi.exportStudents(exportParams);
       
@@ -1060,8 +982,6 @@ const ClassStudent = () => {
   const handleModalOk = async () => {
     setButtonLoading(prev => ({ ...prev, add: true }));
     try {
-      console.log("Add students clicked");
-      console.log("selectedStudents:", selectedStudents);
       
       if (selectedStudents.length === 0) {
         spaceToast.error(t('classDetail.selectAtLeastOne'));
@@ -1070,11 +990,9 @@ const ClassStudent = () => {
 
       // Extract userIds from selected students
       const userIds = selectedStudents.map(student => student.userId);
-      console.log("Adding students with userIds:", userIds);
 
       // Call API to add students to class
       const response = await classManagementApi.addStudentsToClass(id, userIds);
-      console.log("Add students response:", response);
 
       if (response.success) {
         spaceToast.success(`${t('classDetail.addStudentsSuccess')} ${selectedStudents.length} ${t('classDetail.studentsToClass')}`);
@@ -1149,9 +1067,7 @@ const ClassStudent = () => {
           sortDir: sortConfig.sortDir,
         };
         
-        console.log('Fetching students with params:', apiParams);
         const response = await classManagementApi.getClassStudents(id, apiParams);
-        console.log('Students response:', response);
         
         if (response.success) {
           setStudents(response.data || []);
@@ -1179,7 +1095,6 @@ const ClassStudent = () => {
   
   // Handle pagination change
   const handleTableChange = (paginationInfo, filters, sorter) => {
-    console.log('Table change:', { paginationInfo, filters, sorter });
     
     // Handle pagination - only update state, don't call API here
     if (paginationInfo.current !== pagination.current || paginationInfo.pageSize !== pagination.pageSize) {
@@ -1565,26 +1480,8 @@ const ClassStudent = () => {
                   // Load more when scrolled to 70% of the list
                   const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
                   
-                  console.log('onPopupScroll event:', {
-                    scrollTop,
-                    scrollHeight,
-                    clientHeight,
-                    scrollPercentage,
-                    hasMore: availableStudentsPagination.hasMore,
-                    loadingMore,
-                    searchLoading,
-                    target: target.className
-                  });
-                  
                   if (scrollPercentage >= 0.7) {
                     if (availableStudentsPagination.hasMore && !loadingMore && !searchLoading) {
-                      console.log('Loading more students from onPopupScroll...', {
-                        hasMore: availableStudentsPagination.hasMore,
-                        loadingMore,
-                        searchLoading,
-                        nextPage: availableStudentsPagination.page + 1,
-                        scrollPercentage
-                      });
                       const nextPage = availableStudentsPagination.page + 1;
                       fetchAvailableStudents(studentSearchText, nextPage, true);
                     }

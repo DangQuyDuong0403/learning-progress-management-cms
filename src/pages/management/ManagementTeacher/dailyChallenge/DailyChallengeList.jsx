@@ -67,7 +67,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
   // Restore currentPage from location.state if available (when navigating back)
   const [currentPage, setCurrentPage] = useState(() => {
     const initialPage = location.state?.currentPage || 1;
-    console.log('🔵 DailyChallengeList - Initial currentPage from state:', initialPage, 'location.state:', location.state);
     return initialPage;
   });
   const [pageSize, setPageSize] = useState(10);
@@ -185,7 +184,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
     try {
       const { classManagementApi } = require('../../../../apis/apis');
       const response = await classManagementApi.getClassDetail(classId);
-      console.log('DailyChallengeList - Class detail response:', response);
       const data = response?.data?.data ?? response?.data ?? null;
       if (data) {
         const mapped = {
@@ -199,11 +197,9 @@ const DailyChallengeList = ({ readOnly = false }) => {
             data.classTitle ??
             `Class ${classId}`, // Fallback name
         };
-        console.log('DailyChallengeList - Setting classData:', mapped);
         setClassData(mapped);
       } else {
         // If no data returned, set a fallback
-        console.log('DailyChallengeList - No class data, using fallback');
         setClassData({
           id: classId,
           name: `Class ${classId}`
@@ -249,9 +245,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
           sortDir: 'desc'
         });
       }
-
-      // axios interceptor already returns response.data
-      console.log('Daily Challenges API Response (normalized):', response);
 
       // Normalize different possible response shapes
       let items = [];
@@ -586,10 +579,8 @@ const DailyChallengeList = ({ readOnly = false }) => {
     const total = filteredAllChallenges.length;
     setTotalItems(total);
     const maxPage = Math.max(1, Math.ceil(total / pageSize));
-    console.log('🔍 Pagination check:', { currentPage, maxPage, total, pageSize });
     // Only reset currentPage if we have data and currentPage exceeds maxPage
     if (total > 0 && currentPage > maxPage) {
-      console.log('⚠️ RESETTING currentPage from', currentPage, 'to', maxPage);
       setCurrentPage(maxPage);
     }
   }, [filteredAllChallenges, pageSize, currentPage]);
@@ -597,7 +588,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
   // Restore pagination and filters from location.state when navigating back
   // Only restore once for each unique location.state
   useEffect(() => {
-    console.log('🟢 DailyChallengeList - Location state changed:', location.state);
     
     // Create a unique key from location.state to track if we've restored this specific state
     const stateKey = location.state?.currentPage 
@@ -610,9 +600,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
         })
       : null;
     
-    console.log('🟢 DailyChallengeList - State key:', stateKey);
-    console.log('🟢 DailyChallengeList - Restored key:', restoredStateKey.current);
-    
     // Only restore if we have saved state AND haven't restored this specific state yet
     if (stateKey && restoredStateKey.current !== stateKey) {
       const savedPage = location.state.currentPage;
@@ -621,44 +608,29 @@ const DailyChallengeList = ({ readOnly = false }) => {
       const savedTypeFilter = location.state.typeFilter;
       const savedStatusFilter = location.state.statusFilter;
       
-      console.log('🟡 DailyChallengeList - Found new saved state to restore:', {
-        savedPage,
-        savedPageSize,
-        savedSearchText,
-        savedTypeFilter,
-        savedStatusFilter,
-      });
-      
-      console.log('✅ DailyChallengeList - Restoring state...');
-      
       // Set flag to prevent side effects during restoration
       isRestoringState.current = true;
       
       // Restore page and pageSize FIRST (before searchText to avoid debounce reset)
       if (savedPage && savedPage > 0) {
-        console.log('📄 Restoring page to', savedPage);
         setCurrentPage(savedPage);
       }
       if (savedPageSize && savedPageSize > 0) {
-        console.log('📏 Restoring pageSize to', savedPageSize);
         setPageSize(savedPageSize);
       }
       
       // Restore filters BEFORE searchText
       if (savedTypeFilter && Array.isArray(savedTypeFilter)) {
-        console.log('🏷️ Restoring typeFilter:', savedTypeFilter);
         setTypeFilter(savedTypeFilter);
         setFilterDropdown(prev => ({ ...prev, selectedTypes: savedTypeFilter }));
       }
       if (savedStatusFilter && Array.isArray(savedStatusFilter)) {
-        console.log('📊 Restoring statusFilter:', savedStatusFilter);
         setStatusFilter(savedStatusFilter);
         setFilterDropdown(prev => ({ ...prev, selectedStatuses: savedStatusFilter }));
       }
       
       // Restore search text LAST (after currentPage is set)
       if (savedSearchText !== undefined) {
-        console.log('🔍 Restoring searchText:', savedSearchText);
         setSearchText(savedSearchText);
         setSearchDebounce(savedSearchText);
       }
@@ -669,14 +641,12 @@ const DailyChallengeList = ({ readOnly = false }) => {
       // Clear restoration flag after a short delay to allow all state updates to complete
       setTimeout(() => {
         isRestoringState.current = false;
-        console.log('✅ DailyChallengeList - State restored successfully, restoration flag cleared');
       }, 500);
     } else if (!stateKey && restoredStateKey.current) {
       // Reset when location.state no longer has saved state
-      console.log('🔄 DailyChallengeList - Resetting restoredStateKey (no saved state)');
       restoredStateKey.current = null;
     } else if (stateKey && restoredStateKey.current === stateKey) {
-      console.log('⏭️ DailyChallengeList - Skipping restore (already restored this state)');
+      console.warn('DailyChallengeList - Skipping restore (already restored this state)');
     }
   }, [location.state]); // Only depend on location.state, not currentPage
 
@@ -689,13 +659,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
     fetchDailyChallenges();
   }, [fetchDailyChallenges]);
 
-  // Debug logging for dailyChallenges data
-  useEffect(() => {
-    if (dailyChallenges.length > 0) {
-      console.log('Daily Challenges Data:', dailyChallenges);
-      console.log('First Challenge:', dailyChallenges[0]);
-    }
-  }, [dailyChallenges]);
 
   // Debounce search text - trim spaces at beginning and end
   useEffect(() => {
@@ -715,57 +678,34 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   // Enter/exit daily challenge menu mode
   useEffect(() => {
-    console.log('DailyChallengeList - Entering daily challenge menu mode', {
-      classId,
-      classData,
-      locationState: location.state
-    });
-    
     // Get classId from URL params or location state
     const currentClassId = classId || location.state?.classId;
-    
+
     // Determine back path based on user role and classId
     const getBackPath = () => {
+      const userRole = user?.role?.toLowerCase();
       if (currentClassId) {
-        // If coming from class menu, go back to that class menu
-        const userRole = user?.role?.toLowerCase();
-        const routePrefix = userRole === 'teacher' || userRole === 'teaching_assistant' 
-          ? '/teacher/classes' 
-          : '/manager/classes';
+        const routePrefix =
+          userRole === "teacher" || userRole === "teaching_assistant"
+            ? "/teacher/classes"
+            : "/manager/classes";
         return `${routePrefix}/menu/${currentClassId}`;
-      } else {
-        // Otherwise, go back to classes list
-        const userRole = user?.role?.toLowerCase();
-        return userRole === 'teacher' || userRole === 'teaching_assistant' 
-          ? '/teacher/classes' 
-          : '/manager/classes';
       }
+      // Otherwise, go back to classes list
+      return userRole === "teacher" || userRole === "teaching_assistant"
+        ? "/teacher/classes"
+        : "/manager/classes";
     };
-    
-    // Enter daily challenge menu mode when component mounts
-    // Priority: Use location.state if available (when navigating back from Performance)
-    // Otherwise use classData or dailyChallengeData
-    const getSubtitle = () => {
-      // First priority: Use location.state if available (when navigating back from Performance)
-      if (location?.state?.className && location?.state?.challengeName) {
-        return `${location.state.className} / ${location.state.challengeName}`;
-      } else if (location?.state?.challengeName) {
-        return location.state.challengeName;
-      } else if (location?.state?.className) {
-        return location.state.className;
-      }
-      // Fallback: no subtitle for list page (shows class name in header via displayName)
-      return null;
-    };
-    
+
+    // For the LIST screen, we luôn chỉ muốn subtitle trống
+    // (header sẽ hiển thị tên lớp qua displayName), tránh giữ lại tên challenge cũ
+    const subtitle = null;
     const displayName = location?.state?.className || classData?.name || null;
-    const subtitle = getSubtitle();
-    console.log('DailyChallengeList - Display name for header:', displayName, 'Subtitle:', subtitle);
+
     enterDailyChallengeMenu(0, subtitle, getBackPath(), displayName);
-    
+
     // Exit daily challenge menu mode when component unmounts
     return () => {
-      console.log('DailyChallengeList - Exiting daily challenge menu mode');
       exitDailyChallengeMenu();
     };
   }, [enterDailyChallengeMenu, exitDailyChallengeMenu, classId, location.state, user, classData]);
@@ -854,9 +794,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
         challengeId = newChallenge.data.id;
       }
       
-      console.log('Created challenge data received:', newChallenge);
-      console.log('Extracted challenge ID:', challengeId);
-      
       if (challengeId) {
         // Redirect to performance screen of the newly created challenge
         navigate(`/teacher/daily-challenges/detail/${challengeId}`, {
@@ -898,8 +835,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
       typeFilter: typeFilter, // Save type filter
       statusFilter: statusFilter, // Save status filter
     };
-    console.log('🔵 DailyChallengeList - Navigating to detail, saving state:', savedState);
-    
     // Determine route based on user role
     const userRole = user?.role?.toLowerCase();
     const detailPath = userRole === 'manager' 
@@ -1596,7 +1531,6 @@ const DailyChallengeList = ({ readOnly = false }) => {
                 pageSize: pageSize,
                 total: totalItems,
                 onChange: (page, size) => {
-                  console.log('📄 Page changed to:', page, 'from:', currentPage);
                   setCurrentPage(page);
                   if (size !== pageSize) {
                     setPageSize(size);

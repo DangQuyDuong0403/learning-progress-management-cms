@@ -54,7 +54,6 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				const levelsData = response.data?.content || response.data || [];
 				setLevels(levelsData);
 				
-				console.log('Fetched published levels:', levelsData);
 			} catch (error) {
 				console.error('Error fetching published levels:', error);
 				
@@ -82,7 +81,6 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				levelId: syllabus.level?.id || syllabus.levelId // Use level.id if available, fallback to levelId
 			};
 			form.setFieldsValue(formData);
-			console.log('Setting form values for edit:', formData);
 		}
 	}, [syllabus, levels, form]);
 
@@ -106,8 +104,6 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				...(values.assessmentCriteria && { assessmentCriteria: values.assessmentCriteria }),
 			};
 
-			console.log('Sending request body:', requestBody);
-
 			let response;
 			if (isEdit) {
 				response = await syllabusManagementApi.updateSyllabus(syllabus.id, requestBody);
@@ -127,7 +123,6 @@ const SyllabusForm = ({ syllabus, onClose, onSuccess }) => {
 				
 				// Navigate to chapter list of the newly created syllabus
 				if (response.data && response.data.id) {
-					console.log('Navigating to chapter list for syllabus:', response.data.id);
 					navigate(`/manager/syllabuses/${response.data.id}/chapters`);
 				} else {
 					// Fallback: call onSuccess callback to refresh the list

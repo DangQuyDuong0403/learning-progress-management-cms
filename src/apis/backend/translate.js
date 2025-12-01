@@ -20,10 +20,7 @@ const translateWithBackendAPI = async (text, sourceLang = 'en', targetLang = 'vi
       ? base.replace('/api/v1', '/api')
       : (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
     const absoluteUrl = `${baseApi}/openai/translate`;
-    
-    console.log('🌐 Calling translate API:', absoluteUrl);
-    console.log('📝 Text to translate:', text);
-    
+
     const response = await axiosClient.post(absoluteUrl, { text }, {
       headers: {
         'Content-Type': 'application/json',
@@ -31,12 +28,9 @@ const translateWithBackendAPI = async (text, sourceLang = 'en', targetLang = 'vi
       },
     });
 
-    console.log('✅ Translate API response:', response);
-
     // axiosClient interceptor returns response.data, so response is already the data object
     // Response format: { traceId, success, message, data: { originalText, translatedText, fromLanguage, toLanguage }, timestamp }
     if (response && response.success && response.data && response.data.translatedText) {
-      console.log('✅ Translated text:', response.data.translatedText);
       return response.data.translatedText;
     }
     

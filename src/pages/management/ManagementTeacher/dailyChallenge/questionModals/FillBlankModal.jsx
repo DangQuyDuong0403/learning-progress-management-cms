@@ -634,7 +634,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					break;
 			}
 
-			console.log(`Image aligned to ${alignment}`);
 
 			// Return focus to editor after alignment
 			requestAnimationFrame(() => {
@@ -781,7 +780,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				}
 
 				setTableDropdownOpen(false);
-				console.log(`Table ${numRows}x${numCols} inserted successfully`);
 			}
 		},
 		[updatePopupPosition]
@@ -885,7 +883,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				deletionInProgressRef.current.delete(blankId);
 			});
 
-			console.log('Blank removed');
 
 			// Refocus editor
 			editorRef.current.focus();
@@ -1506,7 +1503,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						editorRef.current.focus();
 					}
 
-					console.log('Image deleted');
 				}
 			}
 		},
@@ -1666,21 +1662,9 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		// Process all child nodes
 		const allNodes = Array.from(editorRef.current.childNodes);
-		console.log('=== SAVE DEBUG ===');
-		console.log('Total child nodes:', allNodes.length);
-		allNodes.forEach((node, index) => {
-			console.log(`Node ${index}:`, {
-				type: node.nodeType,
-				tagName: node.nodeName,
-				textContent: node.textContent?.substring(0, 50),
-				innerHTML: node.innerHTML?.substring(0, 100),
-				isLastSibling: index === allNodes.length - 1
-			});
-		});
 		allNodes.forEach((node, index) => {
 			const isLastSibling = index === allNodes.length - 1;
 			const result = processNode(node, isLastSibling, true); // true = isTopLevel
-			console.log(`Processed node ${index} result:`, result);
 			questionText += result;
 			
 			// Add <br> between top-level div nodes (each div represents a paragraph/line when user presses Enter)
@@ -1740,8 +1724,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				// Skip: Text -> Text (no <br>, they're in same paragraph)
 			}
 		});
-		console.log('Final questionText:', questionText);
-		console.log('==================');
 
 		// Clean up multiple line breaks
 		questionText = questionText.replace(/\n/g, '<br>');
@@ -1761,13 +1743,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			blanks: blanks,
 			correctAnswer: contentData.map((d) => d.value).join(', '),
 		};
-
-		// Log HTML output for debugging
-		console.log('=== FILL BLANK QUESTION HTML ===');
-		console.log('Question HTML:', questionText);
-		console.log('Blanks Data:', contentData);
-		console.log('Full Question Data:', newQuestionData);
-		console.log('================================');
 
 		try {
 			setSaving(true);

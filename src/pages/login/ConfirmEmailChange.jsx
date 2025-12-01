@@ -30,14 +30,11 @@ export default function ConfirmEmailChange() {
   usePageTitle(t('common.confirmEmailChange'));
 
   useEffect(() => {
-    console.log('useEffect triggered - token:', token);
     if (token) {
-      console.log('Token exists, calling confirmEmailChange API...');
       
       const handleConfirmEmailChange = async () => {
         try {
           setStatus('loading');
-          console.log('Calling confirmEmailChange API...');
           
           // Thêm timeout để tránh hanging
           const timeoutPromise = new Promise((_, reject) => 
@@ -46,11 +43,6 @@ export default function ConfirmEmailChange() {
           
           const apiPromise = dispatch(confirmEmailChange(token)).unwrap();
           const result = await Promise.race([apiPromise, timeoutPromise]);
-          
-          console.log('confirmEmailChange API result:', result);
-          console.log('result.data:', result.data);
-          console.log('result.success:', result.success);
-          console.log('result.message:', result.message);
           
           if (result.data?.success || result.data?.message) {
             setStatus('success');
@@ -84,7 +76,6 @@ export default function ConfirmEmailChange() {
       
       handleConfirmEmailChange();
     } else {
-      console.log('No token found, setting error status');
       setStatus('error');
     }
   }, [token, dispatch, t]);

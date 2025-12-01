@@ -207,7 +207,6 @@ const DailyChallengePerformance = () => {
     try {
       // Fetch challenge detail from API
       const response = await dailyChallengeApi.getDailyChallengeById(id);
-      console.log('Challenge detail response:', response);
       
       const data = response?.data;
       if (data) {
@@ -286,26 +285,12 @@ const DailyChallengePerformance = () => {
 
     setLoading(true);
     try {
-      console.log('Fetching performance data for challengeId:', challengeId);
-      console.log('Current challengeInfo:', challengeInfo);
-      
       // Call all APIs in parallel
       const [overviewResponse, studentsResponse, chartResponse] = await Promise.all([
         dailyChallengeApi.getChallengeOverview(challengeId),
         dailyChallengeApi.getChallengeStudentPerformance(challengeId),
         dailyChallengeApi.getChallengeChartData(challengeId)
       ]);
-
-      console.log('Overview API Response:', overviewResponse);
-      console.log('Overview API Response.data:', overviewResponse?.data);
-      console.log('Overview API Response.data.data:', overviewResponse?.data?.data);
-      console.log('Students API Response:', studentsResponse);
-      console.log('Students API Response.data:', studentsResponse?.data);
-      console.log('Students API Response.data.data:', studentsResponse?.data?.data);
-      console.log('Chart API Response:', chartResponse);
-      console.log('Chart API Response.data:', chartResponse?.data);
-      console.log('Chart API Response.data.data:', chartResponse?.data?.data);
-
       // Check if responses are successful
       // Note: axios interceptor returns response.data, so overviewResponse is already { traceId, success, message, data }
       if (overviewResponse?.success === false) {
@@ -347,9 +332,6 @@ const DailyChallengePerformance = () => {
         }));
       }
       
-      console.log('Processed overviewData:', overviewData);
-      console.log('OverviewData keys:', Object.keys(overviewData || {}));
-      
       // Validate that we have data
       if (!overviewData || Object.keys(overviewData).length === 0) {
         console.error('Overview data is empty or invalid:', overviewData);
@@ -376,8 +358,6 @@ const DailyChallengePerformance = () => {
       }
       
       students = students || [];
-      console.log('Processed students:', students);
-      console.log('Number of students:', students.length);
       
       // Normalize score helper
       const normalizeStudentScore = (score) => {
@@ -438,15 +418,6 @@ const DailyChallengePerformance = () => {
       
       const processedChartData = (chartDataPoints || []).map((point, index) => {
         const timeInMinutes = getCompletionTimeInMinutes(point);
-        // Debug log for specific student
-        if (point.fullName === 'Nguyễn Đức Anh') {
-          console.log('Nguyễn Đức Anh data:', {
-            userId: point.userId,
-            completionTimeSeconds: point.completionTimeSeconds,
-            completionTimeMinutes: point.completionTimeMinutes,
-            calculatedTimeInMinutes: timeInMinutes
-          });
-        }
         return {
           name: point.fullName || t('dailyChallenge.studentNumber', 'Student {{number}}', { number: index + 1 }),
           score: normalizeScore(point.score || 0),
@@ -454,7 +425,6 @@ const DailyChallengePerformance = () => {
         };
       });
       
-      console.log('Processed chart data:', processedChartData);
       setChartData(processedChartData);
 
       const finalPerformanceData = {
@@ -465,18 +435,7 @@ const DailyChallengePerformance = () => {
         submissionStats
       };
 
-      console.log('Setting performance data:', {
-        ...finalPerformanceData,
-        rawAverage: overviewData.averageScore,
-        rawHighest: overviewData.highestScore,
-        rawLowest: overviewData.lowestScore,
-        normalizedAverage: average,
-        normalizedHighest: highest,
-        normalizedLowest: lowest
-      });
-
       setPerformanceData(finalPerformanceData);
-      console.log('Performance data set. State should update now.');
 
       setLoading(false);
     } catch (error) {
@@ -662,8 +621,6 @@ const DailyChallengePerformance = () => {
         statusFilter: savedState.statusFilter,
       };
       
-      console.log('🔵 DailyChallengePerformance - Preserving state for back navigation:', preservedState);
-      
       if (challengeInfo.classId) {
         // If coming from class-specific daily challenges, go back to that list
         // Route: /teacher/classes/daily-challenges/:classId
@@ -730,17 +687,6 @@ const DailyChallengePerformance = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, challengeInfo.challengeId]);
-
-  // Debug: Log when performanceData changes
-  useEffect(() => {
-    console.log('Performance data state updated:', performanceData);
-  }, [performanceData]);
-
-  // Debug: Log when studentScores changes
-  useEffect(() => {
-    console.log('Student scores state updated:', studentScores);
-    console.log('Number of students in state:', studentScores.length);
-  }, [studentScores]);
 
   // Helper to translate type codes to labels
   const getTypeLabelByCode = useCallback((typeCode) => {

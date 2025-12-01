@@ -133,7 +133,6 @@ const ClassList = () => {
         size: size,
       };
 
-      console.log('Fetching classes with params:', params);
       const response = await classManagementApi.getClasses(params);
       
       if (response.success && response.data) {

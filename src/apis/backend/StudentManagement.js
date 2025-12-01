@@ -19,8 +19,6 @@ const studentManagementApi = {
 		if (params.sortDir) queryParams.append('sortDir', params.sortDir);
 
 		const url = `/user/students${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetStudents API - URL:', url);
-		console.log('GetStudents API - Params:', params);
 		
 		return axiosClient.get(url, {
 			headers: {
@@ -32,9 +30,7 @@ const studentManagementApi = {
 	// Bulk update student status (ACTIVE/INACTIVE)
 	bulkUpdateStudentStatus: (userIds, targetStatus) => {
 		const url = `/user/students/bulk-status`;
-		console.log('BulkUpdateStudentStatus API - URL:', url);
-		console.log('BulkUpdateStudentStatus API - Data:', { userIds, targetStatus });
-		
+
 		return axiosClient.patch(url, {
 			userIds: userIds,
 			targetStatus: targetStatus
@@ -54,9 +50,7 @@ const studentManagementApi = {
 	// Cập nhật trạng thái student (ACTIVE/INACTIVE) - Single student
 	updateStudentStatus: (userId, status) => {
 		const url = `/user/students/${userId}/status?status=${status}`;
-		console.log('UpdateStudentStatus API - URL:', url);
-		console.log('UpdateStudentStatus API - Params:', { userId, status });
-		
+
 		return axiosClient.patch(url, {}, {
 			headers: {
 				'accept': '*/*',
@@ -65,9 +59,7 @@ const studentManagementApi = {
 	},
 	getStudentProfile: (userId) => {
 		const url = `/user/profile/${userId}`;
-		console.log('GetStudentProfile API - URL:', url);
-		console.log('GetStudentProfile API - Params:', { userId });
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -78,9 +70,7 @@ const studentManagementApi = {
 	// Tạo student mới
 	createStudent: (studentData) => {
 		const url = `/user/students`;
-		console.log('CreateStudent API - URL:', url);
-		console.log('CreateStudent API - Data:', JSON.stringify(studentData, null, 2));
-		
+
 		return axiosClient.post(url, studentData, {
 			headers: {
 				'accept': '*/*',
@@ -97,9 +87,7 @@ const studentManagementApi = {
 	// Cập nhật profile của student
 	updateStudentProfile: (userId, studentData) => {
 		const url = `/user/students/${userId}`;
-		console.log('UpdateStudentProfile API - URL:', url);
-		console.log('UpdateStudentProfile API - Data:', JSON.stringify(studentData, null, 2));
-		
+
 		return axiosClient.put(url, studentData, {
 			headers: {
 				'accept': '*/*',
@@ -116,8 +104,7 @@ const studentManagementApi = {
 	// Download student import template
 	downloadStudentTemplate: () => {
 		const url = `/user/students/download-template`;
-		console.log('DownloadStudentTemplate API - URL:', url);
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -133,9 +120,7 @@ const studentManagementApi = {
 	// Import students from Excel file
 	importStudents: (formData) => {
 		const url = `/user/students/import`;
-		console.log('ImportStudents API - URL:', url);
-		console.log('ImportStudents API - FormData:', formData);
-		
+
 		return axiosClient.post(url, formData, {
 			headers: {
 				'accept': '*/*',
@@ -152,9 +137,7 @@ const studentManagementApi = {
 	// Validate student import file without importing
 	validateImportFile: (formData) => {
 		const url = `/user/students/validate-import`;
-		console.log('ValidateImportFile API - URL:', url);
-		console.log('ValidateImportFile API - FormData:', formData);
-		
+
 		return axiosClient.post(url, formData, {
 			headers: {
 				'accept': '*/*',
@@ -175,10 +158,6 @@ const studentManagementApi = {
 		formData.append('file', file);
 		
 		const url = `/user/profile/${userId}/avatar`;
-		console.log('UploadStudentAvatar API - URL:', url);
-		console.log('UploadStudentAvatar API - UserId:', userId);
-		console.log('UploadStudentAvatar API - File:', file);
-		
 		return axiosClient.patch(url, formData, {
 			headers: {
 				'Content-Type': 'multipart/form-data',
@@ -209,9 +188,6 @@ const studentManagementApi = {
 		}
 
 		const url = `/user/students/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('ExportStudents API - URL:', url);
-		console.log('ExportStudents API - Params:', params);
-		
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -233,9 +209,6 @@ const studentManagementApi = {
 			queryParams.append('userId', userId);
 		}
 		const url = `/reports/student/overview${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetStudentOverview API - URL:', url);
-		console.log('GetStudentOverview API - Params:', { userId });
-		
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -256,9 +229,6 @@ const studentManagementApi = {
 			queryParams.append('userId', userId);
 		}
 		const url = `/reports/student/level-history${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetStudentLevelHistory API - URL:', url);
-		console.log('GetStudentLevelHistory API - Params:', { userId });
-		
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -279,9 +249,6 @@ const studentManagementApi = {
 			queryParams.append('userId', userId);
 		}
 		const url = `/reports/student/class/${classId}/challenges${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetStudentClassChallengeDetail API - URL:', url);
-		console.log('GetStudentClassChallengeDetail API - Params:', { classId, userId });
-		
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',

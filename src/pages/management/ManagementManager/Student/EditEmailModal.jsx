@@ -39,10 +39,6 @@ export default function EditEmailModal({
     try {
       const values = await form.validateFields();
       
-      console.log('Form values:', values);
-      console.log('Current email from props:', currentEmail);
-      console.log('Student ID:', studentId);
-      
       if (!validateEmail(values.email)) {
         const invalidMsg = getText('Email không hợp lệ', 'Invalid email');
         form.setFields([{ name: 'email', errors: [invalidMsg] }]);
@@ -52,20 +48,10 @@ export default function EditEmailModal({
 
       setLoading(true);
 
-      // Gọi API changeUserEmail với debug chi tiết
-      console.log('=== DEBUG EMAIL CHANGE ===');
-      console.log('studentId:', studentId);
-      console.log('currentEmail (from props):', currentEmail);
-      console.log('newEmail (from form):', values.email);
-      console.log('Form values:', values);
-      
       const response = await authApi.changeUserEmail(studentId, {
         email: values.email
       });
       
-      console.log('API Response:', response);
-      console.log('=== END DEBUG ===');
-
       if (response.success) {
         spaceToast.success(getText('Yêu cầu cập nhật email đã được gửi!', 'Email update request sent successfully!'));
         // Không đóng modal ngay, hiển thị thông báo chờ xác nhận

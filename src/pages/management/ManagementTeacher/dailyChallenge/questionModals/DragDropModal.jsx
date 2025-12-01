@@ -290,7 +290,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Reset modal state when it closes
 	useEffect(() => {
 		if (!visible) {
-			console.log('DragDropModal - Modal closed, resetting state');
 			// Reset state after a delay to ensure modal is fully closed
 			const timer = setTimeout(() => {
 				setEditorContent([]);
@@ -308,22 +307,14 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Initialize editor content from questionData
 	useEffect(() => {
 		if (visible) {
-			console.log('=== DragDropModal - Initializing ===');
-			console.log('questionData:', questionData);
-			console.log('questionData.options:', questionData?.options);
-			console.log('questionData.incorrectOptions:', questionData?.incorrectOptions);
-			console.log('questionData.content?.data:', questionData?.content?.data);
-			
 			// Check if we need to extract incorrect options from content.data
 			if (questionData?.options && (!questionData.incorrectOptions || questionData.incorrectOptions.length === 0)) {
-				console.log('⚠️ Incorrect options is empty, extracting from options...');
 				const extractedIncorrect = questionData.options
 					.filter(opt => !opt.isCorrect)
 					.map(opt => ({
 						id: opt.key || Date.now(),
 						text: opt.text
 					}));
-				console.log('Extracted incorrect options:', extractedIncorrect);
 				questionData.incorrectOptions = extractedIncorrect;
 			}
 			
@@ -332,13 +323,10 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			
 			if (questionData?.questionText && questionData?.content?.data) {
 				// Parse existing question
-				console.log('DragDropModal - Parsing existing question');
-				console.log('DragDropModal - incorrectOptions from questionData:', questionData.incorrectOptions);
 				parseQuestionText(questionData.questionText, questionData.content.data);
 				setIncorrectOptions((questionData.incorrectOptions || []).slice(0, MAX_INCORRECT_OPTIONS));
 			} else {
 				// New question
-				console.log('DragDropModal - New question, setting empty content');
 				setEditorContent([{ type: 'text', content: '', id: Date.now() }]);
 				setBlanks([]);
 				setIncorrectOptions([]);
@@ -548,7 +536,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				editorRef.current.appendChild(br);
 			}
 
-			console.log('Image inserted successfully');
+			// console.log('Image inserted successfully');
 		},
 		[selectedImage]
 	);
@@ -621,7 +609,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					break;
 			}
 
-			console.log(`Image aligned to ${alignment}`);
 
 			// Return focus to editor after alignment
 			requestAnimationFrame(() => {
@@ -768,7 +755,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				}
 
 				setTableDropdownOpen(false);
-				console.log(`Table ${numRows}x${numCols} inserted successfully`);
 			}
 		},
 		[updatePopupPosition]
@@ -852,7 +838,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 						editorRef.current.focus();
 					}
 
-					console.log('Image deleted');
 				}
 			}
 		},
@@ -942,7 +927,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				deletionInProgressRef.current.delete(blankId);
 			});
 
-			console.log('Blank removed');
 
 			// Refocus editor
 			editorRef.current.focus();
@@ -1128,7 +1112,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				e.preventDefault();
 				e.stopPropagation();
 				e.stopImmediatePropagation();
-				console.log('Delete button clicked for blank:', blank.id);
 				span.setAttribute('data-deleting-by-button', 'true');
 				handleDeleteBlankElement(blank.id);
 			});
@@ -1829,13 +1812,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				.join(', '),
 		};
 
-		// Log HTML output for debugging
-		console.log('=== DRAG DROP QUESTION HTML ===');
-		console.log('Question HTML:', questionText);
-		console.log('Content Data:', contentData);
-		console.log('Full Question Data:', newQuestionData);
-		console.log('================================');
-
 		try {
 			setSaving(true);
 			const ret = onSave(newQuestionData);
@@ -1852,7 +1828,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Handle cancel
 	const handleCancel = () => {
-		console.log('DragDropModal - Cancelling, resetting state');
 		if (editorRef.current) {
 			editorRef.current.innerHTML = '';
 		}
@@ -1876,41 +1851,29 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		}
 		
 		if (!editorRef.current) {
-			console.log('DragDropModal - Waiting for editorRef');
 			return;
 		}
 		
 		// For new questions with no data yet, just clear
 		if (editorContent.length === 0 && !questionData) {
-			console.log('DragDropModal - No editor content for new question');
 			editorInitializedRef.current = true;
 			return;
 		}
 		
 		// For editing: wait for content to be loaded from questionData
 		if (questionData && editorContent.length === 0) {
-			console.log('DragDropModal - Waiting for content to be parsed from questionData');
 			return;
 		}
 		
 		// If we already initialized with this data, skip
 		if (editorInitializedRef.current) {
-			console.log('DragDropModal - Already initialized, skipping');
 			return;
 		}
-
-		console.log('DragDropModal - Initializing editor with:', { 
-			editorContentLength: editorContent.length, 
-			blanksLength: blanks.length,
-			incorrectOptionsLength: incorrectOptions.length,
-			hasQuestionData: !!questionData
-		});
 
 		// Clear editor first
 		editorRef.current.innerHTML = '';
 
 		if (editorContent.length === 0) {
-			console.log('DragDropModal - No editor content to display');
 			editorInitializedRef.current = true;
 			return;
 		}
@@ -1918,7 +1881,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		// Build editor DOM from editorContent
 		let blankCounter = 0;
 		editorContent.forEach((item, index) => {
-			console.log('DragDropModal - Processing item:', item);
 			if (item.type === 'text') {
 				if (item.content) {
 					editorRef.current.appendChild(document.createTextNode(item.content));
@@ -1927,7 +1889,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				// Find the corresponding blank data
 				const blankData = blanks.find((b) => b.id === item.id);
 				if (blankData) {
-					console.log('DragDropModal - Creating blank element for:', blankData);
 					const blankElement = createBlankElement(blankData, blankCounter);
 					editorRef.current.appendChild(blankElement);
 					blankCounter++;
@@ -2040,7 +2001,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		lastValidHtmlRef.current = editorRef.current ? editorRef.current.innerHTML : '';
 		const initialPlain = editorRef.current ? (editorRef.current.textContent || '').trim() : '';
 		setQuestionCharCount(initialPlain.length);
-		console.log('DragDropModal - Editor initialization complete');
 	}, [visible, editorContent, blanks, incorrectOptions.length, createBlankElement, updateBlankNumbers, blankColors, questionData]);
 
 	// Get blanks ordered by DOM position

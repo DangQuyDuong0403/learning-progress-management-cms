@@ -19,8 +19,6 @@ const dailyChallengeApi = {
 		}
 
 		const url = `/daily-challenges/class/${classId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetDailyChallengesByClass API - URL:', url);
-		console.log('GetDailyChallengesByClass API - Params:', params);
 		
 		return axiosClient.get(url, {
 			headers: {
@@ -32,7 +30,6 @@ const dailyChallengeApi = {
 	// Export a challenge worksheet; backend returns a downloadable URL
 	exportWorksheet: (challengeId) => {
 		const url = `/daily-challenges/${challengeId}/export-worksheet`;
-		console.log('ExportWorksheet API - URL:', url);
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -50,8 +47,6 @@ const dailyChallengeApi = {
 		const absoluteUrl = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api') + '/openai/generate-gv-questions'
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api')) + '/openai/generate-gv-questions';
-		console.log('GenerateAIQuestions API - URL:', absoluteUrl);
-		console.log('GenerateAIQuestions API - Payload:', payload);
 		return axiosClient.post(absoluteUrl, payload, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -67,8 +62,6 @@ const dailyChallengeApi = {
 		const absoluteUrl = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api') + '/openai/generate-reading-passage'
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api')) + '/openai/generate-reading-passage';
-		console.log('GenerateReadingPassage API - URL:', absoluteUrl);
-		console.log('GenerateReadingPassage API - Payload:', payload);
 		return axiosClient.post(absoluteUrl, payload, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -84,8 +77,6 @@ const dailyChallengeApi = {
 		const absoluteUrl = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api') + '/openai/generate-content-based-questions'
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api')) + '/openai/generate-content-based-questions';
-		console.log('GenerateContentBasedQuestions API - URL:', absoluteUrl);
-		console.log('GenerateContentBasedQuestions API - Payload:', payload);
 		return axiosClient.post(absoluteUrl, payload, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -102,8 +93,6 @@ const dailyChallengeApi = {
 			? base.replace('/api/v1', '/api')
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
 		const absoluteUrl = `${baseApi}/openai/grade-writing`;
-		console.log('GenerateAIFeedback API - URL:', absoluteUrl);
-		console.log('GenerateAIFeedback API - Payload:', payload);
 		return axiosClient.post(absoluteUrl, payload, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -127,7 +116,6 @@ const dailyChallengeApi = {
 		if (referenceText) params.append('referenceText', referenceText);
 		if (age !== undefined && age !== null && age !== '') params.append('age', age);
 		const absoluteUrl = params.toString() ? `${url}?${params.toString()}` : url;
-		console.log('AssessPronunciation API - URL:', absoluteUrl);
 		return axiosClient.post(absoluteUrl, null, {
 			headers: {
 				'accept': '*/*',
@@ -143,8 +131,6 @@ const dailyChallengeApi = {
 			? base.replace('/api/v1', '/api')
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
 		const absoluteUrl = `${baseApi}/openai/parse-questions-from-file` + (description && description.trim() ? `?description=${encodeURIComponent(description.trim())}` : '');
-		console.log('ParseQuestionsFromFile API - URL:', absoluteUrl);
-		console.log('ParseQuestionsFromFile API - FileName:', file?.name, 'Description:', description);
 
 		const formData = new FormData();
 		if (file) formData.append('file', file);
@@ -175,8 +161,6 @@ const dailyChallengeApi = {
 		}
 
 		const url = `/daily-challenges${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetAllDailyChallenges API - URL:', url);
-		console.log('GetAllDailyChallenges API - Params:', params);
 		
 		return axiosClient.get(url, {
 			headers: {
@@ -188,8 +172,7 @@ const dailyChallengeApi = {
 	// Lấy chi tiết một daily challenge
 	getDailyChallengeById: (id) => {
 		const url = `/daily-challenges/${id}`;
-		console.log('GetDailyChallengeById API - URL:', url);
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -200,7 +183,6 @@ const dailyChallengeApi = {
 	// Lấy thông tin phân cấp (level/chapter/lesson) của daily challenge
 	getChallengeHierarchy: (id) => {
 		const url = `/daily-challenges/${id}/hierarchy`;
-		console.log('GetChallengeHierarchy API - URL:', url);
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -210,8 +192,6 @@ const dailyChallengeApi = {
 
 	// Tạo daily challenge mới
 	createDailyChallenge: (data) => {
-		console.log('CreateDailyChallenge API - Data:', data);
-		
 		return axiosClient.post('/daily-challenges', data, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -222,8 +202,6 @@ const dailyChallengeApi = {
 
 	// Cập nhật daily challenge
 	updateDailyChallenge: (id, data) => {
-		console.log('UpdateDailyChallenge API - ID:', id, 'Data:', data);
-		
 		return axiosClient.put(`/daily-challenges/${id}`, data, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -235,8 +213,7 @@ const dailyChallengeApi = {
 	// Xóa daily challenge
 	deleteDailyChallenge: (id) => {
 		const url = `/daily-challenges/${id}`;
-		console.log('DeleteDailyChallenge API - URL:', url);
-		
+
 		return axiosClient.delete(url, {
 			headers: {
 				'accept': '*/*',
@@ -247,7 +224,6 @@ const dailyChallengeApi = {
 	// Cập nhật status của daily challenge
 	publishDailyChallenge: (id) => {
 		const url = `/daily-challenges/${id}/publish`;
-		console.log('PublishDailyChallenge API - URL:', url);
 		return axiosClient.post(url, null, {
 			headers: {
 				'accept': '*/*',
@@ -258,8 +234,7 @@ const dailyChallengeApi = {
 	// Kích hoạt/vô hiệu hóa daily challenge (legacy method - kept for backward compatibility)
 	toggleDailyChallengeStatus: (id) => {
 		const url = `/daily-challenges/${id}/toggle-status`;
-		console.log('ToggleDailyChallengeStatus API - URL:', url);
-		
+
 		return axiosClient.patch(url, {}, {
 			headers: {
 				'accept': '*/*',
@@ -272,7 +247,6 @@ const dailyChallengeApi = {
 		if (status === 'PUBLISHED') {
 			// Sử dụng endpoint /publish để publish challenge
 			const url = `/daily-challenges/${id}/publish`;
-			console.log('UpdateDailyChallengeStatus API - URL:', url);
 			return axiosClient.post(url, null, {
 				headers: {
 					'accept': '*/*',
@@ -297,8 +271,6 @@ const dailyChallengeApi = {
 		}
 
 		const url = `/daily-challenges/${challengeId}/submissions${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetDailyChallengeSubmissions API - URL:', url);
-		
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -318,8 +290,6 @@ const dailyChallengeApi = {
 		if (params.sortDir) queryParams.append('sortDir', params.sortDir);
 
 		const url = `/challenge-submissions/challenge/${challengeId}/submissions${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetChallengeSubmissions API - URL:', url);
-		console.log('GetChallengeSubmissions API - Params:', params);
 
 		return axiosClient.get(url, {
 			headers: {
@@ -340,9 +310,6 @@ const dailyChallengeApi = {
 		}
 
 		const url = `/challenge-submissions/class/${classId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetStudentDailyChallengesByClass API - URL:', url);
-		console.log('GetStudentDailyChallengesByClass API - Params:', params);
-
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -354,9 +321,6 @@ const dailyChallengeApi = {
 	// Endpoint theo thực tế (ảnh swagger): GET /grading/submission-challenges/{submissionId}
 	getSubmissionGradingResult: (submissionId) => {
 		const url = `/grading/submission-challenges/${submissionId}`;
-		console.log('GetSubmissionGradingResult API (new) - URL:', url);
-		console.log('GetSubmissionGradingResult API (new) - SubmissionId:', submissionId);
-    
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -368,7 +332,6 @@ const dailyChallengeApi = {
   // Endpoint: POST /grading/challenges/submission/{submissionId}/grade
   gradeSubmission: (submissionId, payload) => {
     const url = `/grading/challenges/submission/${submissionId}/grade`;
-    console.log('GradeSubmission API - URL:', url, 'Payload:', payload);
     return axiosClient.post(url, payload, {
       headers: {
         'accept': '*/*',
@@ -381,7 +344,6 @@ const dailyChallengeApi = {
   // Endpoint (updated): POST /grading/submission-challenges/{submissionId}
   saveGradingSummary: (submissionId, payload) => {
     const url = `/grading/submission-challenges/${submissionId}`;
-    console.log('SaveGradingSummary API - URL:', url, 'Payload:', payload);
     return axiosClient.post(url, payload, {
       headers: {
         'accept': '*/*',
@@ -394,7 +356,6 @@ const dailyChallengeApi = {
   // Endpoint: POST /grading/submission-questions/{submissionQuestionId}
   gradeSubmissionQuestion: (submissionQuestionId, payload) => {
     const url = `/grading/submission-questions/${submissionQuestionId}`;
-    console.log('GradeSubmissionQuestion API - URL:', url, 'Payload:', payload);
     return axiosClient.post(url, payload, {
       headers: {
         'accept': '*/*',
@@ -407,7 +368,6 @@ const dailyChallengeApi = {
   // Endpoint: GET /grading/submission-questions/{submissionQuestionId}
   getSubmissionQuestionGrading: (submissionQuestionId) => {
     const url = `/grading/submission-questions/${submissionQuestionId}`;
-    console.log('GetSubmissionQuestionGrading API - URL:', url);
     return axiosClient.get(url, {
       headers: {
         'accept': '*/*',
@@ -418,8 +378,7 @@ const dailyChallengeApi = {
 	// Lấy thống kê performance của daily challenge
 	getDailyChallengePerformance: (challengeId) => {
 		const url = `/daily-challenges/${challengeId}/performance`;
-		console.log('GetDailyChallengePerformance API - URL:', url);
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -439,9 +398,6 @@ const dailyChallengeApi = {
 		}
 
 		const url = `/sections/challenge/${challengeId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetSectionsByChallenge API - URL:', url);
-		console.log('GetSectionsByChallenge API - Params:', params);
-		
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -452,9 +408,7 @@ const dailyChallengeApi = {
 	// Lưu section với questions cho một challenge
 	saveSectionWithQuestions: (challengeId, sectionData) => {
 		const url = `/sections/${challengeId}`;
-		console.log('SaveSectionWithQuestions API - URL:', url);
-		console.log('SaveSectionWithQuestions API - Data:', sectionData);
-		
+
 		return axiosClient.post(url, sectionData, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -466,9 +420,7 @@ const dailyChallengeApi = {
 	// Bulk update sections (delete, reorder) for a challenge
 	bulkUpdateSections: (challengeId, sectionsData) => {
 		const url = `/sections/bulk/${challengeId}`;
-		console.log('BulkUpdateSections API - URL:', url);
-		console.log('BulkUpdateSections API - Data:', sectionsData);
-		
+
 		return axiosClient.post(url, sectionsData, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -480,9 +432,7 @@ const dailyChallengeApi = {
 	// Upload file (PDF, audio, image, etc.)
 	uploadFile: (file) => {
 		const url = `/file/upload`;
-		console.log('UploadFile API - URL:', url);
-		console.log('UploadFile API - FileName:', file.name);
-		
+
 		// Create FormData to upload as multipart/form-data
 		const formData = new FormData();
 		formData.append('file', file);
@@ -498,9 +448,7 @@ const dailyChallengeApi = {
 	// Bulk save sections with questions for a challenge
 	bulkSaveSections: (challengeId, sectionsData) => {
 		const url = `/sections/bulk-save/${challengeId}`;
-		console.log('BulkSaveSections API - URL:', url);
-		console.log('BulkSaveSections API - Data:', sectionsData);
-		
+
 		return axiosClient.post(url, sectionsData, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -521,9 +469,6 @@ const dailyChallengeApi = {
 		}
 
 		const url = `/sections/challenge/${challengeId}/public${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetPublicSectionsByChallenge API - URL:', url);
-		console.log('GetPublicSectionsByChallenge API - Params:', params);
-		
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -535,9 +480,7 @@ const dailyChallengeApi = {
 	submitDailyChallenge: (submissionChallengeId, data) => {
 		// data expected: { saveAsDraft: boolean, questionAnswers: [{ questionId, content: { data: [{ id, value, positionId }] } }] }
 		const url = `/submission/${submissionChallengeId}`;
-		console.log('SubmitDailyChallenge API - URL:', url);
-		console.log('SubmitDailyChallenge API - Data:', data);
-		
+
 		return axiosClient.post(url, data, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -549,8 +492,7 @@ const dailyChallengeApi = {
 	// Get submission result including question content and submitted answers
 	getSubmissionResult: (submissionChallengeId) => {
 		const url = `/submission/${submissionChallengeId}/result`;
-		console.log('GetSubmissionResult API - URL:', url);
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -562,7 +504,6 @@ const dailyChallengeApi = {
 	// Endpoint: GET /submission/question/{submissionQuestionId}
 	getSubmissionQuestion: (submissionQuestionId) => {
 		const url = `/submission/question/${submissionQuestionId}`;
-		console.log('GetSubmissionQuestion API - URL:', url);
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -572,8 +513,7 @@ const dailyChallengeApi = {
 	// Get draft submission with questions and saved answers (without correct answers)
 	getDraftSubmission: (submissionChallengeId) => {
 		const url = `/submission/${submissionChallengeId}/draft`;
-		console.log('GetDraftSubmission API - URL:', url);
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -584,9 +524,7 @@ const dailyChallengeApi = {
 	// Append anti-cheat logs to submission
 	appendAntiCheatLogs: (submissionChallengeId, logs) => {
 		const url = `/challenge-submissions/${submissionChallengeId}/logs`;
-		console.log('AppendAntiCheatLogs API - URL:', url);
-		console.log('AppendAntiCheatLogs API - Logs:', logs);
-		
+
 		return axiosClient.post(url, { logs }, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -599,7 +537,6 @@ const dailyChallengeApi = {
 	// Endpoint: GET /challenge-submissions/{submissionChallengeId}/info
 	getSubmissionChallengeInfo: (submissionChallengeId) => {
 		const url = `/challenge-submissions/${submissionChallengeId}/info`;
-		console.log('GetSubmissionChallengeInfo API - URL:', url);
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -611,7 +548,6 @@ const dailyChallengeApi = {
 	// Endpoint: GET /challenge-submissions/{submissionChallengeId}/logs
 	getSubmissionLogs: (submissionChallengeId) => {
 		const url = `/challenge-submissions/${submissionChallengeId}/logs`;
-		console.log('GetSubmissionLogs API - URL:', url);
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -623,9 +559,7 @@ const dailyChallengeApi = {
 	// Endpoint: POST /challenge-submissions/submission/{submissionId}/start
 	startSubmission: (submissionId) => {
 		const url = `/challenge-submissions/submission/${submissionId}/start`;
-		console.log('StartSubmission API - URL:', url);
-		console.log('StartSubmission API - SubmissionId:', submissionId);
-		
+
 		return axiosClient.post(url, null, {
 			headers: {
 				'accept': '*/*',
@@ -641,9 +575,6 @@ const dailyChallengeApi = {
 			submissionIds: Array.isArray(submissionIds) ? submissionIds : [submissionIds],
 			newExpiredAt,
 		};
-		console.log('ExtendSubmissionDeadline API - URL:', url);
-		console.log('ExtendSubmissionDeadline API - Payload:', payload);
-
 		return axiosClient.post(url, payload, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -661,9 +592,6 @@ const dailyChallengeApi = {
 			newStartDate,
 			newEndDate,
 		};
-		console.log('ResetSubmissions API - URL:', url);
-		console.log('ResetSubmissions API - Payload:', payload);
-
 		return axiosClient.post(url, payload, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -676,9 +604,7 @@ const dailyChallengeApi = {
 	// Endpoint: GET /reports/challenge/{challengeId}/overview
 	getChallengeOverview: (challengeId) => {
 		const url = `/reports/challenge/${challengeId}/overview`;
-		console.log('GetChallengeOverview API - URL:', url);
-		console.log('GetChallengeOverview API - Params:', { challengeId });
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -690,9 +616,7 @@ const dailyChallengeApi = {
 	// Endpoint: GET /reports/challenge/{challengeId}/students
 	getChallengeStudentPerformance: (challengeId) => {
 		const url = `/reports/challenge/${challengeId}/students`;
-		console.log('GetChallengeStudentPerformance API - URL:', url);
-		console.log('GetChallengeStudentPerformance API - Params:', { challengeId });
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -704,9 +628,7 @@ const dailyChallengeApi = {
 	// Endpoint: GET /reports/challenge/{challengeId}/chart
 	getChallengeChartData: (challengeId) => {
 		const url = `/reports/challenge/${challengeId}/chart`;
-		console.log('GetChallengeChartData API - URL:', url);
-		console.log('GetChallengeChartData API - Params:', { challengeId });
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -718,9 +640,6 @@ const dailyChallengeApi = {
 	// Endpoint: GET /reports/challenge/{challengeId}/question-stats
 	getChallengeQuestionStats: (challengeId) => {
 		const url = `/reports/challenge/${challengeId}/question-stats`;
-		console.log('GetChallengeQuestionStats API - URL:', url);
-		console.log('GetChallengeQuestionStats API - Params:', { challengeId });
-
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',

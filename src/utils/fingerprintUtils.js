@@ -321,10 +321,6 @@ export const getDeviceFingerprint = async () => {
   const fingerprintString = createFingerprintString(fingerprint);
   const hash = await hashFingerprint(fingerprintString);
 
-  console.log('[fingerprintUtils] fingerprint:', fingerprint);
-  console.log('[fingerprintUtils] fingerprintString:', fingerprintString);
-  console.log('[fingerprintUtils] hash:', hash);
-  
   return {
     fingerprint,
     fingerprintString,

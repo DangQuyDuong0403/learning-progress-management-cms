@@ -34,11 +34,6 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
 
     try {
       const values = await form.validateFields();
-      
-      console.log('Teacher EditEmailModal - Form values:', values);
-      console.log('Teacher EditEmailModal - Current email:', currentEmail);
-      console.log('Teacher EditEmailModal - Teacher ID:', teacherId);
-      
       if (!validateEmail(values.email)) {
         const invalidMsg = getText('Email không hợp lệ', 'Invalid email');
         form.setFields([{ name: 'email', errors: [invalidMsg] }]);
@@ -47,17 +42,8 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
       }
 
       setLoading(true);
-
-      console.log('=== DEBUG EMAIL CHANGE ===');
-      console.log('teacherId:', teacherId);
-      console.log('currentEmail (from props):', currentEmail);
-      console.log('newEmail (from form):', values.email);
-      
       // Call API to change email for specific teacher
       const response = await authApi.changeUserEmail(teacherId, { email: values.email });
-      
-      console.log('Teacher EditEmailModal - API Response:', response);
-      console.log('=== END DEBUG ===');
       
       if (response.success) {
         spaceToast.success(getText('Yêu cầu cập nhật email đã được gửi!', 'Email update request sent successfully!'));

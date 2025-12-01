@@ -65,7 +65,6 @@ const ChallengeSettingsModal = ({
         if (data) {
           const currentStatus = data.challengeStatus || data.status || null;
           setChallengeStatus(currentStatus);
-          console.log('ChallengeSettingsModal - Fetched Status:', currentStatus, 'isInProgress:', currentStatus?.toUpperCase() === 'IN_PROGRESS', 'isClosed:', currentStatus?.toUpperCase() === 'FINISHED');
           
           form.setFieldsValue({
             durationMinutes: data.durationMinutes,
@@ -86,7 +85,6 @@ const ChallengeSettingsModal = ({
       // Fallback to initialValues if API call fails or no challengeId
       const currentStatus = initialValues?.challengeStatus || initialValues?.status || null;
       setChallengeStatus(currentStatus);
-      console.log('ChallengeSettingsModal - Fallback Status:', currentStatus, 'isInProgress:', currentStatus?.toUpperCase() === 'IN_PROGRESS', 'isClosed:', currentStatus?.toUpperCase() === 'FINISHED');
       
       form.setFieldsValue({
         durationMinutes: initialValues.durationMinutes,
@@ -132,11 +130,9 @@ const ChallengeSettingsModal = ({
         endDate: values.endDate ? values.endDate.toISOString() : null,
       };
 
-      console.log('Updating challenge settings with data:', updateData);
       
       // Call API to update challenge settings
       const response = await dailyChallengeApi.updateDailyChallenge(challengeId, updateData);
-      console.log('API response:', response);
       
       spaceToast.success(response.message);
       

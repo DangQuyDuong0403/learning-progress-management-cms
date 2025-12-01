@@ -317,8 +317,6 @@ const AccountList = () => {
 	};
 
 	const handleTableChange = (pagination, filters, sorter) => {
-		console.log('handleTableChange called:', { pagination, filters, sorter });
-		console.log('Current sortBy:', sortBy, 'Current sortDir:', sortDir);
 		
 		// Handle sorting
 		if (sorter && sorter.field) {
@@ -338,26 +336,16 @@ const AccountList = () => {
 			if (backendField === sortBy) {
 				// Same field - toggle direction
 				newSortDir = sortDir === 'asc' ? 'desc' : 'asc';
-				console.log('Same field clicked, toggling from', sortDir, 'to', newSortDir);
 			} else {
 				// Different field - start with asc
 				newSortDir = 'asc';
-				console.log('Different field clicked, starting with asc');
 			}
-
-			console.log('Sorting:', {
-				frontendField: sorter.field,
-				backendField: backendField,
-				direction: newSortDir,
-				order: sorter.order
-			});
 
 			// Update state - useEffect will handle the API call
 			setSortBy(backendField);
 			setSortDir(newSortDir);
 		} else {
 			// Handle pagination without sorting change
-			console.log('Pagination only, no sorting change');
 			// Update pagination state - useEffect will handle the API call
 			setPagination(prev => ({
 				...prev,
@@ -583,14 +571,12 @@ const AccountList = () => {
 					};
 				}
 
-				console.log('Updating account with data:', updateData);
 
 				// Gọi API update account với params
 				const response = await accountManagementApi.updateAccount(
 					editingAccount.id,
 					updateData
 				);
-				console.log('Update account response:', response);
 
 				// Use backend message if available, otherwise fallback to translation
 				const successMessage = response.message || t('accountManagement.updateAccountSuccess');
@@ -613,11 +599,8 @@ const AccountList = () => {
 					roleName: values.roleName,
 				};
 
-				console.log('Creating account with data:', accountData);
-
 				// Gọi API create account
 				const response = await accountManagementApi.createAccount(accountData);
-				console.log('Create account response:', response);
 
 				// Use backend message if available, otherwise fallback to translation
 				const successMessage = response.message || t('accountManagement.addAccountSuccess');
@@ -700,7 +683,6 @@ const AccountList = () => {
 		},
 		{ key: 'TEST_TAKER', label: t('accountManagement.testTaker') },
 	];
-	console.log(theme);
 
 	// No need for client-side filtering since API handles filtering
 

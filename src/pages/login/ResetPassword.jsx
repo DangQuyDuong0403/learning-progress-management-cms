@@ -58,12 +58,6 @@ export default function ResetPassword() {
 				token: token,
 				newPassword: formData.newPassword
 			});
-			console.log('=== RESET PASSWORD RESPONSE ===');
-			console.log('Full response:', response);
-			console.log('Response data:', response.data);
-			console.log('Response success:', response.data?.success);
-			console.log('Response message:', response.data?.message);
-			console.log('===============================');
 			
 			if (response.data?.success) {
 				
@@ -71,20 +65,16 @@ export default function ResetPassword() {
 				
 				// Lưu selectedRole trước khi xóa localStorage
 				const loginRole = localStorage.getItem('selectedRole') || localStorage.getItem('loginRole') || 'TEACHER';
-				console.log('Saved role before cleanup:', loginRole);
 				
 				// Xác định redirect URL ngay lập tức
 				let redirectUrl;
 				if (loginRole === 'STUDENT') {
 					redirectUrl = '/login-student';
-					console.log('Redirecting to student login:', redirectUrl);
 				} else if (loginRole === 'TEACHER') {
 					redirectUrl = '/login-teacher';
-					console.log('Redirecting to teacher login:', redirectUrl);
 				} else {
 					// Fallback cho các role khác hoặc không xác định
 					redirectUrl = '/choose-login';
-					console.log('Unknown role, redirecting to choose login:', redirectUrl);
 				}
 				
 				// Delay để user thấy success message trước khi chuyển trang
@@ -101,13 +91,12 @@ export default function ResetPassword() {
 						if (refreshToken) {
 							// Không await để tránh bị block bởi lỗi
 							authApi.logout(refreshToken).then(() => {
-								console.log('Successfully logged out all sessions');
 							}).catch((logoutError) => {
-								console.log('Logout API failed, but continuing:', logoutError);
+								console.error('Logout API failed, but continuing:', logoutError);
 							});
 						}
 					} catch (logoutError) {
-						console.log('Logout API failed, but continuing with token cleanup:', logoutError);
+						console.error('Logout API failed, but continuing with token cleanup:', logoutError);
 					}
 					
 					// Xóa tất cả auth tokens để logout các tab khác trong cùng trình duyệt
@@ -117,13 +106,11 @@ export default function ResetPassword() {
 					localStorage.removeItem('mustChangePassword');
 					localStorage.removeItem('mustUpdateProfile');
 					
-					console.log('Cleanup completed after navigation');
 				}, 100); // Delay ngắn để đảm bảo navigation đã hoàn thành
 			}
 		} catch (error) {
 			// Xử lý lỗi từ API - error object có cấu trúc trực tiếp
 			const errorMessage = error.response.data.error;
-			console.log('Final error message:', errorMessage);
 			spaceToast.error(errorMessage);
 		} finally {
 			setLoading(false);

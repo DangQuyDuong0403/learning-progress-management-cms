@@ -50,7 +50,6 @@ export default function LoginTeacher() {
 
             // Dispatch login success với data từ API
             dispatch(loginSuccess(response.data));
-            console.log(response);
             
             // Store new tokens in localStorage
             localStorage.setItem('accessToken', response.data.accessToken);
@@ -72,7 +71,6 @@ export default function LoginTeacher() {
                 spaceToast.success(response.message);
                 // Redirect based on role
                 let redirectPath = '/choose-login';
-                console.log('LoginTeacher - Response role:', response.data.role);
                 
                 if (response.data.role === 'ADMIN') {
                     redirectPath = '/admin/dashboard';
@@ -83,8 +81,6 @@ export default function LoginTeacher() {
                 } else if (response.data.role === 'TEACHING_ASSISTANT') {
                     redirectPath = '/teaching-assistant/classes';
                 }
-                
-                console.log('LoginTeacher - Redirect path:', redirectPath);
                 
                 setTimeout(() => {
                     navigate(redirectPath);

@@ -119,13 +119,13 @@ export default function Profile() {
 
   const handleEmailUpdateSuccess = (newEmail) => {
     // Handle email update success - không cần làm gì vì email chưa confirm
-    console.log('Email change request sent for:', newEmail);
+    // console.log('Email change request sent for:', newEmail);
     // Email sẽ được cập nhật khi confirm thành công
   };
 
   const handlePersonalInfoUpdateSuccess = (updatedData) => {
     // Handle personal info update success
-    console.log('Personal info updated:', updatedData);
+    // console.log('Personal info updated:', updatedData);
     // You can dispatch an action to update the profile data here
   };
 

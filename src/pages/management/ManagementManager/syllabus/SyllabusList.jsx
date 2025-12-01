@@ -205,15 +205,6 @@ const SyllabusList = () => {
 		// Never show indeterminate state for table header checkbox
 		const isIndeterminate = false;
 		
-		console.log('Checkbox Debug:', {
-			currentPageKeys,
-			selectedRowKeys,
-			allCurrentPageSelected,
-			isSelectAll,
-			isIndeterminate,
-			selectedCount,
-		});
-		
 		return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
 	}, [selectedRowKeys, syllabuses]);
 
@@ -741,8 +732,6 @@ const SyllabusList = () => {
 				if (error.response?.data instanceof Blob) {
 					// Read the blob as text to get the JSON error
 					const errorText = await error.response.data.text();
-					console.log('Error blob text:', errorText);
-					
 					// Try to parse the JSON error
 					const errorJson = JSON.parse(errorText);
 					errorMessage = errorJson.error || errorJson.message || errorMessage;
@@ -805,8 +794,6 @@ const SyllabusList = () => {
 				if (error.response?.data instanceof Blob) {
 					// Read the blob as text to get the JSON error
 					const errorText = await error.response.data.text();
-					console.log('Error blob text:', errorText);
-					
 					// Try to parse the JSON error
 					const errorJson = JSON.parse(errorText);
 					errorMessage = errorJson.error || errorJson.message || errorMessage;

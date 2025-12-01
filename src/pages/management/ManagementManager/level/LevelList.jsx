@@ -73,17 +73,8 @@ const LevelList = () => {
 				params.text = search.trim();
 			}
 
-			console.log('Level API Request Params:', params);
 
 			const response = await levelManagementApi.getLevels(params);
-
-			console.log('Level API Response:', response);
-			console.log('Response structure check:', {
-				isArray: Array.isArray(response.data),
-				hasContent: response.data?.content,
-				totalElements: response.totalElements,
-				dataLength: response.data?.length
-			});
 
 			// Handle different response structures
 			let levelsData = [];
@@ -116,12 +107,6 @@ const LevelList = () => {
 				description: level.description || '',
 			}));
 
-			// Debug: Log actual level data to see what fields are available
-			if (levelsData.length > 0) {
-				console.log('Level Data Sample:', levelsData[0]);
-				console.log('Mapped Level Sample:', mappedLevels[0]);
-			}
-
 			setLevels(mappedLevels);
 			setTotalElements(totalElements);
 			
@@ -146,14 +131,6 @@ const LevelList = () => {
 				total: totalElements,
 			}));
 			
-			console.log('Level Pagination Updated:', {
-				current: page,
-				pageSize: size,
-				total: totalElements,
-				levelsCount: mappedLevels.length,
-				responseTotalElements: response.totalElements,
-				responseTotalPages: response.totalPages
-			});
 			setLoading(false);
 		} catch (error) {
 			console.error('Error fetching levels:', error);
@@ -172,10 +149,6 @@ const LevelList = () => {
 	}, [t]);
 
 	useEffect(() => {
-		console.log('Level useEffect triggered:', {
-			searchText,
-			pageSize: pagination.pageSize
-		});
 		fetchLevels(1, pagination.pageSize, searchText);
 	}, [fetchLevels, searchText, pagination.pageSize]);
 
@@ -189,7 +162,6 @@ const LevelList = () => {
 	}, [searchTimeout]);
 
 	const handleSearch = (value) => {
-		console.log('Level Search:', value);
 		setSearchText(value);
 		
 		// Clear existing timeout
@@ -199,7 +171,6 @@ const LevelList = () => {
 		
 		// Set new timeout for 1 second delay
 		const newTimeout = setTimeout(() => {
-			console.log('Level Search executing:', value);
 			// Reset to first page when searching
 			fetchLevels(1, pagination.pageSize, value);
 		}, 1000);
@@ -208,26 +179,16 @@ const LevelList = () => {
 	};
 
 	const handleTableChange = (pagination) => {
-		console.log('Level handleTableChange called:', { pagination });
-		
-		// Handle pagination only
-		console.log('Level Pagination only:', {
-			current: pagination.current,
-			pageSize: pagination.pageSize,
-			total: pagination.total
-		});
 		fetchLevels(pagination.current, pagination.pageSize, searchText);
 	};
 
 
 	const handleEdit = async (level) => {
 		try {
-			console.log('Level Edit clicked for:', level);
 			setIsModalVisible(true); // Mở modal ngay lập tức
 			
 			// Fetch full level details from API
 			const response = await levelManagementApi.getLevelById(level.id);
-			console.log('Level details response:', response);
 			
 			// Map API response to form format
 			const levelDetails = {
@@ -241,8 +202,6 @@ const LevelList = () => {
 				promotionCriteria: response.data.promotionCriteria || '',
 				learningObjectives: response.data.learningObjectives || '',
 			};
-			console.log('Level details:', levelDetails);
-			
 			setEditingLevel(levelDetails);
 		} catch (error) {
 			console.error('Error fetching level details:', error);
@@ -286,10 +245,6 @@ const LevelList = () => {
 		const allPublished = levelsData.every(level => level.status === 'PUBLISHED');
 		setIsAllPublished(allPublished);
 		
-		console.log('Detected publish status:', {
-			allPublished,
-			levelsStatuses: levelsData.map(l => l.status)
-		});
 	};
 
 

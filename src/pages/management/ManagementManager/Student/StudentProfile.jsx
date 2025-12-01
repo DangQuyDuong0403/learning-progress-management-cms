@@ -62,17 +62,7 @@ const StudentProfile = () => {
 	// Explicitly ensure Manager always shows sidebar
 	const shouldHideSidebar = isManager ? false : (isTeacher || isTeachingAssistant);
 	
-	// Debug log to verify role detection
-	useEffect(() => {
-		console.log('StudentProfile - Role Detection:', {
-			userRole,
-			selectedRole,
-			isManager,
-			isTeacher,
-			isTeachingAssistant,
-			shouldHideSidebar
-		});
-	}, [userRole, selectedRole, isManager, isTeacher, isTeachingAssistant, shouldHideSidebar]);
+
 	const [editModalVisible, setEditModalVisible] = useState(false);
 	const [editEmailModalVisible, setEditEmailModalVisible] = useState(false);
 	const [resetPasswordModalVisible, setResetPasswordModalVisible] = useState(false);
@@ -139,7 +129,6 @@ const StudentProfile = () => {
 			const levelsData = response.data?.content || response.data || [];
 			setPublishedLevels(levelsData);
 			
-			console.log('Fetched published levels:', levelsData);
 		} catch (error) {
 			console.error('Error fetching published levels:', error);
 			spaceToast.error('Failed to load levels');
@@ -154,7 +143,6 @@ const StudentProfile = () => {
 			setLoading(true);
 			setError(null);
 			
-			console.log('Fetching profile for student ID:', id);
 			if (!id) {
 				setError('Student ID not found in URL');
 				return;
@@ -164,10 +152,6 @@ const StudentProfile = () => {
 			
 			if (response.success && response.data) {
 				setStudent(response.data);
-				// Debug log to check requestResetPasswordByTeacher field
-				console.log('Student data from API:', response.data);
-				console.log('requestResetPasswordByTeacher:', response.data.requestResetPasswordByTeacher);
-				
 				// Only update avatar from API if no custom avatar is being displayed
 				if (!isCustomAvatar) {
 					setAvatarUrl(response.data.avatarUrl || "/img/avatar_1.png");
@@ -277,8 +261,6 @@ const StudentProfile = () => {
 			
 		setAvatarUploadLoading(true);
 		try {
-			// Upload avatar for student using student ID
-			console.log('Uploading avatar for student ID:', id);
 			const result = await studentManagementApi.uploadStudentAvatar(id, file);
 			
 			if (result.success || result.data) {
@@ -329,8 +311,6 @@ const StudentProfile = () => {
 				levelId: student.currentLevelInfo?.id || null,
 				email: student.email, // Always include email for backend
 			};
-			
-			console.log('Updating student avatar with data:', updateData);
 			
 			// Call API to update student profile with new avatar URL
 			const result = await studentManagementApi.updateStudentProfile(id, updateData);
@@ -395,10 +375,6 @@ const StudentProfile = () => {
 				email: student.email, // Always include email for backend
 			};
 			
-			console.log('Updating student with data:', studentData);
-			console.log('Student email:', student.email);
-			console.log('Student data:', student);
-			
 			// Call API to update student profile directly
 			const result = await studentManagementApi.updateStudentProfile(id, studentData);
 			
@@ -431,9 +407,6 @@ const StudentProfile = () => {
 		try {
 			// Call API to reset student password by teacher
 			const response = await authApi.resetPasswordByTeacher(student.userName);
-			
-			console.log('Reset password response:', response);
-			console.log('Response data:', response.data);
 			
 			// Check if API call was successful
 			if (response.success === true) {
@@ -686,13 +659,6 @@ const StudentProfile = () => {
 						{/* Level Badge */}
 						<div className={`starter-badge-new ${theme}-starter-badge-new`}>
 							{(() => {
-								// Debug logging to understand data structure
-								console.log('StudentProfile Level Debug:', {
-									student,
-									currentLevelInfo: student?.currentLevelInfo,
-									levelName: student?.levelName,
-									levelId: student?.levelId
-								});
 								
 								return student?.currentLevelInfo?.levelName || 
 									   student?.currentLevelInfo?.name || 

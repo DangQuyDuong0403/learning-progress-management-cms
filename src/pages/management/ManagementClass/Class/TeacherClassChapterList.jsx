@@ -60,11 +60,11 @@ const TeacherClassChapterList = () => {
 		const isStudentAccessingManagerRoute = isStudent && currentPath.includes('/manager/');
 		
 		if (isStudentAccessingManagerRoute) {
-			console.log('Student trying to access manager route, redirecting to 404');
-			navigate('/404', { replace: true });
+			spaceToast.error(t('common.accessDenied') || 'You do not have permission to access this page');
+			navigate('/choose-login', { replace: true });
 			return;
 		}
-	}, [isStudent, navigate]);
+	}, [isStudent, navigate, t]);
 
 	// Set page title
 	usePageTitle('Chapter Management');
@@ -186,11 +186,6 @@ const TeacherClassChapterList = () => {
 			}
 
 			const data = response?.data ?? [];
-
-			// Unauthorized access handling
-			if (!data || data.length === 0) {
-				throw new Error('No chapters returned');
-			}
 
 			// Map API response to component format
 			const mappedChapters = data.map((chapter) => ({
