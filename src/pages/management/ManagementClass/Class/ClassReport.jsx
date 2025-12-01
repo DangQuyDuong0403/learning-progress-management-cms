@@ -1160,7 +1160,6 @@ const CHALLENGE_PROGRESS_COLOR_MAP = {
                                   padding: '2px 8px',
                                   borderRadius: 999,
                                   fontWeight: 600,
-                                  textTransform: 'uppercase',
                                   letterSpacing: 0.4,
                                 }}
                               >

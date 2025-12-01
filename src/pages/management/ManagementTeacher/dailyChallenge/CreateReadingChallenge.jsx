@@ -1539,14 +1539,18 @@ const CreateReadingChallenge = () => {
                     {editingPassage
                       ? (isWritingChallenge
                           ? t('dailyChallenge.editWritingTopic', 'Edit writing topic')
-                          : isListeningChallenge
-                            ? t('dailyChallenge.editTranscript', 'Edit transcript')
-                            : t('dailyChallenge.editPassage', 'Edit passage'))
+                          : isSpeakingChallenge
+                            ? t('dailyChallenge.editSpeakingTopic', 'Edit Speaking Topic')
+                            : isListeningChallenge
+                              ? t('dailyChallenge.editTranscript', 'Edit transcript')
+                              : t('dailyChallenge.editPassage', 'Edit passage'))
                       : (isWritingChallenge
                           ? t('dailyChallenge.addWritingTopic', 'Add writing topic')
-                          : isListeningChallenge
-                            ? t('dailyChallenge.addTranscript', 'Add transcript')
-                            : t('dailyChallenge.addPassage', 'Add passage'))
+                          : isSpeakingChallenge
+                            ? t('dailyChallenge.addSpeakingTopic', 'Add speaking topic')
+                            : isListeningChallenge
+                              ? t('dailyChallenge.addTranscript', 'Add transcript')
+                              : t('dailyChallenge.addPassage', 'Add passage'))
                     }
                    </Title>
                  </div>
