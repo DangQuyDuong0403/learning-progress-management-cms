@@ -2,249 +2,359 @@ import React, { useState, useEffect } from "react";
 import {
   Modal,
   Form,
+  Input,
+  Select,
   Button,
-  Card,
   Row,
   Col,
-  Space,
-  Typography,
-  Divider,
 } from "antd";
-import {
-  BookOutlined,
-  FileTextOutlined,
-  EditOutlined,
-  SoundOutlined,
-  MessageOutlined,
-} from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useTheme } from "../../../../contexts/ThemeContext";
 import { spaceToast } from "../../../../component/SpaceToastify";
-import ROUTER_PAGE from "../../../../constants/router";
+// API fetching removed; lessons are supplied by parent
+import { dailyChallengeApi } from "../../../../apis/apis";
 
-const { Title, Text } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
 
-
-const challengeTypes = [
-  {
-    id: 1,
-    type: "Grammar & Vocabulary",
-    icon: <BookOutlined style={{ fontSize: 24 }} />,
-    color: "#7228d9",
-    description: "Grammar rules and vocabulary exercises",
-  },
-  {
-    id: 2,
-    type: "Reading",
-    icon: <FileTextOutlined style={{ fontSize: 24 }} />,
-    color: "#1890ff",
-    description: "Reading comprehension and analysis",
-  },
-  {
-    id: 3,
-    type: "Writing",
-    icon: <EditOutlined style={{ fontSize: 24 }} />,
-    color: "#52c41a",
-    description: "Writing exercises and essay composition",
-  },
-  {
-    id: 4,
-    type: "Listening",
-    icon: <SoundOutlined style={{ fontSize: 24 }} />,
-    color: "#fa8c16",
-    description: "Listening comprehension and audio exercises",
-  },
-  {
-    id: 5,
-    type: "Speaking",
-    icon: <MessageOutlined style={{ fontSize: 24 }} />,
-    color: "#f5222d",
-    description: "Oral communication and presentation skills",
-  },
+const questionTypeOptions = [
+  { value: "GV" },
+  { value: "RE" },
+  { value: "LI" },
+  { value: "WR" },
+  { value: "SP" },
 ];
 
-const CreateDailyChallengeModal = ({
+const SimpleDailyChallengeModal = ({
   visible,
   onCancel,
   onCreateSuccess,
+  lessonData,
+  lessonsFromList = [],
 }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { theme } = useTheme();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
-  const [selectedChallengeType, setSelectedChallengeType] = useState(null);
-  const [selectedChapter, setSelectedChapter] = useState(null);
-  const [selectedLesson, setSelectedLesson] = useState(null);
-
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+  const [lessons, setLessons] = useState([]);
+  
+  // Check if challengeType is already set from modal
+  const challengeTypeAlreadySet = !!lessonData?.challengeType;
+  // Populate lessons from parent list when available
   useEffect(() => {
-    if (selectedChapter) {
-      setSelectedLesson(null); // Reset lesson selection
-      form.setFieldsValue({ lessonId: null });
-    } else {
-      setSelectedLesson(null);
+    if (visible) {
+      if (lessonsFromList && lessonsFromList.length > 0) {
+        setLessons(lessonsFromList.map(l => ({ id: l.id, lessonName: l.lessonName, name: l.lessonName, content: '' })));
+      } else {
+        setLessons([]);
+      }
     }
-  }, [selectedChapter, form]);
+  }, [visible, lessonsFromList]);
 
-  const handleSubmit = async (values) => {
-    if (!selectedChallengeType) {
-      spaceToast.error(t('dailyChallenge.selectChallengeType'));
-      return;
+  // Auto-populate lesson and challengeType when lessonData is provided
+  useEffect(() => {
+    if (visible && lessonData) {
+      const fieldsToSet = {};
+      
+      // Only set classLessonId if it exists (when coming from table row)
+      if (lessonData.classLessonId) {
+        fieldsToSet.classLessonId = lessonData.classLessonId;
+      }
+      
+      // Set challengeType if it exists (when coming from type selection modal)
+      if (lessonData.challengeType) {
+        fieldsToSet.challengeType = lessonData.challengeType;
+      }
+      
+      form.setFieldsValue(fieldsToSet);
     }
+  }, [visible, lessonData, form]);
 
-    setLoading(true);
+  const handleModalOk = async () => {
+    if (isButtonDisabled) return;
+    
+    setIsButtonDisabled(true);
+    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const values = await form.validateFields();
+      
+      console.log('Creating challenge with data:', values);
+      console.log('Form values:', form.getFieldsValue());
+      console.log('lessonData:', lessonData);
+      
+      // Ensure challengeType is set - use from lessonData if not in form values
+      const challengeType = values.challengeType || lessonData?.challengeType;
+      
+      console.log('Final challengeType:', challengeType);
       
       const challengeData = {
-        ...values,
-        type: selectedChallengeType.type,
-        chapterId: selectedChapter,
-        lessonId: selectedLesson,
-        status: 'draft',
-        createdAt: new Date().toISOString().split('T')[0],
+        challengeName: values.challengeName,
+        classLessonId: values.classLessonId,
+        description: values.description,
+        challengeType: challengeType,
       };
+
+      console.log('Challenge data to send:', challengeData);
+
+      // Call the actual API
+      const response = await dailyChallengeApi.createDailyChallenge(challengeData);
+      
+      console.log('Create challenge API response:', response);
+      
+      // Extract challenge ID and other data from response
+      let createdChallenge = challengeData;
+      if (response?.data?.data) {
+        createdChallenge = { ...challengeData, ...response.data.data };
+      } else if (response?.data) {
+        createdChallenge = { ...challengeData, ...response.data };
+      }
 
       spaceToast.success(t('dailyChallenge.createChallengeSuccess'));
       form.resetFields();
-      setSelectedChallengeType(null);
-      setSelectedChapter(null);
-      setSelectedLesson(null);
-      onCreateSuccess(challengeData);
+      onCreateSuccess(createdChallenge);
     } catch (error) {
-      spaceToast.error(t('dailyChallenge.createChallengeError'));
+      console.error('Error creating challenge:', error);
+      if (error.errorFields) {
+        spaceToast.error(t('common.pleaseFillAllRequiredFields'));
+      } else {
+        const errorMessage = error.response?.data?.error || error.message || t('dailyChallenge.createChallengeError');
+        spaceToast.error(errorMessage);
+      }
     } finally {
-      setLoading(false);
+      setIsButtonDisabled(false);
     }
   };
 
-  const handleChallengeTypeSelect = (typeId) => {
-    const type = challengeTypes.find(t => t.id === typeId);
-    
-    // If Grammar & Vocabulary is selected, navigate to the specialized page
-    if (typeId === 1 || type.type === "Grammar & Vocabulary") {
-      onCancel(); // Close the modal first
-      navigate(ROUTER_PAGE.TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE);
-      return;
-    }
-    
-    // If Reading is selected, navigate to the reading challenge page
-    if (typeId === 2 || type.type === "Reading") {
-      onCancel(); // Close the modal first
-      navigate(ROUTER_PAGE.TEACHER_CREATE_READING_CHALLENGE);
-      return;
-    }
-    
-    setSelectedChallengeType(type);
-  };
-
-  const handleCancel = () => {
+  const handleModalCancel = () => {
     form.resetFields();
-    setSelectedChallengeType(null);
-    setSelectedChapter(null);
-    setSelectedLesson(null);
+    setIsButtonDisabled(false);
     onCancel();
   };
-
-  const ChallengeTypeCard = ({ challengeType, isSelected, onClick }) => (
-    <Card
-      hoverable
-      className={`challenge-type-card ${isSelected ? 'selected' : ''}`}
-      onClick={() => onClick(challengeType.id)}
-      style={{
-        border: isSelected ? `2px solid ${challengeType.color}` : '1px solid #d9d9d9',
-        background: isSelected ? `${challengeType.color}10` : '#fff',
-      }}
-    >
-      <Row align="middle" gutter={[12, 0]}>
-        <Col>
-          <div style={{ color: challengeType.color }}>
-            {challengeType.icon}
-          </div>
-        </Col>
-        <Col flex={1}>
-          <Title level={5} style={{ 
-            margin: 0,
-            color: challengeType.color,
-            fontSize: '16px',
-            fontWeight: isSelected ? 600 : 400,
-          }}>
-            {challengeType.type}
-          </Title>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            {challengeType.description}
-          </Text>
-        </Col>
-      </Row>
-    </Card>
-  );
 
   return (
     <Modal
       title={
-        <div style={{ textAlign: 'center' }}>
-          <Title level={3} style={{ margin: 0 }}>
-            {t('dailyChallenge.createNewChallenge')}
-          </Title>
-          <Text type="secondary">
-            {t('dailyChallenge.selectChallengeTypeAndConfigure')}
-          </Text>
+        <div
+          style={{
+            fontSize: '28px',
+            fontWeight: '600',
+            color: 'rgb(24, 144, 255)',
+            textAlign: 'center',
+            padding: '10px 0',
+          }}>
+          {t('dailyChallenge.createNewChallenge')}
         </div>
       }
       open={visible}
-      onCancel={handleCancel}
-      width={1000}
-      footer={null}
+      onCancel={handleModalCancel}
+      width={800}
+      footer={[
+        <Button 
+          key="cancel" 
+          onClick={handleModalCancel}
+          style={{
+            height: '32px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '4px 15px',
+            width: '100px'
+          }}>
+          {t('common.cancel')}
+        </Button>,
+        <Button 
+          key="save" 
+          type="primary" 
+          onClick={handleModalOk}
+          disabled={isButtonDisabled}
+          loading={isButtonDisabled}
+          style={{
+            background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+            borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+            color: theme === 'sun' ? '#000' : '#fff',
+            borderRadius: '6px',
+            height: '32px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '4px 15px',
+            width: '160px',
+            transition: 'all 0.3s ease',
+            boxShadow: 'none'
+          }}
+          onMouseEnter={(e) => {
+            if (theme === 'sun') {
+              e.target.style.background = 'rgb(95, 160, 240)';
+              e.target.style.borderColor = 'rgb(95, 160, 240)';
+              e.target.style.transform = 'translateY(-1px)';
+              e.target.style.boxShadow = '0 4px 12px rgba(113, 179, 253, 0.4)';
+            } else {
+              e.target.style.background = 'linear-gradient(135deg, #5a1fb8 0%, #8a7aff 100%)';
+              e.target.style.borderColor = '#5a1fb8';
+              e.target.style.transform = 'translateY(-1px)';
+              e.target.style.boxShadow = '0 4px 12px rgba(114, 40, 217, 0.4)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (theme === 'sun') {
+              e.target.style.background = 'rgb(113, 179, 253)';
+              e.target.style.borderColor = 'rgb(113, 179, 253)';
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = 'none';
+            } else {
+              e.target.style.background = 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)';
+              e.target.style.borderColor = '#7228d9';
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = 'none';
+            }
+          }}>
+          {t('dailyChallenge.createChallenge')}
+        </Button>,
+      ]}
       centered
       destroyOnClose
     >
       <Form
         form={form}
         layout="vertical"
-        onFinish={handleSubmit}
-        className="create-challenge-form"
+        style={{ marginTop: '24px' }}
       >
-        {/* Challenge Type Selection */}
-        <div style={{ marginBottom: 32 }}>
-          <Title level={4} style={{ marginBottom: 16 }}>
-            {t('dailyChallenge.selectChallengeType')}
-          </Title>
-          <Row gutter={[16, 16]}>
-            {challengeTypes.map((challengeType) => (
-              <Col xs={24} sm={12} md={8} lg={8} key={challengeType.id}>
-                <ChallengeTypeCard
-                  challengeType={challengeType}
-                  isSelected={selectedChallengeType?.id === challengeType.id}
-                  onClick={handleChallengeTypeSelect}
-                />
-              </Col>
-            ))}
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              label={
+                <span>
+                  {t('dailyChallenge.challengeName')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
+              name='challengeName'
+              rules={[
+                {
+                  required: true,
+                  message: t('dailyChallenge.challengeNameRequired'),
+                },
+              ]}>
+              <Input 
+                placeholder={t('dailyChallenge.challengeNamePlaceholder')}
+                style={{ height: '40px' }}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label={
+                <span>
+                  {t('dailyChallenge.classLesson')}
+                  <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                </span>
+              }
+              name='classLessonId'
+              rules={[
+                {
+                  required: true,
+                  message: t('dailyChallenge.classLessonRequired'),
+                },
+              ]}>
+              <Select 
+                placeholder={t('dailyChallenge.selectClassLesson')}
+                style={{ height: '40px' }}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                }
+                disabled={!!lessonData?.classLessonId}
+              >
+                {lessons.map(lesson => (
+                  <Option key={lesson.id} value={lesson.id}>
+                    {lesson.lessonName}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+        
+        {/* Show Question Type field or display selected type */}
+        {challengeTypeAlreadySet ? (
+          <Row gutter={16}>
+            <Col span={24}>
+              {/* Hidden field to keep challengeType value in form */}
+              <Form.Item name='challengeType' hidden noStyle>
+                <Input />
+              </Form.Item>
+              
+              {/* Display field */}
+              <Form.Item
+                label={<span>{t('dailyChallenge.questionType')}</span>}>
+                <div style={{
+                  padding: '8px 12px',
+                  background: theme === 'sun' 
+                    ? 'rgba(24, 144, 255, 0.08)' 
+                    : 'rgba(138, 122, 255, 0.08)',
+                  border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(138, 122, 255, 0.3)'}`,
+                  borderRadius: '6px',
+                  color: theme === 'sun' ? 'rgba(24, 144, 255, 0.9)' : 'rgba(138, 122, 255, 0.9)',
+                  fontWeight: '500',
+                  fontSize: '14px'
+                }}>
+                  {lessonData?.challengeTypeName || lessonData?.challengeType}
+                </div>
+              </Form.Item>
+            </Col>
           </Row>
-        </div>
+        ) : (
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item
+                label={
+                  <span>
+                    {t('dailyChallenge.questionType')}
+                    <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                  </span>
+                }
+                name='challengeType'
+                rules={[
+                  {
+                    required: true,
+                    message: t('dailyChallenge.questionTypeRequired'),
+                  },
+                ]}>
+                <Select 
+                  placeholder={t('dailyChallenge.selectQuestionType')}
+                  style={{ height: '40px' }}
+                >
+                  {questionTypeOptions.map(option => (
+                    <Option key={option.value} value={option.value}>
+                      {t(`dailyChallenge.typeNames.${option.value}`)}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
 
-        <Divider />
-
-      
-
-        {/* Action Buttons */}
-        <div style={{ textAlign: 'right', paddingTop: 24, borderTop: '1px solid #f0f0f0' }}>
-          <Space>
-            <Button onClick={handleCancel}>
-              {t('dailyChallenge.cancel')}
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              disabled={!selectedChallengeType}
-            >
-              {t('dailyChallenge.createChallenge')}
-            </Button>
-          </Space>
-        </div>
+        <Row gutter={16}>
+          <Col span={24}>
+            <Form.Item
+              label={
+                <span>
+                  {t('dailyChallenge.description')}
+                </span>
+              }
+              name='description'>
+              <TextArea 
+                rows={4}
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </Modal>
   );
 };
 
-export default CreateDailyChallengeModal;
+export default SimpleDailyChallengeModal;
+

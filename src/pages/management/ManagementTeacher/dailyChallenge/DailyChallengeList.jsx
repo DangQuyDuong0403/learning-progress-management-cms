@@ -20,7 +20,7 @@ import {
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 // import CreateDailyChallengeModal from "./CreateDailyChallengeModal"; // Keep old modal (not deleted, just commented)
-import SimpleDailyChallengeModal from "./SimpleDailyChallengeModal"; // New simple modal
+import SimpleDailyChallengeModal from "./CreateDailyChallengeModal"; // New simple modal
 import EditDailyChallengeModal from "./EditDailyChallengeModal"; // Edit modal
 import "./DailyChallengeList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
@@ -1435,16 +1435,14 @@ const DailyChallengeList = ({ readOnly = false }) => {
                   className="action-btn-edit"
                   style={{ color: '#1890ff' }}
                 />
-                {record.status === 'DRAFT' && (
-                  <Button
-                    type="text"
-                    icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
-                    onClick={() => handleDeleteClick(record)}
-                    title={t('dailyChallenge.deleteChallenge')}
-                    className="action-btn-delete"
-                    style={{ color: '#ff4d4f' }}
-                  />
-                )}
+                <Button
+                  type="text"
+                  icon={<DeleteOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />}
+                  onClick={() => handleDeleteClick(record)}
+                  title={t('dailyChallenge.deleteChallenge')}
+                  className="action-btn-delete"
+                  style={{ color: '#ff4d4f' }}
+                />
               </>
             )}
           </Space>

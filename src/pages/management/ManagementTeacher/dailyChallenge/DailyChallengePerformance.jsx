@@ -15,7 +15,7 @@ import {
   CartesianGrid,
   Legend
 } from 'recharts';
-import "./DailyChallengePerformanceReport.css";
+import "./DailyChallengePerformance.css";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
@@ -423,11 +423,36 @@ const DailyChallengePerformance = () => {
       }
       
       // Normalize scores and prepare chart data
-      const processedChartData = (chartDataPoints || []).map((point, index) => ({
-        name: point.fullName || t('dailyChallenge.studentNumber', 'Student {{number}}', { number: index + 1 }),
-        score: normalizeScore(point.score || 0),
-        time: point.completionTimeMinutes || 0
-      }));
+      // Use completionTimeSeconds if available (more accurate), otherwise use completionTimeMinutes
+      const getCompletionTimeInMinutes = (point) => {
+        // Priority: use completionTimeSeconds if available (more accurate)
+        if (typeof point.completionTimeSeconds === 'number' && point.completionTimeSeconds > 0) {
+          return point.completionTimeSeconds / 60;
+        }
+        // Fallback: use completionTimeMinutes
+        if (typeof point.completionTimeMinutes === 'number') {
+          return point.completionTimeMinutes;
+        }
+        return 0;
+      };
+      
+      const processedChartData = (chartDataPoints || []).map((point, index) => {
+        const timeInMinutes = getCompletionTimeInMinutes(point);
+        // Debug log for specific student
+        if (point.fullName === 'Nguyễn Đức Anh') {
+          console.log('Nguyễn Đức Anh data:', {
+            userId: point.userId,
+            completionTimeSeconds: point.completionTimeSeconds,
+            completionTimeMinutes: point.completionTimeMinutes,
+            calculatedTimeInMinutes: timeInMinutes
+          });
+        }
+        return {
+          name: point.fullName || t('dailyChallenge.studentNumber', 'Student {{number}}', { number: index + 1 }),
+          score: normalizeScore(point.score || 0),
+          time: timeInMinutes
+        };
+      });
       
       console.log('Processed chart data:', processedChartData);
       setChartData(processedChartData);
@@ -733,20 +758,30 @@ const DailyChallengePerformance = () => {
   // Custom Tooltip for Chart (new chart data)
   const CustomChartTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      // Get the payload item that has the 'time' dataKey to ensure we get the correct data point
+      const timePayload = payload.find(p => p.dataKey === 'time');
+      const scorePayload = payload.find(p => p.dataKey === 'score');
+      
+      // Use the payload that has data (prefer time payload as it's more specific)
+      const data = timePayload?.payload || scorePayload?.payload || payload[0].payload;
+      
+      // Get time value directly from the time payload's value, or from data.time
+      const timeValue = timePayload?.value !== undefined ? timePayload.value : (data?.time || 0);
+      const scoreValue = scorePayload?.value !== undefined ? scorePayload.value : (data?.score || 0);
+      
       return (
         <div className={`dcpr-tooltip ${theme}-dcpr-tooltip`}>
           <p className="dcpr-tooltip__title">
-            {data.name}
+            {data?.name || 'Unknown'}
           </p>
-          {payload.find(p => p.dataKey === 'score') && (
+          {scorePayload && (
             <p className="dcpr-tooltip__item">
-              {t('dailyChallenge.score', 'Score')}: {data.score.toFixed(2)}/10
+              {t('dailyChallenge.score', 'Score')}: {Number(scoreValue).toFixed(2)}/10
             </p>
           )}
-          {payload.find(p => p.dataKey === 'time') && (
+          {timePayload && (
             <p className="dcpr-tooltip__item">
-              {t('dailyChallenge.completionTime', 'Completion Time')}: {data.time} {t('dailyChallenge.minutes', 'minutes')}
+              {t('dailyChallenge.completionTime', 'Completion Time')}: {Number(timeValue).toFixed(2)} {t('dailyChallenge.minutes', 'minutes')}
             </p>
           )}
         </div>
@@ -1031,6 +1066,7 @@ const DailyChallengePerformance = () => {
                             orientation="right"
                             label={{ value: `${t('dailyChallenge.completionTime', 'Completion Time')} (${t('dailyChallenge.minutes', 'minutes')})`, angle: 90, position: 'insideRight', style: { fontSize: '14px' } }}
                             tick={{ fontSize: 12 }}
+                            tickFormatter={(value) => Number(value).toFixed(0)}
                           />
                           <Tooltip content={<CustomChartTooltip />} />
                           <Legend

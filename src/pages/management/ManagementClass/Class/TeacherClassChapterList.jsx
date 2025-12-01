@@ -12,6 +12,8 @@ import {
 	Typography,
 	Upload,
 	Divider,
+	Progress,
+	Alert,
 } from 'antd';
 import {
 	SearchOutlined,
@@ -75,16 +77,28 @@ const TeacherClassChapterList = () => {
 	const [searchText, setSearchText] = useState('');
 	const [searchTimeout, setSearchTimeout] = useState(null);
 
-	// Modal states
+	// Chapter import modal (for class chapters)
 	const [importModal, setImportModal] = useState({
 		visible: false,
 		fileList: [],
 		uploading: false
 	});
 
+	// Lesson import modal (for importing lessons by chapter from class chapter page)
+	const [lessonImportModal, setLessonImportModal] = useState({
+		visible: false,
+		fileList: [],
+		uploading: false,
+		progress: 0,
+		error: null,
+		chapter: null,
+	});
+
 	// Loading states for buttons
 	const [templateDownloadLoading, setTemplateDownloadLoading] = useState(false);
 	const [validateLoading, setValidateLoading] = useState(false);
+	const [lessonTemplateDownloadLoading, setLessonTemplateDownloadLoading] = useState(false);
+	const [lessonValidateLoading, setLessonValidateLoading] = useState(false);
 
 	// Pagination state
 	const [pagination, setPagination] = useState({
@@ -472,7 +486,7 @@ const TeacherClassChapterList = () => {
 		}
 	};
 
-	// Handle file selection
+	// Handle file selection for chapter import
 	const handleFileSelect = (file) => {
 		// Validate file type
 		const allowedTypes = [
@@ -498,6 +512,308 @@ const TeacherClassChapterList = () => {
 		}));
 		
 		return false; // Prevent default upload behavior
+	};
+
+	// Open lesson import modal for specific chapter
+	const handleOpenLessonImportModal = (chapter) => {
+		setLessonImportModal({
+			visible: true,
+			fileList: [],
+			uploading: false,
+			progress: 0,
+			error: null,
+			chapter,
+		});
+	};
+
+	// Handle file selection for lesson import
+	const handleLessonFileSelect = (file) => {
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			'application/vnd.ms-excel',
+		];
+
+		if (!allowedTypes.includes(file.type) && !file.name?.match(/\.(xlsx|xls)$/i)) {
+			spaceToast.error(t('lessonManagement.invalidFileType'));
+			return false;
+		}
+
+		const maxSize = 10 * 1024 * 1024;
+		if (file.size > maxSize) {
+			spaceToast.error(t('lessonManagement.fileTooLarge'));
+			return false;
+		}
+
+		setLessonImportModal(prev => ({
+			...prev,
+			fileList: [file],
+		}));
+
+		return false;
+	};
+
+	const handleLessonDownloadTemplate = async () => {
+		setLessonTemplateDownloadLoading(true);
+		try {
+			const response = await teacherManagementApi.downloadClassLessonTemplate();
+
+			let downloadUrl = null;
+			let blobToDownload = null;
+
+			if (response instanceof Blob) {
+				blobToDownload = response;
+			} else if (response?.data instanceof Blob) {
+				const blobType = response.data.type || '';
+				const isJsonLike =
+					blobType.includes('application/json') ||
+					blobType.includes('text/plain') ||
+					blobType.includes('text/html');
+
+				if (isJsonLike) {
+					try {
+						const blobText = await response.data.text();
+						const parsed = JSON.parse(blobText);
+						downloadUrl = parsed?.url || parsed?.data || parsed;
+					} catch {
+						downloadUrl = await response.data.text();
+					}
+				} else {
+					blobToDownload = response.data;
+				}
+			} else if (typeof response === 'string') {
+				downloadUrl = response;
+			} else if (typeof response?.data === 'string') {
+				downloadUrl = response.data;
+			} else if (response?.data?.url) {
+				downloadUrl = response.data.url;
+			} else {
+				throw new Error('Unexpected response format when downloading template');
+			}
+
+			if (!downloadUrl && blobToDownload) {
+				downloadUrl = window.URL.createObjectURL(blobToDownload);
+			}
+
+			if (!downloadUrl) {
+				throw new Error('Failed to resolve template download URL');
+			}
+
+			const link = document.createElement('a');
+			link.setAttribute('href', downloadUrl);
+			link.setAttribute('download', 'class_lesson_import_template.xlsx');
+			link.setAttribute('target', '_blank');
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+
+			if (downloadUrl.startsWith('blob:')) {
+				window.URL.revokeObjectURL(downloadUrl);
+			}
+
+			spaceToast.success('Template downloaded successfully');
+		} catch (error) {
+			console.error('Error downloading template:', error);
+			spaceToast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to download template');
+		} finally {
+			setLessonTemplateDownloadLoading(false);
+		}
+	};
+
+	const handleLessonValidateFile = async () => {
+		if (lessonImportModal.fileList.length === 0) {
+			spaceToast.warning(t('lessonManagement.selectFileToValidate'));
+			return;
+		}
+
+		setLessonValidateLoading(true);
+
+		try {
+			const rawFile = lessonImportModal.fileList[0];
+			const file = rawFile.originFileObj || rawFile;
+
+			const allowedTypes = [
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				'application/vnd.ms-excel',
+			];
+			if (!allowedTypes.includes(file.type) && !file.name?.match(/\.(xlsx|xls)$/i)) {
+				spaceToast.error(t('lessonManagement.invalidFileType'));
+				setLessonValidateLoading(false);
+				return;
+			}
+			const maxSize = 10 * 1024 * 1024;
+			if (file.size > maxSize) {
+				spaceToast.error(t('lessonManagement.fileTooLarge'));
+				setLessonValidateLoading(false);
+				return;
+			}
+
+			const formData = new FormData();
+			formData.append('file', file);
+
+			const response = await teacherManagementApi.validateClassLessonImportFile(classId, formData);
+
+			if (response.data instanceof Blob) {
+				const downloadUrl = window.URL.createObjectURL(response.data);
+				const link = document.createElement('a');
+				link.setAttribute('href', downloadUrl);
+				link.setAttribute('download', `class_lesson_validation_result_${new Date().getTime()}.xlsx`);
+				link.setAttribute('target', '_blank');
+				link.style.visibility = 'hidden';
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				window.URL.revokeObjectURL(downloadUrl);
+				spaceToast.success(t('lessonManagement.validateSuccess') + ' - ' + t('lessonManagement.fileDownloaded'));
+			} else {
+				let downloadUrl;
+
+				if (typeof response.data === 'string') {
+					downloadUrl = response.data;
+				} else if (response.data && response.data.url) {
+					downloadUrl = response.data.url;
+				}
+
+				if (downloadUrl) {
+					const link = document.createElement('a');
+					link.setAttribute('href', downloadUrl);
+					link.setAttribute('download', `class_lesson_validation_result_${new Date().getTime()}.xlsx`);
+					link.setAttribute('target', '_blank');
+					link.style.visibility = 'hidden';
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+
+					spaceToast.success(t('lessonManagement.validateSuccess') + ' - ' + t('lessonManagement.fileDownloaded'));
+				} else {
+					spaceToast.success(response.message || t('lessonManagement.validateSuccess'));
+				}
+			}
+		} catch (error) {
+			console.error('Error validating file:', error);
+
+			let errorMessage = t('lessonManagement.validateError');
+
+			if (error.response?.data) {
+				if (error.response.data instanceof Blob) {
+					try {
+						const errorText = await error.response.data.text();
+						const errorJson = JSON.parse(errorText);
+						errorMessage = errorJson.error || errorJson.message || errorMessage;
+					} catch (parseError) {
+						errorMessage = error.message || errorMessage;
+					}
+				} else if (error.response.data.error) {
+					errorMessage = error.response.data.error;
+				} else if (error.response.data.message) {
+					errorMessage = error.response.data.message;
+				}
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+
+			spaceToast.error(errorMessage);
+		} finally {
+			setLessonValidateLoading(false);
+		}
+	};
+
+	const handleLessonImportOk = async () => {
+		if (lessonImportModal.fileList.length === 0) {
+			spaceToast.warning(t('lessonManagement.selectFileToImport'));
+			return;
+		}
+
+		const rawFile = lessonImportModal.fileList[0];
+		const file = rawFile.originFileObj || rawFile;
+
+		const allowedTypes = [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			'application/vnd.ms-excel',
+		];
+		if (!allowedTypes.includes(file.type) && !file.name?.match(/\.(xlsx|xls)$/i)) {
+			spaceToast.error(t('lessonManagement.invalidFileType'));
+			return;
+		}
+		const maxSize = 10 * 1024 * 1024;
+		if (file.size > maxSize) {
+			spaceToast.error(t('lessonManagement.fileTooLarge'));
+			return;
+		}
+
+		setLessonImportModal(prev => ({ ...prev, uploading: true, progress: 0, error: null }));
+
+		try {
+			const formData = new FormData();
+			formData.append('file', file);
+
+			const progressInterval = setInterval(() => {
+				setLessonImportModal(prev => ({
+					...prev,
+					progress: Math.min(prev.progress + 10, 90),
+				}));
+			}, 200);
+
+			const response = await teacherManagementApi.importClassLessons(classId, formData);
+
+			clearInterval(progressInterval);
+			setLessonImportModal(prev => ({ ...prev, progress: 100 }));
+
+			const successMessage = response.message || t('lessonManagement.importSuccess');
+			spaceToast.success(successMessage);
+
+			setTimeout(() => {
+				setLessonImportModal({
+					visible: false,
+					fileList: [],
+					uploading: false,
+					progress: 0,
+					error: null,
+					chapter: null,
+				});
+			}, 1000);
+		} catch (error) {
+			console.error('Error importing lessons:', error);
+
+			let errorMessage = t('lessonManagement.importError');
+			let errorDetails = '';
+
+			if (error.response?.data?.message) {
+				errorMessage = error.response.data.message;
+			} else if (error.response?.data?.error) {
+				errorMessage = error.response.data.error;
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+
+			if (error.response?.data?.details) {
+				errorDetails = error.response.data.details;
+			} else if (error.response?.data?.errors) {
+				errorDetails = Array.isArray(error.response.data.errors)
+					? error.response.data.errors.join(', ')
+					: error.response.data.errors;
+			}
+
+			setLessonImportModal(prev => ({
+				...prev,
+				uploading: false,
+				progress: 0,
+				error: errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage,
+			}));
+
+			spaceToast.error(errorMessage);
+		}
+	};
+
+	const handleLessonImportCancel = () => {
+		setLessonImportModal({
+			visible: false,
+			fileList: [],
+			uploading: false,
+			progress: 0,
+			error: null,
+			chapter: null,
+		});
 	};
 
 	// No need for client-side filtering since API handles filtering
@@ -571,6 +887,16 @@ const TeacherClassChapterList = () => {
 							onClick={() => handleViewLessons(record)}
 						/>
 					</Tooltip>
+					{!isManager && !isStudent && !isTestTaker && !isTeachingAssistant && (
+						<Tooltip title={t('lessonManagement.importLessons')}>
+							<Button
+								type="text"
+								size="small"
+								icon={<DownloadOutlined style={{ fontSize: '25px' }} />}
+								onClick={() => handleOpenLessonImportModal(record)}
+							/>
+						</Tooltip>
+					)}
 				</Space>
 			),
 		},
@@ -852,6 +1178,213 @@ const TeacherClassChapterList = () => {
 								Remove
 							</Button>
 						</div>
+					)}
+				</div>
+			</Modal>
+
+			{/* Lesson Import Modal */}
+			<Modal
+				title={
+					<div style={{
+						fontSize: '28px',
+						fontWeight: '600',
+						color: 'rgb(24, 144, 255)',
+						textAlign: 'center',
+						padding: '10px 0',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						gap: '10px',
+					}}>
+						<DownloadOutlined style={{ color: 'rgb(24, 144, 255)' }} />
+						{t('lessonManagement.importLessons')}
+					</div>
+				}
+				open={lessonImportModal.visible}
+				onCancel={handleLessonImportCancel}
+				width={600}
+				centered
+				footer={[
+					<Button 
+						key="cancel" 
+						onClick={handleLessonImportCancel}
+						style={{
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px'
+						}}>
+						{t('common.cancel')}
+					</Button>,
+					<Button 
+						key="validate" 
+						onClick={handleLessonValidateFile}
+						loading={lessonValidateLoading}
+						disabled={lessonImportModal.fileList.length === 0 || lessonValidateLoading}
+						style={{
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '120px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none',
+							marginLeft: '8px'
+						}}>
+						{t('lessonManagement.validateFile')}
+					</Button>,
+					<Button 
+						key="import" 
+						type="primary"
+						onClick={handleLessonImportOk}
+						loading={lessonImportModal.uploading}
+						disabled={lessonImportModal.fileList.length === 0 || lessonImportModal.uploading}
+						style={{
+							background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+							borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+							color: theme === 'sun' ? '#000' : '#fff',
+							borderRadius: '6px',
+							height: '32px',
+							fontWeight: '500',
+							fontSize: '16px',
+							padding: '4px 15px',
+							width: '100px',
+							transition: 'all 0.3s ease',
+							boxShadow: 'none',
+							marginLeft: '8px'
+						}}>
+						{t('lessonManagement.import')}
+					</Button>
+				]}>
+				<div style={{ padding: '20px 0' }}>
+					{lessonImportModal.chapter && (
+						<div style={{ textAlign: 'center', marginBottom: '12px', fontSize: '16px', color: '#666' }}>
+							{t('lessonManagement.importingForChapter') || 'Importing lessons for chapter:'}{' '}
+							<strong>{lessonImportModal.chapter.name}</strong>
+						</div>
+					)}
+					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
+						<Button
+							type="dashed"
+							icon={<DownloadOutlined />}
+							onClick={handleLessonDownloadTemplate}
+							loading={lessonTemplateDownloadLoading}
+							disabled={lessonTemplateDownloadLoading}
+							style={{
+								borderColor: '#1890ff',
+								color: '#1890ff',
+								height: '36px',
+								fontSize: '14px',
+								fontWeight: '500',
+							}}>
+							{t('lessonManagement.downloadTemplate')}
+						</Button>
+					</div>
+
+					<Typography.Title
+						level={5}
+						style={{
+							textAlign: 'center',
+							marginBottom: '20px',
+							color: '#666',
+						}}>
+						{t('lessonManagement.importInstructions')}
+					</Typography.Title>
+
+					<Upload.Dragger
+						name="file"
+						multiple={false}
+						beforeUpload={handleLessonFileSelect}
+						showUploadList={false}
+						accept=".xlsx,.xls,.csv"
+						style={{
+							marginBottom: '20px',
+							border: '2px dashed #d9d9d9',
+							borderRadius: '8px',
+							background: '#fafafa',
+							padding: '40px',
+							textAlign: 'center',
+						}}>
+						<p
+							className='ant-upload-drag-icon'
+							style={{ fontSize: '48px', color: '#1890ff' }}>
+							<DownloadOutlined />
+						</p>
+						<p
+							className='ant-upload-text'
+							style={{ fontSize: '16px', fontWeight: '500' }}>
+							{t('lessonManagement.clickOrDragFile')}
+						</p>
+						<p className='ant-upload-hint' style={{ color: '#999' }}>
+							{t('lessonManagement.supportedFormats')}: Excel (.xlsx, .xls)
+						</p>
+					</Upload.Dragger>
+
+					<Divider />
+
+					{lessonImportModal.fileList.length > 0 && (
+						<div
+							style={{
+								marginTop: '16px',
+								padding: '12px',
+								background: '#e6f7ff',
+								border: '1px solid #91d5ff',
+								borderRadius: '6px',
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+							}}>
+							<div>
+								<Typography.Text style={{ color: '#1890ff', fontWeight: '500' }}>
+									 {t('lessonManagement.fileSelected')}: {lessonImportModal.fileList[0].name}
+								</Typography.Text>
+								<br />
+								<Typography.Text style={{ color: '#666', fontSize: '12px' }}>
+									Size: {lessonImportModal.fileList[0].size < 1024 * 1024 
+										? `${(lessonImportModal.fileList[0].size / 1024).toFixed(1)} KB`
+										: `${(lessonImportModal.fileList[0].size / 1024 / 1024).toFixed(2)} MB`
+									}
+								</Typography.Text>
+							</div>
+							<Button
+								type="text"
+								size="small"
+								onClick={() => setLessonImportModal(prev => ({ ...prev, fileList: [] }))}
+								style={{ color: '#ff4d4f' }}>
+								Remove
+							</Button>
+						</div>
+					)}
+
+					{lessonImportModal.uploading && (
+						<div style={{ marginTop: '16px' }}>
+							<Progress 
+								percent={lessonImportModal.progress} 
+								status={lessonImportModal.progress === 100 ? 'success' : 'active'}
+								strokeColor={{
+									'0%': '#108ee9',
+									'100%': '#87d068',
+								}}
+							/>
+							<div style={{ textAlign: 'center', marginTop: '8px', color: '#666' }}>
+								{lessonImportModal.progress < 100 ? t('lessonManagement.uploading') : t('lessonManagement.uploadComplete')}
+							</div>
+						</div>
+					)}
+
+					{lessonImportModal.error && (
+						<Alert
+							message={t('lessonManagement.importError')}
+							description={lessonImportModal.error}
+							type="error"
+							showIcon
+							style={{ marginTop: '16px' }}
+						/>
 					)}
 				</div>
 			</Modal>

@@ -2103,7 +2103,7 @@ useEffect(() => {
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             {t('dailyChallenge.question')} {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
-              {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
+              {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
             </span>
           </div>
           <div className="question-text-content" style={{ marginBottom: '10px' }} dangerouslySetInnerHTML={{ __html: questionText }} />
@@ -2262,7 +2262,7 @@ useEffect(() => {
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
-              {(q.receivedScore || 0)} / {(q.points || 0)} points
+              {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
             </span>
           </div>
           <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>{renderFillBlankForSection()}</div>
@@ -2430,7 +2430,7 @@ useEffect(() => {
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
-              {(q.receivedScore || 0)} / {(q.points || 0)} points
+              {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
             </span>
           </div>
           <div
@@ -2564,7 +2564,7 @@ useEffect(() => {
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
-              {(q.receivedScore || 0)} / {(q.points || 0)} points
+              {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
             </span>
           </div>
           <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
@@ -2654,7 +2654,7 @@ useEffect(() => {
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', position: 'relative' }}>
             Question {qIndex + 1}:
             <span style={{ position: 'absolute', right: 0, top: 0, fontSize: '16px', fontWeight: 600, opacity: 0.7 }}>
-              {(q.receivedScore || 0)} / {(q.points || 0)} points
+              {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
             </span>
           </div>
           <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
@@ -2737,7 +2737,7 @@ useEffect(() => {
             </Typography.Text>
           </div>
           <div style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-            {sectionTotals.received} / {sectionTotals.total} {t('dailyChallenge.points')}
+            {sectionTotals.received} / {sectionTotals.total} {t('dailyChallenge.weight', 'Weight')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
@@ -2778,7 +2778,7 @@ useEffect(() => {
             </Typography.Text>
           </div>
           <div style={{ fontSize: '14px', fontWeight: 600, color: theme === 'sun' ? '#1890ff' : '#8B5CF6' }}>
-            {sectionTotals.received} / {sectionTotals.total} {t('dailyChallenge.points')}
+            {sectionTotals.received} / {sectionTotals.total} {t('dailyChallenge.weight', 'Weight')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
@@ -3523,7 +3523,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -3805,7 +3805,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -3965,7 +3965,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4131,7 +4131,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4305,7 +4305,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4471,7 +4471,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
               </Typography.Text>
               <Typography.Text style={{ 
                 fontSize: '14px', 
@@ -4590,7 +4590,7 @@ useEffect(() => {
                 color: theme === 'sun' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 500
               }}>
-                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.points')}
+                {(q.receivedScore || 0)} / {(q.points || 0)} {t('dailyChallenge.weight', 'Weight')}
               </Typography.Text>
             <Typography.Text style={{ 
               fontSize: '14px', 
