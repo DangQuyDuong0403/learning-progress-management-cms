@@ -34,7 +34,7 @@ import {
 import { useTheme } from '../../../contexts/ThemeContext';
 import ThemedLayout from '../../../component/ThemedLayout';
 import { managerDashboardApi } from '../../../apis/apis';
-import './ManagerDashboardV2.css';
+import './ManagerDashboard.css';
 import { useTranslation } from 'react-i18next';
 
 const ROLE_COLORS = ['#c0aaff', '#80b9ff', '#7dd3b8', '#ffc98a', '#f79ac0', '#9aa7ff'];

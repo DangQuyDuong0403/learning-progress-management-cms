@@ -3,16 +3,12 @@ import ROUTER_PAGE from '../constants/router';
 import ChooseLogin from '../pages/login/ChooseLogin.jsx';
 import ForgotPassword from '../pages/login/ForgotPassword.jsx';
 import ForgotPasswordSuccess from '../pages/login/ForgotPasswordSuccess.jsx';
-import ForgotPasswordFailure from '../pages/login/ForgotPasswordFailure.jsx';
 import ForgotPasswordTeacher from '../pages/login/ForgotPasswordTeacher.jsx';
 import Login from '../pages/login/LoginStudent.jsx';
-import OTPVerification from '../pages/login/OTPVerification.jsx';
 import ResetPassword from '../pages/login/ResetPassword.jsx';
 import LoginTeacher from '../pages/login/LoginTeacher.jsx';
 import Profile from '../pages/profile/Profile.jsx';
-import ProfileStudent from '../pages/profile/ProfileStudent.jsx';
 import ConfirmEmailChange from '../pages/login/ConfirmEmailChange.jsx';
-import ChangePasswordPage from '../pages/profile/ChangePassword.jsx';
 import Settings from '../pages/settings/Settings.jsx';
 import AccountList from '../pages/management/managementAdmin/account/AccountList.jsx';
 // import RoleList from '../pages/management/managementAdmin/role/RoleList.jsx';
@@ -23,15 +19,11 @@ import ChapterListPage from '../pages/management/ManagementManager/syllabus/Chap
 import ChapterDragEdit from '../pages/management/ManagementManager/syllabus/ChapterDragEdit.jsx';
 import LessonListPage from '../pages/management/ManagementManager/syllabus/LessonListPage.jsx';
 import LessonListBySyllabus from '../pages/management/ManagementManager/syllabus/LessonListBySyllabus.jsx';
-import LessonFormPage from '../pages/management/ManagementManager/syllabus/LessonFormPage.jsx';
 import LessonDragEdit from '../pages/management/ManagementManager/syllabus/LessonDragEdit.jsx';
-import LessonDragEditBySyllabus from '../pages/management/ManagementManager/syllabus/LessonDragEditBySyllabus.jsx';
 import StudentList from '../pages/management/ManagementManager/Student/StudentList.jsx';
 import StudentProfile from '../pages/management/ManagementManager/Student/StudentProfile.jsx';
 import TeacherList from '../pages/management/ManagementManager/teacher/TeacherList.jsx';
 import TeacherProfile from '../pages/management/ManagementManager/teacher/TeacherProfile.jsx';
-import SpinnerDemo from '../pages/SpinnerDemo.jsx';
-import TestDemo from '../pages/test/TestDemo.jsx';
 //manager
 import ClassList from '../pages/management/ManagementClass/Class/ClassList.jsx';
 import ClassListTable from '../pages/management/ManagementClass/Class/ClassListTable.jsx';
@@ -59,20 +51,17 @@ import DailyChallengeSubmissionList from '../pages/management/ManagementTeacher/
 import DailyChallengeSubmissionDetail from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionDetail.jsx';
 import DailyChallengeContent from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeContent.jsx';
 import StudentPreview from '../pages/management/ManagementTeacher/dailyChallenge/StudentPreview.jsx';
-import CreateGrammarVocabularyChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateGrammarVocabularyChallenge.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
 import AIGenerateQuestions from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateQuestions.jsx';
 import AIGenerateFeedback from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateFeedback.jsx';
 import AIGenerateReading from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateReading.jsx';
 import AIGenerateListening from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateListening.jsx';
-import TeacherDashboard from '../pages/management/ManagementTeacher/TeacherDashboard.jsx';
 import AdminDashboard from '../pages/management/managementAdmin/AdminDashboard';
 import ManagerDashboard from '../pages/management/ManagementManager/ManagerDashboard';
 import StudentDashboard from '../pages/management/ManagementStudent/StudentDashboard';
 import StudentClassList from '../pages/management/ManagementStudent/StudentClassList.jsx';
 import StudentDailyChallengeList from '../pages/management/ManagementStudent/StudentDailyChallengeList.jsx';
 import StudentDailyChallengeTake from '../pages/management/ManagementStudent/StudentDailyChallengeTake.jsx';
-import StudentDailyChallengeResult from '../pages/management/ManagementStudent/StudentDailyChallengeResult.jsx';
 import StudentLearningProgressOverview from '../pages/management/ManagementStudent/StudentLearningProgressOverview.jsx';
   
 const CONFIG_ROUTER = [
@@ -128,22 +117,6 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false, // không hiện trên menu
-		component: ForgotPasswordFailure,
-		// icon: <LogIn size={18} />,
-		path: ROUTER_PAGE.FORGOT_PASSWORD_FAILURE,
-		exact: true,
-		key: 'FORGOT_PASSWORD_FAILURE',
-	},
-	{
-		show: false, // không hiện trên menu
-		component: OTPVerification,
-		// icon: <LogIn size={18} />,
-		path: ROUTER_PAGE.OTP_VERIFICATION,
-		exact: true,
-		key: 'OTP_VERIFICATION',
-	},
-	{
-		show: false, // không hiện trên menu
 		component: ResetPassword,
 		// icon: <LogIn size={18} />,
 		path: ROUTER_PAGE.RESET_PASSWORD,
@@ -180,24 +153,6 @@ const CONFIG_ROUTER = [
 		path: ROUTER_PAGE.PROFILE,
 		exact: true,
 		key: 'PROFILE',
-		private: true,
-	},
-	{
-		show: false, // không hiện trên menu
-		component: ProfileStudent,
-		// icon: <LogIn size={18} />,
-		path: ROUTER_PAGE.PROFILE_STUDENT,
-		exact: true,
-		key: 'PROFILE_STUDENT',
-		private: true,
-	},
-	{
-		show: false, // không hiện trên menu
-		component: ChangePasswordPage,
-		// icon: <LogIn size={18} />,
-		path: ROUTER_PAGE.CHANGE_PASSWORD,
-		exact: true,
-		key: 'CHANGE_PASSWORD',
 		private: true,
 	},
 	{
@@ -327,16 +282,6 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: StudentDailyChallengeResult,
-		path: ROUTER_PAGE.STUDENT_DAILY_CHALLENGE_RESULT,
-		menuName: 'View Daily Challenge Result',
-		exact: true,
-		key: 'STUDENT_DAILY_CHALLENGE_RESULT',
-		private: true,
-		role: 'student',
-	},
-	{
-		show: false,
 		component: DailyChallengeSubmissionDetail,
 		path: ROUTER_PAGE.STUDENT_DAILY_CHALLENGE_SUBMISSION_DETAIL,
 		menuName: 'Daily Challenge Submission Detail',
@@ -457,16 +402,6 @@ const CONFIG_ROUTER = [
 		menuName: 'Take Daily Challenge',
 		exact: true,
 		key: 'TEST_TAKER_DAILY_CHALLENGE_TAKE',
-		private: true,
-		role: 'test_taker',
-	},
-	{
-		show: false,
-		component: StudentDailyChallengeResult,
-		path: ROUTER_PAGE.TEST_TAKER_DAILY_CHALLENGE_RESULT,
-		menuName: 'View Daily Challenge Result',
-		exact: true,
-		key: 'TEST_TAKER_DAILY_CHALLENGE_RESULT',
 		private: true,
 		role: 'test_taker',
 	},
@@ -883,17 +818,6 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: LessonFormPage,
-		// icon: <UserOutlined />,
-		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_LESSON_FORM,
-		menuName: 'class lesson form',
-		exact: true,
-		key: 'TEACHING_ASSISTANT_CLASS_LESSON_FORM',
-		private: true,
-		role: ['teacher'],
-	},
-	{
-		show: false,
 		component: LessonDragEdit,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_LESSON_EDIT,
@@ -951,26 +875,6 @@ const CONFIG_ROUTER = [
 		menuName: 'Syllabus Lessons Management',
 		exact: true,
 		key: 'MANAGER_SYLLABUS_LESSONS',
-		private: true,
-		role: 'manager',
-	},
-	{
-		show: false,
-		component: LessonDragEditBySyllabus,
-		path: ROUTER_PAGE.MANAGER_SYLLABUS_LESSON_EDIT_POSITIONS,
-		menuName: 'Edit Syllabus Lesson Positions',
-		exact: true,
-		key: 'MANAGER_SYLLABUS_LESSON_EDIT_POSITIONS',
-		private: true,
-		role: 'manager',
-	},
-	{
-		show: false,
-		component: LessonFormPage,
-		path: ROUTER_PAGE.MANAGER_LESSON_EDIT,
-		menuName: 'Edit Lesson',
-		exact: true,
-		key: 'MANAGER_LESSON_EDIT',
 		private: true,
 		role: 'manager',
 	},
@@ -1036,38 +940,7 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['teaching_assistant'],
 	},
-	{
-		show: false,
-		component: SpinnerDemo,
-		// icon: <SpinnerOutlined />,
-		path: ROUTER_PAGE.SPINNER_DEMO,
-		menuName: 'Spinner Demo',
-		exact: true,
-		key: 'SPINNER_DEMO',
-		private: false, // Có thể truy cập mà không cần đăng nhập
-	},
-	{
-		show: false,
-		component: TestDemo,
-		// icon: <TestOutlined />,
-		path: ROUTER_PAGE.TEST_DEMO,
-		menuName: 'Test Security Demo',
-		exact: true,
-		key: 'TEST_DEMO',
-		private: false, // Có thể truy cập mà không cần đăng nhập
-	},
-	
 	// Teacher Management Routes
-	{
-		show: true,
-		component: TeacherDashboard,
-		path: ROUTER_PAGE.TEACHER_DASHBOARD,
-		menuName: 'Teacher Dashboard',
-		exact: true,
-		key: 'TEACHER_DASHBOARD',
-		private: true,
-		role: ['teacher', 'teaching_assistant'],
-	},
 	{
 		show: true,
 		component: TeacherClassList,
@@ -1213,17 +1086,6 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: LessonFormPage,
-		// icon: <UserOutlined />,
-		path: ROUTER_PAGE.TEACHER_CLASS_LESSON_FORM,
-		menuName: 'class lesson form',
-		exact: true,
-		key: 'TEACHER_CLASS_LESSON_FORM',
-		private: true,
-		role: ['teacher'],
-	},
-	{
-		show: false,
 		component: LessonDragEdit,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHER_CLASS_LESSON_EDIT,
@@ -1301,16 +1163,6 @@ const CONFIG_ROUTER = [
 		menuName: 'Daily Challenge Preview',
 		exact: true,
 		key: 'TEACHER_DAILY_CHALLENGE_PREVIEW',
-		private: true,
-		role: ['teacher'],
-	},
-	{
-		show: false,
-		component: CreateGrammarVocabularyChallenge,
-		path: ROUTER_PAGE.TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE,
-		menuName: 'Create Grammar & Vocabulary Challenge',
-		exact: true,
-		key: 'TEACHER_CREATE_GRAMMAR_VOCAB_CHALLENGE',
 		private: true,
 		role: ['teacher'],
 	},
@@ -1467,16 +1319,6 @@ const CONFIG_ROUTER = [
 	// 	private: true,
 	// 	role: ['teaching_assistant'],
 	// },
-	{
-		show: false,
-		component: CreateGrammarVocabularyChallenge,
-		path: ROUTER_PAGE.TEACHING_ASSISTANT_CREATE_GRAMMAR_VOCAB_CHALLENGE,
-		menuName: 'Create Grammar & Vocabulary Challenge',
-		exact: true,
-		key: 'TEACHING_ASSISTANT_CREATE_GRAMMAR_VOCAB_CHALLENGE',
-		private: true,
-		role: ['teaching_assistant'],
-	},
 	{
 		show: false,
 		component: CreateReadingChallenge,

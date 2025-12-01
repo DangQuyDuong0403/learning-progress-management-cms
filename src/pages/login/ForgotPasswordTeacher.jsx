@@ -9,6 +9,7 @@ import authApi from '../../apis/backend/auth';
 import { spaceToast } from '../../component/SpaceToastify';
 import usePageTitle from '../../hooks/usePageTitle';
 import './Login.css';
+import LanguageToggle from '../../component/LanguageToggle';
 
 export default function ForgotPasswordTeacher() {
     const [username, setUsername] = useState('');
@@ -63,6 +64,11 @@ export default function ForgotPasswordTeacher() {
     return (
         <ThemeLayoutLogin>
             <div className="main-content" style={{ paddingTop: 80, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Theme Toggle - Top Right */}
+				<div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
+					{/* <ThemeToggleSwitch /> */}
+					<LanguageToggle />
+				</div>
                 <div className='d-flex align-items-center justify-content-center w-100'>
                     <div className='row justify-content-center w-100'>
                         <div

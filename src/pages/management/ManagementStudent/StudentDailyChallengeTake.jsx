@@ -54,6 +54,36 @@ const stripHtmlContent = (value) => {
     .trim();
 };
 
+const FILE_EXTENSION_REGEX = /\.(pdf|docx?|pptx?|xlsx?|jpg|jpeg|png|gif|bmp|webp|svg|mp3|wav|m4a|aac)$/i;
+const IMAGE_EXTENSION_REGEX = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i;
+
+const isLikelyFileReference = (value) => {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (/^(https?:\/\/|blob:|data:)/i.test(trimmed) && !/\s/.test(trimmed)) {
+    return true;
+  }
+  const clean = trimmed.split('?')[0].split('#')[0];
+  return FILE_EXTENSION_REGEX.test(clean);
+};
+
+const deriveFileNameFromUrl = (fileUrl, fallback = 'attachment') => {
+  if (!fileUrl || typeof fileUrl !== 'string') return fallback;
+  const defaultName = fallback;
+  try {
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const urlObj = new URL(fileUrl, base);
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+    const candidate = pathParts.length > 0 ? pathParts[pathParts.length - 1] : defaultName;
+    return candidate.split('?')[0].split('#')[0] || defaultName;
+  } catch (error) {
+    const segments = fileUrl.split('/').filter(Boolean);
+    const candidate = segments.length > 0 ? segments[segments.length - 1] : defaultName;
+    return candidate.split('?')[0].split('#')[0] || defaultName;
+  }
+};
+
 // Memoized HTML renderer to keep DOM stable and preserve text selection
 const MemoizedHTML = React.memo(
   function MemoizedHTML({ html, className, style }) {
@@ -2827,6 +2857,84 @@ const WritingSectionItem = ({ question, index, theme }) => {
   const [wordCount, setWordCount] = useState(0);
   const [writingMode, setWritingMode] = useState(null); // null or 'handwriting'
   const [isUploading, setIsUploading] = useState(false);
+  const renderTextWithMedia = useCallback((text) => {
+    if (!text) return text;
+
+    const raw = String(text);
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const segments = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = urlRegex.exec(raw)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ type: 'text', content: raw.substring(lastIndex, match.index) });
+      }
+      const url = match[0];
+      const cleanUrl = url.split('?')[0].split('#')[0];
+      if (IMAGE_EXTENSION_REGEX.test(cleanUrl.toLowerCase())) {
+        segments.push({ type: 'image', content: url });
+      } else {
+        segments.push({ type: 'link', content: url });
+      }
+      lastIndex = match.index + url.length;
+    }
+
+    if (lastIndex < raw.length) {
+      segments.push({ type: 'text', content: raw.substring(lastIndex) });
+    }
+
+    if (segments.length === 0) {
+      return raw;
+    }
+
+    return segments.map((segment, idx) => {
+      if (segment.type === 'text') {
+        return (
+          <React.Fragment key={`text-${idx}`}>
+            {segment.content}
+          </React.Fragment>
+        );
+      }
+      if (segment.type === 'image') {
+        const imageUrl = segment.content;
+        return (
+          <img
+            key={`img-${idx}`}
+            src={imageUrl}
+            alt="Submitted content"
+            style={{
+              maxWidth: '100%',
+              height: 'auto',
+              display: 'block',
+              margin: '12px 0',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+            }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              const urlText = document.createTextNode(imageUrl);
+              e.currentTarget.parentNode?.appendChild(urlText);
+            }}
+          />
+        );
+      }
+      return (
+        <a
+          key={`link-${idx}`}
+          href={segment.content}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+            wordBreak: 'break-all'
+          }}
+        >
+          {segment.content}
+        </a>
+      );
+    });
+  }, [theme]);
 
   const toPlainText = (html) => {
     if (!html) return '';
@@ -2890,22 +2998,33 @@ const WritingSectionItem = ({ question, index, theme }) => {
 
     const setAnswer = (answer) => {
       if (typeof answer === 'string') {
-        setEssayText(answer);
-        setWritingMode('handwriting');
+        const trimmed = answer.trim();
+        if (!trimmed) {
+          setEssayText('');
+          setUploadedFiles([]);
+          setWritingMode(null);
+          return;
+        }
+
+        if (isLikelyFileReference(trimmed)) {
+          const restoredFile = {
+            id: Date.now() + Math.random(),
+            name: deriveFileNameFromUrl(trimmed, 'attachment_1'),
+            size: 0,
+            type: 'application/octet-stream',
+            url: trimmed
+          };
+          setUploadedFiles([restoredFile]);
+          setEssayText('');
+          setWritingMode(null);
+        } else {
+          setEssayText(trimmed);
+          setWritingMode('handwriting');
+          setUploadedFiles([]);
+        }
         return;
       }
     if (Array.isArray(answer) && answer.length > 0) {
-      const isLikelyFileReference = (val) => {
-        if (typeof val !== 'string') return false;
-        const trimmed = val.trim();
-        if (!trimmed) return false;
-        if (/^(https?:\/\/|blob:|data:)/i.test(trimmed)) return true;
-        // Consider simple relative paths or filenames with common extensions as files
-        if (/\.(pdf|docx?|pptx?|xlsx?|jpg|jpeg|png|gif|bmp|webp|svg|mp3|wav|m4a|aac)$/i.test(trimmed.split('?')[0])) {
-          return true;
-        }
-        return false;
-      };
 
       const normalizedEntries = answer
         .map((item, index) => {
@@ -2979,15 +3098,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
           }
 
           if (!fileName) {
-            try {
-              const urlObj = new URL(fileUrl, window.location.origin);
-              const pathParts = urlObj.pathname.split('/');
-              fileName = pathParts[pathParts.length - 1] || `attachment_${idx + 1}`;
-              fileName = fileName.split('?')[0];
-            } catch (e) {
-              const segments = fileUrl.split('/');
-              fileName = segments[segments.length - 1] || `attachment_${idx + 1}`;
-            }
+            fileName = deriveFileNameFromUrl(fileUrl, `attachment_${idx + 1}`);
           }
 
           if (!fileName) fileName = `attachment_${idx + 1}`;
@@ -3328,7 +3439,7 @@ const WritingSectionItem = ({ question, index, theme }) => {
                               wordWrap: 'break-word'
                             }}
                           >
-                            {essayText}
+                            {renderTextWithMedia(essayText)}
                           </div>
                         </div>
                       )}

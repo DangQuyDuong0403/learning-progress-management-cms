@@ -38,7 +38,7 @@ import "./StudentList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import studentManagementApi from "../../../../apis/backend/StudentManagement";
 import accountManagementApi from "../../../../apis/backend/accountManagement";
-import AssignStudentToClass from "./AssignStudentToClass";
+import AssignStudentToClass from "./AssignStudentToClassModal";
 import levelManagementApi from "../../../../apis/backend/levelManagement";
 import StudentBottomActionBar from "../../../../component/StudentBottomActionBar";
 import { FILE_NAME_PREFIXES, formatDateForFilename } from "../../../../constants/fileNames";

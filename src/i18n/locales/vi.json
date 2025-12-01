@@ -1923,6 +1923,7 @@
     "duplicateTypesNotAllowed": "Mỗi loại câu hỏi chỉ được chọn một lần",
     "dailyChallengeManagement": "Quản lý thử thách hằng ngày",
     "createChallenge": "Tạo thử thách",
+    "weight": "Trọng số",
     "challengeTitle": "Tên thử thách",
     "dailyChallengeList": "Danh sách thử thách hằng ngày",
     "type": "Loại",

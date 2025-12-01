@@ -20,7 +20,7 @@ import {
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 // import CreateDailyChallengeModal from "./CreateDailyChallengeModal"; // Keep old modal (not deleted, just commented)
-import SimpleDailyChallengeModal from "./SimpleDailyChallengeModal"; // New simple modal
+import SimpleDailyChallengeModal from "./CreateDailyChallengeModal"; // New simple modal
 import EditDailyChallengeModal from "./EditDailyChallengeModal"; // Edit modal
 import "./DailyChallengeList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";

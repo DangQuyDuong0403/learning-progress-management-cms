@@ -111,7 +111,7 @@ const AIGenerateListening = () => {
           resOrErr.data.error ||
           null
         );
-      }
+      } 
       return null;
     } catch {
       return null;
@@ -1607,7 +1607,7 @@ const AIGenerateListening = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <CheckOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
                         <Typography.Text style={{ fontSize: '14px', fontWeight: 600 }}>
-                          {question.points} {question.points === 1 ? t('dailyChallenge.point', 'point') : t('dailyChallenge.points', 'points')}
+                          {t('dailyChallenge.weight', 'Weight')}: {question.points}
                         </Typography.Text>
                       </div>
                       <Tooltip title={t('common.edit') || 'Edit Question'}>

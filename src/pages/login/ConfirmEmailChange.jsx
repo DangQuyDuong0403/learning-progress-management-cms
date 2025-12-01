@@ -98,7 +98,7 @@ export default function ConfirmEmailChange() {
       <div className="main-content" style={{ paddingTop: 120, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {/* Theme Toggle - Top Right */}
         <div className={`login-theme-toggle-container ${isSunTheme ? 'sun-theme' : 'space-theme'}`} style={{ position: 'absolute', top: '20px', right: '20px' }}>
-          <ThemeToggleSwitch />
+          {/* <ThemeToggleSwitch /> */}
           <LanguageToggle />
         </div>
         

@@ -39,7 +39,7 @@ import { useSelector } from 'react-redux';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import usePageTitle from '../../../../hooks/usePageTitle';
-import './ClassReportV2.css';
+import './ClassReport.css';
 
 const ROLE_COLORS = ['#c0aaff', '#80b9ff', '#7dd3b8', '#ffc98a', '#f79ac0', '#9aa7ff'];
 

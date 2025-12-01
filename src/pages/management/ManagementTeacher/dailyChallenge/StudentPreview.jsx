@@ -560,7 +560,7 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
           {index + 1}. {t('dailyChallenge.readingSection', 'Reading Section')}
         </Typography.Text>
         <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
-          ({question.points} {question.points > 1 ? 'points' : 'point'})
+          ({t('dailyChallenge.weight', 'Weight')}: {question.points})
         </Typography.Text>
       </div>
 
