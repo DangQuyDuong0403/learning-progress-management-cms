@@ -216,7 +216,7 @@ const Settings = () => {
 						</div>
 					</Card>
 					{/* Theme Section */}
-					<Card className={`settings-card ${theme}-settings-card`}>
+					{/* <Card className={`settings-card ${theme}-settings-card`}>
 						<div className="settings-card-header">
 							<div className="settings-card-title">
 								<SettingOutlined className="settings-card-icon" />
@@ -249,7 +249,7 @@ const Settings = () => {
 								</div>
 							</div>
 						</div>
-					</Card>
+					</Card> */}
 
 					{/* Language Section */}
 					<Card className={`settings-card ${theme}-settings-card`}>
