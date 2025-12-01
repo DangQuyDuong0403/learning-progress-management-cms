@@ -678,48 +678,32 @@ const DailyChallengeList = ({ readOnly = false }) => {
 
   // Enter/exit daily challenge menu mode
   useEffect(() => {
-    
     // Get classId from URL params or location state
     const currentClassId = classId || location.state?.classId;
-    
+
     // Determine back path based on user role and classId
     const getBackPath = () => {
+      const userRole = user?.role?.toLowerCase();
       if (currentClassId) {
-        // If coming from class menu, go back to that class menu
-        const userRole = user?.role?.toLowerCase();
-        const routePrefix = userRole === 'teacher' || userRole === 'teaching_assistant' 
-          ? '/teacher/classes' 
-          : '/manager/classes';
+        const routePrefix =
+          userRole === "teacher" || userRole === "teaching_assistant"
+            ? "/teacher/classes"
+            : "/manager/classes";
         return `${routePrefix}/menu/${currentClassId}`;
-      } else {
-        // Otherwise, go back to classes list
-        const userRole = user?.role?.toLowerCase();
-        return userRole === 'teacher' || userRole === 'teaching_assistant' 
-          ? '/teacher/classes' 
-          : '/manager/classes';
       }
+      // Otherwise, go back to classes list
+      return userRole === "teacher" || userRole === "teaching_assistant"
+        ? "/teacher/classes"
+        : "/manager/classes";
     };
-    
-    // Enter daily challenge menu mode when component mounts
-    // Priority: Use location.state if available (when navigating back from Performance)
-    // Otherwise use classData or dailyChallengeData
-    const getSubtitle = () => {
-      // First priority: Use location.state if available (when navigating back from Performance)
-      if (location?.state?.className && location?.state?.challengeName) {
-        return `${location.state.className} / ${location.state.challengeName}`;
-      } else if (location?.state?.challengeName) {
-        return location.state.challengeName;
-      } else if (location?.state?.className) {
-        return location.state.className;
-      }
-      // Fallback: no subtitle for list page (shows class name in header via displayName)
-      return null;
-    };
-    
+
+    // For the LIST screen, we luôn chỉ muốn subtitle trống
+    // (header sẽ hiển thị tên lớp qua displayName), tránh giữ lại tên challenge cũ
+    const subtitle = null;
     const displayName = location?.state?.className || classData?.name || null;
-    const subtitle = getSubtitle();
+
     enterDailyChallengeMenu(0, subtitle, getBackPath(), displayName);
-    
+
     // Exit daily challenge menu mode when component unmounts
     return () => {
       exitDailyChallengeMenu();
