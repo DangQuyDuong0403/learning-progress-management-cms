@@ -19,7 +19,6 @@ const authApi = {
 			//domain:'http://localhost:3000',
 			path: "/reset-password"
 		};
-		console.log('ForgotPassword API - Request Body:', requestBody);
 		return axiosClient.post('/auth/request-reset-password-email', requestBody, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -51,7 +50,6 @@ const authApi = {
 
 	// Đổi mật khẩu
 	changePassword: (data) => {
-		console.log('ChangePassword API - Request Body:', data);
 		return axiosClient.post('/auth/change-password', data, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -73,9 +71,6 @@ const authApi = {
 		}
 		
 		const url = `/user/profile/${userId}`;
-		console.log('GetUserProfile API - URL:', url);
-		console.log('GetUserProfile API - UserId:', userId);
-		
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -93,10 +88,6 @@ const authApi = {
 		}
 		
 		const url = `/user/profile/${userId}`;
-		console.log('UpdateProfile API - URL:', url);
-		console.log('UpdateProfile API - UserId:', userId);
-		console.log('UpdateProfile API - Request Body:', data);
-		
 		return axiosClient.put(url, data, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -123,10 +114,6 @@ const authApi = {
 		};
 		
 		const url = `/user/change-email?userId=${userId}`;
-		console.log('UpdateEmail API - URL:', url);
-		console.log('UpdateEmail API - UserId:', userId);
-		console.log('UpdateEmail API - Request Body:', requestBody);
-		
 		return axiosClient.post(url, requestBody, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -148,10 +135,6 @@ const authApi = {
 		formData.append('file', file);
 		
 		const url = `/user/profile/${userId}/avatar`;
-		console.log('UpdateAvatar API - URL:', url);
-		console.log('UpdateAvatar API - UserId:', userId);
-		console.log('UpdateAvatar API - File:', file);
-		
 		return axiosClient.patch(url, formData, {
 			headers: {
 				'Content-Type': 'multipart/form-data',
@@ -171,10 +154,6 @@ const authApi = {
 		};
 		
 		const url = `/user/change-email?userId=${userId}`;
-		console.log('ChangeUserEmail API - URL:', url);
-		console.log('ChangeUserEmail API - UserId:', userId);
-		console.log('ChangeUserEmail API - Request Body:', requestBody);
-		
 		return axiosClient.post(url, requestBody, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -196,7 +175,6 @@ const authApi = {
 				'accept': '*/*',
 			}
 		}).then(response => {
-			console.log('ConfirmEmailChange API - Response:', response);
 			return response;
 		}).catch(error => {
 			console.error('ConfirmEmailChange API - Error:', error);
@@ -210,7 +188,6 @@ const authApi = {
 		const requestBody = {
 			userName: username
 		};
-		console.log('RequestPasswordByTeacher API - Request Body:', requestBody);
 		return axiosClient.post('/auth/request-reset-password-teacher', requestBody, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -221,7 +198,6 @@ const authApi = {
 
 	// Reset password by teacher (for teacher to actually reset)
 	resetPasswordByTeacher: (username) => {
-		console.log('ResetPasswordByTeacher API - Username:', username);
 		return axiosClient.post(`/auth/reset-password-by-teacher?username=${username}`, {}, {
 			headers: {
 				'Content-Type': 'application/json',

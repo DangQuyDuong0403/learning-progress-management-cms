@@ -166,20 +166,11 @@ const ClassListTable = () => {
 				params.syllabusId = filters.syllabusId;
 			}
 
-			console.log('Fetching classes with params:', params);
-			console.log('Filter values:', filters);
 			const response = await classManagementApi.getClasses(params);
-			
-			console.log('API Response:', response);
-			console.log('First class data:', response.data?.[0]);
 			
 			if (response.success && response.data) {
 				// Map API response to component format
 				const mappedClasses = response.data.map(classItem => {
-					console.log('Class item:', classItem);
-					console.log('Syllabus data:', classItem.syllabus);
-					console.log('Level data:', classItem.syllabus?.level);
-					
 					return {
 						id: classItem.id,
 						name: classItem.className,
@@ -614,11 +605,6 @@ const ClassListTable = () => {
 	};
 
 	const handleEdit = (record) => {
-		console.log('Editing record:', record);
-		console.log('Record syllabusId:', record.syllabusId);
-		console.log('Record startDate:', record.startDate);
-		console.log('Record endDate:', record.endDate);
-		
 		setEditingClass(record);
 		
 		form.setFieldsValue({
@@ -850,15 +836,6 @@ const ClassListTable = () => {
 		const isSelectAll = allCurrentPageSelected;
 		// Never show indeterminate state for table header checkbox
 		const isIndeterminate = false;
-		
-		console.log('Checkbox Debug:', {
-			currentPageKeys,
-			selectedRowKeys,
-			allCurrentPageSelected,
-			isSelectAll,
-			isIndeterminate,
-			selectedCount,
-		});
 		
 		return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
 	}, [selectedRowKeys, classes]);

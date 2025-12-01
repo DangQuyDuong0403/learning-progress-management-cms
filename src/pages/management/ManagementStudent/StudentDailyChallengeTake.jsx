@@ -712,7 +712,6 @@ useEffect(() => {
                   ) : q.type === 'DROPDOWN' ? (
                     // Dropdown
                     (() => {
-                      console.log('🟠 SectionQuestionItem - DROPDOWN detected - q.id:', q.id, 'q.type:', q.type, 'q.questionType:', q.questionType);
                       return null;
                     })() ||
                     <div style={{ 
@@ -2229,7 +2228,6 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
                   }}>
                     {/* Question Types - mirrored from Reading */}
                     {(() => {
-                    //  console.log('🟣 ListeningSectionItem - Checking DROPDOWN - q.id:', q.id, 'q.type:', q.type, 'q.questionType:', q.questionType);
                       return null;
                     })()}
                     {q.type === 'DROPDOWN' ? (
@@ -3069,7 +3067,6 @@ const WritingSectionItem = ({ question, index, theme }) => {
           .trim();
 
         if (text) {
-          console.log(`✍️ WRITING: Restored handwriting essay for question ${question?.id}`);
           setEssayText(text);
           setWritingMode('handwriting');
           setUploadedFiles([]);
@@ -3114,7 +3111,6 @@ const WritingSectionItem = ({ question, index, theme }) => {
         .filter(Boolean);
 
       if (files.length > 0) {
-        console.log(`✅ WRITING: Restored ${files.length} uploaded file(s) for question ${question?.id}`);
         setUploadedFiles(files);
         setEssayText('');
         setWritingMode(null);
@@ -3177,7 +3173,6 @@ const WritingSectionItem = ({ question, index, theme }) => {
             const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
             
             if (serverUrl && typeof serverUrl === 'string') {
-              console.log('✅ File uploaded to server:', serverUrl);
               return {
                 id: Date.now() + Math.random(),
                 name: file.name,
@@ -4222,11 +4217,9 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                 fileUrl = String(fileUrl).trim(); // Ensure it's a full string
               }
               fileName = item.name || item.fileName || item.filename;
-              console.log(`🔄 [Speaking Restore] Question ${question?.id} - Extracted from object - fileUrl length:`, fileUrl?.length, 'fileUrl preview:', fileUrl?.substring(0, 100), '...', 'fileName:', fileName);
             } else if (typeof item === 'string') {
               // Item is directly a URL string
               fileUrl = String(item).trim(); // Ensure it's a full string
-              console.log(`🔄 [Speaking Restore] Question ${question?.id} - Extracted from string - fileUrl length:`, fileUrl?.length, 'fileUrl preview:', fileUrl?.substring(0, 100), '...');
             }
             
             // Extract filename from URL if not provided
@@ -4262,7 +4255,6 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
           .filter(file => file.url); // Only keep files with valid URLs
         
         if (files.length > 0) {
-          console.log(`✅ SPEAKING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
           // When answer is an array, it means uploaded files (not recorded audio)
           // Recorded audio is saved as a single string, not an array
           // So set all to uploadedFiles
@@ -4946,10 +4938,8 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
     const getAnswer = () => {
       if (isViewOnly) return null;
       
-      console.log(`🎤 [Speaking] Collecting answer for question ${question?.id} - audioUrl:`, audioUrl, 'uploadedFiles:', uploadedFiles);
       
       if (audioUrl) {
-        console.log(`🎤 [Speaking] Question ${question?.id} - returning audioUrl:`, audioUrl);
         return { answer: audioUrl, questionType: 'SPEAKING' };
       }
       if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
@@ -4965,11 +4955,9 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           })
           .filter(Boolean);
         if (fileUrls.length > 0) {
-          console.log(`🎤 [Speaking] Question ${question?.id} - returning fileUrls:`, fileUrls);
           return { answer: fileUrls, questionType: 'SPEAKING' };
       }
       }
-      console.log(`⚠️ [Speaking] Question ${question?.id} - no answer found, returning null`);
       return null;
     };
 
@@ -5042,7 +5030,6 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           .filter(file => file.url); // Only keep files with valid URLs
         
         if (files.length > 0) {
-          console.log(`✅ SPEAKING: Restored ${files.length} file(s) for question ${question?.id}:`, files);
           // When answer is an array, it means uploaded files (not recorded audio)
           // Recorded audio is saved as a single string, not an array
           // So set all to uploadedFiles
@@ -8188,7 +8175,6 @@ const StudentDailyChallengeTake = () => {
         // If result is null/undefined, wait and retry
         if (attempt < maxRetries) {
           const waitTime = delay * attempt; // 1s, 2s, 3s
-          console.log(`Retry attempt ${attempt}/${maxRetries} after ${waitTime}ms...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       } catch (error) {
@@ -8825,29 +8811,12 @@ const StudentDailyChallengeTake = () => {
                   };
                   const applyShuffle = (data) => {
                     if (!allowShuffleQuestions || effectiveViewOnly) {
-                      console.log('[Shuffle] Skipped', {
-                        allowShuffleQuestions,
-                        effectiveViewOnly,
-                      });
                       return data;
                     }
                     
                     const snapshotOrder = (questionsArr) => (questionsArr || []).map((q) => q.id);
                     const snapshotOptionKeys = (question) =>
                       (question?.options || []).map((opt) => opt.key || opt.id || opt.text);
-                    
-                    console.log('[Shuffle] Before shuffle', {
-                      topLevelQuestions: snapshotOrder(data.questions),
-                      firstQuestionOptions: snapshotOptionKeys(data.questions?.[0]),
-                      readingSections: (data.readingSections || []).map((sec) => ({
-                        sectionId: sec.id,
-                        questions: snapshotOrder(sec.questions)
-                      })),
-                      listeningSections: (data.listeningSections || []).map((sec) => ({
-                        sectionId: sec.id,
-                        questions: snapshotOrder(sec.questions)
-                      }))
-                    });
                     
                     const newData = { ...data };
                     // Shuffle and renumber individual questions, then shuffle their options
@@ -8862,19 +8831,6 @@ const StudentDailyChallengeTake = () => {
                       ...sec,
                       questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
                     }));
-
-                    console.log('[Shuffle] After shuffle', {
-                      topLevelQuestions: snapshotOrder(newData.questions),
-                      firstQuestionOptions: snapshotOptionKeys(newData.questions?.[0]),
-                      readingSections: (newData.readingSections || []).map((sec) => ({
-                        sectionId: sec.id,
-                        questions: snapshotOrder(sec.questions)
-                      })),
-                      listeningSections: (newData.listeningSections || []).map((sec) => ({
-                        sectionId: sec.id,
-                        questions: snapshotOrder(sec.questions)
-                      }))
-                    });
 
                     return newData;
                   };
@@ -8968,7 +8924,6 @@ const StudentDailyChallengeTake = () => {
               pageSize: savedState.pageSize,
               searchText: savedState.searchText,
             };
-            console.log('🔵 StudentDailyChallengeTake - Redirecting to DC list with state:', backState);
             
             if (classIdToUse) {
               navigate(`${routePrefix}/classes/daily-challenges/${classIdToUse}`, { state: backState });
@@ -9271,7 +9226,6 @@ const StudentDailyChallengeTake = () => {
           
           try {
             await dailyChallengeApi.appendAntiCheatLogs(currentSubmissionId, logsToSend);
-            console.log('Anti-cheat logs sent successfully:', logsToSend.length);
           } catch (e) {
             // If sending fails, put logs back to pending for retry
             pendingLogsRef.current.unshift(...logsToSend);
@@ -9336,7 +9290,6 @@ const StudentDailyChallengeTake = () => {
         if (typeof value === 'string' && (value.startsWith('blob:') || value.startsWith('data:audio'))) {
           try {
             value = await uploadFromUrl(value);
-            console.log('✅ Audio blob uploaded successfully, new URL:', value);
           } catch (e) {
             console.error('❌ Audio upload failed for speaking answer:', e);
             uploadErrors.push({ questionId: qa.questionId, error: e.message || 'Upload failed' });
@@ -9705,13 +9658,10 @@ const StudentDailyChallengeTake = () => {
         if (!setAnswerFn && qr.submissionQuestionId) {
           setAnswerFn = answerRestorersRef.current.get(qr.submissionQuestionId);
           if (setAnswerFn) {
-            console.log(`✅ Found restorer using submissionQuestionId ${qr.submissionQuestionId} instead of questionId ${questionId}`);
           }
         }
         
-        if (!setAnswerFn) {
-          console.log(`❌ No restorer function found for question ${questionId}${qr.submissionQuestionId ? ` or submissionQuestionId ${qr.submissionQuestionId}` : ''}. Available restorers:`, Array.from(answerRestorersRef.current.keys()));
-        }
+
         
         if (setAnswerFn && submittedContent) {
           try {
@@ -9769,7 +9719,6 @@ const StudentDailyChallengeTake = () => {
             
             if (restoredAnswer !== null) {
               setAnswerFn(restoredAnswer);
-              console.log(`✅ Restored answer for question ${questionId}:`, restoredAnswer);
             }
           } catch (error) {
             console.error(`Error restoring answer for question ${questionId}:`, error);
@@ -9778,7 +9727,6 @@ const StudentDailyChallengeTake = () => {
           // If restorer function not found but we have answer data, store for retry
           pendingRestorations.push({ questionId, qr });
           if (retryCount === 0) {
-            console.log(`⏳ Waiting for restorer function for question ${questionId}`);
           }
         }
       });
@@ -10037,7 +9985,6 @@ const StudentDailyChallengeTake = () => {
           // Reload draft data from API to ensure sync with server
           if (currentSubmissionId) {
             try {
-              console.log('🔄 Reloading draft data after save...');
               const draftResponse = await dailyChallengeApi.getDraftSubmission(currentSubmissionId);
               if (draftResponse && draftResponse.success && draftResponse.data) {
                 // Restore answers from fresh draft data
@@ -10048,7 +9995,6 @@ const StudentDailyChallengeTake = () => {
                     isManualSavingRef.current = false;
                   }, 500);
                 }, 300);
-                console.log('✅ Draft data reloaded after save');
               } else {
                 // Clear flag if reload fails
                 isManualSavingRef.current = false;
@@ -10165,7 +10111,6 @@ const StudentDailyChallengeTake = () => {
           pageSize: savedState.pageSize,
           searchText: savedState.searchText,
         };
-        console.log('🔵 StudentDailyChallengeTake - Navigating after submit with state:', backState);
         navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`, { state: backState });
       } else {
         navigate(`${routePrefix}/classes`);
@@ -10235,14 +10180,12 @@ const StudentDailyChallengeTake = () => {
       pageSize: savedState.pageSize,
       searchText: savedState.searchText,
     };
-    console.log('🔵 StudentDailyChallengeTake - Navigating back with state:', backState);
     
     // Try to preserve state when using navigate(-1) by using navigate with state if we have saved state
     if (savedState.currentPage) {
       // If we have saved state, try to navigate to the list page with state
       const resolvedClassId = location.state?.classId || classIdForRedirect;
       if (resolvedClassId) {
-        console.log('🔵 StudentDailyChallengeTake - Navigating to list with state:', backState);
         navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`, { state: backState });
       } else {
         navigate(-1);
@@ -10263,7 +10206,6 @@ const StudentDailyChallengeTake = () => {
       pageSize: savedState.pageSize,
       searchText: savedState.searchText,
     };
-    console.log('🔵 StudentDailyChallengeTake - Navigating after time up with state:', backState);
     
     if (resolvedClassId) {
       navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`, { state: backState });
@@ -10829,7 +10771,6 @@ const StudentDailyChallengeTake = () => {
                       const isDropdown = q.type === 'DROPDOWN' || q.questionType === 'DROPDOWN';
                     
                       if (isDropdown) {
-                       // console.log('🟡 RENDERING DropdownContainer - q.id:', q.id);
                         return <DropdownContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />;
                       }
                       return null;

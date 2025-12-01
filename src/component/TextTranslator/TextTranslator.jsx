@@ -82,21 +82,6 @@ const TextTranslator = ({ enabled = true }) => {
         const hasEnglishChars = /[a-zA-Z]/.test(selectedText);
         
         // Giới hạn độ dài: 2000 ký tự cho reading passage, 500 cho các vùng khác (nhưng vẫn hiển thị button trong passage khi vượt quá)
-        console.log('🔍 Text selection check:', {
-          selectedText: selectedText.substring(0, 50) + '...',
-          hasEnglishChars,
-          textLength: selectedText.length,
-          maxLengthReading: 500,
-          maxLengthOther: 500,
-          isInPassageContent,
-          rect: range ? {
-            width: range.getBoundingClientRect().width,
-            height: range.getBoundingClientRect().height,
-            left: range.getBoundingClientRect().left,
-            top: range.getBoundingClientRect().top,
-          } : null,
-        });
-        
         // Cho phép hiển thị button nếu: có chữ cái tiếng Anh và có range, và
         // - Nếu nằm trong passage: KHÔNG giới hạn độ dài (vẫn cho hiện button)
         // - Nếu không nằm trong passage: giới hạn 500 ký tự
@@ -131,21 +116,11 @@ const TextTranslator = ({ enabled = true }) => {
             showTranslateButtonRef.current = true;
             setShowPopup(false);
             setTranslatedText('');
-            console.log('✅ Showing translate button at:', { x: buttonX, y: buttonY });
           } else {
             console.warn('⚠️ Invalid rect position:', rect);
           }
         } else {
           // Nếu không phải tiếng Anh hoặc quá dài, ẩn popup và button
-          console.log('⚠️ Text selection not valid for translation:', {
-            hasEnglishChars,
-            textLength: selectedText.length,
-            maxLengthReading: 2000,
-            maxLengthOther: 500,
-            exceedsLimitReading: isInPassageContent && selectedText.length > 2000,
-            exceedsLimitOther: !isInPassageContent && selectedText.length > 500,
-            hasRange: !!range,
-          });
           setShowPopup(false);
           setShowTranslateButton(false);
           showTranslateButtonRef.current = false;
@@ -209,10 +184,7 @@ const TextTranslator = ({ enabled = true }) => {
     // Chỉ set translatedText khi có kết quả
     
     try {
-      console.log('🔄 Starting translation for text:', text.substring(0, 100) + '...');
-      console.log('📡 Calling translate API...');
       const translated = await translateText(text);
-      console.log('✅ Translation successful:', translated);
       setTranslatedText(translated || 'Không thể dịch text này');
     } catch (error) {
       console.error('❌ Translation failed:', error);
@@ -239,18 +211,11 @@ const TextTranslator = ({ enabled = true }) => {
       e.nativeEvent.stopImmediatePropagation();
     }
     
-    console.log('🖱️ Translate button clicked!', {
-      selectedText: selectedText?.substring(0, 50) + '...',
-      selectedTextLength: selectedText?.length,
-      showTranslateButton,
-    });
     
     // Lưu selectedText vào biến local để tránh closure issue
     const textToTranslate = selectedText;
     
-      if (textToTranslate && textToTranslate.trim().length > 0) {
-      console.log('✅ Starting translation for selected text');
-      
+    if (textToTranslate && textToTranslate.trim().length > 0) {
       // Tính toán placement trước khi hiển thị popup
       // Ước tính chiều cao popup dựa trên độ dài text (tính bằng pixels, giả sử mỗi ký tự ~0.5px height với line-height 1.6)
       const estimatedTextHeight = Math.min(600, Math.max(150, textToTranslate.length * 0.5));

@@ -73,7 +73,6 @@ const TeacherProfile = () => {
 			setLoading(true);
 			setError(null);
 			
-			console.log('Fetching profile for teacher ID:', teacherId);
 			if (!teacherId) {
 				setError('Teacher ID not found in URL');
 				return;
@@ -253,8 +252,6 @@ const TeacherProfile = () => {
 			gender: sanitizedValues.gender || "MALE",
 			email: teacher.email, // Always include email for backend
 		};
-			
-			console.log('Updating teacher with data:', teacherData);
 			
 			const response = await teacherManagementApi.updateTeacherProfile(teacherId, teacherData);
 			

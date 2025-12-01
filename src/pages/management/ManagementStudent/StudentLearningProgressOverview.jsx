@@ -123,9 +123,6 @@ const StudentLearningProgressOverview = () => {
           }
         }
         
-        console.log('Student Overview Response:', overviewResponse);
-        console.log('Student Level History Response:', levelHistoryResponse);
-        
         // Process overview data
         const overview = overviewResponse?.data?.data || overviewResponse?.data;
         
@@ -193,8 +190,6 @@ const StudentLearningProgressOverview = () => {
         const levelHistoryData = levelHistoryResponse?.data?.data || levelHistoryResponse?.data;
         const levels = levelHistoryData?.levels || [];
         
-        console.log('Level History Levels:', levels);
-        
         // Process level chart data from API only
         if (levels && Array.isArray(levels) && levels.length > 0) {
           const levelChartDataArray = [];
@@ -233,7 +228,6 @@ const StudentLearningProgressOverview = () => {
             }
           });
           
-          console.log('Level Chart Data Array:', levelChartDataArray);
           setLevelChartData(levelChartDataArray);
           if (levelChartDataArray.length > 0) {
             setSelectedLevelClassId(levelChartDataArray[0].classId);
@@ -307,7 +301,6 @@ const StudentLearningProgressOverview = () => {
     const loadChallengeDetail = async () => {
       try {
         const response = await studentManagementApi.getStudentClassChallengeDetail(selectedClassId, effectiveUserId);
-        console.log('Student Class Challenge Detail Response:', response);
         
         const challengeData = response?.data?.data || response?.data;
         if (challengeData && (response?.data?.success !== false)) {

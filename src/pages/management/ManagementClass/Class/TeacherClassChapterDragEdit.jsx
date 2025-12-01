@@ -255,14 +255,12 @@ const TeacherClassChapterDragEdit = () => {
 		if (!classId) return;
 
 		try {
-			console.log('Fetching class info for classId:', classId);
 			let response;
 			if (userRole === 'manager') {
 				response = await teacherManagementApi.getClassById(classId);
 			} else {
 				response = await classManagementApi.getClassDetail(classId);
 			}
-			console.log('Class info response:', response);
 			
 			const data = response?.data?.data ?? response?.data ?? null;
 			if (!data) {
@@ -580,16 +578,6 @@ const TeacherClassChapterDragEdit = () => {
 					// Vì chúng chưa tồn tại trên backend nên không cần xóa
 					return !(chapter.id === null && chapter.toBeDeleted === true);
 				});
-
-			console.log('TeacherClassChapterDragEdit - Sending sync data:', {
-				count: syncData.length,
-				chapters: syncData.map(c => ({ 
-					id: c.id, 
-					classChapterName: c.classChapterName, 
-					orderNumber: c.orderNumber,
-					toBeDeleted: c.toBeDeleted 
-				}))
-			});
 
 			// Gọi API sync với classId và dữ liệu chapters
 			const response = await teacherManagementApi.syncClassChapters(classId, syncData);
