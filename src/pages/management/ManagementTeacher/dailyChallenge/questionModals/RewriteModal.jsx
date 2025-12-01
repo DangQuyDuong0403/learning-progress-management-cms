@@ -467,12 +467,6 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       }
     };
 
-    console.log('=== REWRITE QUESTION TEXT ===');
-    console.log('Question Text:', questionTextWithPosition);
-    console.log('Correct Answers:', correctAnswers.map(ans => getPlainText(ans.answer)));
-    console.log('Content Data:', contentData);
-    console.log('Full Question Data:', newQuestionData);
-    console.log('================================');
     try {
       setSaving(true);
       const ret = onSave(newQuestionData);

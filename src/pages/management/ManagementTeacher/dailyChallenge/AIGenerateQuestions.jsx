@@ -810,7 +810,6 @@ const AIGenerateQuestions = () => {
         vocabularyList: vocabularyList || '',
       };
       const res = await dailyChallengeApi.generateAIQuestions(payload);
-      console.log('GenerateAIQuestions API - Response:', res);
       // Try common shapes:
       // - [ ... ]
       // - { questions: [ ... ] }
@@ -932,7 +931,6 @@ const AIGenerateQuestions = () => {
       try {
         const existing = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 100 });
         beforeSections = Array.isArray(existing?.data) ? existing.data : (Array.isArray(existing) ? existing : []);
-        console.log('[AI Save] Before save - existing sections (id -> order):', beforeSections.map(s => ({ id: s?.section?.id ?? s?.id, order: s?.section?.orderNumber ?? s?.orderNumber })));
       } catch (e) {
         beforeSections = [];
       }
@@ -940,7 +938,6 @@ const AIGenerateQuestions = () => {
         const ord = Number(item?.section?.orderNumber ?? item?.orderNumber ?? 0);
         return Number.isFinite(ord) && ord > max ? ord : max;
       }, 0);
-      console.log('[AI Save] Computed baseOrder =', baseOrder);
 
       // Transform current preview questions -> API schema
       const transformQuestionToApiFormat = (q, orderNumber) => {
@@ -1064,14 +1061,12 @@ const AIGenerateQuestions = () => {
         questions: [apiQ],
       }));
 
-      console.log('[AI Save] Sections to create (orderNumbers):', sectionsDataArray.map((s, i) => ({ i, orderNumber: s.section.orderNumber })));
-      console.log('Saving AI section with questions:', sectionsDataArray);
+
       const resp = await dailyChallengeApi.bulkSaveSections(id, sectionsDataArray);
       // After creating, force correct ordering: existing sections keep order, new ones appended
       try {
         const afterRes = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 1000 });
         const afterSections = Array.isArray(afterRes?.data) ? afterRes.data : (Array.isArray(afterRes) ? afterRes : []);
-        console.log('[AI Save] After save - all sections (id -> order):', afterSections.map(s => ({ id: s?.section?.id ?? s?.id, order: s?.section?.orderNumber ?? s?.orderNumber })));
         const beforeIds = new Set(beforeSections.map(s => s?.section?.id ?? s?.id));
         const existingOrdered = beforeSections
           .map(s => ({ id: s?.section?.id ?? s?.id, orderNumber: Number(s?.section?.orderNumber ?? s?.orderNumber ?? 0) }))
@@ -1090,10 +1085,8 @@ const AIGenerateQuestions = () => {
         let seq = 0;
         existingOrdered.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
         newOnes.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
-        console.log('[AI Save] Reorder payload:', finalBulk);
         if (finalBulk.length > 0) {
           const reorderResp = await dailyChallengeApi.bulkUpdateSections(id, finalBulk);
-          console.log('[AI Save] Reorder response:', reorderResp);
         }
       } catch (reorderError) {
         console.warn('Reorder after save failed, continuing:', reorderError);

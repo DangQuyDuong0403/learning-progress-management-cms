@@ -57,11 +57,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   // Parse backend format to editor format
   const parseQuestionText = useCallback((questionText, contentData = null, options = null) => {
-    console.log('ReorderModal - parseQuestionText called with:', {
-      questionText,
-      contentData,
-      options
-    });
     
     const parsed = [];
     const blanksData = [];
@@ -102,13 +97,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       // Enforce 50-character limit like DragDropModal
       blankAnswer = (blankAnswer || '').slice(0, 50);
 
-      console.log('ReorderModal - Processing blank:', {
-        positionId,
-        blankAnswer,
-        contentDataLength: contentData?.length || 0,
-        optionsLength: options?.length || 0
-      });
-      
       const blankId = `blank-${Date.now()}-${positionId}`;
       
       parsed.push({
@@ -140,7 +128,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       parsed.push({ type: 'text', content: '', id: Date.now() });
     }
 
-    console.log('ReorderModal - Final parsed data:', { parsed, blanksData });
     
     return { parsed, blanksData };
   }, [blankColors]);
@@ -149,7 +136,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
   // Helper function to create shuffled words with correct order
   const createShuffledWords = useCallback((blanksArray, backendOptions = null) => {
-    console.log('ReorderModal - createShuffledWords called with:', { blanksArray, backendOptions });
     
     // Sort blanks by their position in the DOM to get correct order
     const sortedBlanks = [...blanksArray].sort((a, b) => {
@@ -279,7 +265,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       return newBlanks;
     });
     
-    console.log('Item removed');
     
     // Refocus editor
     editorRef.current.focus();
@@ -534,7 +519,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      console.log('Delete button clicked for blank:', blank.id);
       // mark deletion initiated by button to avoid blur double-delete
       span.setAttribute('data-deleting-by-button', 'true');
       handleDeleteBlankElement(blank.id);
@@ -605,11 +589,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         return;
       }
 
-      console.log('ReorderModal - Initializing with questionData:', questionData);
-      console.log('ReorderModal - questionData.content?.data:', questionData?.content?.data);
-      console.log('ReorderModal - questionData.options:', questionData?.options);
-      console.log('ReorderModal - questionData.incorrectOptions:', questionData?.incorrectOptions);
-
       // Parse existing question - pass content.data and options
       const { parsed: parsedContent, blanksData } = parseQuestionText(
         questionData.questionText,
@@ -625,13 +604,11 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
       // Set blanks state
       setBlanks(limitedBlanksData);
-      console.log('ReorderModal - State updated with parsed data, blanksData length:', limitedBlanksData.length);
 
       // Build editor DOM from parsed content
       editorRef.current.innerHTML = '';
       let blankCounter = 0;
       parsedContent.forEach((item) => {
-        console.log('ReorderModal - Processing item:', item);
         if (item.type === 'text') {
           if (item.content) {
             editorRef.current.appendChild(document.createTextNode(item.content));
@@ -640,7 +617,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
           // Find the corresponding blank data from blanksData
           const blankData = limitedBlanksData.find(b => b.id === item.id);
           if (blankData) {
-            console.log('ReorderModal - Creating blank element for:', blankData);
             const blankElement = createBlankElement(blankData, blankCounter);
             editorRef.current.appendChild(blankElement);
             blankCounter++;
@@ -933,7 +909,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     }));
     });
     
-    console.log('Words shuffled!');
   }, []);
 
   // Handle word drag
@@ -1045,15 +1020,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
         data: contentData
       }
     };
-
-    console.log('=== REARRANGE QUESTION DATA ===');
-    console.log('Question Text (API format):', questionText);
-    console.log('Correct Answer (human readable):', correctAnswer);
-    console.log('Content Data:', contentData);
-    console.log('Shuffled Words:', shuffledWords);
-    console.log('Blanks:', blanks);
-    console.log('Full Question Data:', newQuestionData);
-    console.log('================================');
 
     try {
       setSaving(true);

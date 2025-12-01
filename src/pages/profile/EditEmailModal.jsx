@@ -50,8 +50,6 @@ export default function EditEmailModal({
         email: values.email
       };
 
-      console.log('Update Email Data:', updateData);
-      
       // Dispatch action để update email
       const result = await dispatch(updateEmail(updateData)).unwrap();
       

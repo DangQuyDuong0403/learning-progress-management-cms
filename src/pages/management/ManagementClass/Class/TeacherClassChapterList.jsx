@@ -187,11 +187,6 @@ const TeacherClassChapterList = () => {
 
 			const data = response?.data ?? [];
 
-			// Unauthorized access handling
-			if (!data || data.length === 0) {
-				throw new Error('No chapters returned');
-			}
-
 			// Map API response to component format
 			const mappedChapters = data.map((chapter) => ({
 				id: chapter.id,

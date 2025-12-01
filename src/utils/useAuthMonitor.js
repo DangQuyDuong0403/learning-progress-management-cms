@@ -31,7 +31,6 @@ export const useAuthMonitor = () => {
                             user !== 'null';
 
       if (!hasValidTokens) {
-        console.log('Invalid auth tokens detected, logging out...');
         localStorage.removeItem('mustChangePassword');
         localStorage.removeItem('mustUpdateProfile');
         dispatch(logout());
@@ -68,7 +67,7 @@ export const useAuthMonitor = () => {
       } catch (error) {
         // Nếu lỗi khi check profile, có thể là do account đã bị inactive
         // secureAxiosClient sẽ xử lý logout trong trường hợp này
-        console.log('Failed to check account status:', error);
+        console.error('Failed to check account status:', error);
       }
     };
 
@@ -76,11 +75,9 @@ export const useAuthMonitor = () => {
     const handleStorageChange = (e) => {
       // Only handle changes to auth-related keys
       if (e.key === 'accessToken' || e.key === 'refreshToken' || e.key === 'user') {
-        console.log('Storage change detected:', e.key, e.newValue);
         
         // Only logout if auth token was removed (not just updated)
         if (e.newValue === null) {
-          console.log('Auth token removed, logging out...');
           localStorage.removeItem('mustChangePassword');
           localStorage.removeItem('mustUpdateProfile');
           dispatch(logout());
@@ -91,7 +88,6 @@ export const useAuthMonitor = () => {
 
     // Listen for focus events (when user switches back to this tab)
     const handleFocus = () => {
-      console.log('Window focused, checking auth status...');
       if (checkAuthStatus()) {
         // Nếu token hợp lệ, check account status
         checkAccountStatus();

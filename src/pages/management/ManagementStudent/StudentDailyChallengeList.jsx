@@ -122,7 +122,6 @@ const StudentDailyChallengeList = () => {
   // Restore currentPage from location.state if available (when navigating back)
   const [currentPage, setCurrentPage] = useState(() => {
     const initialPage = location.state?.currentPage || 1;
-    console.log('🔵 StudentDailyChallengeList - Initial currentPage from state:', initialPage, 'location.state:', location.state);
     return initialPage;
   });
   const [pageSize, setPageSize] = useState(10);
@@ -354,7 +353,6 @@ const StudentDailyChallengeList = () => {
   // Restore pagination and filters from location.state when navigating back
   // Only restore once for each unique location.state
   useEffect(() => {
-    console.log('🟢 StudentDailyChallengeList - Location state changed:', location.state);
     
     // Create a unique key from location.state to track if we've restored this specific state
     const stateKey = location.state?.currentPage 
@@ -365,39 +363,25 @@ const StudentDailyChallengeList = () => {
         })
       : null;
     
-    console.log('🟢 StudentDailyChallengeList - State key:', stateKey);
-    console.log('🟢 StudentDailyChallengeList - Restored key:', restoredStateKey.current);
-    
     // Only restore if we have saved state AND haven't restored this specific state yet
     if (stateKey && restoredStateKey.current !== stateKey) {
       const savedPage = location.state.currentPage;
       const savedPageSize = location.state.pageSize;
       const savedSearchText = location.state.searchText;
       
-      console.log('🟡 StudentDailyChallengeList - Found new saved state to restore:', {
-        savedPage,
-        savedPageSize,
-        savedSearchText,
-      });
-      
-      console.log('✅ StudentDailyChallengeList - Restoring state...');
-      
       // Set flag to prevent side effects during restoration
       isRestoringState.current = true;
       
       // Restore page and pageSize FIRST (before searchText to avoid debounce reset)
       if (savedPage && savedPage > 0) {
-        console.log('📄 Restoring page to', savedPage);
         setCurrentPage(savedPage);
       }
       if (savedPageSize && savedPageSize > 0) {
-        console.log('📏 Restoring pageSize to', savedPageSize);
         setPageSize(savedPageSize);
       }
       
       // Restore search text LAST (after currentPage is set)
       if (savedSearchText !== undefined) {
-        console.log('🔍 Restoring searchText:', savedSearchText);
         setSearchText(savedSearchText);
         setSearchDebounce(savedSearchText);
       }
@@ -408,14 +392,11 @@ const StudentDailyChallengeList = () => {
       // Clear restoration flag after a short delay to allow all state updates to complete
       setTimeout(() => {
         isRestoringState.current = false;
-        console.log('✅ StudentDailyChallengeList - State restored successfully, restoration flag cleared');
       }, 500);
     } else if (!stateKey && restoredStateKey.current) {
       // Reset when location.state no longer has saved state
-      console.log('🔄 StudentDailyChallengeList - Resetting restoredStateKey (no saved state)');
       restoredStateKey.current = null;
     } else if (stateKey && restoredStateKey.current === stateKey) {
-      console.log('⏭️ StudentDailyChallengeList - Skipping restore (already restored this state)');
     }
   }, [location.state]); // Only depend on location.state, not currentPage
 
@@ -499,7 +480,6 @@ const StudentDailyChallengeList = () => {
         pageSize: pageSize, // Also save pageSize for consistency
         searchText: searchText, // Save search text
       };
-      console.log('🔵 StudentDailyChallengeList - Navigating to take challenge, saving state:', savedState);
       navigate(`${routePrefix}/daily-challenges/take/${challenge.id}`, {
         state: savedState
       });
@@ -535,7 +515,6 @@ const StudentDailyChallengeList = () => {
       pageSize: pageSize, // Also save pageSize for consistency
       searchText: searchText, // Save search text
     };
-    console.log('🔵 StudentDailyChallengeList - Navigating to view answer, saving state:', savedState);
     navigate(`${routePrefix}/daily-challenges/take/${challenge.id}`, {
       state: savedState
     });
@@ -571,7 +550,6 @@ const StudentDailyChallengeList = () => {
         pageSize: pageSize, // Also save pageSize for consistency
         searchText: searchText, // Save search text
       };
-      console.log('🔵 StudentDailyChallengeList - Navigating to view result, saving state:', savedState);
       navigate(`${routePrefix}/daily-challenges/detail/${challengeId}/submissions/${submissionId}`, {
         state: savedState
       });
