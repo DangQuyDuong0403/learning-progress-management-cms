@@ -195,11 +195,6 @@ const TeacherClassLessonDragEdit = () => {
 	const { user } = useSelector((state) => state.auth);
 	const { enterClassMenu, exitClassMenu } = useClassMenu();
 	
-	console.log('TeacherClassLessonDragEdit - Component mounted');
-	console.log('TeacherClassLessonDragEdit - classId:', classId);
-	console.log('TeacherClassLessonDragEdit - chapterId:', chapterId);
-	console.log('TeacherClassLessonDragEdit - user:', user);
-	
 	// Determine which layout to use based on user role
 	const userRole = user?.role?.toLowerCase();
 	const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
@@ -265,14 +260,12 @@ const TeacherClassLessonDragEdit = () => {
 		if (!classId) return;
 		
 		try {
-			console.log('Fetching class data for classId:', classId);
 			let response;
 			if (userRole === 'manager') {
 				response = await teacherManagementApi.getClassById(classId);
 			} else {
 				response = await classManagementApi.getClassDetail(classId);
 			}
-			console.log('Class data response:', response);
 			
 			const data = response?.data?.data ?? response?.data ?? null;
 			if (!data) {
@@ -297,9 +290,7 @@ const TeacherClassLessonDragEdit = () => {
 		if (!chapterId) return;
 		
 		try {
-			console.log('Fetching chapter data for chapterId:', chapterId);
 			const response = await teacherManagementApi.getClassChapterById(chapterId);
-			console.log('Chapter data response:', response);
 			
 			const data = response?.data ?? response;
 			if (!data) {
@@ -331,7 +322,6 @@ const TeacherClassLessonDragEdit = () => {
 
 		setLoading(true);
 		try {
-			console.log('Fetching lessons for chapterId:', chapterId);
 			const params = {
 				classChapterId: chapterId, // Keep classChapterId parameter
 				page: 0,
@@ -339,7 +329,6 @@ const TeacherClassLessonDragEdit = () => {
 			};
 
 			const response = await teacherManagementApi.getClassLessons(params);
-			console.log('Lessons response:', response);
 			
 			// Handle different response structures
 			let lessonsData = [];
@@ -354,8 +343,6 @@ const TeacherClassLessonDragEdit = () => {
 					lessonsData = [response.data];
 				}
 			}
-			
-			console.log('Extracted lessons data:', lessonsData);
 			
 			// Only validate classId if lessons exist and have classId field
 			// If lessons array is empty, it's valid (no lessons yet)
@@ -388,7 +375,6 @@ const TeacherClassLessonDragEdit = () => {
 				position: index + 1,
 			}));
 
-			console.log('Mapped lessons:', mappedLessons);
 			setLessons(mappedLessons);
 		} catch (error) {
 			console.error('Error fetching lessons:', error);
@@ -400,16 +386,13 @@ const TeacherClassLessonDragEdit = () => {
 	}, [chapterId, classId, t, navigate]);
 
 	useEffect(() => {
-		console.log('TeacherClassLessonDragEdit - useEffect triggered');
 		const fetchData = async () => {
-			console.log('TeacherClassLessonDragEdit - Starting data fetch');
 			setIsInitialLoading(true);
 			await Promise.all([
 				fetchClassData(),
 				fetchChapterData(),
 				fetchAllLessons()
 			]);
-			console.log('TeacherClassLessonDragEdit - Data fetch completed');
 			setIsInitialLoading(false);
 		};
 		fetchData();
@@ -652,16 +635,6 @@ const TeacherClassLessonDragEdit = () => {
 					return !(lesson.id === null && lesson.toBeDeleted === true);
 				});
 
-			console.log('TeacherClassLessonDragEdit - Sending sync data:', {
-				count: syncData.length,
-				lessons: syncData.map(l => ({ 
-					id: l.id, 
-					classLessonName: l.classLessonName, 
-					orderNumber: l.orderNumber,
-					toBeDeleted: l.toBeDeleted 
-				}))
-			});
-
 			// Gọi API sync với classChapterId và dữ liệu lessons
 			const response = await teacherManagementApi.syncClassLessons(chapterId, syncData);
 
@@ -690,11 +663,6 @@ const TeacherClassLessonDragEdit = () => {
 	}
 
 	if (!classData || !chapterData || isInitialLoading) {
-		console.log('TeacherClassLessonDragEdit - Rendering loading state');
-		console.log('TeacherClassLessonDragEdit - classData:', classData);
-		console.log('TeacherClassLessonDragEdit - chapterData:', chapterData);
-		console.log('TeacherClassLessonDragEdit - isInitialLoading:', isInitialLoading);
-		
 		return (
 			<ThemedLayout>
 				{/* Main Content Panel */}
@@ -704,9 +672,6 @@ const TeacherClassLessonDragEdit = () => {
 			</ThemedLayout>
 		);
 	}
-
-	console.log('TeacherClassLessonDragEdit - Rendering main content');
-	console.log('TeacherClassLessonDragEdit - lessons:', lessons);
 
 	return (
 		<ThemedLayout>

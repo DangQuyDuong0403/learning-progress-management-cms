@@ -60,18 +60,15 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
         orderNumber: values.orderNumber || 0,
       };
 
-      console.log('LevelForm onFinish:', { isEdit, level, apiData, shouldCallApi });
 
       if (shouldCallApi) {
         // Call API (for LevelList usage)
         let response;
         if (isEdit) {
           // Update existing level
-          console.log('Updating level with ID:', level.id);
           response = await levelManagementApi.updateLevel(level.id, apiData);
         } else {
           // Create new level
-          console.log('Creating new level');
           response = await levelManagementApi.createLevel(apiData);
         }
         
@@ -81,7 +78,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
         onClose(true, successMessage); // Tell parent to refresh data and show success message
       } else {
         // Don't call API (for LevelDragEdit usage)
-        console.log('Not calling API, returning data to parent');
         const successMessage = isEdit ? t('levelManagement.updateLevelSuccess') : t('levelManagement.addLevelSuccess');
         onClose(true, apiData, successMessage); // Pass data and message to parent
       }
@@ -96,7 +92,6 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
         errorMessage = error.message;
       }
       
-      console.log('Final error message:', errorMessage);
       spaceToast.error(errorMessage);
       
       // Don't close modal on error - let user retry

@@ -175,7 +175,6 @@ const ClassTeachers = () => {
   const fetchClassData = useCallback(async () => {
     try {
       const response = await classManagementApi.getClassDetail(id);
-      console.log('Class detail response:', response);
       const data = response?.data?.data ?? response?.data ?? null;
       if (data) {
         const mapped = {
@@ -208,13 +207,9 @@ const ClassTeachers = () => {
         sortDir: params.sortDir !== undefined ? params.sortDir : 'desc',
       };
       
-      console.log('Fetching teachers with params:', apiParams);
       const response = await classManagementApi.getClassTeachers(id, apiParams);
-      console.log('Teachers response:', response);
       
       if (response.success) {
-        console.log('Teachers data structure:', response.data);
-        console.log('First teacher sample:', response.data?.[0]);
         setTeachers(response.data || []);
         setPagination(prev => ({
           ...prev,
@@ -261,11 +256,6 @@ const ClassTeachers = () => {
       };
       
       const taResponse = await teacherManagementApi.getTeachers(taParams);
-      
-      console.log('Available teachers response:', teacherResponse);
-      console.log('Available TAs response:', taResponse);
-      console.log('Teacher request params:', teacherParams);
-      console.log('TA request params:', taParams);
       
       if (teacherResponse.success) {
         setAvailableTeachers(teacherResponse.data || []);
@@ -327,13 +317,9 @@ const ClassTeachers = () => {
           sortDir: sortConfig.sortDir,
         };
         
-        console.log('Fetching teachers with params:', apiParams);
         const response = await classManagementApi.getClassTeachers(id, apiParams);
-        console.log('Teachers response:', response);
         
         if (response.success) {
-          console.log('Teachers data structure in useEffect:', response.data);
-          console.log('First teacher sample in useEffect:', response.data?.[0]);
           setTeachers(response.data || []);
           setPagination(prev => ({
             ...prev,
@@ -406,7 +392,6 @@ const ClassTeachers = () => {
   };
 
   const handleDeleteTeacher = (teacher) => {
-    console.log("Delete button clicked for teacher:", teacher);
     setButtonLoading(prev => ({ ...prev, delete: true }));
     setTimeout(() => {
       setTeacherToDelete(teacher);
@@ -417,14 +402,11 @@ const ClassTeachers = () => {
 
   const handleConfirmDelete = async () => {
     if (teacherToDelete && !buttonLoading.delete) {
-      console.log("Confirm delete for teacher:", teacherToDelete);
       
       setButtonLoading(prev => ({ ...prev, delete: true }));
       
       try {
         const response = await classManagementApi.removeTeacherFromClass(id, teacherToDelete.userId);
-        
-        console.log('Remove teacher response:', response);
         
         if (response.success) {
           const isTeacher = teacherToDelete.role === 'teacher' || teacherToDelete.roleInClass === 'TEACHER' || teacherToDelete.roleName === 'TEACHER';
@@ -448,7 +430,6 @@ const ClassTeachers = () => {
   };
 
   const handleCancelDelete = () => {
-    console.log("Delete cancelled");
     setIsDeleteModalVisible(false);
     setTeacherToDelete(null);
   };
@@ -461,7 +442,6 @@ const ClassTeachers = () => {
     setButtonLoading(prev => ({ ...prev, add: true }));
     try {
       const values = await form.validateFields();
-      console.log("Form values:", values);
 
       // Prepare teachers data according to API spec
       const teachersToAdd = [];
@@ -494,7 +474,6 @@ const ClassTeachers = () => {
         teachers: teachersToAdd
       });
       
-      console.log('Add teachers response:', response);
       
       if (response.success) {
         spaceToast.success(t('classTeachers.addSuccess'));
@@ -522,8 +501,6 @@ const ClassTeachers = () => {
 
   // Handle table changes (pagination, sorting)
   const handleTableChange = (paginationInfo, filters, sorter) => {
-    console.log('Table change:', { paginationInfo, filters, sorter });
-    
     // Handle pagination
     if (paginationInfo.current !== pagination.current || paginationInfo.pageSize !== pagination.pageSize) {
       setPagination(prev => ({

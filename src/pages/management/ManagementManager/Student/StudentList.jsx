@@ -156,7 +156,6 @@ const StudentList = () => {
         params.roleName = roleNameFilter;
       }
 
-      console.log('Fetching students with params:', params);
       const response = await studentManagementApi.getStudents(params);
       
       if (response.success && response.data) {
@@ -222,7 +221,6 @@ const StudentList = () => {
         const levelsData = response.data?.content || response.data || [];
         setPublishedLevels(levelsData);
         
-        console.log('Fetched published levels:', levelsData);
       } catch (error) {
         console.error('Error fetching published levels:', error);
         spaceToast.error('Failed to load levels');
@@ -297,16 +295,6 @@ const StudentList = () => {
     const isSelectAll = allCurrentPageSelected;
     // Never show indeterminate state for table header checkbox
     const isIndeterminate = false;
-    
-    console.log('Checkbox Debug:', {
-      currentPageKeys,
-      selectedRowKeys,
-      allCurrentPageSelected,
-      isSelectAll,
-      isIndeterminate,
-      selectedCount,
-      totalStudents: students.length,
-    });
     
     return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
   }, [selectedRowKeys, students]);
@@ -620,10 +608,6 @@ const StudentList = () => {
       width: 100,
       ellipsis: true,
       render: (currentLevelInfo) => {
-        // Debug logging to check level data structure
-        if (currentLevelInfo) {
-          console.log('Current Level Info:', currentLevelInfo);
-        }
         return (
           <span className="level-text">
             {currentLevelInfo?.levelName || currentLevelInfo?.name || 'N/A'}
@@ -762,9 +746,6 @@ const StudentList = () => {
 
   // Handle table change (pagination, sorting, filtering)
   const handleTableChange = (paginationInfo, filters, sorter) => {
-    console.log('handleTableChange called:', { paginationInfo, filters, sorter });
-    console.log('Current sortBy:', sortBy, 'Current sortDir:', sortDir);
-    
     // Handle sorting
     if (sorter && sorter.field) {
       // Map frontend field names to backend field names
@@ -781,28 +762,15 @@ const StudentList = () => {
       if (backendField === sortBy) {
         // Same field - toggle direction
         newSortDir = sortDir === 'asc' ? 'desc' : 'asc';
-        console.log('Same field clicked, toggling from', sortDir, 'to', newSortDir);
       } else {
         // Different field - start with asc
         newSortDir = 'asc';
-        console.log('Different field clicked, starting with asc');
       }
-
-      console.log('Sorting:', {
-        frontendField: sorter.field,
-        backendField: backendField,
-        direction: newSortDir,
-        order: sorter.order
-      });
 
       // Update state - useEffect will handle the API call
       setSortBy(backendField);
       setSortDir(newSortDir);
     } else {
-      // Handle pagination without sorting change
-      console.log('Pagination only, no sorting change');
-      console.log('New pagination:', paginationInfo);
-      
       // Call fetchStudents directly with new pagination
       fetchStudents(
         paginationInfo.current, 
@@ -977,8 +945,6 @@ const StudentList = () => {
         levelId: sanitizedValues.levelId,
       };
       
-      console.log('Student form values:', studentData);
-      
       if (editingStudent) {
         // TODO: Call update student API
         spaceToast.success(`Update student "${values.fullName}" successfully`);
@@ -997,7 +963,6 @@ const StudentList = () => {
             
             // Navigate to student profile if student ID is available
             if (response.data && response.data.id) {
-              console.log('Navigating to student profile:', response.data.id);
               navigate(`/manager/student/${response.data.id}/profile`, {
                 state: { returnTo: listReturnPath },
               });
@@ -1039,8 +1004,6 @@ const StudentList = () => {
 
   // Handle view student profile
   const handleViewProfile = (record) => {
-    console.log('View profile for student:', record);
-    console.log('Student ID:', record.id);
     if (!record.id) {
       spaceToast.error('Student ID not found');
       return;
@@ -1065,7 +1028,6 @@ const StudentList = () => {
       return;
     }
     
-    console.log('Navigating to class:', classInfo);
     navigate(`/manager/classes/menu/${classInfo.id}`);
   };
 
@@ -1187,8 +1149,6 @@ const StudentList = () => {
         // Export all students (no classIds filter means all)
       };
 
-      console.log('Exporting all students with current filters:', exportParams);
-      
       const response = await studentManagementApi.exportStudents(exportParams);
       
       // Create blob URL and trigger download

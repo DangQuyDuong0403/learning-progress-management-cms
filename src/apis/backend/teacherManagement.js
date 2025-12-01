@@ -19,8 +19,6 @@ const teacherManagementApi = {
 		if (params.sortDir) queryParams.append('sortDir', params.sortDir);
 
 		const url = `/user/teachers${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetTeachers API - URL:', url);
-		console.log('GetTeachers API - Params:', params);
 		
 		return axiosClient.get(url, {
 			headers: {
@@ -32,9 +30,7 @@ const teacherManagementApi = {
 	// Bulk update teacher status (ACTIVE/INACTIVE)
 	bulkUpdateTeacherStatus: (userIds, targetStatus) => {
 		const url = `/user/teachers/bulk-status`;
-		console.log('BulkUpdateTeacherStatus API - URL:', url);
-		console.log('BulkUpdateTeacherStatus API - Data:', { userIds, targetStatus });
-		
+
 		return axiosClient.patch(url, {
 			userIds: userIds,
 			targetStatus: targetStatus
@@ -54,9 +50,7 @@ const teacherManagementApi = {
 	// Cập nhật trạng thái teacher (ACTIVE/INACTIVE) - Single teacher
 	updateTeacherStatus: (userId, status) => {
 		const url = `/user/teachers/${userId}/status?status=${status}`;
-		console.log('UpdateTeacherStatus API - URL:', url);
-		console.log('UpdateTeacherStatus API - Params:', { userId, status });
-		
+
 		return axiosClient.patch(url, {}, {
 			headers: {
 				'accept': '*/*',
@@ -65,9 +59,7 @@ const teacherManagementApi = {
 	},
 	getTeacherProfile: (userId) => {
 		const url = `/user/profile/${userId}`;
-		console.log('GetTeacherProfile API - URL:', url);
-		console.log('GetTeacherProfile API - Params:', { userId });
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -78,9 +70,7 @@ const teacherManagementApi = {
 	// Tạo teacher mới
 	createTeacher: (teacherData) => {
 		const url = `/user/teachers`;
-		console.log('CreateTeacher API - URL:', url);
-		console.log('CreateTeacher API - Data:', JSON.stringify(teacherData, null, 2));
-		
+
 		return axiosClient.post(url, teacherData, {
 			headers: {
 				'accept': '*/*',
@@ -97,9 +87,7 @@ const teacherManagementApi = {
 	// Cập nhật profile của teacher
 	updateTeacherProfile: (userId, teacherData) => {
 		const url = `/user/teachers/${userId}`;
-		console.log('UpdateTeacherProfile API - URL:', url);
-		console.log('UpdateTeacherProfile API - Data:', JSON.stringify(teacherData, null, 2));
-		
+
 		return axiosClient.put(url, teacherData, {
 			headers: {
 				'accept': '*/*',
@@ -198,9 +186,7 @@ const teacherManagementApi = {
 		if (params.searchText) queryParams.append('searchText', params.searchText);
 
 		const url = `/class-lesson${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('GetClassLessons API - URL:', url);
-		console.log('GetClassLessons API - Params:', params);
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -210,9 +196,7 @@ const teacherManagementApi = {
 
 	syncClassLessons: (classChapterId, lessonsData) => {
 		const url = `/class-lesson/sync/${classChapterId}`;
-		console.log('SyncClassLessons API - URL:', url);
-		console.log('SyncClassLessons API - Data:', lessonsData);
-		
+
 		return axiosClient.put(url, lessonsData, {
 			headers: {
 				'accept': '*/*',
@@ -228,8 +212,7 @@ const teacherManagementApi = {
 
 	importClassLessons: (classId, formData) => {
 		const url = `/class-lesson/import?classId=${classId}`;
-		console.log('ImportClassLessons API - URL:', url);
-		
+
 		return axiosClient.post(url, formData, {
 			headers: {
 				'accept': '*/*',
@@ -245,8 +228,7 @@ const teacherManagementApi = {
 
 	validateClassLessonImportFile: (classId, formData) => {
 		const url = `/class-lesson/validate-import?classId=${classId}`;
-		console.log('ValidateClassLessonImportFile API - URL:', url);
-		
+
 		return axiosClient.post(url, formData, {
 			headers: {
 				'accept': '*/*',
@@ -263,8 +245,7 @@ const teacherManagementApi = {
 
 	downloadClassLessonTemplate: () => {
 		const url = `/class-lesson/download-template`;
-		console.log('DownloadClassLessonTemplate API - URL:', url);
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -329,8 +310,7 @@ const teacherManagementApi = {
 	// Download teacher import template
 	downloadTeacherTemplate: () => {
 		const url = `/user/teachers/download-template`;
-		console.log('DownloadTeacherTemplate API - URL:', url);
-		
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',
@@ -346,9 +326,7 @@ const teacherManagementApi = {
 	// Import teachers from Excel file
 	importTeachers: (formData) => {
 		const url = `/user/teachers/import`;
-		console.log('ImportTeachers API - URL:', url);
-		console.log('ImportTeachers API - FormData:', formData);
-		
+
 		return axiosClient.post(url, formData, {
 			headers: {
 				'accept': '*/*',
@@ -365,9 +343,7 @@ const teacherManagementApi = {
 	// Validate teacher import file without importing
 	validateImportFile: (formData) => {
 		const url = `/user/teachers/validate-import`;
-		console.log('ValidateImportFile API - URL:', url);
-		console.log('ValidateImportFile API - FormData:', formData);
-		
+
 		return axiosClient.post(url, formData, {
 			headers: {
 				'accept': '*/*',
@@ -388,10 +364,7 @@ const teacherManagementApi = {
 		formData.append('file', file);
 		
 		const url = `/user/profile/${userId}/avatar`;
-		console.log('UploadTeacherAvatar API - URL:', url);
-		console.log('UploadTeacherAvatar API - UserId:', userId);
-		console.log('UploadTeacherAvatar API - File:', file);
-		
+
 		return axiosClient.patch(url, formData, {
 			headers: {
 				'Content-Type': 'multipart/form-data',
@@ -417,11 +390,9 @@ const teacherManagementApi = {
 		if (params.roleName && params.roleName.length > 0) {
 			params.roleName.forEach(role => queryParams.append('roleName', role));
 		}
-
-		const url = `/user/teachers/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-		console.log('ExportTeachers API - URL:', url);
-		console.log('ExportTeachers API - Params:', params);
 		
+		const url = `/user/teachers/export${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+
 		return axiosClient.get(url, {
 			headers: {
 				'accept': '*/*',

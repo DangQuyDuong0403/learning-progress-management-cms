@@ -546,17 +546,6 @@ const ChapterDragEdit = () => {
 			return !name || (typeof name === 'string' && !name.trim());
 		});
 		
-		console.log('Validation check:', {
-			totalChapters: visibleChapters.length,
-			invalidChapters: invalidChapters.length,
-			invalidDetails: invalidChapters.map(ch => ({
-				id: ch.id,
-				position: ch.position,
-				name: ch.name,
-				nameType: typeof ch.name
-			}))
-		});
-		
 		if (invalidChapters.length > 0) {
 			// Hiển thị message với số thứ tự của các chapter bị lỗi
 			const invalidPositions = invalidChapters.map(ch => `#${ch.position}`).join(', ');
@@ -564,7 +553,6 @@ const ChapterDragEdit = () => {
 				t('chapterManagement.chapterNameRequired') + 
 				` (${invalidPositions})`
 			);
-			console.log('Validation failed - blocking save');
 			return; // Ngăn không cho save
 		}
 
@@ -633,16 +621,6 @@ const ChapterDragEdit = () => {
 					// Vì chúng chưa tồn tại trên backend nên không cần xóa
 					return !(chapter.id === null && chapter.toBeDeleted === true);
 				});
-
-			console.log('ChapterDragEdit - Sending sync data:', {
-				count: syncData.length,
-				chapters: syncData.map(c => ({ 
-					id: c.id, 
-					chapterName: c.chapterName, 
-					orderNumber: c.orderNumber,
-					toBeDeleted: c.toBeDeleted 
-				}))
-			});
 
 			// Gọi API sync với syllabusId và dữ liệu chapters
 			const response = await syllabusManagementApi.syncChapters(syllabusId, syncData);

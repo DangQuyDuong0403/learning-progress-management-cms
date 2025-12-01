@@ -316,7 +316,6 @@ export default function ThemedHeader({
               return prev;
             });
           } else if (message.type === 'connect') {
-            console.log('SSE Connected:', message.data);
             // Refresh notifications and unread count after connection
             fetchInitialNotifications(false);
             fetchUnreadCount();
@@ -334,7 +333,6 @@ export default function ThemedHeader({
         },
         // onConnect
         () => {
-          console.log('SSE connection established');
         }
       );
 
@@ -473,7 +471,6 @@ export default function ThemedHeader({
       }
     } catch (error) {
       // Nếu API logout lỗi hoặc timeout, vẫn đăng xuất local
-      console.log('Logout error:', error);
       dispatch(logout());
       spaceToast.success(t('messages.logoutSuccess')); // Vẫn hiển thị success vì đã logout local
     } finally {
@@ -548,7 +545,7 @@ export default function ThemedHeader({
 
   const handleBackToDailyChallengeList = () => {
     // If custom backPath is provided in context, use it
-    if (dailyChallengeData?.backPath) {
+      if (dailyChallengeData?.backPath) {
       // Preserve state from location.state when navigating back to restore pagination/filters
       const savedState = location.state || {};
       const backState = {
@@ -560,7 +557,6 @@ export default function ThemedHeader({
         typeFilter: savedState.typeFilter,
         statusFilter: savedState.statusFilter,
       };
-      console.log('🔵 ThemedHeader - Navigating back to daily challenge list with state:', backState);
       navigate(dailyChallengeData.backPath, { state: backState });
       return;
     }

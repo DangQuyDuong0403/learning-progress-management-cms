@@ -5,11 +5,11 @@ import { SyllabusMenuProvider } from "./contexts/SyllabusMenuContext";
 import { DailyChallengeMenuProvider } from "./contexts/DailyChallengeMenuContext";
 import CONFIG_ROUTER from "./routers/configRouter";
 import PrivateRoute from "./routers/PrivateRoute";
-import EnhancedPrivateRoute from "./routers/EnhancedPrivateRoute";
+// import EnhancedPrivateRoute from "./routers/EnhancedPrivateRoute";
 import RoleBasedPrivateRoute from "./routers/RoleBasedPrivateRoute";
 import SpaceToastify from "../src/component/SpaceToastify";
-import CustomCursor from "./component/cursor/CustomCursor";
-import TextTranslator from "./component/TextTranslator";
+// import CustomCursor from "./component/cursor/CustomCursor";
+// import TextTranslator from "./component/TextTranslator";
 import { useAuthMonitor } from "./utils/useAuthMonitor";
 
 export default function App() {

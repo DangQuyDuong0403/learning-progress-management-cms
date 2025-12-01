@@ -88,7 +88,6 @@ const StudentClassList = () => {
         size: size,
       };
 
-      console.log('Fetching student classes with params:', params);
       const response = await classManagementApi.getStudentClasses(params);
       
       // Handle different response structures from /api/v1/class
@@ -113,7 +112,6 @@ const StudentClassList = () => {
         }
       }
       
-      console.log('Classes data received:', classesData);
       
       if (classesData.length > 0) {
         // Map API response to include required fields
@@ -167,7 +165,6 @@ const StudentClassList = () => {
 
   const handleCardClick = (classItem) => {
     // Navigate to class menu for student/test_taker
-    console.log('Navigate to class menu:', classItem.id);
     navigate(`${routePrefix}/classes/menu/${classItem.id}`);
   };
 

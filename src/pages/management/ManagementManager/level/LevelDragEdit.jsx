@@ -222,18 +222,8 @@ const LevelDragEdit = () => {
 				status: [true], // Chỉ active levels
 			};
 
-			console.log('LevelDragEdit - Fetching all active levels...');
 
 			const response = await levelManagementApi.getLevels(params);
-
-			console.log('LevelDragEdit API Response:', response);
-			console.log('Response structure check:', {
-				isArray: Array.isArray(response.data),
-				hasContent: response.data?.content,
-				totalElements: response.totalElements,
-				totalPages: response.totalPages,
-				dataLength: response.data?.length
-			});
 
 			// Handle different response structures
 			let levelsData = [];
@@ -257,13 +247,10 @@ const LevelDragEdit = () => {
 				position: index + 1,
 			}));
 
-			console.log('LevelDragEdit - All active levels fetched:', mappedLevels.length);
-			
 			// Check if all levels are published
 			const allPublished = mappedLevels.length > 0 && mappedLevels.every(level => level.status === 'PUBLISHED');
 			
 			if (allPublished) {
-				console.log('All levels are published, redirecting to LevelList...');
 				spaceToast.warning(t('levelManagement.allLevelsPublished'));
 				navigate(ROUTER_PAGE.MANAGER_LEVELS);
 				return;
@@ -362,8 +349,6 @@ const LevelDragEdit = () => {
 				return;
 			}
 
-			console.log('Deleting level at index:', index, 'Level:', levelToDelete);
-
 			// Set toBeDeleted: true but keep in state
 			setLevels((prev) => {
 				const newLevels = prev.map((level) => {
@@ -378,8 +363,6 @@ const LevelDragEdit = () => {
 				
 				// Recalculate positions only for visible items
 				const visibleItems = newLevels.filter(level => !level.toBeDeleted);
-				console.log('Visible items after deletion:', visibleItems.length);
-				
 				return newLevels.map((level) => {
 					if (level.toBeDeleted) {
 						return level; // Keep deleted items as-is
@@ -388,9 +371,6 @@ const LevelDragEdit = () => {
 					// Update position for visible items based on their current order in the array
 					const visibleIndex = visibleItems.findIndex(item => item.id === level.id);
 					const newPosition = visibleIndex + 1;
-					
-					console.log(`Updating level ${level.id}: old position ${level.position} -> new position ${newPosition}`);
-					
 					return {
 						...level,
 						position: newPosition,
@@ -500,15 +480,7 @@ const LevelDragEdit = () => {
 					return !(level.id === null && level.toBeDeleted === true);
 				});
 
-			console.log('LevelDragEdit - Sending bulk update data:', {
-				count: bulkUpdateData.length,
-				levels: bulkUpdateData.map(l => ({ 
-					id: l.id, 
-					levelName: l.levelName, 
-					orderNumber: l.orderNumber,
-					toBeDeleted: l.toBeDeleted 
-				}))
-			});
+
 
 			// Gọi API bulk update (sẽ xử lý cả create, update và delete)
 			const response = await levelManagementApi.bulkUpdateLevels(bulkUpdateData);

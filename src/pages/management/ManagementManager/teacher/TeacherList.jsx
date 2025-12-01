@@ -128,7 +128,6 @@ const TeacherList = () => {
 				params.roleName = roleNameFilter;
 			}
 
-			console.log('Fetching teachers with params:', params);
 			const response = await teacherManagementApi.getTeachers(params);
 			
 			if (response.success && response.data) {
@@ -226,7 +225,6 @@ const TeacherList = () => {
 			return;
 		}
 		
-		console.log('Navigating to class:', classInfo);
 		navigate(`/manager/classes/menu/${classInfo.id}`);
 	};
 
@@ -351,9 +349,6 @@ const TeacherList = () => {
 
 	// Handle table change (pagination, sorting, filtering)
 	const handleTableChange = (paginationInfo, filters, sorter) => {
-		console.log('handleTableChange called:', { paginationInfo, filters, sorter });
-		console.log('Current sortBy:', sortBy, 'Current sortDir:', sortDir);
-		
 		// Handle sorting
 		if (sorter && sorter.field) {
 			// Map frontend field names to backend field names
@@ -369,19 +364,10 @@ const TeacherList = () => {
 			if (backendField === sortBy) {
 				// Same field - toggle direction
 				newSortDir = sortDir === 'asc' ? 'desc' : 'asc';
-				console.log('Same field clicked, toggling from', sortDir, 'to', newSortDir);
 			} else {
 				// Different field - start with asc
 				newSortDir = 'asc';
-				console.log('Different field clicked, starting with asc');
 			}
-
-			console.log('Sorting:', {
-				frontendField: sorter.field,
-				backendField: backendField,
-				direction: newSortDir,
-				order: sorter.order
-			});
 
 			// Update state - useEffect will handle the API call
 			setSortBy(backendField);
@@ -390,12 +376,6 @@ const TeacherList = () => {
 		
 		// Handle pagination changes
 		if (paginationInfo) {
-			console.log('Pagination change:', {
-				current: paginationInfo.current,
-				pageSize: paginationInfo.pageSize,
-				total: paginationInfo.total
-			});
-			
 			// Update pagination state
 			setPagination(prev => ({
 				...prev,
@@ -749,16 +729,6 @@ const TeacherList = () => {
 		// Never show indeterminate state for table header checkbox
 		const isIndeterminate = false;
 		
-		console.log('Checkbox Debug:', {
-			currentPageKeys,
-			selectedRowKeys,
-			allCurrentPageSelected,
-			isSelectAll,
-			isIndeterminate,
-			selectedCount,
-			nonPendingTeachers: nonPendingTeachers.length,
-		});
-		
 		return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
 	}, [selectedRowKeys, teachers]);
 
@@ -973,8 +943,6 @@ const TeacherList = () => {
 				roleName: roleNameFilter.length > 0 ? roleNameFilter : undefined,
 			};
 
-			console.log('Exporting all teachers with current filters:', exportParams);
-			
 			const response = await teacherManagementApi.exportTeachers(exportParams);
 			
 			// Create blob URL and trigger download
@@ -1444,7 +1412,6 @@ const TeacherList = () => {
 					onSuccess={(teacherData) => {
 						// Navigate to teacher profile if teacher ID is available and it's a new teacher
 						if (teacherData && teacherData.id) {
-							console.log('Navigating to teacher profile:', teacherData.id);
 							navigate(`/manager/teachers/profile/${teacherData.id}`);
 						} else {
 							// Refresh the teacher list after successful creation/update
