@@ -93,15 +93,28 @@ const ClassTeachers = () => {
     sortDir: 'desc',
   });
   const [form] = Form.useForm();
+  // Watch selectedTeacher để trigger re-render khi giá trị thay đổi
+  const selectedTeacherId = Form.useWatch('selectedTeacher', form);
+  // Watch selectedTeachingAssistants để trigger re-render khi giá trị thay đổi
+  const selectedTeachingAssistants = Form.useWatch('selectedTeachingAssistants', form) || [];
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [fileList, setFileList] = useState([]);
   
-  // Available teachers state
-  const [availableTeachers, setAvailableTeachers] = useState([]);
-  const [availableTeachingAssistants, setAvailableTeachingAssistants] = useState([]);
-  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  // Available staff (teachers & TAs) state for Add modal with infinite scroll
+  const [availableStaff, setAvailableStaff] = useState([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false); // overall loading for dropdown
+  const [staffSearchLoading, setStaffSearchLoading] = useState(false);
+  const [staffLoadingMore, setStaffLoadingMore] = useState(false);
+  const [staffSearchText, setStaffSearchText] = useState('');
+  const [staffPagination, setStaffPagination] = useState({
+    page: 0,
+    size: 100,
+    total: 0,
+    hasMore: true,
+    currentLoaded: 0,
+  });
   const [buttonLoading, setButtonLoading] = useState({
     add: false,
     delete: false,
@@ -227,50 +240,111 @@ const ClassTeachers = () => {
     }
   }, [id, t, showErrorToast]);
 
-  // Fetch available teachers for adding to class
-  const fetchAvailableTeachers = useCallback(async () => {
-    setLoadingTeachers(true);
+  // Fetch available staff (teachers & teaching assistants) for adding to class
+  const fetchAvailableTeachers = useCallback(async (searchText = '', page = 0, append = false) => {
     try {
-      // Fetch teachers using teacherManagement API - same format as TeacherList.jsx
-      const teacherParams = {
-        page: 0,
-        size: 100,
-        text: '', // Empty search text to get all
-        status: ['ACTIVE'], // Only ACTIVE teachers
-        roleName: ['TEACHER'], // Only teachers - use uppercase
-        sortBy: 'fullName',
-        sortDir: 'asc'
-      };
-      
-      const teacherResponse = await teacherManagementApi.getTeachers(teacherParams);
-      
-      // Fetch teaching assistants using teacherManagement API - same format as TeacherList.jsx
-      const taParams = {
-        page: 0,
-        size: 100,
-        text: '', // Empty search text to get all
-        status: ['ACTIVE'], // Only ACTIVE teaching assistants
-        roleName: ['TEACHING_ASSISTANT'], // Only teaching assistants - use uppercase
-        sortBy: 'fullName',
-        sortDir: 'asc'
-      };
-      
-      const taResponse = await teacherManagementApi.getTeachers(taParams);
-      
-      if (teacherResponse.success) {
-        setAvailableTeachers(teacherResponse.data || []);
+      if (append) {
+        setStaffLoadingMore(true);
+      } else {
+        setStaffSearchLoading(true);
+        setLoadingTeachers(true);
       }
-      
-      if (taResponse.success) {
-        setAvailableTeachingAssistants(taResponse.data || []);
+
+      // Small delay when loading more items to avoid rapid requests
+      if (append) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
+
+      const params = {
+        page,
+        size: staffPagination.size,
+        text: searchText,
+        // Chỉ lấy ACTIVE, không lấy PENDING
+        status: ['ACTIVE'],
+        // Fetch cả TEACHER và TEACHING_ASSISTANT,
+        // dropdown Teacher sẽ lọc lại chỉ TEACHER,
+        // dropdown Teaching Assistant sẽ dùng cả TEACHER + TEACHING_ASSISTANT
+        roleName: ['TEACHER', 'TEACHING_ASSISTANT'],
+        sortBy: 'createdAt',
+        sortDir: 'asc',
+      };
+
+      const response = await teacherManagementApi.getTeachers(params);
+
+      if (!response || !response.success) {
+        if (!append) {
+          setAvailableStaff([]);
+        }
+        return;
+      }
+
+      // Normalize response structure
+      let allStaff = [];
+      let totalElements = 0;
+      let responsePage = page ?? 0;
+      let responseSize = staffPagination.size;
+
+      if (Array.isArray(response.data)) {
+        allStaff = response.data;
+        totalElements = response.totalElements || 0;
+        if (response.page !== undefined) responsePage = response.page;
+        if (response.size !== undefined) responseSize = response.size;
+      } else if (Array.isArray(response)) {
+        allStaff = response;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        allStaff = response.data.data;
+        totalElements = response.data.totalElements || 0;
+        if (response.data.page !== undefined) responsePage = response.data.page;
+        if (response.data.size !== undefined) responseSize = response.data.size;
+      }
+
+      const mappedStaff = allStaff.map((staff) => {
+        const userId = staff.userId || staff.id;
+        return {
+          ...staff,
+          id: userId,
+          userId,
+        };
+      });
+
+      if (append) {
+        // Append unique staff by userId
+        setAvailableStaff((prev) => {
+          const existingIds = new Set(prev.map((s) => s.userId));
+          const uniqueNew = mappedStaff.filter((s) => !existingIds.has(s.userId));
+          return [...prev, ...uniqueNew];
+        });
+      } else {
+        setAvailableStaff(mappedStaff);
+      }
+
+      setStaffPagination((prev) => {
+        const currentLoaded = append ? prev.currentLoaded + mappedStaff.length : mappedStaff.length;
+        const pageIndex = responsePage ?? page ?? 0;
+        const pageSize = responseSize ?? prev.size;
+        const hasMore = totalElements > 0 && (pageIndex + 1) * pageSize < totalElements;
+
+        return {
+          ...prev,
+          page: pageIndex,
+          size: pageSize,
+          total: totalElements,
+          hasMore,
+          currentLoaded,
+        };
+      });
     } catch (error) {
       console.error('Error fetching available teachers:', error);
-    showErrorToast(error, t('classTeachers.loadingTeachers'));
+      showErrorToast(error, t('classTeachers.loadingTeachers'));
+      if (!append) {
+        setAvailableStaff([]);
+      }
     } finally {
+      setStaffSearchLoading(false);
+      setStaffLoadingMore(false);
       setLoadingTeachers(false);
     }
-  }, [showErrorToast, t]);
+  }, [showErrorToast, t, staffPagination.size]);
 
   // Initial data loading
   useEffect(() => {
@@ -347,7 +421,17 @@ const ClassTeachers = () => {
     setTimeout(() => {
       form.resetFields();
       setIsModalVisible(true);
-      fetchAvailableTeachers(); // Fetch available teachers when opening modal
+      // Reset pagination cho danh sách staff.
+      // Dùng size 100 để mỗi lần call lấy <=100 bản ghi
+      setStaffPagination({
+        page: 0,
+        size: 100,
+        total: 0,
+        hasMore: true,
+        currentLoaded: 0,
+      });
+      setAvailableStaff([]);
+      fetchAvailableTeachers('', 0, false); // Initial load for dropdowns
       setButtonLoading(prev => ({ ...prev, add: false }));
     }, 100);
   };
@@ -385,6 +469,33 @@ const ClassTeachers = () => {
   const handleImportModalCancel = () => {
     setIsImportModalVisible(false);
     setFileList([]);
+  };
+
+  // Search handlers for staff dropdowns (teacher & TA)
+  const handleStaffSearch = (value) => {
+    setStaffSearchText(value);
+
+    if (lastErrorRef.current?.searchTimeout) {
+      clearTimeout(lastErrorRef.current.searchTimeout);
+    }
+
+    const timeoutId = setTimeout(() => {
+      setStaffPagination({
+        page: 0,
+        size: 100,
+        total: 0,
+        hasMore: true,
+        currentLoaded: 0,
+      });
+
+      if (value.length >= 2) {
+        fetchAvailableTeachers(value, 0, false);
+      } else if (value.length === 0) {
+        fetchAvailableTeachers('', 0, false);
+      }
+    }, 500);
+
+    lastErrorRef.current.searchTimeout = timeoutId;
   };
 
   const handleFileChange = ({ fileList: newFileList }) => {
@@ -497,6 +608,88 @@ const ClassTeachers = () => {
     setIsModalVisible(false);
     form.resetFields();
   };
+
+  // Infinite scroll for staff dropdowns (teacher & TA) similar to ClassStudent modal
+  useEffect(() => {
+    if (!isModalVisible) return;
+
+    let scrollableElement = null;
+    let observer = null;
+    let scrollHandler = null;
+
+    const findScrollableElement = () => {
+      const selectors = [
+        '.rc-virtual-list-holder',
+        '.rc-select-list',
+        '.ant-select-dropdown .rc-select-list',
+        '.ant-select-dropdown .rc-virtual-list-holder',
+        '.ant-select-dropdown .rc-select-dropdown',
+        '[class*="rc-select-list"]',
+        '[class*="virtual-list-holder"]',
+      ];
+
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element && element.scrollHeight > element.clientHeight) {
+          return element;
+        }
+      }
+      return null;
+    };
+
+    const attachScrollListener = () => {
+      scrollableElement = findScrollableElement();
+      if (!scrollableElement) return false;
+
+      scrollHandler = (e) => {
+        const target = e.target;
+        const scrollTop = target.scrollTop;
+        const scrollHeight = target.scrollHeight;
+        const clientHeight = target.clientHeight;
+
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
+
+        if (isNearBottom) {
+          if (staffPagination.hasMore && !staffLoadingMore && !staffSearchLoading) {
+            const nextPage = staffPagination.page + 1;
+            fetchAvailableTeachers(staffSearchText, nextPage, true);
+          }
+        }
+      };
+
+      scrollableElement.addEventListener('scroll', scrollHandler, { passive: true });
+      return true;
+    };
+
+    if (!attachScrollListener()) {
+      observer = new MutationObserver(() => {
+        if (!scrollableElement && attachScrollListener()) {
+          observer.disconnect();
+        }
+      });
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    const timer = setTimeout(() => {
+      if (!scrollableElement) {
+        attachScrollListener();
+      }
+    }, 500);
+
+    return () => {
+      if (scrollableElement && scrollHandler) {
+        scrollableElement.removeEventListener('scroll', scrollHandler);
+      }
+      if (observer) {
+        observer.disconnect();
+      }
+      clearTimeout(timer);
+    };
+  }, [isModalVisible, staffPagination.hasMore, staffPagination.page, staffLoadingMore, staffSearchLoading, staffSearchText, fetchAvailableTeachers]);
 
 
   // Handle table changes (pagination, sorting)
@@ -847,21 +1040,45 @@ const ClassTeachers = () => {
                 allowClear
                 loading={loadingTeachers}
                 showSearch
-                filterOption={(input, option) => {
-                  const teacher = availableTeachers.find(t => t.id === option.value);
-                  if (!teacher) return false;
-                  const searchText = (input || '').toLowerCase();
-                  const fullName = (teacher.fullName || '').toLowerCase();
-                  const userName = (teacher.userName || '').toLowerCase();
-                  const email = (teacher.email || '').toLowerCase();
-                  return fullName.includes(searchText) || userName.includes(searchText) || email.includes(searchText);
+                filterOption={false} // server-side search
+                onSearch={handleStaffSearch}
+                onPopupScroll={(e) => {
+                  const target = e.target || e.currentTarget;
+                  if (!target) return;
+
+                  const scrollTop = target.scrollTop;
+                  const scrollHeight = target.scrollHeight;
+                  const clientHeight = target.clientHeight;
+                  const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
+
+                  if (isNearBottom) {
+                    if (staffPagination.hasMore && !staffLoadingMore && !staffSearchLoading) {
+                      const nextPage = staffPagination.page + 1;
+                      fetchAvailableTeachers(staffSearchText, nextPage, true);
+                    }
+                  }
                 }}
               >
-                {availableTeachers.map(teacher => (
-                  <Option key={teacher.id} value={teacher.id}>
-                    {teacher.fullName || teacher.userName} ({teacher.email})
-                  </Option>
-                ))}
+                {availableStaff
+                  .filter(teacher =>
+                    teacher.roleName === 'TEACHER' ||
+                    teacher.role === 'teacher' ||
+                    teacher.roleCode === 'TEACHER'
+                  )
+                  .map((teacher, index) => {
+                    const isSelectedAsTA = selectedTeachingAssistants.includes(teacher.id);
+                    return (
+                      <Option
+                        key={teacher.id}
+                        value={teacher.id}
+                        disabled={isSelectedAsTA}
+                      >
+                        <span style={{ color: isSelectedAsTA ? '#999999' : 'inherit' }}>
+                          {teacher.fullName || teacher.userName} ({teacher.email})
+                        </span>
+                      </Option>
+                    );
+                  })}
               </Select>
             </Form.Item>
 
@@ -901,21 +1118,48 @@ const ClassTeachers = () => {
                     return;
                   }
                 }}
-                filterOption={(input, option) => {
-                  const ta = availableTeachingAssistants.find(t => t.id === option.value);
-                  if (!ta) return false;
-                  const searchText = (input || '').toLowerCase();
-                  const fullName = (ta.fullName || '').toLowerCase();
-                  const userName = (ta.userName || '').toLowerCase();
-                  const email = (ta.email || '').toLowerCase();
-                  return fullName.includes(searchText) || userName.includes(searchText) || email.includes(searchText);
+                filterOption={false}
+                onSearch={handleStaffSearch}
+                onPopupScroll={(e) => {
+                  const target = e.target || e.currentTarget;
+                  if (!target) return;
+
+                  const scrollTop = target.scrollTop;
+                  const scrollHeight = target.scrollHeight;
+                  const clientHeight = target.clientHeight;
+                  const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
+
+                  if (isNearBottom) {
+                    if (staffPagination.hasMore && !staffLoadingMore && !staffSearchLoading) {
+                      const nextPage = staffPagination.page + 1;
+                      fetchAvailableTeachers(staffSearchText, nextPage, true);
+                    }
+                  }
                 }}
               >
-                {availableTeachingAssistants.map(ta => (
-                  <Option key={ta.id} value={ta.id}>
-                    {ta.fullName || ta.userName} ({ta.email})
-                  </Option>
-                ))}
+                {availableStaff
+                  .filter(ta =>
+                    ta.roleName === 'TEACHER' ||
+                    ta.roleName === 'TEACHING_ASSISTANT' ||
+                    ta.role === 'teacher' ||
+                    ta.role === 'teaching_assistant' ||
+                    ta.roleCode === 'TEACHER' ||
+                    ta.roleCode === 'TEACHING_ASSISTANT'
+                  )
+                  .map((ta, index) => {
+                    const isSameAsSelectedTeacher = selectedTeacherId && ta.id === selectedTeacherId;
+                    return (
+                      <Option
+                        key={ta.id}
+                        value={ta.id}
+                        disabled={isSameAsSelectedTeacher}
+                      >
+                        <span style={{ color: isSameAsSelectedTeacher ? '#999999' : 'inherit' }}>
+                          {ta.fullName || ta.userName} ({ta.email})
+                        </span>
+                      </Option>
+                    );
+                  })}
               </Select>
             </Form.Item>
            </Form>
