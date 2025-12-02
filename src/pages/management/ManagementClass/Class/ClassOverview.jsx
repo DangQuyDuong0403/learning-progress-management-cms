@@ -46,7 +46,6 @@ const ClassOverview = () => {
   const fetchClassData = useCallback(async () => {
     try {
       const response = await classManagementApi.getClassOverview(id);
-      console.log('Class overview response:', response);
       const data = response?.data?.data ?? response?.data ?? null;
       if (data) {
         const mapped = {

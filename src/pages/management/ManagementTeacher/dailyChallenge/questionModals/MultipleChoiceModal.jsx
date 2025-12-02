@@ -244,7 +244,6 @@ const [options, setOptions] = useState(
 			const colors = getOptionColors();
 			if (questionData) {
 				// Edit mode - load existing data
-				console.log('Loading question data for edit:', questionData);
 				setEditorData(questionData.question || '');
 				
 				// Map options correctly if they exist

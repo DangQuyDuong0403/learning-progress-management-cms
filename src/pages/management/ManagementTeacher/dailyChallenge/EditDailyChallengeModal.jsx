@@ -139,14 +139,11 @@ const EditDailyChallengeModal = ({
   };
 
   const handleModalOk = async () => {
-    console.log('handleModalOk called - isButtonDisabled:', isButtonDisabled, 'isUpdating:', isUpdating);
     
     if (isButtonDisabled || isUpdating) {
-      console.log('Button is disabled or updating, returning early');
       return;
     }
     
-    console.log('Setting loading states...');
     setIsButtonDisabled(true);
     setIsUpdating(true);
     

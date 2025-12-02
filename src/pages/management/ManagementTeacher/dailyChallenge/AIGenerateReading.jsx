@@ -586,7 +586,6 @@ const AIGenerateReading = () => {
       try {
         const existing = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 100 });
         beforeSections = Array.isArray(existing?.data) ? existing.data : (Array.isArray(existing) ? existing : []);
-        console.log('[AI Reading Save] Before save - existing sections (id -> order):', beforeSections.map(s => ({ id: s?.section?.id ?? s?.id, order: s?.section?.orderNumber ?? s?.orderNumber })));
       } catch (e) {
         beforeSections = [];
       }
@@ -594,7 +593,6 @@ const AIGenerateReading = () => {
         const ord = Number(item?.section?.orderNumber ?? item?.orderNumber ?? 0);
         return Number.isFinite(ord) && ord > max ? ord : max;
       }, 0);
-      console.log('[AI Reading Save] Computed baseOrder =', baseOrder);
 
       // Transform preview questions -> API schema (reuse simplified mapping)
       const toApiQuestion = (q, orderNumber) => {
@@ -640,13 +638,11 @@ const AIGenerateReading = () => {
         },
         questions: apiQuestions,
       };
-      console.log('[AI Reading Save] Section to create (orderNumber):', sectionData.section.orderNumber, 'questions:', apiQuestions.length);
       const resp = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
       // After creating, force correct ordering: existing sections keep order, new ones appended
       try {
         const afterRes = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 100 });
         const afterSections = Array.isArray(afterRes?.data) ? afterRes.data : (Array.isArray(afterRes) ? afterRes : []);
-        console.log('[AI Reading Save] After save - all sections (id -> order):', afterSections.map(s => ({ id: s?.section?.id ?? s?.id, order: s?.section?.orderNumber ?? s?.orderNumber })));
         const beforeIds = new Set(beforeSections.map(s => s?.section?.id ?? s?.id));
         const existingOrdered = beforeSections
           .map(s => ({ id: s?.section?.id ?? s?.id, orderNumber: Number(s?.section?.orderNumber ?? s?.orderNumber ?? 0) }))
@@ -661,10 +657,8 @@ const AIGenerateReading = () => {
         let seq = 0;
         existingOrdered.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
         newOnes.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
-        console.log('[AI Reading Save] Reorder payload:', finalBulk);
         if (finalBulk.length > 0) {
           const reorderResp = await dailyChallengeApi.bulkUpdateSections(id, finalBulk);
-          console.log('[AI Reading Save] Reorder response:', reorderResp);
         }
       } catch (reorderError) {
         console.warn('[AI Reading Save] Reorder after save failed, continuing:', reorderError);

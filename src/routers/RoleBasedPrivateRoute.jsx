@@ -120,13 +120,6 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
         const mustChangePassword = localStorage.getItem('mustChangePassword') === 'true';
         const userRole = getRoleFromToken(accessToken);
 
-        console.log('RoleBasedPrivateRoute - Validation:', {
-          mustChangePassword,
-          userRole,
-          requiredRoles,
-          currentPath: location.pathname
-        });
-
         // 5. Kiểm tra trạng thái mustChangePassword
         if (mustChangePassword) {
           console.warn('🚨 SECURITY ALERT: User must change password');

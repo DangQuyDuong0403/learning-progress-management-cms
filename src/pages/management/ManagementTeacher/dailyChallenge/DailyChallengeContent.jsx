@@ -1331,9 +1331,6 @@ const SortableQuestionItem = memo(
       // Parse and inline replace with correct answers
       let displayText = question.questionText;
       
-      console.log('FillBlank question:', question);
-      console.log('question.content:', question.content);
-      
       if (question.content && question.content.data) {
         // Build map of correct answers
         const posToVal = {};
@@ -1411,9 +1408,6 @@ const SortableQuestionItem = memo(
       // Parse questionText and replace [[pos_xxx]] with styled dropdown
       let displayText = question.questionText;
       const dropdownsData = [];
-      
-      console.log('Dropdown question:', question);
-      console.log('question.content:', question.content);
       
       if (question.content && question.content.data) {
         // Group options by positionId
@@ -1600,10 +1594,6 @@ const SortableQuestionItem = memo(
       let displayText = question.questionText;
       const answerChoices = [];
       const incorrectOptions = [];
-      
-      console.log('DragDrop question:', question);
-      console.log('question.content:', question.content);
-      
       if (question.content && question.content.data) {
         // Filter correct options (those with positionId and correct: true)
         const correctOptions = question.content.data.filter(item => 
@@ -1777,9 +1767,6 @@ const SortableQuestionItem = memo(
       // Parse questionText and replace [[pos_xxx]] with styled blanks
       let displayText = question.questionText || '';
       const wordsData = [];
-      
-      console.log('REARRANGE question:', question);
-      console.log('question.content:', question.content);
       
       if (question.content && question.content.data) {
         // Use data as is
@@ -2992,11 +2979,9 @@ const DailyChallengeContent = () => {
 
     setChallengeLoading(true);
     try {
-      console.log('Fetching challenge details for ID:', id);
       
       // Call API to get challenge details
       const response = await dailyChallengeApi.getDailyChallengeById(id);
-      console.log('Challenge Details API Response:', response);
 
       if (response && response.data) {
         const challengeData = response.data;
@@ -3023,7 +3008,6 @@ const DailyChallengeContent = () => {
         else if (apiStatus === 'FINISHED') normalizedStatus = 'finished';
         setStatus(normalizedStatus);
         
-        console.log('Challenge details loaded:', challengeData);
       }
       
       setChallengeLoading(false);
@@ -3044,15 +3028,12 @@ const DailyChallengeContent = () => {
 
     setLoading(true);
     try {
-      console.log('Fetching sections for challenge:', id);
       
       // Call API to get sections (questions) for this challenge
       const response = await dailyChallengeApi.getSectionsByChallenge(id, {
         page: 0,
         size: 100, // Get all questions for now
       });
-
-      console.log('API Response:', response);
 
       // Transform API response to match component format
       if (response && response.data) {
@@ -3119,13 +3100,11 @@ const DailyChallengeContent = () => {
             };
             
             mappedPassages.push(passage);
-            console.log('Mapped Passage:', passage);
           } else {
             // Regular question section - map each question
             const sectionQuestions = questionsList.map((question, qIndex) => {
               // Get question content - parse from content.data array
               const contentData = question.content?.data || [];
-              console.log(`Question ${question.questionType} - Content Data:`, contentData);
               
               const options = contentData.map((contentItem, idx) => ({
                 key: String.fromCharCode(65 + idx), // A, B, C, D...
@@ -3133,7 +3112,6 @@ const DailyChallengeContent = () => {
                 isCorrect: contentItem.correct || false,
               }));
               
-              console.log(`Question ${question.questionType} - Options:`, options);
 
               // Extract incorrect options - DRAG_AND_DROP uses same logic as other types
               // Incorrect options are those with isCorrect: false in the options array
@@ -3144,15 +3122,6 @@ const DailyChallengeContent = () => {
                   text: opt.text
                 }));
               
-              if (question.questionType === 'DRAG_AND_DROP') {
-                console.log('=== DRAG_AND_DROP QUESTION DEBUG ===');
-                console.log('Content Data:', contentData);
-                console.log('Options:', options);
-                console.log('Incorrect Options Extracted:', incorrectOptions);
-                console.log('=====================================');
-              }
-              
- 
               const mappedQuestion = {
                 id: question.id || `${section.id}-${qIndex}`,
                 type: question.questionType,
@@ -3169,17 +3138,6 @@ const DailyChallengeContent = () => {
                 sectionOrderNumber: section.orderNumber || index + 1, // Store section orderNumber for proper sorting
               };
 
-              // Log specific question types for debugging
-              if (question.questionType === 'FILL_IN_THE_BLANK') {
-                console.log('FillBlank question:', mappedQuestion);
-              } else if (question.questionType === 'DROPDOWN') {
-                console.log('Dropdown question:', mappedQuestion);
-              } else if (question.questionType === 'DRAG_AND_DROP') {
-                console.log('DragDrop question:', mappedQuestion);
-              } else {
-                console.log(`${question.questionType} question:`, mappedQuestion);
-              }
-
               return mappedQuestion;
             });
             
@@ -3187,11 +3145,7 @@ const DailyChallengeContent = () => {
           }
         });
 
-        console.log('Mapped Questions:', mappedQuestions);
-        console.log('Mapped Passages:', mappedPassages);
-
         // total count is now computed dynamically for display based on challenge type
-
         // Sort questions by sectionOrderNumber first, then by orderNumber within section
         // This ensures questions maintain their position even after update
         const sortedQuestions = mappedQuestions.sort((a, b) => {
@@ -3200,9 +3154,6 @@ const DailyChallengeContent = () => {
           return (a.orderNumber || 0) - (b.orderNumber || 0);
         });
         const sortedPassages = mappedPassages.sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0));
-        
-        console.log('Sorted Questions:', sortedQuestions);
-        console.log('Sorted Passages:', sortedPassages);
         
         setQuestions(sortedQuestions);
         setPassages(sortedPassages);
@@ -3240,7 +3191,6 @@ const DailyChallengeContent = () => {
     try {
       // Fetch challenge detail from API
       const response = await dailyChallengeApi.getDailyChallengeById(id);
-      console.log('Challenge detail response:', response);
       
       const data = response?.data;
       if (data) {
@@ -3580,8 +3530,6 @@ const DailyChallengeContent = () => {
         questions: [sanitizedApiQuestion]
       };
 
-      console.log('Creating new question:', sectionData);
-
       // Call API to save the question
       const response = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
       
@@ -3646,10 +3594,6 @@ const DailyChallengeContent = () => {
         },
         questions: [apiQuestion]
       };
-
-      console.log('Updating existing question:', sectionData);
-      console.log('Preserving orderNumber:', orderNumber, 'sectionOrderNumber:', sectionOrderNumber);
-      console.log('Question ID:', editingQuestion.id, 'Section ID:', editingQuestion.sectionId);
 
       // Call API to update the section
       const response = await dailyChallengeApi.saveSectionWithQuestions(id, sectionData);
@@ -3792,7 +3736,6 @@ const DailyChallengeContent = () => {
     setQuestions(prev => {
       const question = prev.find(q => q.id === questionId);
       if (question) {
-        console.log('Editing question:', question);
         
         // Map question.type to currentModalType format
         let modalType = '';
@@ -3825,7 +3768,6 @@ const DailyChallengeContent = () => {
             modalType = 'multiple-choice';
         }
         
-        console.log('Modal type:', modalType);
         setEditingQuestion(question);
         setCurrentModalType(modalType);
         setModalVisible(true);
@@ -3959,19 +3901,12 @@ const DailyChallengeContent = () => {
         };
       });
 
-      console.log('Bulk update sections data:', {
-        count: bulkUpdateData.length,
-        sections: bulkUpdateData
-      });
+
 
       // Step 1: Call bulk update API to save/reorder sections (API trong ảnh: POST /api/v1/sections/bulk/{challengeId})
       const bulkResponse = await dailyChallengeApi.bulkUpdateSections(id, bulkUpdateData);
-      console.log('Bulk update response:', bulkResponse);
-
       // Step 2: Update challenge status only when publishing
       if (saveAsStatus === 'published') {
-        console.log('Updating challenge status to PUBLISHED');
-        
         // Call API to update challenge status to PUBLISHED
         await dailyChallengeApi.updateDailyChallengeStatus(id, 'PUBLISHED');
         
@@ -3999,8 +3934,6 @@ const DailyChallengeContent = () => {
         }
       } else if (saveAsStatus === 'draft') {
         // Save as Draft: chỉ gọi bulkUpdateSections (đã gọi ở Step 1), không cần update status
-        console.log('Saved as draft (sections updated only)');
-        
         if (!options?.silent) {
           spaceToast.success(t('dailyChallenge.savedAsDraft') || 'Saved as draft successfully!');
         }
@@ -4064,9 +3997,7 @@ const DailyChallengeContent = () => {
       isSaving = true;
       try {
         const nextStatus = status === 'published' ? 'published' : 'draft';
-        console.log('[AutoSave] Starting silent auto-save as', nextStatus, 'at', new Date().toISOString());
         await handleSaveChanges(nextStatus, { silent: true });
-        console.log('[AutoSave] Completed silent auto-save at', new Date().toISOString());
       } catch (e) {
         // silent
       } finally {

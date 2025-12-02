@@ -118,16 +118,11 @@ const CreateReadingChallenge = () => {
   // Initialize passage with editingPassage if provided
   const [passage, setPassage] = useState(() => {
     if (editingPassage) {
-      // Log the editingPassage to debug
-      console.log('Loading editingPassage:', editingPassage);
-      console.log('Questions in editingPassage:', editingPassage.questions);
-      
       // For Speaking challenge, remove [[dur_3]] from content to avoid duplicate when saving
       let content = editingPassage.content || "";
       if (isSpeakingChallenge) {
         // Remove [[dur_3]] if it exists (may have trailing/leading whitespace)
         content = content.replace(/\s*\[\[dur_3\]\]\s*/g, ' ').trim();
-        console.log('Removed [[dur_3]] from editing content:', content);
       }
       
       // Editing mode - use existing passage data
@@ -326,11 +321,6 @@ const CreateReadingChallenge = () => {
           }
         }];
         
-        console.log('Writing question created:', {
-          hasId: !!transformedQuestions[0].id,
-          id: transformedQuestions[0].id,
-          questionText: transformedQuestions[0].questionText.substring(0, 50) + '...'
-        });
       } else if (isSpeakingChallenge) {
         // Speaking Challenge: Create a single question with passage content as questionText
         // The content will contain [[dur_3]] placeholder injected earlier
@@ -350,21 +340,10 @@ const CreateReadingChallenge = () => {
           }
         }];
         
-        console.log('Speaking question created:', {
-          hasId: !!transformedQuestions[0].id,
-          id: transformedQuestions[0].id,
-          questionText: transformedQuestions[0].questionText.substring(0, 50) + '...'
-        });
       } else {
         // Other challenges: Transform questions normally
         let activeOrderCounter = 0;
         transformedQuestions = (passage.questions || []).map((question, index) => {
-        console.log('Transforming question:', index, {
-          id: question.id,
-          isFromBackend: question.isFromBackend,
-          hasId: !!question.id,
-          shouldIncludeId: question.isFromBackend && question.id
-        });
         
         const baseQuestion = {
           // Only include id for questions that originated from backend
@@ -377,8 +356,6 @@ const CreateReadingChallenge = () => {
           toBeDeleted: question.toBeDeleted === true
         };
         
-        console.log('Transformed question:', baseQuestion);
-
         // Handle different question types
         switch (question.type) {
           case 'MULTIPLE_CHOICE':
@@ -509,7 +486,6 @@ const CreateReadingChallenge = () => {
         if (existingId && !transformedQuestions[0].id) {
           transformedQuestions[0].id = existingId;
         }
-        console.log('Updated speaking question with [[dur_3]], id preserved:', transformedQuestions[0].id);
       }
 
       // Use questions as is
@@ -534,23 +510,6 @@ const CreateReadingChallenge = () => {
         questions: sanitizedQuestions
       };
 
-      console.log('Saving section with questions:', sectionData);
-      console.log('Challenge ID:', currentChallengeId);
-      console.log('Section ID:', passage.sectionId);
-      console.log('Is Speaking Challenge:', isSpeakingChallenge);
-      console.log('Is Listening Challenge:', isListeningChallenge);
-      console.log('Is Writing Challenge:', isWritingChallenge);
-      console.log('Resource Type:', sectionData.section.resourceType);
-      console.log('Audio URL:', sectionData.section.sectionsUrl);
-      console.log('Recording Time (fixed):', isSpeakingChallenge ? '3 minutes ([[dur_3]])' : 'N/A');
-      console.log('Section Content:', sectionData.section.sectionsContent);
-      console.log('Questions count:', sanitizedQuestions.length);
-      if (isSpeakingChallenge && sanitizedQuestions.length > 0) {
-        console.log('Speaking Question:', {
-          questionText: sanitizedQuestions[0].questionText,
-          questionType: sanitizedQuestions[0].questionType
-        });
-      }
 
       // Try using the same API as DailyChallengeContent but with multiple questions
       const response = await dailyChallengeApi.saveSectionWithQuestions(currentChallengeId, sectionData);
@@ -681,8 +640,6 @@ const CreateReadingChallenge = () => {
       // Upload file directly to server (as multipart/form-data)
       const response = await dailyChallengeApi.uploadFile(file);
       
-      console.log('Audio upload response:', response);
-      
       // Get URL from response - handle different response formats
       let audioUrl = null;
       if (response?.data?.url) {
@@ -698,8 +655,6 @@ const CreateReadingChallenge = () => {
         throw new Error(t('dailyChallenge.uploadFailedNoUrl', 'Upload failed: No URL returned from server'));
       }
       
-      console.log('Extracted audio URL:', audioUrl);
-
       // Create local preview URL for immediate feedback
       const previewUrl = URL.createObjectURL(file);
 
@@ -739,7 +694,6 @@ const CreateReadingChallenge = () => {
   };
 
   const handleEditQuestion = (question, actualIndex) => {
-    console.log('Editing question:', question);
     
     // Normalize backend enum types to modal keys
     const modalTypeMap = {
@@ -869,10 +823,6 @@ const CreateReadingChallenge = () => {
           : undefined,
       };
     }
-    
-    console.log('Transformed question for modal:', transformedQuestion);
-    console.log('Original question options:', question.options);
-    console.log('Original question content.data:', question.content?.data);
     
     setEditingQuestion(transformedQuestion);
     setEditingIndex(typeof actualIndex === 'number' ? actualIndex : null);
@@ -1877,7 +1827,6 @@ const CreateReadingChallenge = () => {
                         </div>
                       ) : (
                         visibleQuestions.map((question, index) => {
-                          console.log(`Question ${index + 1}:`, question);
                           return (
                       <div 
                         key={question.id || index} 
