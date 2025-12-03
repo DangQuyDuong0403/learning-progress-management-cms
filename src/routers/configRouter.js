@@ -26,12 +26,12 @@ import TeacherList from '../pages/management/ManagementManager/teacher/TeacherLi
 import TeacherProfile from '../pages/management/ManagementManager/teacher/TeacherProfile.jsx';
 //manager
 import ClassList from '../pages/management/ManagementClass/Class/ClassList.jsx';
-import ClassListTable from '../pages/management/ManagementClass/Class/ClassListTable.jsx';
+import ClassListManager from '../pages/management/ManagementClass/Class/ClassListManager.jsx';
 import ClassMenu from '../pages/management/ManagementClass/Class/ClassMenu.jsx';
 import ClassStudent from '../pages/management/ManagementClass/Class/ClassStudent.jsx';
 import ClassReport from '../pages/management/ManagementClass/Class/ClassReport.jsx';
 import ClassOverview from '../pages/management/ManagementClass/Class/ClassOverview.jsx';
-import ClassTeachers from '../pages/management/ManagementClass/Class/ClassTeachers.jsx';
+import ClassTeacher from '../pages/management/ManagementClass/Class/ClassTeacher.jsx';
 import ClassActivities from '../pages/management/ManagementClass/Class/ClassActivities.jsx';
 import ClassChapterLesson from '../pages/management/ManagementClass/Class/ClassChapterLesson.jsx';
 // Teacher Class Components - Now using ManagementClass Components
@@ -39,12 +39,12 @@ import TeacherClassList from '../pages/management/ManagementClass/Class/ClassLis
 import TeacherClassMenu from '../pages/management/ManagementClass/Class/ClassMenu.jsx';
 import TeacherClassStudent from '../pages/management/ManagementClass/Class/ClassStudent.jsx';
 import TeacherClassReport from '../pages/management/ManagementClass/Class/ClassReport.jsx';
-import TeacherClassTeachers from '../pages/management/ManagementClass/Class/ClassTeachers.jsx';
+import TeacherClassTeachers from '../pages/management/ManagementClass/Class/ClassTeacher.jsx';
 import TeacherClassActivities from '../pages/management/ManagementClass/Class/ClassActivities.jsx';
 import TeacherClassChapterLesson from '../pages/management/ManagementClass/Class/ClassChapterLesson.jsx';
-import TeacherClassChapterList from '../pages/management/ManagementClass/Class/TeacherClassChapterList.jsx';
-import TeacherClassChapterDragEdit from '../pages/management/ManagementClass/Class/TeacherClassChapterDragEdit.jsx';
-import TeacherClassLessonDragEdit from '../pages/management/ManagementClass/Class/TeacherClassLessonDragEdit.jsx';
+import ClassChapterList from '../pages/management/ManagementClass/Class/ClassChapterList.jsx';
+import ClassChapterDragEdit from '../pages/management/ManagementClass/Class/ClassChapterDragEdit.jsx';
+import ClassLessonDragEdit from '../pages/management/ManagementClass/Class/ClassLessonDragEdit.jsx';
 import DailyChallengeList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeList.jsx';
 import DailyChallengePerformance from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengePerformance.jsx';
 import DailyChallengeSubmissionList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionList.jsx';
@@ -216,7 +216,7 @@ const CONFIG_ROUTER = [
 	// Student Class Chapters/Lessons
 	{
 		show: false,
-		component: TeacherClassChapterList,
+		component: ClassChapterList,
 		path: ROUTER_PAGE.STUDENT_CLASS_CHAPTERS_LESSONS,
 		menuName: 'Class Chapters/Lessons',
 		exact: true,
@@ -228,7 +228,7 @@ const CONFIG_ROUTER = [
 	// Student Class Chapters List
 	{
 		show: false,
-		component: TeacherClassChapterList,
+		component: ClassChapterList,
 		path: ROUTER_PAGE.STUDENT_CLASS_CHAPTERS,
 		menuName: 'Class Chapters',
 		exact: true,
@@ -345,7 +345,7 @@ const CONFIG_ROUTER = [
 	// Test Taker Class Chapters/Lessons
 	{
 		show: false,
-		component: TeacherClassChapterList,
+		component: ClassChapterList,
 		path: ROUTER_PAGE.TEST_TAKER_CLASS_CHAPTERS_LESSONS,
 		menuName: 'Class Chapters/Lessons',
 		exact: true,
@@ -356,7 +356,7 @@ const CONFIG_ROUTER = [
 	// Test Taker Class Chapters List
 	{
 		show: false,
-		component: TeacherClassChapterList,
+		component: ClassChapterList,
 		path: ROUTER_PAGE.TEST_TAKER_CLASS_CHAPTERS,
 		menuName: 'Class Chapters',
 		exact: true,
@@ -499,7 +499,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: true,
-		component: ClassListTable,
+		component: ClassListManager,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_CLASSES,
 		menuName: 'classes management',
@@ -607,7 +607,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: ClassTeachers,
+		component: ClassTeacher,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_CLASS_TEACHERS,
 		menuName: 'class teachers',
@@ -640,7 +640,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassChapterList,
+		component: ClassChapterList,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_CLASS_CHAPTERS,
 		menuName: 'class chapters',
@@ -651,7 +651,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassChapterDragEdit,
+		component: ClassChapterDragEdit,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_CLASS_CHAPTERS_EDIT_ORDER,
 		menuName: 'class chapters edit order',
@@ -673,7 +673,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassLessonDragEdit,
+		component: ClassLessonDragEdit,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.MANAGER_CLASS_CHAPTER_LESSONS_EDIT_ORDER,
 		menuName: 'class chapter lessons edit order',
@@ -741,7 +741,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: ClassTeachers,
+		component: ClassTeacher,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_TEACHERS,
 		menuName: 'class teachers',
@@ -774,7 +774,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassChapterList,
+		component: ClassChapterList,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTERS,
 		menuName: 'class chapters',
@@ -785,7 +785,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassChapterDragEdit,
+		component: ClassChapterDragEdit,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTERS_EDIT_ORDER,
 		menuName: 'class chapters edit order',
@@ -807,7 +807,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassLessonDragEdit,
+		component: ClassLessonDragEdit,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_CHAPTER_LESSONS_EDIT_ORDER,
 		menuName: 'class chapter lessons edit order',
@@ -1031,7 +1031,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassChapterList,
+		component: ClassChapterList,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTERS,
 		menuName: 'class chapters',
@@ -1042,7 +1042,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassChapterDragEdit,
+		component: ClassChapterDragEdit,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTERS_EDIT_ORDER,
 		menuName: 'class chapters edit order',
@@ -1064,7 +1064,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassLessonDragEdit,
+		component: ClassLessonDragEdit,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHER_CLASS_CHAPTER_LESSONS_EDIT_ORDER,
 		menuName: 'class chapter lessons edit order',
@@ -1075,7 +1075,7 @@ const CONFIG_ROUTER = [
 	},
 	{
 		show: false,
-		component: TeacherClassLessonDragEdit,
+		component: ClassLessonDragEdit,
 		// icon: <UserOutlined />,
 		path: ROUTER_PAGE.TEACHER_CLASS_LESSONS_EDIT_ORDER,
 		menuName: 'class lessons edit order',

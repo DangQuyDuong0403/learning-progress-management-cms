@@ -265,12 +265,18 @@ const ClassStudent = () => {
       } else {
         setSearchLoading(true);
       }
+
+      // Add a small delay when loading more items to avoid rapid infinite requests
+      if (append) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
       
       const params = {
         page: page,
         size: availableStudentsPagination.size,
         text: searchText,
-        status: ['ACTIVE'], // Only get active students
+        // Include both ACTIVE và PENDING trong modal add
+        status: ['ACTIVE', 'PENDING'],
         roleName: ['STUDENT', 'TEST_TAKER'], // Get both students and test takers
       };
       
@@ -289,23 +295,28 @@ const ClassStudent = () => {
         return;
       }
       
-      // Handle different response structures
+      // Handle different response structures and normalize pagination info
       let allStudents = [];
       let totalElements = 0;
+      let responsePage = page ?? 0;
+      let responseSize = availableStudentsPagination.size;
       
       // Check if data is directly in response or nested
       if (Array.isArray(response.data)) {
         allStudents = response.data;
+        totalElements = response.totalElements || 0;
+        if (response.page !== undefined) responsePage = response.page;
+        if (response.size !== undefined) responseSize = response.size;
       } else if (Array.isArray(response)) {
         // Response might be array directly
         allStudents = response;
+        // totalElements / page / size may not be available in this case
       } else if (response.data?.data && Array.isArray(response.data.data)) {
         allStudents = response.data.data;
+        totalElements = response.data.totalElements || 0;
+        if (response.data.page !== undefined) responsePage = response.data.page;
+        if (response.data.size !== undefined) responseSize = response.data.size;
       }
-      
-      totalElements = response.totalElements || response.data?.totalElements || 0;
-      const responsePage = response.page || response.data?.page || 0;
-      const responseSize = response.size || response.data?.size || 10;
       
       if (allStudents.length === 0 && totalElements > 0) {
         console.warn('⚠️ WARNING: API returned 0 students but totalElements > 0!');
@@ -321,10 +332,10 @@ const ClassStudent = () => {
       
       // Map the response to match our expected format
       const mappedStudents = filteredStudents.map(student => {
-          const userId = student.userId || student.id;
-          if (!userId) {
-            console.warn('Student without userId:', student);
-          }
+        const userId = student.userId || student.id;
+        if (!userId) {
+          console.warn('Student without userId:', student);
+        }
         return {
           id: userId,
           userId: userId,
@@ -335,12 +346,18 @@ const ClassStudent = () => {
           firstName: student.firstName,
           lastName: student.lastName,
           status: student.status,
+          // Giữ lại thông tin lớp hiện tại nếu API trả về (để disable chọn nếu đã có lớp)
+          classInfo: student.classInfo || student.currentClass || null,
         };
       });
       
       if (append) {
-        // Append new students to existing list
-        setAvailableStudents(prev => [...prev, ...mappedStudents]);
+        // Append new students to existing list, but avoid duplicates by userId
+        setAvailableStudents(prev => {
+          const existingIds = new Set(prev.map(s => s.userId));
+          const uniqueNew = mappedStudents.filter(s => !existingIds.has(s.userId));
+          return [...prev, ...uniqueNew];
+        });
       } else {
         // Replace with new search results
         setAvailableStudents(mappedStudents);
@@ -352,19 +369,18 @@ const ClassStudent = () => {
           ? prev.currentLoaded + mappedStudents.length 
           : mappedStudents.length;
         
-        // Check if we have more data to load
-        // hasMore should be true if:
-        // 1. API returned full page (allStudents.length === prev.size) - means there might be more
-        // 2. OR if we haven't reached the total yet ((page + 1) * prev.size < totalElements)
-        // But we need to be careful: if all students in this page are filtered out, we should still try next page
-        const hasMore = allStudents.length === prev.size || (page + 1) * prev.size < totalElements;
+        // Determine if there's more data based on API pagination info
+        const pageIndex = responsePage ?? page ?? 0;
+        const pageSize = responseSize ?? prev.size;
+        const hasMore = totalElements > 0 && (pageIndex + 1) * pageSize < totalElements;
         
         return {
           ...prev,
-          page: page,
+          page: pageIndex,
+          size: pageSize,
           total: totalElements,
-          hasMore: hasMore,
-          currentLoaded: currentLoaded,
+          hasMore,
+          currentLoaded,
         };
       });
     } catch (error) {
@@ -520,10 +536,10 @@ const ClassStudent = () => {
         const scrollHeight = target.scrollHeight;
         const clientHeight = target.clientHeight;
         
-        // Load more when scrolled to 70% of the list
-        const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+        // Load more only when user scrolls to the bottom of the list
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
         
-        if (scrollPercentage >= 0.7) {
+        if (isNearBottom) {
           if (availableStudentsPagination.hasMore && !loadingMore && !searchLoading) {
             const nextPage = availableStudentsPagination.page + 1;
             fetchAvailableStudents(studentSearchText, nextPage, true);
@@ -1477,10 +1493,10 @@ const ClassStudent = () => {
                   const scrollHeight = target.scrollHeight;
                   const clientHeight = target.clientHeight;
                   
-                  // Load more when scrolled to 70% of the list
-                  const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+                  // Load more only when user scrolls to the bottom of the list
+                  const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
                   
-                  if (scrollPercentage >= 0.7) {
+                  if (isNearBottom) {
                     if (availableStudentsPagination.hasMore && !loadingMore && !searchLoading) {
                       const nextPage = availableStudentsPagination.page + 1;
                       fetchAvailableStudents(studentSearchText, nextPage, true);
@@ -1488,11 +1504,26 @@ const ClassStudent = () => {
                   }
                 }}
               >
-                {availableStudents.filter(student => student.userId).map((student) => (
-                  <Option key={student.userId} value={student.userId}>
-                    {student.code} {student.fullName} ({student.email})
-                  </Option>
-                ))}
+              {availableStudents
+                .filter(student => student.userId)
+                .map((student) => {
+                  const hasClass =
+                    !!student.classInfo &&
+                    (student.classInfo.className ||
+                      student.classInfo.name ||
+                      student.classInfo.id);
+                  return (
+                    <Option
+                      key={student.userId}
+                      value={student.userId}
+                      disabled={hasClass}
+                    >
+                      <span style={{ color: hasClass ? '#999999' : 'inherit' }}>
+                        {student.code} {student.fullName} ({student.email})
+                      </span>
+                    </Option>
+                  );
+                })}
               </Select>
             </div>
 
