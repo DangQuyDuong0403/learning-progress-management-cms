@@ -92,7 +92,7 @@ const dailyChallengeApi = {
 		const baseApi = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api')
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
-		const absoluteUrl = `${baseApi}/openai/grade-writing`;
+		const absoluteUrl = `${baseApi}/ai-feedback/grade-writing`;
 		return axiosClient.post(absoluteUrl, payload, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -102,14 +102,14 @@ const dailyChallengeApi = {
 	},
 
 	// Assess pronunciation for speaking using OpenAI service proxy
-	// Endpoint (swagger image): POST /api/openai/pronunciation-assessment with query params
+	// Endpoint (swagger image): POST /api/ai-feedback/pronunciation-assessment with query params
 	// Params: { audioUrl, questionText?, referenceText?, age? }
 	assessPronunciation: async ({ audioUrl, questionText, referenceText, age } = {}) => {
 		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
 		const baseApi = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api')
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
-		const url = `${baseApi}/openai/pronunciation-assessment`;
+		const url = `${baseApi}/ai-feedback/pronunciation-assessment`;
 		const params = new URLSearchParams();
 		if (audioUrl) params.append('audioUrl', audioUrl);
 		if (questionText) params.append('questionText', questionText);

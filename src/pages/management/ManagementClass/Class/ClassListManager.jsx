@@ -28,7 +28,7 @@ import dayjs from 'dayjs';
 
 const { Option } = Select;
 
-const ClassListTable = () => {
+const ClassListManager = () => {
 	const { t } = useTranslation();
 	const { theme } = useTheme();
 	const navigate = useNavigate();
@@ -1722,4 +1722,4 @@ const ClassListTable = () => {
 	);
 };
 
-export default ClassListTable;
+export default ClassListManager;
