@@ -612,18 +612,21 @@ const ClassStudent = () => {
         const response = await classManagementApi.removeStudentFromClass(id, studentToDelete.userId);
         
         if (response.success) {
-          // Remove student from local state for better UX
-          const updatedStudents = students.filter(s => s.userId !== studentToDelete.userId);
-          setStudents(updatedStudents);
-          
-          // Update pagination total
-          setPagination(prev => ({
-            ...prev,
-            total: prev.total - 1,
-          }));
-          
           const fullName = studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim();
           spaceToast.success(`${t('classDetail.deleteSuccess')} "${fullName}" ${t('classDetail.fromClass')}`);
+          
+          // Refresh the students list - only show ACTIVE students after removing
+          await fetchStudents({
+            page: pagination.current - 1,
+            size: pagination.pageSize,
+            text: searchText,
+            status: ['ACTIVE'], // Only show ACTIVE students after removing
+            sortBy: sortConfig.sortBy,
+            sortDir: sortConfig.sortDir
+          });
+          
+          // Update statusFilter to ACTIVE only to reflect current view
+          setStatusFilter(['ACTIVE']);
         }
       } catch (error) {
         console.error("Error removing student:", error);
@@ -1013,15 +1016,18 @@ const ClassStudent = () => {
       if (response.success) {
         spaceToast.success(`${t('classDetail.addStudentsSuccess')} ${selectedStudents.length} ${t('classDetail.studentsToClass')}`);
         
-        // Refresh the students list
+        // Refresh the students list - only show ACTIVE students after adding
         await fetchStudents({
           page: pagination.current - 1,
           size: pagination.pageSize,
           text: searchText,
-          status: statusFilter,
+          status: ['ACTIVE'], // Only show ACTIVE students after adding
           sortBy: sortConfig.sortBy,
           sortDir: sortConfig.sortDir
         });
+        
+        // Update statusFilter to ACTIVE only to reflect current view
+        setStatusFilter(['ACTIVE']);
       } else {
         spaceToast.error(response.message || t('classDetail.checkInfoError'));
       }
