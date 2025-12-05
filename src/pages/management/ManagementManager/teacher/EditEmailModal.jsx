@@ -82,7 +82,7 @@ const EditEmailModal = ({ isVisible, onClose, teacherId, currentEmail }) => {
           textAlign: 'center',
           padding: '10px 0',
         }}>
-          {getText(t('common.editEmail'), 'Edit Email')}
+          {t('common.editEmail')}
         </div>
       }
       open={isVisible}

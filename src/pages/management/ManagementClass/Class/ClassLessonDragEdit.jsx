@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Button, message, Typography, Modal, Input } from 'antd';
+import { Button, message, Typography, Modal } from 'antd';
 import {
 	PlusOutlined,
 	DeleteOutlined,
@@ -17,7 +17,7 @@ import ThemedLayoutWithSidebar from '../../../../component/ThemedLayout';
 import ThemedLayoutNoSidebar from '../../../../component/teacherlayout/ThemedLayout';
 import TableSpinner from '../../../../component/spinner/TableSpinner';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
-import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
+import LessonForm from '../../ManagementManager/syllabus/LessonForm';
 import { useSelector } from 'react-redux';
 import {
 	DndContext,
@@ -42,14 +42,7 @@ const { Text, Title } = Typography;
 
 // Optimized: Memoized Sortable Lesson Item Component
 const SortableLessonItem = memo(
-	({ lesson, index, onDeleteLesson, onUpdateLessonName, theme, t }) => {
-		const [editValue, setEditValue] = useState(lesson.name || '');
-
-		// Update editValue when lesson.name changes - optimized
-		useEffect(() => {
-			setEditValue(lesson.name || '');
-		}, [lesson.name]);
-
+	({ lesson, index, onDeleteLesson, onEditLesson, theme, t }) => {
 		// Tối ưu: Chỉ animate khi không drag
 		const animateLayoutChanges = useCallback((args) => {
 			const { isSorting, wasDragging } = args;
@@ -82,11 +75,9 @@ const SortableLessonItem = memo(
 			[transform, transition, isDragging]
 		);
 
-		const handleSaveEdit = useCallback(() => {
-			if (editValue.trim()) {
-				onUpdateLessonName(index, editValue.trim());
-			}
-		}, [index, editValue, onUpdateLessonName]);
+		const handleEdit = useCallback(() => {
+			onEditLesson(lesson);
+		}, [lesson, onEditLesson]);
 
 		const handleDelete = useCallback(() => {
 			onDeleteLesson(index);
@@ -106,24 +97,54 @@ const SortableLessonItem = memo(
 				</div>
 
 				<div className='level-content'>
-					<div className='level-field' style={{ flex: 1 }}>
+					<div className='level-field' style={{ flex: 1, marginBottom: '8px' }}>
 						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
 							{t('lessonManagement.lessonName')}:
 						</Text>
-						<Input
-							value={editValue}
-							onChange={(e) => setEditValue(e.target.value)}
-							onBlur={handleSaveEdit}
-							size="small"
-							style={{ width: '200px', fontSize: '16px' }}
-							placeholder={t('lessonManagement.lessonNamePlaceholder')}
-							maxLength={100}
-						/>
+						<Text
+							style={{
+								fontSize: '16px',
+								color: '#333',
+								maxWidth: '200px',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								display: 'inline-block',
+							}}
+							title={lesson.name || t('lessonManagement.noLessonName')}>
+							{lesson.name || t('lessonManagement.noLessonName')}
+						</Text>
+					</div>
+					<div className='level-field' style={{ flex: 1 }}>
+						<Text strong style={{ minWidth: '120px', fontSize: '20px' }}>
+							{t('lessonManagement.content')}:
+						</Text>
+						<Text
+							style={{
+								fontSize: '16px',
+								color: '#333',
+								maxWidth: '250px',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								display: 'inline-block',
+							}}
+							title={lesson.content || t('lessonManagement.noContent')}>
+							{lesson.content || t('lessonManagement.noContent')}
+						</Text>
 					</div>
 				</div>
 
 				<div className='level-actions'>
-					<div className='drag-handle' {...attributes} {...listeners}>
+					<div className='drag-handle' {...attributes} {...listeners} style={{
+						width: '42px',
+						height: '42px',
+						minWidth: '32px',
+						minHeight: '32px',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+					}}>
 						<SwapOutlined
 							rotate={90}
 							style={{
@@ -134,10 +155,37 @@ const SortableLessonItem = memo(
 					</div>
 					<Button
 						type='text'
+						icon={<EditOutlined />}
+						onClick={handleEdit}
+						style={{
+							width: '42px',
+							height: '42px',
+							minWidth: '32px',
+							minHeight: '32px',
+							padding: 0,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							background: 'rgba(24, 144, 255, 0.1)',
+							fontSize: '20px',
+							border: 'none',
+						}}
+					/>
+					<Button
+						type='text'
 						danger
 						icon={<DeleteOutlined />}
 						onClick={handleDelete}
 						style={{
+							width: '42px',
+							height: '42px',
+							minWidth: '32px',
+							minHeight: '32px',
+							padding: 0,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							fontSize: '20px',
 							background: 'rgba(239, 68, 68, 0.1)',
 							border: 'none',
 						}}
@@ -151,6 +199,7 @@ const SortableLessonItem = memo(
 		return (
 			prevProps.lesson.id === nextProps.lesson.id &&
 			prevProps.lesson.name === nextProps.lesson.name &&
+			prevProps.lesson.content === nextProps.lesson.content &&
 			prevProps.lesson.createdBy === nextProps.lesson.createdBy &&
 			prevProps.lesson.position === nextProps.lesson.position &&
 			prevProps.theme === nextProps.theme
@@ -368,7 +417,7 @@ const TeacherClassLessonDragEdit = () => {
 			const mappedLessons = lessonsData.map((lesson, index) => ({
 				id: lesson.id,
 				name: lesson.classLessonName,
-				content: lesson.classLessonContent,
+				content: lesson.classLessonContent || '',
 				order: lesson.orderNumber,
 				createdBy: lesson.createdBy,
 				createdAt: lesson.createdAt,
@@ -434,7 +483,11 @@ const TeacherClassLessonDragEdit = () => {
 					setLessons((prev) => {
 						return prev.map((lesson) =>
 							lesson.id === editingLesson.id
-								? { ...lesson, ...newLessonData }
+								? { 
+									...lesson, 
+									name: newLessonData.name,
+									content: newLessonData.content || ''
+								}
 								: lesson
 						);
 					});
@@ -442,7 +495,8 @@ const TeacherClassLessonDragEdit = () => {
 					setLessons((prev) => {
 						// Create new lesson with temporary position
 						const newLesson = {
-							...newLessonData,
+							name: newLessonData.name,
+							content: newLessonData.content || '',
 							id: `new-${Date.now()}`,
 							position: 0, // Temporary, will be recalculated
 							order: 0, // Temporary, will be recalculated
@@ -522,32 +576,11 @@ const TeacherClassLessonDragEdit = () => {
 		[lessons]
 	);
 
-	const handleUpdateLessonName = useCallback(
-		(index, newName) => {
-			setLessons((prev) => {
-				// Get visible lessons to find the correct lesson by index
-				const visibleLessons = prev.filter(lesson => !lesson.toBeDeleted);
-				const lessonToUpdate = visibleLessons[index];
-				
-				if (!lessonToUpdate) {
-					console.error('Lesson not found at index:', index);
-					return prev;
-				}
-
-				// Update the lesson by its ID
-				return prev.map((lesson) => {
-					if (lesson.id === lessonToUpdate.id) {
-						return {
-							...lesson,
-							name: newName,
-						};
-					}
-					return lesson;
-				});
-			});
-		},
-		[]
-	);
+	const handleEditLesson = useCallback((lesson) => {
+		setEditingLesson(lesson);
+		setInsertAtIndex(null);
+		setIsModalVisible(true);
+	}, []);
 
 	const handleDragStart = useCallback((event) => {
 		// Thêm class để document không bị scroll
@@ -625,6 +658,7 @@ const TeacherClassLessonDragEdit = () => {
 					return {
 						id: isNewRecord ? null : lesson.id, // null cho lesson mới
 						classLessonName: lesson.name,
+						classLessonContent: lesson.content || '',
 						orderNumber: lesson.position, // Position hiện tại = orderNumber
 						toBeDeleted: lesson.toBeDeleted || false, // Include toBeDeleted flag
 					};
@@ -726,7 +760,7 @@ const TeacherClassLessonDragEdit = () => {
 														lesson={lesson}
 														index={index}
 														onDeleteLesson={handleDeleteLesson}
-														onUpdateLessonName={handleUpdateLessonName}
+														onEditLesson={handleEditLesson}
 														theme={theme}
 														t={t}
 													/>
@@ -808,37 +842,28 @@ const TeacherClassLessonDragEdit = () => {
 			{/* Add/Edit Lesson Modal */}
 			<Modal
 				title={
-					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-						{editingLesson ? (
-							<>
-								<EditOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
-								<Title level={4} style={{ margin: 0, color: 'rgb(24, 144, 255)', fontSize: '28px' }}>
-									{t('lessonManagement.editLesson')}
-								</Title>
-							</>
-						) : (
-							<>
-								<PlusOutlined style={{ fontSize: '28px', color: 'rgb(24, 144, 255)' }} />
-								<Title level={4} style={{ margin: 0, color: 'rgb(24, 144, 255)', fontSize: '28px' }}>
-									{t('lessonManagement.addLesson')}
-								</Title>
-							</>
-						)}
+					<div style={{ 
+						fontSize: '28px', 
+						fontWeight: '600', 
+						color: 'rgb(24, 144, 255)',
+						textAlign: 'center',
+						padding: '10px 0'
+					}}>
+						{editingLesson
+							? t('lessonManagement.editLesson')
+							: t('lessonManagement.addLesson')}
 					</div>
 				}
 				open={isModalVisible}
 				onCancel={() => handleModalClose(false)}
 				footer={null}
-				width={800}
-				destroyOnClose
-				bodyStyle={{
-					padding: '24px',
-				}}>
-				<ChapterForm
-					chapter={editingLesson}
-					syllabus={classData?.syllabus}
+				width={600}
+				destroyOnClose>
+				<LessonForm
+					lesson={editingLesson}
+					chapter={chapterData}
 					onClose={handleModalClose}
-					isLesson={true}
+					theme={theme}
 				/>
 			</Modal>
 		</ThemedLayout>

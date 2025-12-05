@@ -136,6 +136,9 @@ const SortableChapterItem = memo(
 						icon={<DeleteOutlined />}
 						onClick={handleDelete}
 						style={{
+							width: '40px',
+							height: '40px',
+							fontSize: '20px',
 							background: 'rgba(239, 68, 68, 0.1)',
 							border: 'none',
 						}}
