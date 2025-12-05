@@ -899,7 +899,7 @@ const ClassTeachers = () => {
                   onClick={handleAddTeacher}
                   loading={buttonLoading.add}
                 >
-                  {t('common.add')}
+                  {t('common.addTeacher')}
                 </Button>
               </div>
             )}

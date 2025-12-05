@@ -1,6 +1,8 @@
 import axios from 'axios';
 import authApi from './backend/auth';
-import { isTokenExpiringSoon } from '../utils/jwtUtils';
+import { isTokenExpiringSoon, getRoleFromToken } from '../utils/jwtUtils';
+import { spaceToast } from '../component/SpaceToastify';
+import ROUTER_PAGE from '../constants/router';
 
 // Tạo instance mặc định cho axios
 const axiosClient = axios.create({
@@ -198,6 +200,56 @@ axiosClient.interceptors.response.use(
 					window.location.href = '/choose-login';
 				}
 				return Promise.reject(error);
+			}
+		}
+
+		// Xử lý lỗi 403 (Forbidden) - có thể là do không có quyền truy cập class
+		if (error.response?.status === 403) {
+			const requestUrl = originalRequest?.url || '';
+			const currentPath = window.location.pathname;
+			
+			// Kiểm tra xem có phải lỗi liên quan đến class không
+			const isClassRelatedRequest = 
+				requestUrl.includes('/classes/') || 
+				requestUrl.includes('/class/') ||
+				requestUrl.includes('/class-student/') ||
+				requestUrl.includes('/class-management/') ||
+				requestUrl.includes('/classManagement/');
+			
+			// Nếu là lỗi liên quan đến class và đang ở trang class, redirect về class list
+			if (isClassRelatedRequest) {
+				const isOnClassPage = 
+					currentPath.includes('/classes/') || 
+					currentPath.includes('/class/');
+				
+				if (isOnClassPage) {
+					const accessToken = localStorage.getItem('accessToken');
+					const userRole = accessToken ? getRoleFromToken(accessToken) : null;
+					
+					// Redirect về class list dựa trên role
+					let redirectPath = '/';
+					if (userRole) {
+						const roleLower = userRole.toLowerCase();
+						if (roleLower === 'manager') {
+							redirectPath = ROUTER_PAGE.MANAGER_CLASSES;
+						} else if (roleLower === 'teacher') {
+							redirectPath = ROUTER_PAGE.TEACHER_CLASSES;
+						} else if (roleLower === 'teaching_assistant' || roleLower === 'teaching assistant') {
+							redirectPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+						}
+					}
+					
+					// spaceToast.error('You do not have permission to access this class');
+					
+					// Chỉ redirect nếu không phải đang ở trang đó rồi
+					if (window.location.pathname !== redirectPath) {
+						setTimeout(() => {
+							window.location.href = redirectPath;
+						}, 500); // Delay nhỏ để toast message hiển thị
+					}
+					
+					return Promise.reject(new Error('Forbidden: No permission to access this class'));
+				}
 			}
 		}
 

@@ -242,7 +242,7 @@ const SortablePassageItem = memo(
             </div>
             {!isManager && (status === 'draft' || status === 'published') && (
               <Space size="small">
-                <Tooltip title="Edit">
+                <Tooltip title="Update">
                   <Button
                     type="text"
                     icon={<EditOutlined />}
@@ -2147,7 +2147,7 @@ const SortableQuestionItem = memo(
             </div>
             {!isManager && (status === 'draft' || status === 'published') && (
               <Space size="small">
-                <Tooltip title="Edit">
+                <Tooltip title="Update">
                   <Button
                     type="text"
                     icon={<EditOutlined />}
