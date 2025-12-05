@@ -1477,7 +1477,7 @@
   "levelManagement": {
     "title": "Level Management",
     "addLevel": "Add Level",
-    "editLevel": "Edit Level",
+    "editLevel": "Update Level",
     "deleteLevel": "Delete Level",
     "levelList": "Level List",
     "stt": "No",

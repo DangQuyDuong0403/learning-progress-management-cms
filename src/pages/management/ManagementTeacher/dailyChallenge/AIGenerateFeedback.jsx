@@ -617,15 +617,28 @@ const AIGenerateFeedback = () => {
   // Handler for manual speaking scores input
   const handleManualSpeakingScoreChange = useCallback((scoreKey, value) => {
     setManualSpeakingScores((prev) => {
-      const numValue = value === '' || value === null || value === undefined
-        ? null
-        : (Number.isFinite(Number(value)) ? Number(value) : null);
+      if (value === '' || value === null || value === undefined) {
+        return {
+          ...prev,
+          [scoreKey]: null,
+        };
+      }
+      const numValue = Number(value);
+      if (!Number.isFinite(numValue)) {
+        return prev; // Don't update if not a valid number
+      }
+      // Validate range 0-10
+      const clampedValue = Math.max(0, Math.min(10, numValue));
+      if (clampedValue !== numValue) {
+        // Show error if value is out of range
+        spaceToast.error(t('dailyChallenge.scoreMustBeBetween0And10', 'Score must be between 0 and 10'));
+      }
       return {
         ...prev,
-        [scoreKey]: numValue,
+        [scoreKey]: clampedValue,
       };
     });
-  }, []);
+  }, [t]);
 
   // Map to reuse existing comment/highlight logic structure
   const studentAnswers = useMemo(() => {
@@ -4317,12 +4330,26 @@ const AIGenerateFeedback = () => {
                         value={currentValue === null || currentValue === undefined ? '' : currentValue}
                         onChange={(e) => {
                           const val = e.target.value;
-                          const numValue = val === '' || val === null || val === undefined
-                            ? null
-                            : (Number.isFinite(Number(val)) ? Number(val) : null);
+                          if (val === '' || val === null || val === undefined) {
+                            setEditSpeakingScores(prev => ({
+                              ...prev,
+                              [item.key]: null,
+                            }));
+                            return;
+                          }
+                          const numValue = Number(val);
+                          if (!Number.isFinite(numValue)) {
+                            return; // Don't update if not a valid number
+                          }
+                          // Validate range 0-10
+                          const clampedValue = Math.max(0, Math.min(10, numValue));
+                          if (clampedValue !== numValue) {
+                            // Show error if value is out of range
+                            spaceToast.error(t('dailyChallenge.scoreMustBeBetween0And10', 'Score must be between 0 and 10'));
+                          }
                           setEditSpeakingScores(prev => ({
                             ...prev,
-                            [item.key]: numValue,
+                            [item.key]: clampedValue,
                           }));
                         }}
                         placeholder="0"

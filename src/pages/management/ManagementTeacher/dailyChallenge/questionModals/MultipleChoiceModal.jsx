@@ -161,7 +161,6 @@ const [options, setOptions] = useState(
 				'italic',
 				'underline',
 				'|',
-				'insertTable',
 				'imageUpload',
 				'|',
 				'bulletedList',
@@ -181,9 +180,6 @@ const [options, setOptions] = useState(
 				{ model: 'heading2', view: 'h2', title: t('dailyChallenge.heading2', 'Heading 2'), class: 'ck-heading_heading2' },
 				{ model: 'heading3', view: 'h3', title: t('dailyChallenge.heading3', 'Heading 3'), class: 'ck-heading_heading3' }
 			]
-		},
-		table: {
-			contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
 		},
 		image: {
 			toolbar: [
