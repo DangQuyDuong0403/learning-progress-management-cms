@@ -603,16 +603,6 @@ const LessonDragEdit = () => {
 					return !(lesson.id === null && lesson.toBeDeleted === true);
 				});
 
-			console.log('LessonDragEdit - Sending sync data:', {
-				count: syncData.length,
-				lessons: syncData.map(l => ({ 
-					id: l.id, 
-					lessonName: l.lessonName, 
-					orderNumber: l.orderNumber,
-					toBeDeleted: l.toBeDeleted 
-				}))
-			});
-
 			// Gọi API sync với chapterId và dữ liệu lessons
 			const response = await syllabusManagementApi.syncLessons(chapterId, syncData);
 

@@ -460,7 +460,7 @@ const ClassActivities = () => {
                               fontWeight: 600,
                               letterSpacing: '0.02em'
                             }}>
-                              {activity.actionType || 'UNKNOWN'}
+                              {t(`classActivities.actionTypes.${activity.actionType}`, activity.actionType || 'UNKNOWN')}
                             </span>
                           </div>
                         </>

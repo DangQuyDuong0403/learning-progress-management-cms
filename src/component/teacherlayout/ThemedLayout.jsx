@@ -58,8 +58,7 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
         <Content
           className={`themed-content ${theme}-content`}
           style={{
-            margin: `${contentMargin}px 0`,
-            padding: `20px 0px 0px 10px`,
+            padding: `0px 0px 0px 10px`,
             borderRadius: '8px',
             minHeight: 'calc(100vh - 112px)',
             maxHeight: 'calc(100vh - 112px)',

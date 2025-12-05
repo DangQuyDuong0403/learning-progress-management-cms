@@ -10,7 +10,6 @@
 
 /* Ensure themed-content padding and borderRadius work correctly */
 .themed-content {
-	padding: 20px 0px 0px 10px;
 	border-radius: 8px;
 	box-sizing: border-box;
 }

@@ -21,7 +21,6 @@ import {
 	UndoOutlined,
 	RedoOutlined,
 	PictureOutlined,
-	TableOutlined,
 	AlignLeftOutlined,
 	AlignCenterOutlined,
 	AlignRightOutlined,
@@ -62,8 +61,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const [editorVersion, setEditorVersion] = useState(0);
 	const [selectedImage, setSelectedImage] = useState(null);
 	const [saving, setSaving] = useState(false);
-	const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
-	const [hoveredCell, setHoveredCell] = useState({ row: 0, col: 0 });
 	const [showBlankPopup, setShowBlankPopup] = useState(false);
 	const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
 	const editorRef = useRef(null);
@@ -718,71 +715,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	const updatePopupPosition = useMemo(
 		() => debounce(updatePopupPositionCore, 150),
 		[updatePopupPositionCore]
-	);
-
-	// Handle table insertion
-	const handleInsertTable = useCallback(
-		(numRows, numCols) => {
-			if (!editorRef.current) return;
-
-			if (numRows > 0 && numCols > 0 && numRows <= 10 && numCols <= 10) {
-				editorRef.current.focus();
-
-				// Create table
-				const table = document.createElement('table');
-				table.style.borderCollapse = 'collapse';
-				table.style.width = '100%';
-				table.style.margin = '10px 0';
-				table.style.border = '1px solid #000000';
-
-				for (let i = 0; i < numRows; i++) {
-					const tr = document.createElement('tr');
-					for (let j = 0; j < numCols; j++) {
-						const td = document.createElement(i === 0 ? 'th' : 'td');
-						td.contentEditable = 'true';
-						td.style.border = '1px solid #000000';
-						td.style.padding = '8px';
-						td.style.minWidth = '50px';
-						if (i === 0) {
-							td.style.background = 'rgba(24, 144, 255, 0.1)';
-							td.style.fontWeight = '600';
-						}
-						td.innerHTML = '&nbsp;';
-
-						// Add event listeners for table cells to update popup position (debounced)
-						td.addEventListener('click', () => {
-							requestAnimationFrame(() => {
-								updatePopupPosition();
-							});
-						});
-						td.addEventListener('keyup', () => {
-							updatePopupPosition();
-						});
-						td.addEventListener('focus', () => {
-							requestAnimationFrame(() => {
-								updatePopupPosition();
-							});
-						});
-
-						tr.appendChild(td);
-					}
-					table.appendChild(tr);
-				}
-
-				// Insert table
-				const selection = window.getSelection();
-				if (selection.rangeCount > 0) {
-					const range = selection.getRangeAt(0);
-					range.insertNode(table);
-					range.collapse(false);
-				} else {
-					editorRef.current.appendChild(table);
-				}
-
-				setTableDropdownOpen(false);
-			}
-		},
-		[updatePopupPosition]
 	);
 
 	// Handle heading format
@@ -2312,99 +2244,6 @@ useEffect(() => {
 								}}
 							/>
 						</Tooltip>
-						<div
-							style={{
-								width: '1px',
-								background: 'rgba(24, 144, 255, 0.2)',
-								margin: '0 8px',
-							}}
-						/>
-
-						{/* Table Grid Selector */}
-						<Dropdown
-							open={tableDropdownOpen}
-							onOpenChange={(open) => {
-								setTableDropdownOpen(open);
-								if (!open) {
-									setHoveredCell({ row: 0, col: 0 });
-								}
-							}}
-							trigger={['click']}
-							overlayStyle={{ zIndex: 9999 }}
-							dropdownRender={() => (
-								<div
-									style={{
-										background: '#ffffff',
-										padding: '12px',
-										borderRadius: '8px',
-										boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-										border: '1px solid rgba(24, 144, 255, 0.2)',
-									}}
-									onMouseLeave={() => setHoveredCell({ row: 0, col: 0 })}>
-									<div
-										style={{
-											fontSize: '12px',
-											color: '#666',
-											marginBottom: '8px',
-											textAlign: 'center',
-											fontWeight: 500,
-											height: '16px',
-										}}>
-										{hoveredCell.row > 0 && hoveredCell.col > 0
-											? `${hoveredCell.row} x ${hoveredCell.col} Table`
-											: t('dailyChallenge.selectTableSize', 'Select table size')}
-									</div>
-									<div
-										style={{
-											display: 'grid',
-											gridTemplateColumns: 'repeat(10, 1fr)',
-											gap: '2px',
-										}}>
-										{Array.from({ length: 100 }, (_, index) => {
-											const row = Math.floor(index / 10) + 1;
-											const col = (index % 10) + 1;
-											const isHovered =
-												row <= hoveredCell.row && col <= hoveredCell.col;
-
-											return (
-												<div
-													key={index}
-													onMouseEnter={() => setHoveredCell({ row, col })}
-													onClick={() => {
-														if (hoveredCell.row > 0 && hoveredCell.col > 0) {
-															handleInsertTable(
-																hoveredCell.row,
-																hoveredCell.col
-															);
-														}
-													}}
-													style={{
-														width: '20px',
-														height: '20px',
-														border: '1px solid #000000',
-														background: isHovered ? '#1890ff' : '#ffffff',
-														cursor: 'pointer',
-														transition: 'all 0.1s ease',
-														borderRadius: '2px',
-													}}
-												/>
-											);
-										})}
-									</div>
-								</div>
-							)}>
-							<Tooltip title={t('dailyChallenge.insertTable', 'Insert Table')}>
-								<Button
-									icon={<TableOutlined />}
-									style={{
-										border: '1px solid rgba(24, 144, 255, 0.2)',
-										borderRadius: '6px',
-										height: '36px',
-										width: '36px',
-									}}
-								/>
-							</Tooltip>
-						</Dropdown>
 						<div
 							style={{
 								width: '1px',

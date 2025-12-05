@@ -204,8 +204,8 @@ const LevelForm = ({ level, onClose, shouldCallApi = true, showPrerequisiteAndCo
         />
       </Form.Item>
 
-      <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-        <Space>
+      <Form.Item style={{ marginBottom: 0, textAlign: 'right'}}>
+        <Space style={{marginTop: '10px'}}>
           <Button 
             onClick={onCancel} 
             size="middle"
