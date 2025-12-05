@@ -142,7 +142,15 @@ const SortableLessonItem = memo(
 				</div>
 
 				<div className='level-actions'>
-					<div className='drag-handle' {...attributes} {...listeners}>
+					<div className='drag-handle' {...attributes} {...listeners} style={{
+						width: '42px',
+						height: '42px',
+						minWidth: '32px',
+						minHeight: '32px',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+					}}>
 						<SwapOutlined
 							rotate={90}
 							style={{
@@ -156,6 +164,15 @@ const SortableLessonItem = memo(
 						icon={<EditOutlined />}
 						onClick={handleEdit}
 						style={{
+							width: '42px',
+							height: '42px',
+							minWidth: '32px',
+							minHeight: '32px',
+							padding: 0,
+							display: 'flex',
+							fontSize: '20px',
+							alignItems: 'center',
+							justifyContent: 'center',
 							background: 'rgba(24, 144, 255, 0.1)',
 							border: 'none',
 							marginRight: '8px',
@@ -167,6 +184,15 @@ const SortableLessonItem = memo(
 						icon={<DeleteOutlined />}
 						onClick={handleDelete}
 						style={{
+							width: '42px',
+							height: '42px',
+							minWidth: '32px',
+							minHeight: '32px',
+							padding: 0,
+							fontSize: '20px',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
 							background: 'rgba(239, 68, 68, 0.1)',
 							border: 'none',
 						}}

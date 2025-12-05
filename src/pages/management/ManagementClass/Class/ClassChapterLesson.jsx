@@ -32,7 +32,7 @@ import { spaceToast } from '../../../../component/SpaceToastify';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useClassMenu } from '../../../../contexts/ClassMenuContext';
 import usePageTitle from '../../../../hooks/usePageTitle';
-import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
+import LessonForm from '../../ManagementManager/syllabus/LessonForm';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import { useSelector } from 'react-redux';
 import BottomActionBar from '../../../../component/BottomActionBar';
@@ -311,7 +311,11 @@ const ClassChapterLesson = () => {
 	}, [searchTimeout]);
 
 	const handleEditLesson = (lesson) => {
-		setEditingChapter(lesson);
+		setEditingChapter({
+			...lesson,
+			name: lesson.name,
+			content: lesson.content
+		});
 		setIsModalVisible(true);
 	};
 
@@ -347,8 +351,71 @@ const ClassChapterLesson = () => {
 		setDeleteItem(null);
 	};
 
-	const handleModalClose = () => {
+	const handleModalClose = async (shouldRefresh, newLessonData) => {
 		setIsModalVisible(false);
+		
+		if (shouldRefresh && newLessonData) {
+			try {
+				// Prepare sync data - include all lessons with updated one
+				const allLessons = [...lessons];
+				let updatedLessons = allLessons;
+				
+				if (editingChapter) {
+					// Update existing lesson
+					updatedLessons = allLessons.map(lesson => 
+						lesson.id === editingChapter.id 
+							? { 
+								...lesson, 
+								name: newLessonData.name,
+								content: newLessonData.content || ''
+							}
+							: lesson
+					);
+				} else {
+					// Add new lesson - will be added at the end
+					const newLesson = {
+						id: `new-${Date.now()}`,
+						name: newLessonData.name,
+						content: newLessonData.content || '',
+						order: lessons.length + 1,
+						position: lessons.length + 1,
+					};
+					updatedLessons = [...allLessons, newLesson];
+				}
+				
+				// Prepare sync data
+				const syncData = updatedLessons.map((lesson, index) => {
+					const isNewRecord = typeof lesson.id === 'string' && lesson.id.startsWith('new-');
+					return {
+						id: isNewRecord ? null : lesson.id,
+						classLessonName: lesson.name,
+						classLessonContent: lesson.content || '',
+						orderNumber: index + 1,
+						toBeDeleted: false,
+					};
+				});
+				
+				// Call sync API
+				await teacherManagementApi.syncClassLessons(chapterId, syncData);
+				
+				spaceToast.success(
+					editingChapter 
+						? t('lessonManagement.updateLessonSuccess')
+						: t('lessonManagement.addLessonSuccess')
+				);
+				
+				// Refresh lesson list after save
+				await fetchLessonsData(pagination.current, pagination.pageSize, searchText);
+			} catch (error) {
+				console.error('Error saving lesson:', error);
+				spaceToast.error(
+					error.response?.data?.error || 
+					error.response?.data?.message || 
+					(editingChapter ? t('lessonManagement.updateLessonError') : t('lessonManagement.addLessonError'))
+				);
+			}
+		}
+		
 		setEditingChapter(null);
 	};
 
@@ -806,10 +873,24 @@ const ClassChapterLesson = () => {
 			),
 			dataIndex: 'name',
 			key: 'name',
-			width: '80%',
+			width: '40%',
 			align: 'left',
 			render: (text) => (
 				<span style={{ fontSize: '20px', textAlign: 'left', display: 'block' }}>{text}</span>
+			),
+		},
+		{
+			title: () => (
+				<span style={{ textAlign: 'left', display: 'block' }}>{t('lessonManagement.content')}</span>
+			),
+			dataIndex: 'content',
+			key: 'content',
+			width: '40%',
+			align: 'left',
+			render: (text) => (
+				<span style={{ fontSize: '20px', textAlign: 'left', display: 'block' }}>
+					{text || t('lessonManagement.noContent')}
+				</span>
 			),
 		},
 		{
@@ -962,9 +1043,17 @@ const ClassChapterLesson = () => {
 			{/* Lesson Modal */}
 				<Modal
 					title={
-						editingChapter
-						? t('lessonManagement.editLesson')
-						: t('lessonManagement.addLesson')
+						<div style={{ 
+							fontSize: '28px', 
+							fontWeight: '600', 
+							color: 'rgb(24, 144, 255)',
+							textAlign: 'center',
+							padding: '10px 0'
+						}}>
+							{editingChapter
+								? t('lessonManagement.editLesson')
+								: t('lessonManagement.addLesson')}
+						</div>
 					}
 				open={isModalVisible}
 					onCancel={handleModalClose}
@@ -972,11 +1061,11 @@ const ClassChapterLesson = () => {
 					width={600}
 					destroyOnClose
 				>
-					<ChapterForm
-						chapter={editingChapter}
-						syllabus={classData?.syllabus}
+					<LessonForm
+						lesson={editingChapter}
+						chapter={chapterData}
 						onClose={handleModalClose}
-						isLesson={true}
+						theme={theme}
 					/>
 				</Modal>
 

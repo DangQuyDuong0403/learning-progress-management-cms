@@ -215,9 +215,28 @@ const ClassStudent = () => {
       }
     } catch (error) {
       console.error('Error fetching class data:', error);
+      
+      // Nếu là lỗi 403, redirect về class list
+      if (error.response?.status === 403) {
+        const userRole = user?.role?.toLowerCase();
+        let redirectPath = '/';
+        if (userRole === 'manager') {
+          redirectPath = ROUTER_PAGE.MANAGER_CLASSES;
+        } else if (userRole === 'teacher') {
+          redirectPath = ROUTER_PAGE.TEACHER_CLASSES;
+        } else if (userRole === 'teaching_assistant') {
+          redirectPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+        }
+        spaceToast.error('You do not have permission to access this class');
+        setTimeout(() => {
+          window.location.href = redirectPath;
+        }, 500);
+        return;
+      }
+      
       spaceToast.error(error.response?.data?.error);
     }
-  }, [id]);
+  }, [id, user]);
 
   const fetchStudents = useCallback(async (params = {}) => {
     try {
@@ -252,10 +271,29 @@ const ClassStudent = () => {
       } 
     } catch (error) {
       console.error('Error fetching students:', error);
+      
+      // // Nếu là lỗi 403, redirect về class list
+      // if (error.response?.status === 403) {
+      //   const userRole = user?.role?.toLowerCase();
+      //   let redirectPath = '/';
+      //   if (userRole === 'manager') {
+      //     redirectPath = ROUTER_PAGE.MANAGER_CLASSES;
+      //   } else if (userRole === 'teacher') {
+      //     redirectPath = ROUTER_PAGE.TEACHER_CLASSES;
+      //   } else if (userRole === 'teaching_assistant') {
+      //     redirectPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+      //   }
+      //   spaceToast.error('You do not have permission to access this class');
+      //   setTimeout(() => {
+      //     window.location.href = redirectPath;
+      //   }, 500);
+      //   return;
+      // }
+      
       spaceToast.error(error.response?.data?.error );
       setStudents([]);
     }
-  }, [id]);
+  }, [id, user]);
 
   // Fetch available students for adding to class
   const fetchAvailableStudents = useCallback(async (searchText = '', page = 0, append = false) => {
@@ -1104,6 +1142,25 @@ const ClassStudent = () => {
         }
       } catch (error) {
         console.error('Error fetching students:', error);
+        
+        // Nếu là lỗi 403, redirect về class list
+        if (error.response?.status === 403) {
+          const userRole = user?.role?.toLowerCase();
+          let redirectPath = '/';
+          if (userRole === 'manager') {
+            redirectPath = ROUTER_PAGE.MANAGER_CLASSES;
+          } else if (userRole === 'teacher') {
+            redirectPath = ROUTER_PAGE.TEACHER_CLASSES;
+          } else if (userRole === 'teaching_assistant') {
+            redirectPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+          }
+          spaceToast.error('You do not have permission to access this class');
+          setTimeout(() => {
+            window.location.href = redirectPath;
+          }, 500);
+          return;
+        }
+        
         spaceToast.error(error.response?.data?.error);
         setStudents([]);
       } finally {
