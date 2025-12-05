@@ -19,7 +19,7 @@ const translateWithBackendAPI = async (text, sourceLang = 'en', targetLang = 'vi
     const baseApi = base.includes('/api/v1')
       ? base.replace('/api/v1', '/api')
       : (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
-    const absoluteUrl = `${baseApi}/openai/translate`;
+    const absoluteUrl = `${baseApi}/translation/translate`;
 
     const response = await axiosClient.post(absoluteUrl, { text }, {
       headers: {
