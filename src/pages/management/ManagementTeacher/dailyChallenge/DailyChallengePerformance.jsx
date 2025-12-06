@@ -764,34 +764,42 @@ const DailyChallengePerformance = () => {
       <div className={`dcpr-wrapper ${theme}-dcpr-wrapper`}>
         {/* Action Section */}
         <div className="dcpr-action-section">
-          {userRole !== 'teaching_assistant' && (
-            <Button
-              className={`dcpr-tab-button ${theme}-dcpr-tab-button`}
-              onClick={() => {
-                // Preserve pagination state from location.state when navigating to content
-                const savedState = location.state || {};
-                const contentPath = userRole === 'manager'
-                  ? `/manager/daily-challenges/detail/${id}/content`
-                  : `/teacher/daily-challenges/detail/${id}/content`;
-                navigate(contentPath, {
-                  state: {
-                    ...challengeInfo,
-                    ...savedState, // Preserve pagination state
-                  }
-                });
-              }}
-            >
-              {t('dailyChallenge.content')}
-            </Button>
-          )}
+          <Button
+            className={`dcpr-tab-button ${theme}-dcpr-tab-button`}
+            onClick={() => {
+              // Preserve pagination state from location.state when navigating to content
+              const savedState = location.state || {};
+              let contentPath;
+              if (userRole === 'manager') {
+                contentPath = `/manager/daily-challenges/detail/${id}/content`;
+              } else if (userRole === 'teaching_assistant') {
+                contentPath = `/teaching-assistant/daily-challenges/detail/${id}/content`;
+              } else {
+                contentPath = `/teacher/daily-challenges/detail/${id}/content`;
+              }
+              navigate(contentPath, {
+                state: {
+                  ...challengeInfo,
+                  ...savedState, // Preserve pagination state
+                }
+              });
+            }}
+          >
+            {t('dailyChallenge.content')}
+          </Button>
           <Button
             className={`dcpr-tab-button ${theme}-dcpr-tab-button`}
             onClick={() => {
               // Preserve pagination state from location.state when navigating to submissions
               const savedState = location.state || {};
-              const submissionsPath = userRole === 'manager'
-                ? `/manager/daily-challenges/detail/${id}/submissions`
-                : `/teacher/daily-challenges/detail/${id}/submissions`;
+              let submissionsPath;
+              if (userRole === 'manager') {
+                submissionsPath = `/manager/daily-challenges/detail/${id}/submissions`;
+              } else if (userRole === 'teaching_assistant') {
+                submissionsPath = `/teaching-assistant/daily-challenges/detail/${id}/submissions`;
+              } else {
+                submissionsPath = `/teacher/daily-challenges/detail/${id}/submissions`;
+              }
               navigate(submissionsPath, {
                 state: {
                   ...challengeInfo,

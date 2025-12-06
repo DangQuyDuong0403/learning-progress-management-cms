@@ -2893,7 +2893,7 @@ const DailyChallengeContent = () => {
   const { id } = useParams();
   const { user } = useSelector((state) => state.auth);
   const normalizedRole = (user?.role || '').toLowerCase();
-  const isManager = normalizedRole === 'manager';
+  const isManager = normalizedRole === 'manager' || normalizedRole === 'teaching_assistant';
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount } = useDailyChallengeMenu();
   
   // Get data from navigation state or fetch from API
@@ -5361,7 +5361,7 @@ const DailyChallengeContent = () => {
             textAlign: 'center',
             marginBottom: '4px'
           }}>
-            {t('dailyChallenge.chooseQuestionCreationMethod') || 'Choose Question Creation Method'}
+            {t('dailyChallenge.chooseQuestionCreationMethod') || 'Question Creation Method'}
           </div>
         }
         open={reLiAddQuestionModalVisible}

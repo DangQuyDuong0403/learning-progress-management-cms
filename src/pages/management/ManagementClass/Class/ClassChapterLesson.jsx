@@ -876,7 +876,16 @@ const ClassChapterLesson = () => {
 			width: '40%',
 			align: 'left',
 			render: (text) => (
-				<span style={{ fontSize: '20px', textAlign: 'left', display: 'block' }}>{text}</span>
+				<span style={{ 
+					fontSize: '20px', 
+					textAlign: 'left', 
+					display: 'block',
+					wordWrap: 'break-word',
+					wordBreak: 'break-word',
+					whiteSpace: 'normal',
+					overflowWrap: 'break-word',
+					maxWidth: '100%'
+				}}>{text}</span>
 			),
 		},
 		{
@@ -888,7 +897,16 @@ const ClassChapterLesson = () => {
 			width: '40%',
 			align: 'left',
 			render: (text) => (
-				<span style={{ fontSize: '20px', textAlign: 'left', display: 'block' }}>
+				<span style={{ 
+					fontSize: '20px', 
+					textAlign: 'left', 
+					display: 'block',
+					wordWrap: 'break-word',
+					wordBreak: 'break-word',
+					whiteSpace: 'normal',
+					overflowWrap: 'break-word',
+					maxWidth: '100%'
+				}}>
 					{text || t('lessonManagement.noContent')}
 				</span>
 			),

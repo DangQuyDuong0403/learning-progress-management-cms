@@ -9360,7 +9360,61 @@ const StudentDailyChallengeTake = () => {
     const findIdByPosition = (pos) => {
       const p = String(pos ?? '').trim();
       const found = originalItems.find(it => String(it?.positionId ?? '').trim() === p);
-      return found?.id || (originalItems[0]?.id) || p;
+      return found?.id || null; // Don't fallback to first item - return null instead
+    };
+    // Helper to find ID by position and value together
+    const findIdByPositionAndValue = (pos, val) => {
+      const p = String(pos ?? '').trim();
+      const v = normalize(val);
+      // Only try exact match by positionId and value
+      // Don't fallback to value-only match as it ignores position
+      const exactMatch = originalItems.find(it => 
+        String(it?.positionId ?? '').trim() === p && normalize(it?.value) === v
+      );
+      return exactMatch?.id || null;
+    };
+    // Helper to find ID by position index (order of positions in question text)
+    const findIdByPositionIndex = (pos, val) => {
+      const posOrder = positionIdsByQuestionIdRef.current.get(questionId) || [];
+      const posIndex = posOrder.indexOf(String(pos ?? '').trim());
+      if (posIndex >= 0) {
+        const groupKeyFromId = (id) => {
+          if (!id || typeof id !== 'string') return id;
+          const match = id.match(/^([^_]+?\d+)/);
+          return (match && match[1]) || id.split('_')[0] || id;
+        };
+        
+        // Group items by their base key (opt1, opt2, etc.)
+        const groups = new Map();
+        originalItems.forEach(item => {
+          const groupKey = groupKeyFromId(item.id);
+          if (!groups.has(groupKey)) {
+            groups.set(groupKey, []);
+          }
+          groups.get(groupKey).push(item);
+        });
+        
+        // Get groups in order (sorted by their base key)
+        const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+          const numA = parseInt(a[0].match(/\d+/)?.[0] || '0', 10);
+          const numB = parseInt(b[0].match(/\d+/)?.[0] || '0', 10);
+          return numA - numB;
+        });
+        
+        // Get the group for this position index
+        if (posIndex < sortedGroups.length) {
+          const [, groupItems] = sortedGroups[posIndex];
+          // If value is provided, find the item in this group that matches the value
+          if (val) {
+            const valueMatch = groupItems.find(it => normalize(it?.value) === normalize(val));
+            if (valueMatch) return valueMatch.id;
+          }
+          // Otherwise, return the base item (first item without underscore in ID, or first item)
+          const baseItem = groupItems.find(it => !it.id.includes('_')) || groupItems[0];
+          return baseItem?.id || null;
+        }
+      }
+      return null;
     };
     const findValueById = (id) => {
       const found = originalItems.find(it => String(it?.id) === String(id));
@@ -9444,7 +9498,9 @@ const StudentDailyChallengeTake = () => {
       // Dropdown: answer is an object with positionId keys like { "qId_pos_1": "value", ... }
       // or a single value if not using positionId
       if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
-        Object.keys(answer).forEach(key => {
+        const answerKeys = Object.keys(answer);
+        // Process each answer key and track index for fallback
+        answerKeys.forEach((key, keyIndex) => {
           // Normalize to take only the suffix after '_pos_' or 'pos_'
           let positionId = null;
           if (key.includes('_pos_')) {
@@ -9459,8 +9515,73 @@ const StudentDailyChallengeTake = () => {
           }
           const value = answer[key];
           if (value) {
+            // Try multiple strategies to find the correct ID in order of preference:
+            // 1. Match by position index (for grouped items like opt1, opt2) - MOST IMPORTANT for dropdown
+            // 2. Exact match by positionId AND value
+            // 3. Match by positionId only
+            // 4. Fallback to key index if position-based methods fail
+            // 5. Match by value only (only as last resort)
+            let chosenId = null;
+            
+            // For dropdown, position index is the most reliable way to find the correct group
+            if (positionId) {
+              chosenId = findIdByPositionIndex(positionId, value) ||
+                         findIdByPositionAndValue(positionId, value) || 
+                         findIdByPosition(positionId);
+            }
+            
+            // If position-based methods failed, try using key index as position index
+            if (!chosenId && keyIndex >= 0) {
+              // Use keyIndex as position index fallback
+              const groupKeyFromId = (id) => {
+                if (!id || typeof id !== 'string') return id;
+                const match = id.match(/^([^_]+?\d+)/);
+                return (match && match[1]) || id.split('_')[0] || id;
+              };
+              
+              // Group items by their base key (opt1, opt2, etc.)
+              const groups = new Map();
+              originalItems.forEach(item => {
+                const groupKey = groupKeyFromId(item.id);
+                if (!groups.has(groupKey)) {
+                  groups.set(groupKey, []);
+                }
+                groups.get(groupKey).push(item);
+              });
+              
+              // Get groups in order (sorted by their base key)
+              const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+                const numA = parseInt(a[0].match(/\d+/)?.[0] || '0', 10);
+                const numB = parseInt(b[0].match(/\d+/)?.[0] || '0', 10);
+                return numA - numB;
+              });
+              
+              // Use keyIndex as position index
+              if (keyIndex < sortedGroups.length) {
+                const [, groupItems] = sortedGroups[keyIndex];
+                if (value) {
+                  const valueMatch = groupItems.find(it => normalize(it?.value) === normalize(value));
+                  if (valueMatch) chosenId = valueMatch.id;
+                }
+                if (!chosenId) {
+                  const baseItem = groupItems.find(it => !it.id.includes('_')) || groupItems[0];
+                  chosenId = baseItem?.id || null;
+                }
+              }
+            }
+            
+            // Only use value-based matching as absolute last resort
+            if (!chosenId) {
+              chosenId = findIdByValue(value);
+            }
+            
+            // Final fallback: use value as ID if nothing else works
+            if (!chosenId) {
+              chosenId = String(value);
+            }
+            
             contentData.push({
-              id: findIdByPosition(positionId),
+              id: chosenId,
               value: value,
               positionId: positionId
             });
@@ -9468,7 +9589,7 @@ const StudentDailyChallengeTake = () => {
         });
       } else if (typeof answer === 'string' && answer) {
         contentData.push({
-          id: findIdByPosition(null),
+          id: findIdByValue(answer) || originalItems[0]?.id || answer,
           value: answer,
           positionId: null
         });
@@ -9520,6 +9641,7 @@ const StudentDailyChallengeTake = () => {
           positionId: null
         });
       } else if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+        const posOrder = positionIdsByQuestionIdRef.current.get(questionId) || [];
         Object.keys(answer).forEach(key => {
           // Extract positionId: key format is "questionId_pos_positionId" or just "positionId"
           let positionId = key;
@@ -9532,7 +9654,25 @@ const StudentDailyChallengeTake = () => {
           const value = (raw && typeof raw === 'object' && 'value' in raw) ? raw.value : raw;
           // Include value even if it's an empty string to mirror RE behavior
           if (value !== null && value !== undefined) {
-            const chosenId = findIdByPosition(positionId) || findIdByValue(value) || (originalItems[0]?.id) || String(value);
+            // Try multiple strategies to find the correct ID
+            let chosenId = findIdByPositionAndValue(positionId, value) || 
+                          findIdByPosition(positionId) || 
+                          findIdByPositionIndex(positionId, value) ||
+                          findIdByValue(value);
+            
+            // If still no match, use position index to find the correct item
+            if (!chosenId && positionId) {
+              const posIndex = posOrder.indexOf(String(positionId).trim());
+              if (posIndex >= 0 && posIndex < originalItems.length) {
+                chosenId = originalItems[posIndex].id;
+              }
+            }
+            
+            // Final fallback: use the item at the position index, or first item, or value as ID
+            if (!chosenId) {
+              chosenId = originalItems[0]?.id || String(value);
+            }
+            
             contentData.push({ id: chosenId, value: String(value), positionId });
           }
         });
