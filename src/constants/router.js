@@ -162,6 +162,7 @@ const ROUTER_PAGE = {
 	TEACHING_ASSISTANT_DAILY_CHALLENGE_SUBMISSIONS: '/teaching-assistant/daily-challenges/detail/:id/submissions',
 	TEACHING_ASSISTANT_DAILY_CHALLENGE_SUBMISSION_DETAIL: '/teaching-assistant/daily-challenges/detail/:id/submissions/:submissionId',
 	TEACHING_ASSISTANT_DAILY_CHALLENGE_AI_FEEDBACK: '/teaching-assistant/daily-challenges/detail/:id/submissions/:submissionId/feedback/:submissionQuestionId',
+	TEACHING_ASSISTANT_DAILY_CHALLENGE_CONTENT: '/teaching-assistant/daily-challenges/detail/:id/content',
 	TEACHING_ASSISTANT_DAILY_CHALLENGE_PREVIEW: '/teaching-assistant/daily-challenges/detail/:id/preview',
 	TEACHING_ASSISTANT_CREATE_GRAMMAR_VOCAB_CHALLENGE: '/teaching-assistant/daily-challenges/create/grammar-vocabulary',
 	TEACHING_ASSISTANT_CREATE_READING_CHALLENGE: '/teaching-assistant/daily-challenges/create/reading',

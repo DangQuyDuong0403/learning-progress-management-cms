@@ -1842,6 +1842,7 @@
     "description": "Description",
     "duration": "Duration",
     "lessonType": "Lesson Type",
+    "importingForChapter": "Importing lessons for chapter:",
     "content": "Content",
     "noLessonName": "No lesson name",
     "noContent": "No content",
