@@ -1307,6 +1307,16 @@ const CONFIG_ROUTER = [
 		private: true,
 		role: ['teaching_assistant'],
 	},
+	{
+		show: false,
+		component: DailyChallengeContent,
+		path: ROUTER_PAGE.TEACHING_ASSISTANT_DAILY_CHALLENGE_CONTENT,
+		menuName: 'Daily Challenge Content',
+		exact: true,
+		key: 'TEACHING_ASSISTANT_DAILY_CHALLENGE_CONTENT',
+		private: true,
+		role: ['teaching_assistant'],
+	},
 
 	// TEACHING_ASSISTANT không có quyền truy cập preview page
 	// {
