@@ -5361,7 +5361,7 @@ const DailyChallengeContent = () => {
             textAlign: 'center',
             marginBottom: '4px'
           }}>
-            {t('dailyChallenge.chooseQuestionCreationMethod') || 'Choose Question Creation Method'}
+            {t('dailyChallenge.chooseQuestionCreationMethod') || 'Question Creation Method'}
           </div>
         }
         open={reLiAddQuestionModalVisible}
