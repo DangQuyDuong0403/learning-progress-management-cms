@@ -1065,7 +1065,7 @@ const AIGenerateQuestions = () => {
       const resp = await dailyChallengeApi.bulkSaveSections(id, sectionsDataArray);
       // After creating, force correct ordering: existing sections keep order, new ones appended
       try {
-        const afterRes = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 1000 });
+        const afterRes = await dailyChallengeApi.getSectionsByChallenge(id, { page: 0, size: 100 });
         const afterSections = Array.isArray(afterRes?.data) ? afterRes.data : (Array.isArray(afterRes) ? afterRes : []);
         const beforeIds = new Set(beforeSections.map(s => s?.section?.id ?? s?.id));
         const existingOrdered = beforeSections

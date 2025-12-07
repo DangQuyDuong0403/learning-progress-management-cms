@@ -63,7 +63,7 @@ const EnhancedPrivateRoute = ({ children, requiredRole = null }) => {
           );
 
           if (!isAllowedPath) {
-            console.warn('🚨 SECURITY ALERT: Attempted to bypass password reset');
+            console.warn('SECURITY ALERT: Attempted to bypass password reset');
             spaceToast.error('You must reset your password before accessing this area');
             
             // Redirect to appropriate reset password page based on role
@@ -85,7 +85,7 @@ const EnhancedPrivateRoute = ({ children, requiredRole = null }) => {
           const requiredRoleLower = requiredRole.toLowerCase();
           
           if (userRoleLower !== requiredRoleLower) {
-            console.warn(`🚨 AUTHORIZATION ERROR: User role ${userRole} does not match required role ${requiredRole}`);
+            console.warn(`AUTHORIZATION ERROR: User role ${userRole} does not match required role ${requiredRole}`);
             setIsAuthorized(false);
             setIsValidating(false);
             return;
