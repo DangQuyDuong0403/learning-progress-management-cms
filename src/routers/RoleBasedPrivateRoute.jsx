@@ -122,7 +122,7 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
 
         // 5. Kiểm tra trạng thái mustChangePassword
         if (mustChangePassword) {
-          console.warn('🚨 SECURITY ALERT: User must change password');
+          console.warn('SECURITY ALERT: User must change password');
           notifyOnce('You must complete password setup before accessing this area');
           setIsAuthorized(false);
           setIsValidating(false);
@@ -137,7 +137,7 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
           );
 
           if (!hasRequiredRole) {
-            console.warn(`🚨 AUTHORIZATION ERROR: User role ${userRole} not in required roles ${requiredRoles.join(', ')}`);
+            console.warn(`AUTHORIZATION ERROR: User role ${userRole} not in required roles ${requiredRoles.join(', ')}`);
             notifyOnce('You do not have permission to access this area');
             setIsAuthorized(false);
             setIsValidating(false);
@@ -152,7 +152,7 @@ const RoleBasedPrivateRoute = ({ children, requiredRoles = [], allowedPaths = []
           );
 
           if (!isPathAllowed) {
-            console.warn(`🚨 PATH ACCESS ERROR: Path ${location.pathname} not in allowed paths`);
+            console.warn(`PATH ACCESS ERROR: Path ${location.pathname} not in allowed paths`);
             notifyOnce('You do not have permission to access this path');
             setIsAuthorized(false);
             setIsValidating(false);
