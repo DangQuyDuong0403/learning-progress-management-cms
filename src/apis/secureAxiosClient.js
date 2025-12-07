@@ -68,7 +68,7 @@ axiosClient.interceptors.request.use(
 				);
 				
 				if (!isAllowedEndpoint) {
-					console.warn('🚨 SECURITY ALERT: Account must change password attempted unauthorized API call');
+					console.warn('SECURITY ALERT: Account must change password attempted unauthorized API call');
 					spaceToast.error('You must reset your password before accessing this feature');
 					
 					// Clear tokens và redirect
@@ -141,7 +141,7 @@ axiosClient.interceptors.response.use(
 				
 				// Nếu account vẫn phải đổi mật khẩu, ngăn chặn tiếp tục
 				if (mustChangePassword) {
-					console.warn('🚨 SECURITY ALERT: Refreshed token but still must change password');
+					console.warn('SECURITY ALERT: Refreshed token but still must change password');
 					localStorage.removeItem('accessToken');
 					localStorage.removeItem('refreshToken');
 					localStorage.removeItem('user');
@@ -180,7 +180,7 @@ axiosClient.interceptors.response.use(
 					(refreshErrorData.status && refreshErrorData.status.toUpperCase() === 'INACTIVE');
 
 				if (isAccountInactiveFromRefresh) {
-					console.warn('🚨 ACCOUNT INACTIVE: Refresh token failed due to inactive account');
+					console.warn(' ACCOUNT INACTIVE: Refresh token failed due to inactive account');
 					spaceToast.error('Your account has been deactivated. Please contact administrator.');
 				}
 				
@@ -229,7 +229,7 @@ axiosClient.interceptors.response.use(
 				errorMessage.toLowerCase().includes('account'));
 
 		if (isAccountInactive) {
-			console.warn('🚨 ACCOUNT INACTIVE: User account has been deactivated, logging out...');
+			console.warn('ACCOUNT INACTIVE: User account has been deactivated, logging out...');
 			spaceToast.error('Your account has been deactivated. Please contact administrator.');
 			
 			// Clear all tokens and user data
@@ -278,7 +278,7 @@ axiosClient.interceptors.response.use(
 
 		// Xử lý các lỗi khác
 		if (error.response?.status === 403) {
-			console.warn('🚨 FORBIDDEN: User does not have permission for this action');
+			console.warn('FORBIDDEN: User does not have permission for this action');
 		}
 
 		return Promise.reject(error);

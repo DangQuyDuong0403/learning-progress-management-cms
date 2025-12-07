@@ -67,7 +67,7 @@ export const useSecurityCheck = () => {
 
         // Nếu không secure, hiển thị cảnh báo và redirect
         if (!isSecure) {
-          console.warn('🚨 SECURITY ALERT: User attempted to access protected area - must change password');
+          console.warn('SECURITY ALERT: User attempted to access protected area - must change password');
           spaceToast.error('You must reset your password before accessing this area');
           
           // Redirect based on role

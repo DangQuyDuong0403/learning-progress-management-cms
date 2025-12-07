@@ -47,7 +47,7 @@ export const useAuthMonitor = () => {
         
         // Nếu tài khoản bị inactive, tự động logout
         if (accountStatus && accountStatus.toUpperCase() === 'INACTIVE') {
-          console.warn('🚨 ACCOUNT INACTIVE: Account status is INACTIVE, logging out...');
+          console.warn('ACCOUNT INACTIVE: Account status is INACTIVE, logging out...');
           spaceToast.error('Your account has been deactivated. Please contact administrator.');
           
           // Clear all tokens and user data
@@ -128,7 +128,7 @@ export const useAuthMonitor = () => {
   // Monitor profileData changes to detect status changes
   useEffect(() => {
     if (profileData?.status && profileData.status.toUpperCase() === 'INACTIVE') {
-      console.warn('🚨 ACCOUNT INACTIVE: Profile data shows INACTIVE status, logging out...');
+      console.warn('ACCOUNT INACTIVE: Profile data shows INACTIVE status, logging out...');
       spaceToast.error('Your account has been deactivated. Please contact administrator.');
       
       // Clear all tokens and user data
