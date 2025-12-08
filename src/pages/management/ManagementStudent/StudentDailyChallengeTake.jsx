@@ -34,6 +34,7 @@ import {
   getIPAddress
 } from '../../../utils/fingerprintUtils';
 import { notificationApi } from '../../../apis/apis';
+import { timeconfig } from "../../../constants/data";
 
 // Context for collecting answers from child components
 const AnswerCollectionContext = createContext(null);
@@ -227,7 +228,6 @@ const SectionQuestionItem = ({ question, index, theme, sectionScore, globalQuest
   const [availableItems, setAvailableItems] = useState({});
   const [dragOverPosition, setDragOverPosition] = useState({});
   const [reorderStates, setReorderStates] = useState({});
-
   const toPlainText = (html) => {
     if (!html) return '';
     return String(html)
@@ -9250,14 +9250,15 @@ const StudentDailyChallengeTake = () => {
     await saveQueueRef.current;
   };
 
-  // Auto-save interval every 70 seconds
+  // Auto-save interval (default from timeconfig)
+  const autoSaveIntervalMs = Number(timeconfig);
   useEffect(() => {
     if (loading || isViewOnly) return;
     const intervalId = setInterval(() => {
       autoSaveDraftSilently();
-    }, 70 * 1000);
+    }, autoSaveIntervalMs);
     return () => clearInterval(intervalId);
-  }, [loading, isViewOnly, submissionId]);
+  }, [loading, isViewOnly, submissionId, autoSaveIntervalMs]);
   // Upload any blob: or data:audio URLs inside formatted answers and replace with server URLs
   const replaceBlobUrlsInAnswers = async (questionAnswers) => {
     const uploadedCache = new Map();

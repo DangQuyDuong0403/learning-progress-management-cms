@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, memo, useRef } from "react";
 import {
   Button,
   Input,
@@ -58,7 +58,6 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  defaultAnimateLayoutChanges,
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -72,6 +71,60 @@ import {
   ReorderModal,
   RewriteModal,
 } from "./questionModals";
+
+// Custom PointerSensor with error handling to prevent crashes when event is undefined
+class SafePointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: 'onPointerDown',
+      handler: ({ nativeEvent: event, onActivation }) => {
+        try {
+          if (!event || !event.isPrimary || event.button !== 0) {
+            return false;
+          }
+          if (onActivation) {
+            onActivation({ event });
+          }
+          return true;
+        } catch (error) {
+          console.error('Error in SafePointerSensor activator:', error);
+          return false;
+        }
+      },
+    },
+  ];
+
+  handleMove(event) {
+    try {
+      if (!event || event === undefined) {
+        // Cancel drag if event is invalid
+        this.handleCancel(event);
+        return;
+      }
+      // Call parent handleMove with error handling
+      super.handleMove(event);
+    } catch (error) {
+      console.error('Error in SafePointerSensor handleMove:', error);
+      // Cancel drag on error
+      try {
+        this.handleCancel(event);
+      } catch (cancelError) {
+        // Ignore cancel errors
+      }
+    }
+  }
+
+  handleCancel(event) {
+    try {
+      if (super.handleCancel) {
+        super.handleCancel(event);
+      }
+    } catch (error) {
+      // Ignore cancel errors
+      console.error('Error in SafePointerSensor handleCancel:', error);
+    }
+  }
+}
 
 // Helper function to get full challenge type name
 const getChallengeTypeName = (typeCode) => {
@@ -100,7 +153,7 @@ const processPassageContent = (content, theme, challengeType) => {
 
 // Sortable Passage Item Component
 const SortablePassageItem = memo(
-  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType, activeDragDimensions, isManager, status }) => {
+  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType, activeId, isManager, status }) => {
     const [showTranscript, setShowTranscript] = useState(false);
     const [showMore, setShowMore] = useState(false);
     const passageContentRef = useRef(null);
@@ -132,13 +185,9 @@ const SortablePassageItem = memo(
     
     // Removed plain-text transcript conversion to preserve rich content (bold, images, tables)
     
-    // Optimized: Only animate during active sorting/dragging to reduce lag
-    const animateLayoutChanges = useCallback((args) => {
-      const { isSorting, wasDragging } = args;
-      if (isSorting || wasDragging) {
-        return defaultAnimateLayoutChanges(args);
-      }
-      // Skip animation when not actively sorting to improve performance
+    // Disable all layout animations when any item is being dragged to prevent snap-back
+    const animateLayoutChanges = useCallback(() => {
+      // If any item is being dragged, disable all animations to prevent snap-back
       return false;
     }, []);
 
@@ -147,7 +196,6 @@ const SortablePassageItem = memo(
       listeners,
       setNodeRef,
       transform,
-      transition,
       isDragging,
     } = useSortable({
       id: passage.id,
@@ -156,34 +204,84 @@ const SortablePassageItem = memo(
 
     // Store ref for the item
     const itemRef = useRef(null);
+    const transformRef = useRef(null);
+    const rafRef = useRef(null);
+    const isDraggingRef = useRef(false);
+    
+    // Update refs immediately when values change
+    isDraggingRef.current = isDragging;
+    if (transform) {
+      transformRef.current = transform;
+    }
+    
+    // Force update transform continuously when dragging using requestAnimationFrame
+    useLayoutEffect(() => {
+      if (isDragging && itemRef.current) {
+        const element = itemRef.current;
+        
+        const updateTransform = () => {
+          // Always use the latest transform from ref (updated from prop)
+          const currentTransform = transformRef.current;
+          if (element && currentTransform) {
+            const transformValue = CSS.Transform.toString(currentTransform);
+            // Force apply directly to DOM to override any resets
+            element.style.setProperty('transform', transformValue, 'important');
+            element.style.setProperty('transition', 'none', 'important');
+            element.style.setProperty('will-change', 'transform', 'important');
+          }
+          // Continue animation loop while dragging
+          if (isDraggingRef.current) {
+            rafRef.current = requestAnimationFrame(updateTransform);
+          }
+        };
+        
+        // Start the animation loop
+        rafRef.current = requestAnimationFrame(updateTransform);
+        
+        return () => {
+          if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = null;
+          }
+        };
+      } else {
+        // Clean up when not dragging
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+        // Reset inline styles when not dragging
+        if (itemRef.current) {
+          itemRef.current.style.removeProperty('transform');
+          itemRef.current.style.removeProperty('transition');
+          itemRef.current.style.removeProperty('will-change');
+        }
+      }
+    }, [isDragging, transform]);
 
     const style = useMemo(
       () => {
-        const baseStyle = {
-          transform: transform ? CSS.Transform.toString(transform) : undefined,
-          transition: isDragging ? 'none' : (transition || undefined), // No transition when dragging to reduce lag
-          opacity: isDragging ? 0.6 : 1,
-          willChange: isDragging ? 'transform' : 'auto', // Optimize only when dragging
-          pointerEvents: isDragging ? 'none' : 'auto', // Disable pointer events when dragging
-        };
-        
-        // Fix stretching/shrinking by preserving dimensions when dragging
-        if (isDragging && activeDragDimensions) {
-          return {
-            ...baseStyle,
-            width: `${activeDragDimensions.width}px`,
-            minWidth: `${activeDragDimensions.width}px`,
-            maxWidth: `${activeDragDimensions.width}px`,
-            height: `${activeDragDimensions.height}px`,
-            minHeight: `${activeDragDimensions.height}px`,
-            maxHeight: `${activeDragDimensions.height}px`,
-            boxSizing: 'border-box',
-          };
+        // When dragging, always provide transform to prevent snap-back
+        // The actual transform will be forced via requestAnimationFrame, but we still need it in style
+        let transformValue = undefined;
+        if (isDragging) {
+          // Always use transform from ref (which is updated from prop)
+          const currentTransform = transformRef.current || transform;
+          transformValue = currentTransform ? CSS.Transform.toString(currentTransform) : 'translate3d(0, 0, 0)';
+        } else {
+          transformValue = transform ? CSS.Transform.toString(transform) : undefined;
         }
         
-        return baseStyle;
+        return {
+          transform: transformValue,
+          transition: 'none', // Completely disable transitions to prevent snap-back
+          opacity: isDragging ? 0.8 : 1,
+          pointerEvents: isDragging ? 'none' : 'auto',
+          position: 'relative',
+          zIndex: isDragging ? 1000 : 'auto',
+        };
       },
-      [transform, transition, isDragging, activeDragDimensions]
+      [transform, isDragging]
     );
 
     const handleEdit = useCallback(() => {
@@ -1248,14 +1346,10 @@ const renderRearrangeQuestionInline = (question, theme) => {
 
 // Sortable Question Item Component
 const SortableQuestionItem = memo(
-  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t, challengeType, activeDragDimensions, isManager, status }) => {
-    // Optimized: Only animate during active sorting/dragging to reduce lag
-    const animateLayoutChanges = useCallback((args) => {
-      const { isSorting, wasDragging } = args;
-      if (isSorting || wasDragging) {
-        return defaultAnimateLayoutChanges(args);
-      }
-      // Skip animation when not actively sorting to improve performance
+  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t, challengeType, activeId, isManager, status }) => {
+    // Disable all layout animations when any item is being dragged to prevent snap-back
+    const animateLayoutChanges = useCallback(() => {
+      // If any item is being dragged, disable all animations to prevent snap-back
       return false;
     }, []);
 
@@ -1264,7 +1358,6 @@ const SortableQuestionItem = memo(
       listeners,
       setNodeRef,
       transform,
-      transition,
       isDragging,
     } = useSortable({
       id: question.id,
@@ -1273,34 +1366,84 @@ const SortableQuestionItem = memo(
 
     // Store ref for the item
     const itemRef = useRef(null);
+    const transformRef = useRef(null);
+    const rafRef = useRef(null);
+    const isDraggingRef = useRef(false);
+    
+    // Update refs immediately when values change
+    isDraggingRef.current = isDragging;
+    if (transform) {
+      transformRef.current = transform;
+    }
+    
+    // Force update transform continuously when dragging using requestAnimationFrame
+    useLayoutEffect(() => {
+      if (isDragging && itemRef.current) {
+        const element = itemRef.current;
+        
+        const updateTransform = () => {
+          // Always use the latest transform from ref (updated from prop)
+          const currentTransform = transformRef.current;
+          if (element && currentTransform) {
+            const transformValue = CSS.Transform.toString(currentTransform);
+            // Force apply directly to DOM to override any resets
+            element.style.setProperty('transform', transformValue, 'important');
+            element.style.setProperty('transition', 'none', 'important');
+            element.style.setProperty('will-change', 'transform', 'important');
+          }
+          // Continue animation loop while dragging
+          if (isDraggingRef.current) {
+            rafRef.current = requestAnimationFrame(updateTransform);
+          }
+        };
+        
+        // Start the animation loop
+        rafRef.current = requestAnimationFrame(updateTransform);
+        
+        return () => {
+          if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = null;
+          }
+        };
+      } else {
+        // Clean up when not dragging
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+        // Reset inline styles when not dragging
+        if (itemRef.current) {
+          itemRef.current.style.removeProperty('transform');
+          itemRef.current.style.removeProperty('transition');
+          itemRef.current.style.removeProperty('will-change');
+        }
+      }
+    }, [isDragging, transform]);
 
     const style = useMemo(
       () => {
-        const baseStyle = {
-          transform: transform ? CSS.Transform.toString(transform) : undefined,
-          transition: isDragging ? 'none' : (transition || undefined), // No transition when dragging to reduce lag
-          opacity: isDragging ? 0.6 : 1,
-          willChange: isDragging ? 'transform' : 'auto', // Optimize only when dragging
-          pointerEvents: isDragging ? 'none' : 'auto', // Disable pointer events when dragging
-        };
-        
-        // Fix stretching/shrinking by preserving dimensions when dragging
-        if (isDragging && activeDragDimensions) {
-          return {
-            ...baseStyle,
-            width: `${activeDragDimensions.width}px`,
-            minWidth: `${activeDragDimensions.width}px`,
-            maxWidth: `${activeDragDimensions.width}px`,
-            height: `${activeDragDimensions.height}px`,
-            minHeight: `${activeDragDimensions.height}px`,
-            maxHeight: `${activeDragDimensions.height}px`,
-            boxSizing: 'border-box',
-          };
+        // When dragging, always provide transform to prevent snap-back
+        // The actual transform will be forced via requestAnimationFrame, but we still need it in style
+        let transformValue = undefined;
+        if (isDragging) {
+          // Always use transform from ref (which is updated from prop)
+          const currentTransform = transformRef.current || transform;
+          transformValue = currentTransform ? CSS.Transform.toString(currentTransform) : 'translate3d(0, 0, 0)';
+        } else {
+          transformValue = transform ? CSS.Transform.toString(transform) : undefined;
         }
         
-        return baseStyle;
+        return {
+          transform: transformValue,
+          transition: 'none', // Completely disable transitions to prevent snap-back
+          opacity: isDragging ? 0.8 : 1,
+          pointerEvents: isDragging ? 'none' : 'auto',
+          position: 'relative',
+          zIndex: isDragging ? 1000 : 'auto',
+        };
       },
-      [transform, transition, isDragging, activeDragDimensions]
+      [transform, isDragging]
     );
 
     const handleEdit = useCallback(() => {
@@ -2914,7 +3057,7 @@ const DailyChallengeContent = () => {
   const [searchText, setSearchText] = useState("");
   
   // Store dimensions of item being dragged to prevent stretching/shrinking
-  const [activeDragDimensions, setActiveDragDimensions] = useState(null);
+  const [activeId, setActiveId] = useState(null); // Track which item is being dragged
   
   // Challenge Details states
   const [challengeDetails, setChallengeDetails] = useState(null);
@@ -2958,8 +3101,9 @@ const DailyChallengeContent = () => {
   const [exportLoading, setExportLoading] = useState(false);
 
   // Sensors for drag and drop - optimized for instant response (no delay like CreateReadingChallenge)
+  // Use SafePointerSensor to prevent crashes when event is undefined
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(SafePointerSensor, {
       activationConstraint: {
         distance: 5, // Reduced for faster response
         delay: 0, // No delay for instant drag start
@@ -4335,22 +4479,22 @@ const DailyChallengeContent = () => {
   }, []);
 
   const handleDragStart = useCallback((event) => {
-    const { active } = event;
-    document.body.style.overflow = 'hidden';
-    document.body.classList.add('is-dragging');
-    
-    // Capture dimensions of the item being dragged to prevent stretching/shrinking
-    // Use setTimeout to ensure DOM is ready
-    setTimeout(() => {
-      const activeNode = document.querySelector(`[data-id="${active.id}"]`);
-      if (activeNode) {
-        const rect = activeNode.getBoundingClientRect();
-        setActiveDragDimensions({ 
-          width: rect.width, 
-          height: rect.height 
-        });
+    try {
+      if (!event || !event.active) {
+        console.warn('Drag start event is invalid');
+        return;
       }
-    }, 0);
+      const { active } = event;
+      setActiveId(active.id); // Track active item
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('is-dragging');
+    } catch (error) {
+      console.error('Error in handleDragStart:', error);
+      // Cancel drag on error
+      setActiveId(null);
+      document.body.style.overflow = '';
+      document.body.classList.remove('is-dragging');
+    }
   }, []);
 
   useEffect(() => {
@@ -4360,15 +4504,27 @@ const DailyChallengeContent = () => {
     };
   }, []);
 
-  const handleDragEnd = useCallback((event) => {
-    const { active, over } = event;
+  const handleDragCancel = useCallback(() => {
+    // Cancel drag operation and clean up
+    setActiveId(null);
     document.body.style.overflow = '';
     document.body.classList.remove('is-dragging');
-    
-    // Clear active drag dimensions
-    setActiveDragDimensions(null);
+  }, []);
 
-    if (!over || active.id === over.id) return;
+  const handleDragEnd = useCallback((event) => {
+    try {
+      if (!event) {
+        console.warn('Drag end event is invalid');
+        // Clean up anyway
+        handleDragCancel();
+        return;
+      }
+      const { active, over } = event;
+      setActiveId(null); // Clear active item
+      document.body.style.overflow = '';
+      document.body.classList.remove('is-dragging');
+
+      if (!over || active.id === over.id) return;
 
     // Optimized: Use Map for O(1) lookup instead of findIndex O(n)
     const passageIdMap = new Map(passages.map((p, idx) => [p.id, idx]));
@@ -4429,7 +4585,12 @@ const DailyChallengeContent = () => {
         });
       });
     }
-  }, [passages, questions]);
+    } catch (error) {
+      console.error('Error in handleDragEnd:', error);
+      // Clean up on error
+      handleDragCancel();
+    }
+  }, [passages, questions, handleDragCancel]);
 
   // Filter questions (exclude deleted ones and apply search filter)
   const filteredQuestions = useMemo(() => {
@@ -5168,6 +5329,8 @@ const DailyChallengeContent = () => {
                 collisionDetection={closestCenter}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
+                dropAnimation={null}
               >
                 <SortableContext
                   items={
@@ -5191,7 +5354,7 @@ const DailyChallengeContent = () => {
                       theme={theme}
                       t={t}
                       challengeType={challengeDetails?.challengeType}
-                      activeDragDimensions={activeDragDimensions}
+                      activeId={activeId}
                       isManager={isManager}
                       status={status}
                     />
@@ -5211,7 +5374,7 @@ const DailyChallengeContent = () => {
                       theme={theme}
                       t={t}
                       challengeType={challengeDetails?.challengeType}
-                      activeDragDimensions={activeDragDimensions}
+                      activeId={activeId}
                       isManager={isManager}
                       status={status}
                     />

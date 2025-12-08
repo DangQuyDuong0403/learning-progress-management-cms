@@ -110,12 +110,12 @@ const LessonForm = ({ lesson, chapter, onClose, theme }) => {
 					placeholder={t('lessonManagement.contentPlaceholder')}
 					maxLength={1000}
 					showCount
-					style={{ marginBottom: '10px' }}
+					autoSize={{ minRows: 4, maxRows: 10 }}
 				/>
 			</Form.Item>
 
 			<Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-				<Space>
+				<Space style={{marginTop: '10px'}}>
 					<Button 
 						onClick={onCancel} 
 						size="large"

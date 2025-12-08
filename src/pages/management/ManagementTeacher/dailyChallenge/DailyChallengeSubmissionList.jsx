@@ -662,7 +662,8 @@ const DailyChallengeSubmissionList = () => {
         const status = (record?.submissionStatus || '').toString().toUpperCase();
         const actions = [];
 
-        if (status === 'SUBMITTED') {
+        // Managers should not see the Grade action
+        if (status === 'SUBMITTED' && !isManager) {
           actions.push({
             key: 'grade',
             element: (
