@@ -1,0 +1,1 @@
+export const timeconfig = 70*1000;  // 70 seconds
