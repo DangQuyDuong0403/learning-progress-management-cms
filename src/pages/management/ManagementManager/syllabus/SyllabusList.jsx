@@ -80,6 +80,7 @@ const SyllabusList = () => {
 	const [exportSelectedLoading, setExportSelectedLoading] = useState(false);
 	const [exportAllLoading, setExportAllLoading] = useState(false);
 	const [validateLoading, setValidateLoading] = useState(false);
+	const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
 	// Track which syllabuses are already attached to classes
 	const [syllabusUsageMap, setSyllabusUsageMap] = useState({});
@@ -650,19 +651,24 @@ const SyllabusList = () => {
 
 	// Bulk delete modal handlers
 	const handleBulkDeleteConfirm = async () => {
+		setBulkDeleteLoading(true);
 		try {
-			// TODO: Implement actual bulk delete API call
-			await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-			
+			// Call delete API for each selected syllabus
+			await Promise.all(
+				selectedRowKeys.map(id => syllabusManagementApi.deleteSyllabus(id))
+			);
+
 			// Update local state
-			setSyllabuses(syllabuses.filter(s => !selectedRowKeys.includes(s.id)));
-			
+			setSyllabuses(prev => prev.filter(s => !selectedRowKeys.includes(s.id)));
+
 			// Update totalElements
-			setTotalElements(prev => prev - selectedRowKeys.length);
-			
-			// Show success message
+			setTotalElements(prev => Math.max(0, prev - selectedRowKeys.length));
+
+			// Refresh list from server to ensure consistency
+			await fetchSyllabuses(pagination.current, pagination.pageSize, searchText, sortBy, sortDir);
+
 			spaceToast.success(`${t('syllabusManagement.bulkDeleteSuccess')} ${selectedRowKeys.length} ${selectedRowKeys.length === 1 ? 'Syllabus' : t('syllabusManagement.syllabuses')} ${t('common.success')}`);
-			
+
 			setIsBulkDeleteModalVisible(false);
 			setSelectedRowKeys([]);
 			fetchSyllabusUsage();
@@ -676,6 +682,8 @@ const SyllabusList = () => {
 				t('syllabusManagement.bulkDeleteError');
 			
 			spaceToast.error(errorMessage);
+		} finally {
+			setBulkDeleteLoading(false);
 		}
 	};
 
@@ -1405,6 +1413,7 @@ const SyllabusList = () => {
 			open={isBulkDeleteModalVisible}
 				onOk={handleBulkDeleteConfirm}
 				onCancel={handleBulkDeleteModalClose}
+				confirmLoading={bulkDeleteLoading}
 				okText={t('common.confirm')}
 				cancelText={t('common.cancel')}
 				width={500}

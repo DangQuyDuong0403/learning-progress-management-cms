@@ -47,6 +47,13 @@ let isRefreshing = false;
 let refreshPromise = null;
 let failedQueue = [];
 
+// Biến để tránh hiển thị nhiều toast message 403 cùng lúc
+let last403ToastTime = {
+	class: 0,
+	dailyChallenge: 0
+};
+const TOAST_DEBOUNCE_TIME = 2000; // 2 giây
+
 // Hàm để reset trạng thái refresh token
 const resetRefreshState = () => {
 	isRefreshing = false;
@@ -203,7 +210,7 @@ axiosClient.interceptors.response.use(
 			}
 		}
 
-		// Xử lý lỗi 403 (Forbidden) - có thể là do không có quyền truy cập class
+		// Xử lý lỗi 403 (Forbidden) - có thể là do không có quyền truy cập class hoặc daily challenge
 		if (error.response?.status === 403) {
 			const requestUrl = originalRequest?.url || '';
 			const currentPath = window.location.pathname;
@@ -215,6 +222,13 @@ axiosClient.interceptors.response.use(
 				requestUrl.includes('/class-student/') ||
 				requestUrl.includes('/class-management/') ||
 				requestUrl.includes('/classManagement/');
+			
+			// Kiểm tra xem có phải lỗi liên quan đến daily challenge không
+			const isDailyChallengeRelatedRequest = 
+				requestUrl.includes('/daily-challenges/') ||
+				requestUrl.includes('/reports/challenge/') ||
+				requestUrl.includes('/challenge-submissions/') ||
+				requestUrl.includes('/grading/challenges/');
 			
 			// Nếu là lỗi liên quan đến class và đang ở trang class, redirect về class list
 			if (isClassRelatedRequest) {
@@ -239,7 +253,12 @@ axiosClient.interceptors.response.use(
 						}
 					}
 					
-					// spaceToast.error('You do not have permission to access this class');
+					// Chỉ hiển thị toast nếu đã qua thời gian debounce
+					const now = Date.now();
+					if (now - last403ToastTime.class > TOAST_DEBOUNCE_TIME) {
+						last403ToastTime.class = now;
+						spaceToast.error('You do not have permission to access this class');
+					}
 					
 					// Chỉ redirect nếu không phải đang ở trang đó rồi
 					if (window.location.pathname !== redirectPath) {
@@ -249,6 +268,50 @@ axiosClient.interceptors.response.use(
 					}
 					
 					return Promise.reject(new Error('Forbidden: No permission to access this class'));
+				}
+			}
+			
+			// Nếu là lỗi liên quan đến daily challenge và đang ở trang daily challenge, redirect về daily challenge list
+			if (isDailyChallengeRelatedRequest) {
+				const isOnDailyChallengePage = 
+					currentPath.includes('/daily-challenges/') ||
+					currentPath.includes('/teacher/daily-challenges/') ||
+					currentPath.includes('/manager/daily-challenges/') ||
+					currentPath.includes('/teaching-assistant/daily-challenges/');
+				
+				if (isOnDailyChallengePage) {
+					const accessToken = localStorage.getItem('accessToken');
+					const userRole = accessToken ? getRoleFromToken(accessToken) : null;
+					
+					// Redirect về daily challenge list hoặc class list dựa trên role
+					let redirectPath = '/';
+					if (userRole) {
+						const roleLower = userRole.toLowerCase();
+						if (roleLower === 'manager') {
+							// Manager không có daily challenge list riêng, redirect về class list
+							redirectPath = ROUTER_PAGE.MANAGER_CLASSES;
+						} else if (roleLower === 'teacher') {
+							redirectPath = ROUTER_PAGE.TEACHER_CLASSES;
+						} else if (roleLower === 'teaching_assistant' || roleLower === 'teaching assistant') {
+							redirectPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+						}
+					}
+					
+					// Chỉ hiển thị toast nếu đã qua thời gian debounce
+					const now = Date.now();
+					if (now - last403ToastTime.dailyChallenge > TOAST_DEBOUNCE_TIME) {
+						last403ToastTime.dailyChallenge = now;
+						spaceToast.error('You do not have permission to access this daily challenge');
+					}
+					
+					// Chỉ redirect nếu không phải đang ở trang đó rồi
+					if (window.location.pathname !== redirectPath) {
+						setTimeout(() => {
+							window.location.href = redirectPath;
+						}, 500); // Delay nhỏ để toast message hiển thị
+					}
+					
+					return Promise.reject(new Error('Forbidden: No permission to access this daily challenge'));
 				}
 			}
 		}

@@ -283,29 +283,22 @@ const StudentList = () => {
 
   // Calculate checkbox states with useMemo
   const checkboxStates = useMemo(() => {
-    // Include all students (including PENDING) for selection
-    const currentPageKeys = students.map(student => student.id);
+    // Only allow selecting non-PENDING students
+    const currentPageSelectableKeys = students.filter(student => student.status !== 'PENDING').map(student => student.id);
     const selectedCount = selectedRowKeys.length;
-    
-    // Check if all items on current page are selected
-    const allCurrentPageSelected = currentPageKeys.length > 0 && 
-      currentPageKeys.every(key => selectedRowKeys.includes(key));
-    
-    // For table header checkbox: check if all current page items are selected
-    const isSelectAll = allCurrentPageSelected;
-    // Never show indeterminate state for table header checkbox
-    const isIndeterminate = false;
-    
-    return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
+
+    const allCurrentPageSelected = currentPageSelectableKeys.length > 0 &&
+      currentPageSelectableKeys.every(key => selectedRowKeys.includes(key));
+
+    return { isSelectAll: allCurrentPageSelected, isIndeterminate: false, totalItems: currentPageSelectableKeys.length, selectedCount };
   }, [selectedRowKeys, students]);
 
   // Handle table header checkbox (only current page)
   const handleSelectAllCurrentPage = (checked) => {
-    // Include all students (including PENDING) from current page
-    const currentPageKeys = students.map(student => student.id);
-    
+    // Only select ACTIVE/INACTIVE students on current page
+    const currentPageKeys = students.filter(student => student.status !== 'PENDING').map(student => student.id);
+
     if (checked) {
-      // Add all current page items to selection
       setSelectedRowKeys(prev => {
         const newKeys = [...prev];
         currentPageKeys.forEach(key => {
@@ -316,7 +309,6 @@ const StudentList = () => {
         return newKeys;
       });
     } else {
-      // Remove all current page items from selection
       setSelectedRowKeys(prev => prev.filter(key => !currentPageKeys.includes(key)));
     }
   };
@@ -348,8 +340,8 @@ const StudentList = () => {
 
         const response = await studentManagementApi.getStudents(params);
 
-        // Get all IDs from the response (including PENDING records)
-        const allKeys = response.data.map(student => student.id);
+        // Get all IDs from the response excluding PENDING records
+        const allKeys = response.data.filter(student => student.status !== 'PENDING').map(student => student.id);
         setSelectedRowKeys(allKeys);
       } catch (error) {
         console.error('Error fetching all student IDs:', error);
@@ -361,7 +353,7 @@ const StudentList = () => {
   };
 
   const handleSelectRow = (record, checked) => {
-    // Allow selection of all students including PENDING records
+    if (record.status === 'PENDING') return; // Do not allow selecting PENDING students
     if (checked) {
       setSelectedRowKeys(prev => [...prev, record.id]);
     } else {
@@ -528,6 +520,7 @@ const StudentList = () => {
       render: (_, record) => (
         <Checkbox
           checked={selectedRowKeys.includes(record.id)}
+          disabled={record.status === 'PENDING'}
           onChange={(e) => handleSelectRow(record, e.target.checked)}
           style={{
             transform: 'scale(1.2)'
