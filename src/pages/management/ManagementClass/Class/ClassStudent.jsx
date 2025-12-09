@@ -55,9 +55,9 @@ const ClassStudent = () => {
   const { id } = useParams();
   const { theme } = useTheme();
   const { user } = useSelector((state) => state.auth);
-  const { enterClassMenu, exitClassMenu } = useClassMenu();
+  const { enterClassMenu, exitClassMenu, classData: classMenuData, isViewOnly: contextViewOnly, updateClassStatus } = useClassMenu();
   const currentPath = useMemo(() => `${location.pathname}${location.search}`, [location.pathname, location.search]);
-  const userRole = user?.role?.toLowerCase();
+  const userRole = useMemo(() => user?.role?.toLowerCase(), [user]);
   const classMenuBackUrl = useMemo(() => {
     if (!id) return null;
     if (userRole === 'manager') {
@@ -88,7 +88,7 @@ const ClassStudent = () => {
   const [classData, setClassData] = useState(null);
   
   // Check if class is finished (hide add, import, delete buttons)
-  const isClassFinished = classData?.status === 'FINISHED';
+  const isClassFinished = contextViewOnly || classMenuData?.status === 'FINISHED' || classData?.status === 'FINISHED';
   const [searchText, setSearchText] = useState("");
   const [studentSearchText, setStudentSearchText] = useState(""); // Search text for student modal
   const [statusFilter, setStatusFilter] = useState(['ACTIVE','INACTIVE']); // Changed to array to support multiple statuses
@@ -202,13 +202,15 @@ const ClassStudent = () => {
           status: data.status ?? data.classStatus ?? null,
         };
         setClassData(mapped);
+        if (mapped.status) {
+          updateClassStatus(mapped.status);
+        }
       }
     } catch (error) {
       console.error('Error fetching class data:', error);
       
       // Nếu là lỗi 403, redirect về class list
       if (error.response?.status === 403) {
-        const userRole = user?.role?.toLowerCase();
         let redirectPath = '/';
         if (userRole === 'manager') {
           redirectPath = ROUTER_PAGE.MANAGER_CLASSES;
@@ -226,7 +228,7 @@ const ClassStudent = () => {
       
       spaceToast.error(error.response?.data?.error);
     }
-  }, [id, user]);
+  }, [id, userRole, updateClassStatus]);
 
   const fetchStudents = useCallback(async (params = {}) => {
     try {
@@ -283,7 +285,7 @@ const ClassStudent = () => {
       spaceToast.error(error.response?.data?.error );
       setStudents([]);
     }
-  }, [id, user]);
+  }, [id]);
 
   // Fetch available students for adding to class
   const fetchAvailableStudents = useCallback(async (searchText = '', page = 0, append = false) => {
@@ -444,34 +446,22 @@ const ClassStudent = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]); // Only run when id changes
 
-  // Ensure header back button appears immediately while class info loads
+  // Enter class menu mode (single effect to avoid loops)
   useEffect(() => {
-    if (id) {
-      enterClassMenu({ id, backUrl: classMenuBackUrl });
-    }
-    return () => {
-      exitClassMenu();
+    if (!id) return;
+    const payload = classData ? {
+      id: classData.id,
+      name: classData.name,
+      description: classData.name,
+      backUrl: classMenuBackUrl,
+      status: classData.status,
+    } : {
+      id,
+      backUrl: classMenuBackUrl,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, classMenuBackUrl]); // Only run when id changes
-
-  // Enter class menu mode when component mounts
-  useEffect(() => {
-    if (classData) {
-      enterClassMenu({
-        id: classData.id,
-        name: classData.name,
-        description: classData.name,
-        backUrl: classMenuBackUrl,
-      });
-    }
-    
-    // Cleanup function to exit class menu mode when leaving
-    return () => {
-      exitClassMenu();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classData?.id, classData?.name, classMenuBackUrl]); // Only run when these specific values change
+    enterClassMenu(payload);
+    return () => exitClassMenu();
+  }, [id, classMenuBackUrl, classData, enterClassMenu, exitClassMenu]);
 
   const handleAddStudent = () => {
     setButtonLoading(prev => ({ ...prev, add: true }));

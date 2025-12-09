@@ -55,7 +55,6 @@ const SyllabusList = () => {
 	const [totalElements, setTotalElements] = useState(0);
 	const [searchText, setSearchText] = useState('');
 	const [currentView] = useState('syllabuses'); // 'syllabuses', 'chapters', 'lessons'
-	const [searchTimeout, setSearchTimeout] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
 	const [sortDir, setSortDir] = useState('desc');
 	
@@ -93,6 +92,8 @@ const SyllabusList = () => {
 		showSizeChanger: true,
 		showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
 	});
+
+	const { current: currentPage, pageSize } = pagination;
 
 	// Fetch class list to determine which syllabuses are already used
 	const fetchSyllabusUsage = useCallback(async () => {
@@ -189,8 +190,18 @@ const SyllabusList = () => {
 
 
 	useEffect(() => {
-		fetchSyllabuses(1, pagination.pageSize, searchText, sortBy, sortDir);
-	}, [fetchSyllabuses, searchText, sortBy, sortDir, pagination.pageSize]);
+		const debounceId = setTimeout(() => {
+			fetchSyllabuses(
+				currentPage,
+				pageSize,
+				searchText,
+				sortBy,
+				sortDir
+			);
+		}, 500);
+
+		return () => clearTimeout(debounceId);
+	}, [fetchSyllabuses, currentPage, pageSize, searchText, sortBy, sortDir]);
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
@@ -208,16 +219,6 @@ const SyllabusList = () => {
 		
 		return { isSelectAll, isIndeterminate, totalItems: currentPageKeys.length, selectedCount };
 	}, [selectedRowKeys, syllabuses]);
-
-	// Cleanup timeout on unmount
-	useEffect(() => {
-		return () => {
-			if (searchTimeout) {
-				clearTimeout(searchTimeout);
-			}
-		};
-	}, [searchTimeout]);
-
 
 	const handleAdd = () => {
 		setEditingSyllabus(null);
@@ -287,20 +288,9 @@ const SyllabusList = () => {
 	};
 
 	const handleSearch = (value) => {
+		// Reset to first page when searching
+		setPagination(prev => ({ ...prev, current: 1 }));
 		setSearchText(value);
-		
-		// Clear existing timeout
-		if (searchTimeout) {
-			clearTimeout(searchTimeout);
-		}
-		
-		// Set new timeout for 1 second delay
-		const newTimeout = setTimeout(() => {
-			// Reset to first page when searching
-			fetchSyllabuses(1, pagination.pageSize, value, sortBy, sortDir);
-		}, 1000);
-		
-		setSearchTimeout(newTimeout);
 	};
 
 	const handleTableChange = (pagination, filters, sorter) => {

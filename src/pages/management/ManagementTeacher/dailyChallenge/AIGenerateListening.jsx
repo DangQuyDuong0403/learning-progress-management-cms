@@ -440,6 +440,20 @@ const AIGenerateListening = () => {
       setGenerationProgress(0);
       setShowPreview(false);
       const res = await dailyChallengeApi.parseQuestionsFromFile(uploadedFile, prompt || '');
+      // Extract transcript/content returned by backend so the section can be saved
+      const detectedTranscript =
+        res?.data?.transcript ||
+        res?.data?.content ||
+        res?.transcript ||
+        res?.content ||
+        res?.data?.sectionsContent ||
+        res?.sectionsContent ||
+        '';
+      const fallbackTranscript = prompt || '';
+      const finalTranscript = (detectedTranscript && String(detectedTranscript).trim()) || fallbackTranscript;
+      if (finalTranscript) {
+        setPrompt(finalTranscript);
+      }
       let rawList = [];
       if (Array.isArray(res)) rawList = res; else if (Array.isArray(res?.questions)) rawList = res.questions; else if (Array.isArray(res?.data?.questions)) rawList = res.data.questions; else if (Array.isArray(res?.data)) rawList = res.data; else if (Array.isArray(res?.result?.questions)) rawList = res.result.questions;
       const normalized = normalizeQuestionsFromAI(rawList);
@@ -463,7 +477,7 @@ const AIGenerateListening = () => {
       setIsGenerating(false);
       setGenerationProgress(0);
     }
-  }, [uploadedFile, prompt, normalizeQuestionsFromAI, getBackendMessage]);
+  }, [uploadedFile, prompt, normalizeQuestionsFromAI, getBackendMessage, t]);
 
   // Simulate progress when generating
   useEffect(() => {
@@ -676,20 +690,19 @@ const AIGenerateListening = () => {
               backdropFilter: 'blur(6px)', 
               boxShadow: theme === 'sun' ? '0 8px 24px rgba(24, 144, 255, 0.12)' : '0 8px 24px rgba(139, 92, 246, 0.12)', 
               padding: 16,
-              maxWidth: challengeInfo.aiSource === 'file' ? '650px' : '100%',
-              width: challengeInfo.aiSource === 'file' ? 'auto' : '100%',
-              margin: challengeInfo.aiSource === 'file' ? '0 auto' : '0'
+              width: '100%'
             }}
             bodyStyle={{ padding: 16 }}
           >
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: challengeInfo.aiSource === 'file' ? '1fr' : '2fr 1fr', 
+              gridTemplateColumns: '2fr 1fr', 
               gap: '20px', 
               alignItems: 'stretch',
               width: '100%'
             }}>
-              {challengeInfo.aiSource !== 'file' && (
+              {/* Left column: AI Generation Settings / Transcript & Audio (for file mode) */}
+              {challengeInfo.aiSource !== 'file' ? (
               <Card
                 className={`prompt-description-card ${theme}-prompt-description-card`}
                 style={{ borderRadius: '16px', border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.25)' : '2px solid rgba(138, 122, 255, 0.2)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', backdropFilter: 'blur(10px)', minHeight: '540px', height: '100%', display: 'flex', flexDirection: 'column' }}
@@ -1148,8 +1161,157 @@ const AIGenerateListening = () => {
                 />
                 </div>
               </Card>
+              ) : (
+                // File mode: Show Transcript and Audio upload on the left
+                <Card
+                  className={`prompt-description-card ${theme}-prompt-description-card`}
+                  style={{ borderRadius: '16px', border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.25)' : '2px solid rgba(138, 122, 255, 0.2)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', backdropFilter: 'blur(10px)', minHeight: '540px', height: '100%', display: 'flex', flexDirection: 'column' }}
+                  bodyStyle={{ padding: '20px', maxHeight: '600px', overflowY: 'auto' }}
+                >
+                  <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px', marginBottom: '20px' }}>
+                    {t('dailyChallenge.transcriptAndAudio', 'Transcript & Audio')}
+                  </Title>
+
+                  {/* Chapter and Lesson - Read-only */}
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                    {/* Chapter - Read-only */}
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
+                        {t('dailyChallenge.chapter', 'Chapter')}
+                      </Typography.Text>
+                      <div
+                        style={{
+                          width: '100%',
+                          minHeight: '36px',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          border: `2px solid ${theme === 'sun' ? '#d9d9d9' : '#666'}`,
+                          background: theme === 'sun' ? '#f5f5f5' : 'rgba(100, 100, 100, 0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          transition: 'all 0.3s ease',
+                          position: 'relative',
+                          zIndex: 10,
+                          cursor: 'default',
+                          opacity: 0.6
+                        }}
+                      >
+                        <span style={{ 
+                          color: hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name
+                            ? (theme === 'sun' ? '#666' : '#999') 
+                            : (theme === 'sun' ? '#999' : '#999'),
+                          fontSize: '14px',
+                          fontWeight: 400
+                        }}>
+                          {hierarchy?.chapter?.chapterName || hierarchy?.chapter?.name || '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Lesson - Read-only */}
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#999' : '#999', fontSize: '16px', fontWeight: 400 }}>
+                        {t('dailyChallenge.lesson', 'Lesson')}
+                      </Typography.Text>
+                      <div
+                        style={{
+                          width: '100%',
+                          minHeight: '36px',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          border: `2px solid ${theme === 'sun' ? '#d9d9d9' : '#666'}`,
+                          background: theme === 'sun' ? '#f5f5f5' : 'rgba(100, 100, 100, 0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          transition: 'all 0.3s ease',
+                          position: 'relative',
+                          zIndex: 10,
+                          cursor: 'default',
+                          opacity: 0.6
+                        }}
+                      >
+                        <span style={{ 
+                          color: hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name
+                            ? (theme === 'sun' ? '#666' : '#999') 
+                            : (theme === 'sun' ? '#999' : '#999'),
+                          fontSize: '14px',
+                          fontWeight: 400
+                        }}>
+                          {hierarchy?.lesson?.lessonName || hierarchy?.lesson?.name || '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Audio upload (required for Listening) */}
+                  <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px', position: 'relative' }}>
+                      <Title level={5} style={{ margin: 0, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: '600' }}>{t('dailyChallenge.audioFileMp3', 'Audio File (MP3)')}</Title>
+                      {audioUrl && (
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          style={{ fontSize: '12px', padding: '0 8px', position: 'absolute', right: 0 }}
+                          onClick={() => {
+                            if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
+                            setUploadedAudioFileName('');
+                            setAudioUrl(null);
+                            setAudioPreviewUrl(null);
+                          }}
+                        >
+                          {t('dailyChallenge.remove', 'Remove')}
+                        </Button>
+                      )}
+                    </div>
+
+                    {audioUrl ? (
+                      <div style={{ padding: '6px', background: theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)', borderRadius: '6px', border: theme === 'sun' ? '1px solid rgba(113, 179, 253, 0.3)' : '1px solid rgba(138, 122, 255, 0.3)', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 500, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{uploadedAudioFileName || t('dailyChallenge.audioFileUploaded', 'Audio file uploaded')}</span>
+                        </div>
+                        <audio controls style={{ width: '100%', height: '26px' }} volume={1.0} onLoadedMetadata={(e) => { e.target.volume = 1.0; }}>
+                          <source src={audioPreviewUrl || audioUrl} type="audio/mpeg" />
+                          {t('dailyChallenge.yourBrowserDoesNotSupport', 'Your browser does not support the audio element.')}
+                        </audio>
+                      </div>
+                    ) : (
+                      <Card hoverable style={{ opacity: isProcessingAudio ? 0.6 : 1, borderRadius: '6px', border: theme === 'sun' ? '1px dashed rgba(113, 179, 253, 0.3)' : '1px dashed rgba(138, 122, 255, 0.3)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.3) 0%, rgba(186, 231, 255, 0.2) 100%)' : 'rgba(255, 255, 255, 0.3)', cursor: isProcessingAudio ? 'not-allowed' : 'pointer', textAlign: 'center', padding: '8px' }}>
+                        <Upload accept=".mp3" beforeUpload={handleUploadAudio} showUploadList={false} disabled={isProcessingAudio}>
+                          <Space direction="vertical" size="small">
+                            <span style={{ fontSize: 18 }}>🎵</span>
+                            <div>
+                              <Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '12px' }}>
+                                {isProcessingAudio ? (uploadedAudioFileName ? t('dailyChallenge.processingAudioFile', 'Processing "{{fileName}}"...', { fileName: uploadedAudioFileName }) : t('dailyChallenge.processing', 'Processing...')) : t('dailyChallenge.uploadAudioFile', 'Upload Audio File')}
+                              </Text>
+                              <br />
+                              <Text style={{ color: '#999', fontSize: '10px' }}>{t('dailyChallenge.mp3Max10MB', 'MP3 (max 10MB)')}</Text>
+                            </div>
+                          </Space>
+                        </Upload>
+                      </Card>
+                    )}
+                  </div>
+
+                  {/* Transcript */}
+                  <div style={{ marginTop: '16px' }}>
+                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                      {t('dailyChallenge.transcript', 'Transcript')}
+                    </Typography.Text>
+                    <TextArea
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      autoSize={{ minRows: 10, maxRows: 14 }}
+                      placeholder={t('dailyChallenge.pleaseAddTranscript', 'Please add transcript')}
+                      style={{ marginTop: 0, fontSize: '14px', borderRadius: '8px', border: `2px solid ${primaryColor}99`, background: theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)', outline: 'none', boxShadow: 'none', minHeight: '300px' }}
+                    />
+                  </div>
+                </Card>
               )}
 
+              {/* Right column: Question Type Configuration / Upload */}
               <Card
                 className={`prompt-description-card ${theme}-prompt-description-card`}
                 style={{ borderRadius: '16px', border: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.25)' : '2px solid rgba(138, 122, 255, 0.2)', boxShadow: theme === 'sun' ? '0 4px 16px rgba(113, 179, 253, 0.1)' : '0 4px 16px rgba(138, 122, 255, 0.12)', background: theme === 'sun' ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)' : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)', backdropFilter: 'blur(10px)', height: '100%', display: 'flex', flexDirection: 'column' }}

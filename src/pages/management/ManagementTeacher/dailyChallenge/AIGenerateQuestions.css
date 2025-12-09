@@ -619,30 +619,39 @@
 
 /* CKEditor styles for generated passage - Override other CSS */
 .passage-ckeditor-wrapper {
-  min-height: 400px !important;
+  min-height: 400px;
+  width: 100%;
+  min-width: 100%;
 }
 
 .passage-ckeditor-wrapper .ck.ck-editor {
-  min-height: 400px !important;
+  min-height: 400px;
+  width: 100%;
+  min-width: 100%;
 }
 
 .passage-ckeditor-wrapper .ck.ck-editor__main {
-  min-height: 400px !important;
-  display: flex !important;
-  flex-direction: column !important;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
 .passage-ckeditor-wrapper .ck.ck-editor__main > .ck-editor__editable {
-  color: #000000 !important;
-  background: #ffffff !important;
-  min-height: 400px !important;
-  max-height: none !important;
-  height: auto !important;
-  padding: 16px !important;
-  font-size: 15px !important;
-  line-height: 1.6 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  color: #000000;
+  background: #ffffff;
+  min-height: 400px;
+  max-height: none;
+  height: auto;
+  padding: 16px;
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Disable text truncation/ellipsis */
+  text-overflow: clip;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .passage-ckeditor-wrapper .ck-editor__editable p,
@@ -655,9 +664,112 @@
 .passage-ckeditor-wrapper .ck-editor__editable h4,
 .passage-ckeditor-wrapper .ck-editor__editable h5,
 .passage-ckeditor-wrapper .ck-editor__editable h6 {
-  color: #000000 !important;
+  color: #000000;
+  /* Disable text truncation/ellipsis for all text elements */
+  text-overflow: clip;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: visible;
 }
 
 .passage-ckeditor-wrapper .ck-editor__editable.ck-focused {
-  color: #000000 !important;
+  color: #000000;
+}
+
+/* Disable toolbar collapse/grouping - Always show all toolbar items */
+.passage-ckeditor-wrapper .ck.ck-toolbar {
+  overflow: visible;
+  flex-wrap: wrap;
+  min-width: 100%;
+  width: 100%;
+  max-width: 100%;
+}
+
+.passage-ckeditor-wrapper .ck.ck-toolbar__items {
+  overflow: visible;
+  flex-wrap: wrap;
+  min-width: 100%;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.passage-ckeditor-wrapper .ck.ck-toolbar__separator {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Prevent toolbar from collapsing into dropdown menu */
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items > * {
+  display: inline-flex;
+  visibility: visible;
+  flex-shrink: 0;
+}
+
+/* Hide the overflow menu button (3 dots) that groups items */
+.passage-ckeditor-wrapper .ck.ck-toolbar__separator.ck-toolbar__separator_grouping,
+.passage-ckeditor-wrapper .ck-toolbar__separator_grouping {
+  display: none;
+}
+
+/* Ensure all toolbar items are visible and not hidden in overflow menu */
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-button,
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-dropdown {
+  display: inline-flex;
+  visibility: visible;
+  opacity: 1;
+  flex-shrink: 0;
+}
+
+/* Force toolbar to always show all items, even at 125% zoom */
+.passage-ckeditor-wrapper .ck.ck-editor__top {
+  min-width: 100%;
+  width: 100%;
+}
+
+.passage-ckeditor-wrapper .ck.ck-editor__top .ck-toolbar {
+  min-width: 100%;
+  width: 100%;
+}
+
+/* Prevent CKEditor from creating overflow menu at any zoom level */
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items {
+  max-width: none;
+}
+
+/* Ensure toolbar items container doesn't restrict width */
+.passage-ckeditor-wrapper .ck.ck-toolbar__items {
+  max-width: none;
+  width: auto;
+  min-width: 0;
+}
+
+/* Force all toolbar buttons and dropdowns to be visible */
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-button,
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-dropdown,
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-splitbutton {
+  flex-shrink: 0;
+  min-width: auto;
+}
+
+/* Ensure parent containers don't restrict toolbar width */
+.passage-ckeditor-wrapper .ck.ck-editor__top,
+.passage-ckeditor-wrapper .ck.ck-editor__top > .ck-toolbar {
+  box-sizing: border-box;
+}
+
+/* Allow toolbar to expand and wrap at 125% zoom */
+@media screen {
+  .passage-ckeditor-wrapper .ck.ck-toolbar {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .passage-ckeditor-wrapper .ck.ck-toolbar__items {
+    width: 100%;
+    box-sizing: border-box;
+  }
 }
