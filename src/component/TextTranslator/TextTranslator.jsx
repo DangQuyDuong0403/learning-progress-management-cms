@@ -219,7 +219,9 @@ const TextTranslator = ({ enabled = true }) => {
       // Tính toán placement trước khi hiển thị popup
       // Ước tính chiều cao popup dựa trên độ dài text (tính bằng pixels, giả sử mỗi ký tự ~0.5px height với line-height 1.6)
       const estimatedTextHeight = Math.min(600, Math.max(150, textToTranslate.length * 0.5));
-      const spaceAbove = popupPosition.y;
+      // Tính chiều cao header (mặc định 76px, nhưng có thể khác nhau)
+      const headerHeight = 76; // Chiều cao header từ CSS
+      const spaceAbove = Math.max(0, popupPosition.y - headerHeight);
       const spaceBelow = window.innerHeight - popupPosition.y;
       const requiredSpace = estimatedTextHeight + 40; // 40px padding
       
@@ -300,8 +302,10 @@ const TextTranslator = ({ enabled = true }) => {
       const maxPopupHeight = Math.min(600, window.innerHeight * 0.6);
       const estimatedPopupHeight = Math.min(rect.height || maxPopupHeight, maxPopupHeight);
       
-      // Kiểm tra xem có đủ chỗ ở trên không
-      const spaceAbove = popupPosition.y;
+      // Tính chiều cao header (mặc định 76px, nhưng có thể khác nhau)
+      const headerHeight = 76; // Chiều cao header từ CSS
+      // Kiểm tra xem có đủ chỗ ở trên không (trừ đi chiều cao header)
+      const spaceAbove = Math.max(0, popupPosition.y - headerHeight);
       const spaceBelow = window.innerHeight - popupPosition.y;
       const requiredSpace = estimatedPopupHeight + 20; // 20px padding
 
@@ -325,14 +329,15 @@ const TextTranslator = ({ enabled = true }) => {
       }
 
       // Điều chỉnh theo chiều dọc để đảm bảo popup luôn trong viewport
-      if (newPlacement === 'above' && rect.top < 10) {
+      const minTop = headerHeight + 10; // Đảm bảo popup không bị header che
+      if (newPlacement === 'above' && rect.top < minTop) {
         // Popup bị cắt ở trên, đẩy xuống hoặc chuyển sang below
         if (spaceBelow > requiredSpace) {
           newPlacement = 'below';
           y = popupPosition.y + 30;
         } else {
-          // Nếu không đủ chỗ cả 2 phía, ít nhất đảm bảo top >= 10
-          y = 10 + estimatedPopupHeight / 2;
+          // Nếu không đủ chỗ cả 2 phía, ít nhất đảm bảo top >= headerHeight + 10
+          y = minTop + estimatedPopupHeight / 2;
         }
       } else if (newPlacement === 'below' && rect.bottom > window.innerHeight - 10) {
         // Popup bị cắt ở dưới, đẩy lên hoặc chuyển sang above
@@ -365,9 +370,11 @@ const TextTranslator = ({ enabled = true }) => {
         x = clampedCenterX;
       }
 
-      // Điều chỉnh theo chiều dọc
-      if (rect.top < 10) {
-        y = Math.max(popupPosition.y, rect.height + 10);
+      // Điều chỉnh theo chiều dọc (đảm bảo button không bị header che)
+      const headerHeight = 76; // Chiều cao header từ CSS
+      const minTop = headerHeight + 10; // Đảm bảo button không bị header che
+      if (rect.top < minTop) {
+        y = Math.max(popupPosition.y, rect.height + minTop);
       } else if (rect.bottom > window.innerHeight - 10) {
         // Với translateY(-100%), rect.bottom xấp xỉ bằng y; giới hạn trong viewport
         y = Math.min(popupPosition.y, window.innerHeight - 10);
@@ -407,7 +414,7 @@ const TextTranslator = ({ enabled = true }) => {
             left: `${popupPosition.x}px`,
             top: `${popupPosition.y}px`,
             transform: 'translateX(-50%) translateY(-100%)',
-            zIndex: 9001, // Thấp hơn custom cursor để không che con trỏ
+            zIndex: 10002, // Cao hơn header (10001) nhưng thấp hơn custom cursor (99999)
             pointerEvents: 'auto', // Đảm bảo có thể click được
           }}
           title="Dịch text này"
