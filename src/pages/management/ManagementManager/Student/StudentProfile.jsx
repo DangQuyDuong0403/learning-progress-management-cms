@@ -52,10 +52,16 @@ const StudentProfile = () => {
 		typeof window !== 'undefined'
 			? (localStorage.getItem('selectedRole') || '').toLowerCase()
 			: '';
-	const isManager = userRole === 'manager' || selectedRole === 'manager';
-	const isTeacher = userRole === 'teacher' || selectedRole === 'teacher';
-	const isTeachingAssistant =
-		userRole === 'teaching_assistant' || selectedRole === 'teaching_assistant';
+
+	// Always honor actual manager role regardless of selectedRole
+	const effectiveRole =
+		userRole === 'manager'
+			? 'manager'
+			: (selectedRole || userRole);
+
+	const isManager = effectiveRole === 'manager';
+	const isTeacher = effectiveRole === 'teacher';
+	const isTeachingAssistant = effectiveRole === 'teaching_assistant';
 	
 	// Only hide sidebar for Teacher and Teaching Assistant
 	// Manager should always show sidebar (shouldHideSidebar = false)

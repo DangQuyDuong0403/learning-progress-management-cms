@@ -40,7 +40,7 @@ const TeacherClassChapterList = () => {
 	const { classId } = useParams();
 	const { theme } = useTheme();
 	const { user } = useSelector((state) => state.auth);
-	const { enterClassMenu, exitClassMenu } = useClassMenu();
+	const { enterClassMenu, exitClassMenu, classData: classMenuData, isViewOnly, updateClassStatus } = useClassMenu();
 	
 	// Determine which layout to use based on user role
 	const userRole = user?.role?.toLowerCase();
@@ -74,6 +74,8 @@ const TeacherClassChapterList = () => {
 	const [navigating, setNavigating] = useState(false);
 	const [chapters, setChapters] = useState([]);
 	const [classInfo, setClassInfo] = useState(null);
+	const isClassFinished = isViewOnly || classMenuData?.status === 'FINISHED' || classInfo?.status === 'FINISHED';
+	const viewOnlyMessage = t('classDetail.viewOnly') || 'Class has finished. View-only mode.';
 	const [searchText, setSearchText] = useState('');
 	const [searchTimeout, setSearchTimeout] = useState(null);
 
@@ -150,17 +152,21 @@ const TeacherClassChapterList = () => {
 			setClassInfo({
 				id: classId,
 				name: data?.name ?? data?.className ?? data?.title ?? '',
+				status: data?.status ?? data?.classStatus ?? null,
 				syllabus: {
 					id: data?.syllabusId,
 					name: data?.syllabusName,
 				}
 			});
+			if (data?.status) {
+				updateClassStatus(data.status);
+			}
 		} catch (error) {
 			console.error('Error fetching class info:', error);
 			spaceToast.error(t('classDetail.accessDenied') || 'Bạn không có quyền truy cập lớp học này / You do not have permission to access this class');
 			navigate('/choose-login', { replace: true });
 		}
-	}, [classId, isManager, navigate, t]);
+	}, [classId, isManager, navigate, t, updateClassStatus]);
 
 	// Fetch chapters from API
 	const fetchChapters = useCallback(async (page = 1, size = 10, search = '') => {
@@ -223,26 +229,22 @@ const TeacherClassChapterList = () => {
 		}
 	}, [fetchChapters, pagination.pageSize, classId]);
 
-	// Handle class menu updates - separate effects to avoid infinite loops
+	// Enter class menu mode (single effect to avoid loops)
 	useEffect(() => {
-		if (classId) {
-			enterClassMenu({ id: classId });
-		}
+		if (!classId) return;
+		const payload = classInfo ? {
+			id: classInfo.id,
+			name: classInfo.name,
+			description: classInfo.name,
+			backUrl: `${routePrefix}/menu/${classId}`,
+			status: classInfo.status,
+		} : {
+			id: classId,
+			backUrl: `${routePrefix}/menu/${classId}`,
+		};
+		enterClassMenu(payload);
 		return () => exitClassMenu();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [classId]);
-
-	useEffect(() => {
-		if (classInfo && classId) {
-			enterClassMenu({
-				id: classInfo.id,
-				name: classInfo.name,
-				description: classInfo.name,
-				backUrl: `${routePrefix}/menu/${classId}`
-			});
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [classInfo?.id, classInfo?.name, classId]);
+	}, [classId, classInfo, routePrefix, enterClassMenu, exitClassMenu]);
 
 	// Cleanup timeout on unmount
 	useEffect(() => {
@@ -260,6 +262,10 @@ const TeacherClassChapterList = () => {
 	};
 
 	const handleEditOrder = () => {
+		if (isClassFinished) {
+			spaceToast.info(viewOnlyMessage);
+			return;
+		}
 		setNavigating(true);
 		// Add slight delay for smooth transition
 		setTimeout(async () => {
@@ -298,6 +304,10 @@ const TeacherClassChapterList = () => {
 	};
 
 	const handleImport = () => {
+		if (isClassFinished) {
+			spaceToast.info(viewOnlyMessage);
+			return;
+		}
 		setImportModal(prev => ({
 			...prev,
 			visible: true,
@@ -400,6 +410,11 @@ const TeacherClassChapterList = () => {
 	};
 
 	const handleImportOk = async () => {
+		if (isClassFinished) {
+			spaceToast.info(viewOnlyMessage);
+			setImportModal(prev => ({ ...prev, visible: false }));
+			return;
+		}
 		if (importModal.fileList.length === 0) {
 			spaceToast.warning(t('chapterManagement.selectFileToImport'));
 			return;
@@ -511,6 +526,10 @@ const TeacherClassChapterList = () => {
 
 	// Open lesson import modal for specific chapter
 	const handleOpenLessonImportModal = (chapter) => {
+		if (isClassFinished) {
+			spaceToast.info(viewOnlyMessage);
+			return;
+		}
 		setLessonImportModal({
 			visible: true,
 			fileList: [],
@@ -714,6 +733,11 @@ const TeacherClassChapterList = () => {
 	};
 
 	const handleLessonImportOk = async () => {
+		if (isClassFinished) {
+			spaceToast.info(viewOnlyMessage);
+			setLessonImportModal(prev => ({ ...prev, visible: false }));
+			return;
+		}
 		if (lessonImportModal.fileList.length === 0) {
 			spaceToast.warning(t('lessonManagement.selectFileToImport'));
 			return;
@@ -882,7 +906,7 @@ const TeacherClassChapterList = () => {
 							onClick={() => handleViewLessons(record)}
 						/>
 					</Tooltip>
-					{!isManager && !isStudent && !isTestTaker && !isTeachingAssistant && (
+					{!isManager && !isStudent && !isTestTaker && !isTeachingAssistant && !isClassFinished && (
 						<Tooltip title={t('lessonManagement.importLessons')}>
 							<Button
 								type="text"
@@ -958,7 +982,7 @@ const TeacherClassChapterList = () => {
 						</Space>
 					</Col>
 					<Col>
-				{!isManager && !isStudent && !isTestTaker && !isTeachingAssistant && (
+				{!isManager && !isStudent && !isTestTaker && !isTeachingAssistant && !isClassFinished && (
 							<Space>
 								<Button
 									icon={<DownloadOutlined />}

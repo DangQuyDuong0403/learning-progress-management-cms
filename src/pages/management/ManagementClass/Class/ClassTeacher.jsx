@@ -38,7 +38,7 @@ const ClassTeachers = () => {
   const { id } = useParams();
   const { theme } = useTheme();
   const { user } = useSelector((state) => state.auth);
-  const { enterClassMenu, exitClassMenu } = useClassMenu();
+  const { enterClassMenu, exitClassMenu, classData: classMenuData, isViewOnly, updateClassStatus } = useClassMenu();
   
   // Prefer backend error message if provided
   const getBackendErrorMessage = (error, defaultMessage) => (
@@ -72,6 +72,7 @@ const ClassTeachers = () => {
   const [loading, setLoading] = useState(false);
   const [teachers, setTeachers] = useState([]);
   const [classData, setClassData] = useState(null);
+  const isClassFinished = isViewOnly || classMenuData?.status === 'FINISHED' || classData?.status === 'FINISHED';
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState(["ACTIVE"]); // Changed to array to support multiple statuses
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -200,14 +201,18 @@ const ClassTeachers = () => {
             data.title ??
             data.classTitle ??
             '',
+          status: data.status ?? data.classStatus ?? null,
         };
         setClassData(mapped);
+        if (mapped.status) {
+          updateClassStatus(mapped.status);
+        }
       }
     } catch (error) {
       console.error('Error fetching class data:', error);
     showErrorToast(error, t('classTeachers.loadingClassInfo'));
     }
-  }, [id, t, showErrorToast]);
+  }, [id, t, showErrorToast, updateClassStatus]);
 
   const fetchTeachers = useCallback(async (params = {}) => {
     try {
@@ -351,31 +356,18 @@ const ClassTeachers = () => {
     fetchClassData();
   }, [fetchClassData]);
 
-  // Ensure header back button appears immediately while class info loads
+  // Enter class menu mode (single effect to avoid loops)
   useEffect(() => {
-    if (id) { 
-      enterClassMenu({ id });
-    }
-    return () => {
-      exitClassMenu();
-    };
-  }, [id]);
-
-  // Enter class menu mode when component mounts
-  useEffect(() => {
-    if (classData) {
-      enterClassMenu({
-        id: classData.id,
-        name: classData.name,
-        description: classData.name
-      });
-    }
-    
-    // Cleanup function to exit class menu mode when leaving
-    return () => {
-      exitClassMenu();
-    };
-  }, [classData?.id, classData?.name]);
+    if (!id) return;
+    const payload = classData ? {
+      id: classData.id,
+      name: classData.name,
+      description: classData.name,
+      status: classData.status,
+    } : { id };
+    enterClassMenu(payload);
+    return () => exitClassMenu();
+  }, [id, classData, enterClassMenu, exitClassMenu]);
 
   // Handle search and filter changes with debounce
   useEffect(() => {
@@ -417,6 +409,10 @@ const ClassTeachers = () => {
   }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t, showErrorToast]);
 
   const handleAddTeacher = () => {
+    if (isClassFinished) {
+      spaceToast.info(t('classDetail.viewOnly') || 'Class has finished. View-only mode.');
+      return;
+    }
     setButtonLoading(prev => ({ ...prev, add: true }));
     setTimeout(() => {
       form.resetFields();
@@ -503,6 +499,10 @@ const ClassTeachers = () => {
   };
 
   const handleDeleteTeacher = (teacher) => {
+    if (isClassFinished) {
+      spaceToast.info(t('classDetail.viewOnly') || 'Class has finished. View-only mode.');
+      return;
+    }
     setButtonLoading(prev => ({ ...prev, delete: true }));
     setTimeout(() => {
       setTeacherToDelete(teacher);
@@ -513,6 +513,12 @@ const ClassTeachers = () => {
 
   const handleConfirmDelete = async () => {
     if (teacherToDelete && !buttonLoading.delete) {
+      if (isClassFinished) {
+        spaceToast.info(t('classDetail.viewOnly') || 'Class has finished. View-only mode.');
+        setIsDeleteModalVisible(false);
+        setTeacherToDelete(null);
+        return;
+      }
       
       setButtonLoading(prev => ({ ...prev, delete: true }));
       
@@ -546,7 +552,10 @@ const ClassTeachers = () => {
   };
 
   const handleModalOk = async () => {
-    if (buttonLoading.add) {
+    if (buttonLoading.add || isClassFinished) {
+      if (isClassFinished) {
+        spaceToast.info(t('classDetail.viewOnly') || 'Class has finished. View-only mode.');
+      }
       return; // Prevent multiple clicks
     }
     
@@ -790,7 +799,7 @@ const ClassTeachers = () => {
   ];
 
   // Filter columns based on user role - hide Actions column for TEACHER and TEACHING_ASSISTANT
-  const columns = (userRole === 'teacher' || userRole === 'teaching_assistant')
+  const columns = (userRole === 'teacher' || userRole === 'teaching_assistant' || isClassFinished)
     ? allColumns.filter(col => col.key !== 'actions')
     : allColumns;
 
@@ -891,7 +900,7 @@ const ClassTeachers = () => {
               )}
             </div>
             {/* Hide Add button for TEACHER and TEACHING_ASSISTANT - they can only view */}
-            {(userRole !== 'teacher' && userRole !== 'teaching_assistant') && (
+            {(userRole !== 'teacher' && userRole !== 'teaching_assistant' && !isClassFinished) && (
               <div className="action-buttons" style={{ marginLeft: 'auto' }}>
                 <Button 
                   icon={<PlusOutlined />}

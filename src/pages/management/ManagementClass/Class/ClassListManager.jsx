@@ -650,9 +650,13 @@ const ClassListManager = () => {
 		navigate(path);
 	};
 
+	const isDeletable = (item) => item.status === 'PENDING';
+
 	// Handle table header checkbox (only current page)
 	const handleSelectAllCurrentPage = (checked) => {
-		const currentPageKeys = classes.map(classItem => classItem.id);
+		const currentPageKeys = classes
+			.filter(isDeletable)
+			.map(classItem => classItem.id);
 		
 		if (checked) {
 			// Add all current page items to selection
@@ -698,7 +702,9 @@ const ClassListManager = () => {
 				const response = await classManagementApi.getClasses(params);
 
 				// Get all IDs from the response
-				const allKeys = response.data.map(classItem => classItem.id);
+				const allKeys = response.data
+					.filter(isDeletable)
+					.map(classItem => classItem.id);
 				setSelectedRowKeys(allKeys);
 			} catch (error) {
 				console.error('Error fetching all class IDs:', error);
@@ -710,6 +716,7 @@ const ClassListManager = () => {
 	};
 
 	const handleSelectRow = (record, checked) => {
+		if (!isDeletable(record)) return;
 		if (checked) {
 			setSelectedRowKeys(prev => [...prev, record.id]);
 		} else {
@@ -825,7 +832,9 @@ const ClassListManager = () => {
 
 	// Calculate checkbox states with useMemo
 	const checkboxStates = useMemo(() => {
-		const currentPageKeys = classes.map(classItem => classItem.id);
+		const currentPageKeys = classes
+			.filter(isDeletable)
+			.map(classItem => classItem.id);
 		const selectedCount = selectedRowKeys.length;
 		
 		// Check if all items on current page are selected
@@ -859,6 +868,7 @@ const ClassListManager = () => {
 			render: (_, record) => (
 				<Checkbox
 					checked={selectedRowKeys.includes(record.id)}
+					disabled={!isDeletable(record)}
 					onChange={(e) => handleSelectRow(record, e.target.checked)}
 					style={{
 						transform: 'scale(1.2)'
@@ -1099,7 +1109,6 @@ const ClassListManager = () => {
 														<Option value="PENDING">{t('classManagement.pending')}</Option>
 														<Option value="UPCOMING_END">{t('classManagement.upcomingEnd')}</Option>
 														<Option value="FINISHED">{t('classManagement.finished')}</Option>
-														<Option value="INACTIVE">{t('classManagement.inactive')}</Option>
 													</Select>
 												</div>
 
