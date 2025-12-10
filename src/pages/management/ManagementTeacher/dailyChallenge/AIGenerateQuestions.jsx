@@ -726,16 +726,8 @@ const AIGenerateQuestions = () => {
             // Use questionText
             const text = q?.questionText || q?.question || '';
             const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
-            // Sort contentItems by positionId if possible
-            const sortedWords = [...contentItems]
-              .sort((a, b) => {
-                // Try numeric sort if possible
-                const aNum = Number(String(a.positionId||'').replace(/\D/g, ''));
-                const bNum = Number(String(b.positionId||'').replace(/\D/g, ''));
-                if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
-                return 0;
-              })
-              .map(it => it.value);
+            // For REARRANGE: Keep both sourceItems and correctOrder in original order from backend (no shuffle, no sort)
+            const words = contentItems.map(it => it.value);
             return {
               id: nextId(),
               type: 'REARRANGE',
@@ -743,8 +735,8 @@ const AIGenerateQuestions = () => {
               // Show human-friendly instruction; keep placeholders only in questionText
               question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
               questionText: text || '',
-              sourceItems: sortedWords,
-              correctOrder: sortedWords,
+              sourceItems: words, // Keep original order from backend (no shuffle)
+              correctOrder: words, // Keep original order from backend (no shuffle, no sort)
               content: { data: contentItems },
               points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
