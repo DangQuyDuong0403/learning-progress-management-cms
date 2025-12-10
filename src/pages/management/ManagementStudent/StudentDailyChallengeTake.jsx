@@ -5818,7 +5818,7 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
               >
                 <input 
                   type="radio" 
-                  name="question-1"
+                  name={`question-${data.id || 'mc'}`}
                   checked={isSelected}
                   onChange={() => { if (!isViewOnly) setSelectedAnswer(key); }}
                   disabled={isViewOnly}
@@ -6280,7 +6280,7 @@ const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
               >
                 <input 
                   type="radio" 
-                  name="question-3"
+                  name={`question-${data.id || 'tf'}`}
                   checked={isSelected}
                   onChange={() => { if (!isViewOnly) setSelectedAnswer(opt.key); }}
                   disabled={isViewOnly}
@@ -11106,7 +11106,7 @@ const StudentDailyChallengeTake = () => {
         ]}
         title={
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '24px' }}>Bạn đã hết giờ</span>
+            <span style={{ fontSize: '24px' }}>{t('dailyChallenge.timeUpTitle')}</span>
           </div>
         }
         styles={{
@@ -11116,7 +11116,7 @@ const StudentDailyChallengeTake = () => {
         }}
       >
         <div style={{ marginBottom: '8px', fontSize: '16px', lineHeight: 1.6 }}>
-          Bài làm của bạn đã được tự động nộp. Nhấn OK để quay lại danh sách Daily Challenge.
+          {t('dailyChallenge.timeUpMessage')}
         </div>
       </Modal>
 
