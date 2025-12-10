@@ -709,16 +709,23 @@ const LessonDragEdit = () => {
 										<SortableContext
 											items={lessonIds}
 											strategy={verticalListSortingStrategy}>
-											{lessons
-												.filter((lesson) => !lesson.toBeDeleted)
-												.map((lesson, index) => (
+											{(() => {
+												const visibleLessons = lessons.filter(lesson => !lesson.toBeDeleted);
+												const lessonCount = visibleLessons.length;
+												const canAddMore = lessonCount < 100;
+												
+												return visibleLessons.map((lesson, index) => (
 													<React.Fragment key={lesson.id}>
 														{index > 0 && (
-															<AddLessonButton
-																theme={theme}
-																index={index}
-																onAddAtPosition={handleAddLessonAtPosition}
-															/>
+															canAddMore ? (
+																<AddLessonButton
+																	theme={theme}
+																	index={index}
+																	onAddAtPosition={handleAddLessonAtPosition}
+																/>
+															) : (
+																<div className={`add-level-between ${theme}-add-level-between`} style={{ pointerEvents: 'none' }} />
+															)
 														)}
 
 														<SortableLessonItem
@@ -730,11 +737,12 @@ const LessonDragEdit = () => {
 															t={t}
 														/>
 													</React.Fragment>
-												))}
+												));
+											})()}
 
-											{/* Always show Add button at the end if there are lessons */}
-											{lessons.filter((lesson) => !lesson.toBeDeleted).length >
-												0 && (
+											{/* Always show Add button at the end if there are lessons and can add more */}
+											{lessons.filter((lesson) => !lesson.toBeDeleted).length > 0 && 
+											 lessons.filter((lesson) => !lesson.toBeDeleted).length < 100 && (
 												<AddLessonButton
 													theme={theme}
 													index={
