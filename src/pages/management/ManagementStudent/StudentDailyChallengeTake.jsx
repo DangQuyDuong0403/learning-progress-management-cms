@@ -1,0 +1,11245 @@
+import React, { useState, useEffect, useRef, createContext, useContext, useCallback } from "react";
+import {
+  Button,
+  Typography,
+  Modal,
+  Spin,
+} from "antd";
+import {
+  ArrowLeftOutlined,
+  MenuOutlined,
+  CloseOutlined,
+  SaveOutlined,
+  ClockCircleOutlined,
+  CheckOutlined,
+  ExclamationCircleOutlined,
+  LoadingOutlined,
+} from "@ant-design/icons";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
+import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
+import LoadingWithEffect from "../../../component/spinner/LoadingWithEffect";
+import "../ManagementTeacher/dailyChallenge/DailyChallengeContent.css";
+import { useTranslation } from "react-i18next";
+import { useTheme } from "../../../contexts/ThemeContext";
+import usePageTitle from "../../../hooks/usePageTitle";
+import { spaceToast } from "../../../component/SpaceToastify";
+import dailyChallengeApi from "../../../apis/backend/dailyChallengeManagement";
+import classManagementApi from "../../../apis/backend/classManagement";
+import { useTestSecurity } from "../../../hooks/useTestSecurity";
+import TextTranslator from "../../../component/TextTranslator/TextTranslator";
+import CustomCursor from "../../../component/cursor/CustomCursor";
+import {
+  getDeviceFingerprint,
+  getIPAddress
+} from '../../../utils/fingerprintUtils';
+import { notificationApi } from '../../../apis/apis';
+import { timeconfig } from "../../../constants/data";
+
+// Context for collecting answers from child components
+const AnswerCollectionContext = createContext(null);
+// Context for restoring answers to child components
+const AnswerRestorationContext = createContext(null);
+// Context to trigger debounced auto-save when answers change
+const AutoSaveTriggerContext = createContext(null);
+// Context to indicate view-only mode for child components
+const ViewOnlyContext = createContext(false);
+
+// Utility: strip HTML tags, nbsp, and collapse whitespace for comparison
+const stripHtmlContent = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const FILE_EXTENSION_REGEX = /\.(pdf|docx?|pptx?|xlsx?|jpg|jpeg|png|gif|bmp|webp|svg|mp3|wav|m4a|aac)$/i;
+const IMAGE_EXTENSION_REGEX = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i;
+
+const isLikelyFileReference = (value) => {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (/^(https?:\/\/|blob:|data:)/i.test(trimmed) && !/\s/.test(trimmed)) {
+    return true;
+  }
+  const clean = trimmed.split('?')[0].split('#')[0];
+  return FILE_EXTENSION_REGEX.test(clean);
+};
+
+const deriveFileNameFromUrl = (fileUrl, fallback = 'attachment') => {
+  if (!fileUrl || typeof fileUrl !== 'string') return fallback;
+  const defaultName = fallback;
+  try {
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const urlObj = new URL(fileUrl, base);
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+    const candidate = pathParts.length > 0 ? pathParts[pathParts.length - 1] : defaultName;
+    return candidate.split('?')[0].split('#')[0] || defaultName;
+  } catch (error) {
+    const segments = fileUrl.split('/').filter(Boolean);
+    const candidate = segments.length > 0 ? segments[segments.length - 1] : defaultName;
+    return candidate.split('?')[0].split('#')[0] || defaultName;
+  }
+};
+
+// Memoized HTML renderer to keep DOM stable and preserve text selection
+const MemoizedHTML = React.memo(
+  function MemoizedHTML({ html, className, style }) {
+    const enhanceImages = (rawHtml) => {
+      if (!rawHtml) return '';
+      // If image has no style attribute, add fixed size. If it has style, append our constraints.
+      let result = String(rawHtml)
+        .replace(/<img(?![^>]*style=)/gi, '<img style="width:300px;height:300px;object-fit:contain;"')
+        .replace(/<img([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+          const appended = styles.includes('width') || styles.includes('height')
+            ? `${styles}; width:300px; height:300px; object-fit:contain;`
+            : `${styles}; width:300px; height:300px; object-fit:contain;`;
+          return `<img${prefix}style="${appended}"`;
+        });
+      return result;
+    };
+
+    const enhanceTables = (rawHtml) => {
+      if (!rawHtml) return '';
+      let result = String(rawHtml);
+      // Add table-layout: fixed and border styles to all tables
+      result = result.replace(/<table(?![^>]*style=)/gi, '<table style="table-layout:fixed;width:100%;border-collapse:collapse;border-spacing:0;border:1px solid #000000 !important;"');
+      result = result.replace(/<table([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+        const hasTableLayout = styles.includes('table-layout');
+        const hasBorder = styles.includes('border');
+        let appended = styles;
+        if (!hasTableLayout) appended += '; table-layout:fixed;';
+        if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+        appended += '; width:100%; border-collapse:collapse; border-spacing:0;';
+        return `<table${prefix}style="${appended}"`;
+      });
+      // Add border to all th and td
+      result = result.replace(/<th(?![^>]*style=)/gi, '<th style="border:1px solid #000000 !important;font-weight:normal !important;"');
+      result = result.replace(/<th([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+        const hasBorder = styles.includes('border');
+        let appended = styles;
+        if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+        if (!styles.includes('font-weight')) appended += '; font-weight:normal !important;';
+        return `<th${prefix}style="${appended}"`;
+      });
+      result = result.replace(/<td(?![^>]*style=)/gi, '<td style="border:1px solid #000000 !important;"');
+      result = result.replace(/<td([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+        const hasBorder = styles.includes('border');
+        let appended = styles;
+        if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+        return `<td${prefix}style="${appended}"`;
+      });
+      return result;
+    };
+
+    const processedHtml = enhanceTables(enhanceImages(html));
+
+    return (
+      <div
+        className={className}
+        style={style}
+        dangerouslySetInnerHTML={{ __html: processedHtml }}
+      />
+    );
+  },
+  (prev, next) => {
+    if (prev.html !== next.html) return false;
+    if (prev.className !== next.className) return false;
+    const prevStyle = prev.style || {};
+    const nextStyle = next.style || {};
+    const prevKeys = Object.keys(prevStyle);
+    const nextKeys = Object.keys(nextStyle);
+    if (prevKeys.length !== nextKeys.length) return false;
+    for (let i = 0; i < prevKeys.length; i++) {
+      const k = prevKeys[i];
+      if (prevStyle[k] !== nextStyle[k]) return false;
+    }
+    return true;
+  }
+);
+
+// Helper function: process passage/transcript HTML and normalize media
+const processPassageContent = (content, theme, challengeType) => {
+  if (!content) return '';
+  // Constrain all images to 300x300 for consistent layout
+  const enhanceImages = (rawHtml) => String(rawHtml)
+    .replace(/<img(?![^>]*style=)/gi, '<img style="width:300px;height:300px;object-fit:contain;"')
+    .replace(/<img([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+      return `<img${prefix}style="${styles}; width:300px; height:300px; object-fit:contain;"`;
+    });
+
+  const enhanceTables = (rawHtml) => {
+    if (!rawHtml) return '';
+    let result = String(rawHtml);
+    // Add table-layout: fixed and border styles to all tables
+    result = result.replace(/<table(?![^>]*style=)/gi, '<table style="table-layout:fixed;width:100%;border-collapse:collapse;border-spacing:0;border:1px solid #000000 !important;"');
+    result = result.replace(/<table([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+      const hasTableLayout = styles.includes('table-layout');
+      const hasBorder = styles.includes('border');
+      let appended = styles;
+      if (!hasTableLayout) appended += '; table-layout:fixed;';
+      if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+      appended += '; width:100%; border-collapse:collapse; border-spacing:0;';
+      return `<table${prefix}style="${appended}"`;
+    });
+    // Add border to all th and td
+    result = result.replace(/<th(?![^>]*style=)/gi, '<th style="border:1px solid #000000 !important;font-weight:normal !important;"');
+    result = result.replace(/<th([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+      const hasBorder = styles.includes('border');
+      let appended = styles;
+      if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+      if (!styles.includes('font-weight')) appended += '; font-weight:normal !important;';
+      return `<th${prefix}style="${appended}"`;
+    });
+    result = result.replace(/<td(?![^>]*style=)/gi, '<td style="border:1px solid #000000 !important;"');
+    result = result.replace(/<td([^>]*?)style="([^"]*)"/gi, (m, prefix, styles) => {
+      const hasBorder = styles.includes('border');
+      let appended = styles;
+      if (!hasBorder) appended += '; border:1px solid #000000 !important;';
+      return `<td${prefix}style="${appended}"`;
+    });
+    return result;
+  };
+
+  let processed = enhanceTables(enhanceImages(content));
+
+  // Only process for Speaking challenges
+  if (challengeType === 'SP') {
+    // Remove [[dur_3]] without replacement, as the static badge is now handled separately
+    processed = processed.replace(/\[\[dur_3\]\]/g, '');
+  }
+
+  return processed;
+};
+
+
+
+// Section Question Component for Reading/Listening sections
+const SectionQuestionItem = ({ question, index, theme, sectionScore, globalQuestionNumbers }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
+  const [selectedAnswers, setSelectedAnswers] = useState({});
+  const [droppedItems, setDroppedItems] = useState({});
+  const [availableItems, setAvailableItems] = useState({});
+  const [dragOverPosition, setDragOverPosition] = useState({});
+  const [reorderStates, setReorderStates] = useState({});
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Initialize availableItems for drag and drop questions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+// eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => {
+    if (question.questions) {
+      setAvailableItems(prev => {
+        const newItems = { ...prev };
+        let hasChanges = false;
+        
+        question.questions.forEach(q => {
+          if (q.type === 'DRAG_AND_DROP' && q.content?.data && !newItems[q.id]) {
+            // Include ALL values (both correct and incorrect) and preserve duplicates
+            const dragDropItems = q.content.data
+              .map(item => item.value)
+              .filter(Boolean);
+            if (dragDropItems.length > 0) {
+              newItems[q.id] = dragDropItems;
+              hasChanges = true;
+            }
+          }
+        });
+        
+        return hasChanges ? newItems : prev;
+      });
+    }
+  }, [question.questions]);
+
+  // Local refs for Fill-in-the-Blank inputs to avoid caret jumps
+  const fillBlankRefs = useRef({});
+
+  // Register answer collectors for all questions in this section
+  useEffect(() => {
+    if (!registerAnswerCollector || !question.questions) return;
+
+    const unregisterFunctions = [];
+
+    question.questions.forEach(q => {
+      const getAnswer = () => {
+        let answer = null;
+        let options = undefined;
+
+        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+          answer = selectedAnswers[q.id] || null;
+          // Build options mapping for MC/TF
+          if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+            options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: opt.text }));
+          } else if (q?.content?.data && Array.isArray(q.content.data)) {
+            options = q.content.data.map((d, idx) => ({
+              key: q.type === 'TRUE_OR_FALSE' ? (String(d.value).toLowerCase() === 'true' ? 'A' : 'B') : (d.id || String.fromCharCode(65 + idx)),
+              text: d.value
+            }));
+          }
+        } else if (q.type === 'MULTIPLE_SELECT') {
+          answer = selectedAnswers[q.id] || [];
+          if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+            options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: opt.text }));
+          } else if (q?.content?.data && Array.isArray(q.content.data)) {
+            options = q.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }));
+          }
+        } else if (q.type === 'DROPDOWN') {
+          // Collect all dropdown answers for this question
+          const dropdownAnswers = {};
+          Object.keys(selectedAnswers).forEach(key => {
+            if (key.startsWith(`${q.id}_pos_`)) {
+              const positionId = key.split('_pos_')[1];
+              dropdownAnswers[key] = selectedAnswers[key];
+            }
+          });
+          answer = Object.keys(dropdownAnswers).length > 0 ? dropdownAnswers : null;
+        } else if (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK') {
+          // Collect all fill-in-the-blank answers for this question
+          const fibAnswers = {};
+          Object.keys(selectedAnswers).forEach(key => {
+            if (key.startsWith(`${q.id}_pos_`)) {
+              fibAnswers[key] = selectedAnswers[key];
+            }
+          });
+          answer = Object.keys(fibAnswers).length > 0 ? fibAnswers : null;
+        } else if (q.type === 'DRAG_AND_DROP') {
+          answer = droppedItems[q.id] || null;
+        } else if (q.type === 'REARRANGE' || q.type === 'REORDER') {
+          const reorderState = reorderStates[q.id];
+          if (reorderState?.items && Array.isArray(reorderState.items) && reorderState.items.length > 0) {
+            answer = reorderState.items;
+          } else if (reorderState?.droppedItems && typeof reorderState.droppedItems === 'object') {
+            // Derive ordered array from droppedItems mapping
+            const indices = Object.keys(reorderState.droppedItems)
+              .map(k => parseInt(k, 10))
+              .filter(i => !Number.isNaN(i))
+              .sort((a, b) => a - b);
+            const arr = indices.map(i => reorderState.droppedItems[i]).filter(Boolean);
+            answer = arr.length > 0 ? arr : null;
+          } else {
+            answer = null;
+          }
+        }
+
+        if (!answer) return null;
+        // Normalize questionType for API
+        const normalizedType = (q.type === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
+          : (q.type === 'REARRANGE') ? 'REORDER'
+          : q.type;
+        return { answer, questionType: normalizedType, options };
+      };
+
+      const unregister = registerAnswerCollector(q.id, getAnswer);
+      if (unregister) {
+        unregisterFunctions.push(unregister);
+      }
+    });
+
+    return () => {
+      unregisterFunctions.forEach(unregister => unregister());
+    };
+  }, [registerAnswerCollector, question.questions, selectedAnswers, droppedItems, reorderStates]);
+
+  // Sync restored FIB values into DOM without breaking caret (only when not focused)
+  useEffect(() => {
+    if (!question?.questions) return;
+    question.questions.forEach(q => {
+      if (q.type !== 'FILL_IN_THE_BLANK' && q.type !== 'FILL_BLANK') return;
+      Object.keys(selectedAnswers).forEach(key => {
+        if (!key.startsWith(`${q.id}_pos_`)) return;
+        const el = fillBlankRefs.current[key];
+        const value = selectedAnswers[key] ?? '';
+        if (el && document.activeElement !== el) {
+          if ((el.textContent || '') !== String(value)) {
+            el.textContent = String(value);
+          }
+        }
+      });
+    });
+  }, [selectedAnswers, question?.questions]);
+
+  // Register answer restorers for all questions in this section
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question.questions) return;
+
+    const unregisterFunctions = [];
+
+    question.questions.forEach(q => {
+      const setAnswer = (answer) => {
+        if (!answer && answer !== 0 && answer !== '') return;
+
+        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+          if (typeof answer === 'string') {
+            // Map restored text/value back to option key
+            let options = [];
+            if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+              options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text }));
+            } else if (q?.content?.data && Array.isArray(q.content.data)) {
+              options = q.content.data.map((d, idx) => ({
+                key: q.type === 'TRUE_OR_FALSE' ? (String(d.value).toLowerCase() === 'true' ? 'A' : 'B') : (d.id || String.fromCharCode(65 + idx)),
+                text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value
+              }));
+            }
+            const normalized = String(answer).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+            const match = options.find(o => o.text === normalized || o.key === normalized);
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: match ? match.key : normalized }));
+          }
+        } else if (q.type === 'MULTIPLE_SELECT') {
+          if (Array.isArray(answer)) {
+            let options = [];
+            if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+              options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text }));
+            } else if (q?.content?.data && Array.isArray(q.content.data)) {
+              options = q.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value }));
+            }
+            const keys = answer.map(val => {
+              const normalized = String(val).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+              const match = options.find(o => o.text === normalized || o.key === normalized);
+              return match ? match.key : normalized;
+            });
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: keys }));
+          }
+        } else if (q.type === 'DROPDOWN') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setSelectedAnswers(prev => ({ ...prev, ...answer }));
+          }
+          } else if (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK') {
+            if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+              setSelectedAnswers(prev => ({ ...prev, ...answer }));
+            }
+        } else if (q.type === 'DRAG_AND_DROP') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setDroppedItems(prev => ({ ...prev, [q.id]: answer }));
+          }
+        } else if (q.type === 'REARRANGE' || q.type === 'REORDER') {
+          if (Array.isArray(answer)) {
+            // Place restored items into dropped slots by index
+            const dropped = answer.reduce((acc, val, idx) => {
+              if (val !== undefined && val !== null && String(val).trim() !== '') acc[idx] = val;
+              return acc;
+            }, {});
+            const reorderState = {
+              sourceItems: [],
+              droppedItems: dropped,
+              dragOverIndex: null,
+              draggedItem: null,
+              isDraggingFromSource: false,
+              wasDropped: false
+            };
+            setReorderStates(prev => ({ ...prev, [q.id]: reorderState }));
+          }
+        }
+      };
+
+      const unregister = registerAnswerRestorer(q.id, setAnswer);
+      if (unregister) {
+        unregisterFunctions.push(unregister);
+      }
+    });
+
+    return () => {
+      unregisterFunctions.forEach(unregister => unregister());
+    };
+  }, [registerAnswerRestorer, question.questions]);
+
+  // Debounced auto-save for RE changes (answers/drag/reorder)
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, selectedAnswers, droppedItems, reorderStates]);
+
+  // Sync restored LI Fill-Blank values to DOM when state changes
+  useEffect(() => {
+    if (!question?.questions) return;
+    question.questions.forEach(q => {
+      if (q.type !== 'FILL_IN_THE_BLANK' && q.type !== 'FILL_BLANK') return;
+      Object.keys(selectedAnswers).forEach(key => {
+        if (!key.startsWith(`${q.id}_pos_`)) return;
+        const el = fillBlankRefs.current[key];
+        const value = selectedAnswers[key] ?? '';
+        if (el && document.activeElement !== el) {
+          if ((el.textContent || '') !== String(value)) {
+            el.textContent = String(value);
+          }
+        }
+      });
+    });
+  }, [selectedAnswers, question?.questions]);
+
+  const handleAnswerSelect = (questionId, optionKey) => {
+    setSelectedAnswers(prev => ({
+      ...prev,
+      [questionId]: optionKey
+    }));
+  };
+  return (
+    <>
+      <style>
+        {`
+          .reading-passage-scrollbar::-webkit-scrollbar {
+            width: 8px;
+          }
+          .reading-passage-scrollbar::-webkit-scrollbar-track {
+            background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'};
+            border-radius: 4px;
+          }
+          .reading-passage-scrollbar::-webkit-scrollbar-thumb {
+            background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'};
+            border-radius: 4px;
+            border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'};
+          }
+          .reading-passage-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'};
+          }
+        `}
+      </style>
+      <div
+        className={`question-item ${theme}-question-item`}
+        style={{
+          marginBottom: '24px',
+          borderRadius: '16px',
+          padding: '24px',
+          border: '2px solid',
+          borderColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          background: theme === 'sun' 
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+          boxShadow: theme === 'sun' 
+            ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+            : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+      {/* Header */}
+      <div className="question-header" style={{
+        paddingBottom: '14px',
+        marginBottom: '16px',
+        borderBottom: '2px solid',
+        borderBottomColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography.Text strong style={{ 
+          fontSize: '20px', 
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+        }}>
+          {index + 1}. Reading Section
+        </Typography.Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          
+          <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
+            ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
+        </Typography.Text>
+        </div>
+      </div>
+
+      {/* Two Column Layout */}
+      <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
+        {/* Left Column - Reading Passage */}
+        <div 
+          className="reading-passage-scrollbar"
+          style={{
+            flex: '1',
+            padding: '20px',
+            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+            borderRadius: '12px',
+            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+            overflowY: 'auto',
+            maxHeight: '600px',
+            scrollbarWidth: 'thin',
+            scrollbarColor: theme === 'sun' 
+              ? '#1890ff rgba(24, 144, 255, 0.2)' 
+              : '#8B5CF6 rgba(138, 122, 255, 0.2)'
+          }}>
+
+          {React.useMemo(() => (
+            <div 
+              className="passage-text-content"
+              style={{
+                fontSize: '15px',
+                lineHeight: '1.8',
+                color: theme === 'sun' ? '#333' : '#1F2937',
+                textAlign: 'justify'
+              }}
+              dangerouslySetInnerHTML={{ __html: question.passage || '' }}
+            />
+          ), [question.passage, theme])}
+        </div>
+
+        {/* Right Column - Questions */}
+        <div style={{
+          flex: '1',
+          background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+          borderRadius: '12px',
+          border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+          overflowY: 'auto',
+          maxHeight: '600px'
+        }}>
+          <div style={{ padding: '20px' }}>
+            {/* Questions List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {question.questions
+                .slice()
+                .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)))
+                .map((q, qIndex) => (
+                <div key={q.id} style={{
+                  padding: '16px',
+                  background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px',
+                  border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
+                }}>
+                  {/* Answer Options */}
+                  {q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE' || q.type === 'MULTIPLE_SELECT' ? (
+                    (() => {
+                      const options = (q.options && q.options.length
+                        ? q.options
+                        : (q.content?.data || []).map((d, idx) => ({
+                            // For TRUE/FALSE questions, we don't want to show backend ids like "true_option"
+                            // Build a simple A/B key but rely on text for display
+                            key: q.type === 'TRUE_OR_FALSE' ? (d.value === 'True' ? 'A' : 'B') : String.fromCharCode(65 + idx),
+                            text: d.value
+                          }))
+                      );
+                      const isMulti = q.type === 'MULTIPLE_SELECT';
+                      const selected = selectedAnswers[q.id] || (isMulti ? [] : null);
+                      const isChecked = (k) => isMulti ? (selected || []).includes(k) : selected === k;
+                      const toggle = (k) => {
+                        if (isMulti) {
+                          setSelectedAnswers(prev => ({
+                            ...prev,
+                            [q.id]: (prev[q.id] || []).includes(k)
+                              ? (prev[q.id] || []).filter(x => x !== k)
+                              : [ ...(prev[q.id] || []), k ]
+                          }));
+                        } else {
+                          setSelectedAnswers(prev => ({ ...prev, [q.id]: k }));
+                        }
+                      };
+                      return (
+                        <div style={{ 
+                          marginBottom: '16px',
+                          fontSize: '15px', 
+                          fontWeight: 350,
+                          lineHeight: '1.8',
+                          color: '#000000'
+                        }}>
+                          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                            Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
+                          </div>
+                          <MemoizedHTML 
+                            className="question-text-content"
+                            style={{ marginBottom: '10px' }}
+                            html={q.questionText || q.question || ''}
+                          />
+                          <div className="question-options" style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: '1fr', 
+                            gap: '12px',
+                            width: '100%'
+                          }}>
+                            {options.map((opt, idx) => {
+                              const key = opt.key || String.fromCharCode(65 + idx);
+                              const checked = isChecked(key);
+                              return (
+                                <label key={key} style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '12px 14px',
+                                  background: checked
+                                    ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)')
+                                    : (theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.03)'),
+                                  border: `2px solid ${checked ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : (theme === 'sun' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')}`,
+                                  borderRadius: '12px',
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  minWidth: 0,
+                                  maxWidth: '100%',
+                                  boxSizing: 'border-box',
+                                  overflow: 'hidden'
+                                }}>
+                                  <input
+                                    type={isMulti ? 'checkbox' : 'radio'}
+                                    name={`reading-q-${q.id}`}
+                                    checked={checked}
+                                    onChange={() => toggle(key)}
+                                    style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6', flexShrink: 0 }}
+                                  />
+                                  {q.type !== 'TRUE_OR_FALSE' && (
+                                    <span style={{ fontWeight: 600, flexShrink: 0 }}>{key}.</span>
+                                  )}
+                                  <span 
+                                    className="option-text"
+                                    style={{ 
+                                      flex: 1, 
+                                      lineHeight: '1.6',
+                                      minWidth: 0,
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'break-word',
+                                      overflow: 'hidden'
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: opt.text || opt.value || '' }}
+                                  />
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : q.type === 'DROPDOWN' ? (
+                    // Dropdown
+                    (() => {
+                      return null;
+                    })() ||
+                    <div style={{ 
+                      marginBottom: '16px',
+                      fontSize: '15px', 
+                      fontWeight: 350,
+                      lineHeight: '1.8',
+                      color: '#000000'
+                    }}>
+                      <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                        Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
+                      </div>
+                      <div>
+                        {(() => {
+                          const text = q.questionText || q.question || '';
+                          const parts = [];
+                          const regex = /\[\[pos_(.*?)\]\]/g;
+                          let last = 0; let match; let idx = 0;
+                          const contentData = q.content?.data || [];
+                          const hasPositionIds = contentData.some(opt => opt.positionId);
+                          
+                          // Pre-calculate group keys if no positionId
+                          let groupKeysInOrder = [];
+                          if (!hasPositionIds) {
+                            const groupKeyFromId = (id) => {
+                              if (!id || typeof id !== 'string') return id;
+                              const m = id.match(/^([^_]+?\d+)/);
+                              return (m && m[1]) || id.split('_')[0] || id;
+                            };
+                            const extractNumber = (groupKey) => {
+                              if (!groupKey) return 0;
+                              const match = groupKey.match(/(\d+)$/);
+                              return match ? parseInt(match[1], 10) : 0;
+                            };
+                            const seen = new Set();
+                            const groupKeyMap = new Map();
+                            for (let i = 0; i < contentData.length; i++) {
+                              const item = contentData[i];
+                              if (!item || !item.id) continue;
+                              const gk = groupKeyFromId(item.id);
+                              if (gk && !seen.has(gk)) {
+                                seen.add(gk);
+                                groupKeyMap.set(gk, i);
+                                groupKeysInOrder.push(gk);
+                              }
+                            }
+                            groupKeysInOrder.sort((a, b) => {
+                              const numA = extractNumber(a);
+                              const numB = extractNumber(b);
+                              if (numA !== numB) return numA - numB;
+                              return (groupKeyMap.get(a) || 0) - (groupKeyMap.get(b) || 0);
+                            });
+                          }
+                          
+                          // Collect all placeholders first
+                          const allMatches = [];
+                          let tempMatch;
+                          const tempRegex = /\[\[pos_(.*?)\]\]/g;
+                          while ((tempMatch = tempRegex.exec(text)) !== null) {
+                            allMatches.push(tempMatch[1]);
+                          }
+                          
+                          while ((match = regex.exec(text)) !== null) {
+                            if (match.index > last) {
+                            parts.push(
+                              <span 
+                                  key={`text_${idx}`}
+                                  className="question-text-content"
+                                  dangerouslySetInnerHTML={{ __html: text.slice(last, match.index) }}
+                                />
+                              );
+                            }
+                            const positionId = match[1];
+                            const currentPlaceholderIndex = allMatches.indexOf(positionId);
+                            
+                            // Filter options
+                            let optionsForPosition = [];
+                            if (hasPositionIds) {
+                              optionsForPosition = contentData.filter(opt => {
+                                const optPosId = String(opt.positionId || '');
+                                const matchPosId = String(positionId);
+                                return optPosId === matchPosId;
+                              });
+                            } else {
+                              const groupKeyFromId = (id) => {
+                                if (!id || typeof id !== 'string') return id;
+                                const m = id.match(/^([^_]+?\d+)/);
+                                return (m && m[1]) || id.split('_')[0] || id;
+                              };
+                              const groupKeyForThisPos = groupKeysInOrder[currentPlaceholderIndex];
+                              if (groupKeyForThisPos) {
+                                optionsForPosition = contentData.filter(item => {
+                                  if (!item || !item.id) return false;
+                                  const itemGroupKey = groupKeyFromId(item.id);
+                                  return itemGroupKey === groupKeyForThisPos;
+                                });
+                              } else {
+                                optionsForPosition = contentData;
+                              }
+                            }
+                            parts.push(
+                            <select
+                                key={`dd_${q.id}_${idx++}`}
+                                value={selectedAnswers[`${q.id}_pos_${positionId}`] || ''}
+                              onChange={(e) => setSelectedAnswers(prev => ({
+                                ...prev,
+                                  [`${q.id}_pos_${positionId}`]: e.target.value
+                              }))}
+                              style={{
+                                display: 'inline-block',
+                                minWidth: '120px',
+                                height: '32px',
+                                padding: '4px 12px',
+                                margin: '0 8px 6px 8px',
+                                background: theme === 'sun' 
+                                  ? 'rgba(24, 144, 255, 0.08)' 
+                                  : 'rgba(138, 122, 255, 0.12)',
+                                border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                cursor: 'pointer',
+                                outline: 'none',
+                                textAlign: 'center'
+                              }}
+                            >
+                              <option value="">Select</option>
+                                {optionsForPosition.map((item) => (
+                                  <option key={item.id} value={item.value || ''} dangerouslySetInnerHTML={{ __html: item.value || '' }}>
+                                  </option>
+                              ))}
+                            </select>
+                            );
+                            last = match.index + match[0].length;
+                          }
+                          if (last < text.length) {
+                            parts.push(
+                              <span 
+                                key={`text_final_${idx}`}
+                                className="question-text-content"
+                                dangerouslySetInnerHTML={{ __html: text.slice(last) }}
+                              />
+                            );
+                          }
+                          return parts;
+                        })()}
+                      </div>
+                    </div>
+                  ) : q.type === 'DRAG_AND_DROP' ? (
+                    // Drag and Drop
+                    (() => {
+                      const qDroppedItems = droppedItems[q.id] || {};
+                      // Get all items from content.data (both correct and incorrect) and preserve duplicates
+                      const allItems = (q.content?.data || [])
+                        .map(item => item.value)
+                        .filter(Boolean);
+                      
+                      // Initialize availableItems if not set
+                      if (availableItems[q.id] === undefined && allItems.length > 0) {
+                        setAvailableItems(prev => ({
+                          ...prev,
+                          [q.id]: allItems
+                        }));
+                      }
+                      
+                      const qAvailableItems = availableItems[q.id] || allItems;
+                      
+                      const handleDragStart = (e, item, isDropped = false, positionId = null) => {
+                        e.dataTransfer.setData('text/plain', item);
+                        e.dataTransfer.setData('isDropped', isDropped);
+                        e.dataTransfer.setData('positionId', positionId || '');
+                        e.dataTransfer.setData('questionId', q.id);
+                      };
+
+                      const handleDrop = (e, positionId) => {
+                        e.preventDefault();
+                        const item = e.dataTransfer.getData('text/plain');
+                        const isDropped = e.dataTransfer.getData('isDropped') === 'true';
+                        const fromPositionId = e.dataTransfer.getData('positionId');
+                        const questionId = e.dataTransfer.getData('questionId');
+                        
+                        if (questionId !== q.id.toString()) return;
+                        
+                        setDroppedItems(prev => {
+                          const newItems = { ...prev };
+                          if (!newItems[q.id]) newItems[q.id] = {};
+                          const currentItem = newItems[q.id][positionId];
+                          
+                          // Clear drag over state
+                          setDragOverPosition(prev => ({
+                            ...prev,
+                            [q.id]: null
+                          }));
+                          
+                          // If moving from one position to another
+                          if (fromPositionId && fromPositionId !== positionId) {
+                            newItems[q.id][positionId] = item;
+                            if (fromPositionId in newItems[q.id]) {
+                              delete newItems[q.id][fromPositionId];
+                            }
+                            // Return the old item from target position to available list
+                            if (currentItem) {
+                              setAvailableItems(prev => ({
+                                ...prev,
+                                [q.id]: [...(prev[q.id] || []), currentItem]
+                              }));
+                            }
+                            return newItems;
+                          }
+                          
+                          // If dropping from available items (not from another position)
+                          if (!isDropped) {
+                            newItems[q.id][positionId] = item;
+                            // Remove from available items
+                            setAvailableItems(prev => ({
+                              ...prev,
+                              [q.id]: (prev[q.id] || []).filter(i => i !== item)
+                            }));
+                          }
+                          
+                          return newItems;
+                        });
+                      };
+
+                      const handleDragStartFromDropped = (e, item, positionId) => {
+                        handleDragStart(e, item, true, positionId);
+                        
+                        // Remove from dropped items immediately
+                        setDroppedItems(prev => {
+                          const newItems = { ...prev };
+                          if (newItems[q.id]) {
+                            delete newItems[q.id][positionId];
+                          }
+                          return newItems;
+                        });
+                        
+                        // Add back to available items
+                        setAvailableItems(prev => ({
+                          ...prev,
+                          [q.id]: [...(prev[q.id] || []), item]
+                        }));
+                      };
+
+                      const handleDragOver = (e, positionId) => {
+                        e.preventDefault();
+                        setDragOverPosition(prev => ({
+                          ...prev,
+                          [q.id]: positionId
+                        }));
+                      };
+
+                      const handleDragLeave = (e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget)) {
+                          setDragOverPosition(prev => ({
+                            ...prev,
+                            [q.id]: null
+                          }));
+                        }
+                      };
+
+                      // Parse question text with [[pos_xxx]] placeholders
+                      const text = q.questionText || q.question || '';
+                      const parts = [];
+                      const regex = /\[\[pos_(.*?)\]\]/g;
+                      let last = 0; let match; let idx = 0;
+                      const positions = [];
+                      
+                      while ((match = regex.exec(text)) !== null) {
+                        if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) });
+                        const posId = match[1];
+                        positions.push(posId);
+                        parts.push({ type: 'position', positionId: posId, index: idx++ });
+                        last = match.index + match[0].length;
+                      }
+                      if (last < text.length) parts.push({ type: 'text', content: text.slice(last) });
+
+                      return (
+                        <div style={{ marginBottom: '16px' }}>
+                          {/* Stacked Layout: Sentence on top, draggable words below */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '200px' }}>
+                            {/* Sentence with drop zones */}
+                            <div style={{
+                              padding: '16px',
+                              background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+                              borderRadius: '8px',
+                              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                            }}>
+                              <div style={{ 
+                                fontSize: '15px', 
+                                fontWeight: 350,
+                                lineHeight: '1.8',
+                                color: '#000000',
+                                marginBottom: '12px'
+                              }}>
+                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                                  Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
+                                </div>
+                                <div>
+                                  {parts.map((part, pIdx) => (
+                                    <React.Fragment key={pIdx}>
+                                      {part.type === 'text' ? (
+                                        <span 
+                                          className="question-text-content"
+                                          dangerouslySetInnerHTML={{ __html: part.content || '' }}
+                                        />
+                                      ) : (
+                                        qDroppedItems[part.positionId] ? (
+                                          <span
+                                            draggable
+                                            onDragStart={(e) => handleDragStartFromDropped(e, qDroppedItems[part.positionId], part.positionId)}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              minWidth: '100px',
+                                              minHeight: '28px',
+                                              height: 'auto',
+                                              padding: '4px 8px',
+                                              margin: '4px 6px 8px 6px',
+                                              background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
+                                              border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                              borderRadius: '6px',
+                                              fontSize: '14px',
+                                              fontWeight: '350',
+                                              color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                              cursor: 'grab',
+                                              transition: 'all 0.2s ease',
+                                              verticalAlign: 'baseline',
+                                              lineHeight: '1.5',
+                                              boxSizing: 'border-box',
+                                              textAlign: 'center',
+                                              maxWidth: '280px',
+                                              whiteSpace: 'normal',
+                                              wordBreak: 'break-word',
+                                              overflowWrap: 'anywhere'
+                                            }}
+                                            dangerouslySetInnerHTML={{ __html: qDroppedItems[part.positionId] || '' }}
+                                          />
+                                        ) : (
+                                          <span
+                                            onDrop={(e) => handleDrop(e, part.positionId)}
+                                            onDragOver={(e) => handleDragOver(e, part.positionId)}
+                                            onDragLeave={handleDragLeave}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              minWidth: '100px',
+                                              minHeight: '28px',
+                                              height: 'auto',
+                                              padding: '4px 8px',
+                                              margin: '4px 6px 8px 6px',
+                                              background: dragOverPosition[q.id] === part.positionId 
+                                                ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)')
+                                                : '#ffffff',
+                                              border: `2px ${dragOverPosition[q.id] === part.positionId ? 'solid' : 'dashed'} ${dragOverPosition[q.id] === part.positionId ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)'}`,
+                                              borderRadius: '6px',
+                                              fontSize: '14px',
+                                              fontWeight: '350',
+                                              color: dragOverPosition[q.id] === part.positionId ? (theme === 'sun' ? '#1890ff' : '#8B5CF6') : 'rgba(0, 0, 0, 0.5)',
+                                              cursor: 'pointer',
+                                              transition: 'all 0.3s ease',
+                                              verticalAlign: 'baseline',
+                                              lineHeight: '1.5',
+                                              boxSizing: 'border-box',
+                                              marginTop: '4px',
+                                              transform: dragOverPosition[q.id] === part.positionId ? 'scale(1.05)' : 'scale(1)',
+                                              boxShadow: dragOverPosition[q.id] === part.positionId 
+                                                ? (theme === 'sun' ? '0 4px 12px rgba(24, 144, 255, 0.3)' : '0 4px 12px rgba(138, 122, 255, 0.3)')
+                                                : 'none',
+                                              textAlign: 'center',
+                                              maxWidth: '280px',
+                                              whiteSpace: 'normal',
+                                              wordBreak: 'break-word',
+                                              overflowWrap: 'anywhere'
+                                            }}
+                                          >
+                                            {dragOverPosition[q.id] === part.positionId ? 'Drop here!' : 'Drop here'}
+                                          </span>
+                                        )
+                                      )}
+                                    </React.Fragment>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Available words for dragging (below) */}
+                            <div style={{
+                              padding: '16px',
+                              background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+                              borderRadius: '8px',
+                              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                            }}>
+                              <Typography.Text style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                                Drag these words:
+                              </Typography.Text>
+                              <div style={{ 
+                                display: 'flex', 
+                                gap: '8px',
+                                flexWrap: 'wrap',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                minHeight: '80px'
+                              }}>
+                                {qAvailableItems.map((item, idx) => (
+                                  <span
+                                    key={idx}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, item)}
+                                    style={{
+                                      padding: '8px 12px',
+                                      background: theme === 'sun' 
+                                        ? 'rgba(24, 144, 255, 0.08)' 
+                                        : 'rgba(138, 122, 255, 0.12)',
+                                      border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                      borderRadius: '8px',
+                                      fontSize: '13px',
+                                      fontWeight: '600',
+                                      color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                      cursor: 'grab',
+                                      userSelect: 'none',
+                                      transition: 'all 0.2s ease',
+                                      minWidth: '60px',
+                                      maxWidth: '200px',
+                                      textAlign: 'center',
+                                      wordBreak: 'break-word',
+                                      wordWrap: 'break-word',
+                                      overflowWrap: 'break-word',
+                                      whiteSpace: 'normal',
+                                      overflow: 'hidden',
+                                      boxShadow: theme === 'sun' 
+                                        ? '0 2px 6px rgba(24, 144, 255, 0.15)' 
+                                        : '0 2px 6px rgba(138, 122, 255, 0.15)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.transform = 'scale(1.05)';
+                                      e.currentTarget.style.boxShadow = theme === 'sun' 
+                                        ? '0 4px 10px rgba(24, 144, 255, 0.25)' 
+                                        : '0 4px 10px rgba(138, 122, 255, 0.25)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.transform = 'scale(1)';
+                                      e.currentTarget.style.boxShadow = theme === 'sun' 
+                                        ? '0 2px 6px rgba(24, 144, 255, 0.15)' 
+                                        : '0 2px 6px rgba(138, 122, 255, 0.15)';
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: item || '' }}
+                                  >
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK' || q.questionType === 'FILL_BLANK' || q.questionType === 'FILL_IN_THE_BLANK') ? (
+                    // Fill in the Blank
+                    <div style={{ 
+                      marginBottom: '16px',
+                      fontSize: '15px', 
+                      fontWeight: 350,
+                      lineHeight: '1.8',
+                      color: '#000000'
+                    }}>
+                      <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                        Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
+                      </div>
+                      <div>
+                        {(() => {
+                          const text = q.questionText || q.question || '';
+                          const parts = [];
+                          const regex = /\[\[pos_(.*?)\]\]/g;
+                          let last = 0; let match; let idx = 0;
+                          while ((match = regex.exec(text)) !== null) {
+                            if (match.index > last) parts.push(text.slice(last, match.index));
+                            const positionId = match[1];
+                            parts.push(
+                            <span
+                                key={`fib_${q.id}_${idx++}`}
+                              className="paragraph-input"
+                              contentEditable
+                                suppressContentEditableWarning
+                              onInput={(e) => {
+                                const textVal = e.currentTarget.textContent || e.currentTarget.innerText || '';
+                                setSelectedAnswers(prev => ({
+                                  ...prev,
+                                  [`${q.id}_pos_${positionId}`]: textVal
+                                }));
+                              }}
+                              onBlur={(e) => {
+                                const textVal = e.currentTarget.textContent || e.currentTarget.innerText || '';
+                                setSelectedAnswers(prev => ({
+                                  ...prev,
+                                  [`${q.id}_pos_${positionId}`]: textVal
+                                }));
+                              }}
+                              ref={(el) => {
+                                if (el) {
+                                  fillBlankRefs.current[`${q.id}_pos_${positionId}`] = el;
+                                } else {
+                                  delete fillBlankRefs.current[`${q.id}_pos_${positionId}`];
+                                }
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minWidth: '120px',
+                                maxWidth: '200px',
+                                minHeight: '32px',
+                                padding: '4px 12px',
+                                margin: '4px 8px 6px 8px',
+                                background: theme === 'sun' ? '#E9EEFF94' : 'rgba(255, 255, 255, 0.1)',
+                                border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                borderRadius: '8px',
+                                cursor: 'text',
+                                outline: 'none',
+                                verticalAlign: 'top',
+                                lineHeight: '1.4',
+                                fontSize: '14px',
+                                boxSizing: 'border-box',
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word',
+                                whiteSpace: 'pre-wrap',
+                                color: '#000000',
+                                textAlign: 'center'
+                              }}
+                            />
+                            );
+                            last = match.index + match[0].length;
+                          }
+                          if (last < text.length) parts.push(text.slice(last));
+                          return parts;
+                        })()}
+                      </div>
+                    </div>
+                  ) : q.type === 'REARRANGE' ? (
+                    // Reorder Question - align behavior with single GV Rearrange
+                    (() => {
+                      const questionId = q.id;
+                      const currentState = {
+                        sourceItems: q.content?.data?.map(item => item.value) || [],
+                        droppedItems: {},
+                        dragOverIndex: null,
+                        draggedItem: null,
+                        isDraggingFromSource: false,
+                        wasDropped: false,
+                        ...(reorderStates[questionId] || {})
+                      };
+
+                      // Compute number of slots based on provided words
+                      const numSlots = (q.content?.data?.filter(it => it?.value)?.length) || currentState.sourceItems.length || 0;
+
+                      // Remove placeholder tokens but keep HTML formatting
+                      const displayText = ((q.questionText || q.question || 'Rearrange the words to form a correct sentence:')
+                        .replace(/\[\[pos_.*?\]\]/g, '')).trim();
+
+                      const handleDragStartFromSource = (e, item) => {
+                        setReorderStates(prev => ({
+                          ...prev,
+                          [questionId]: {
+                            ...currentState,
+                            draggedItem: item,
+                            isDraggingFromSource: true
+                          }
+                        }));
+                        e.dataTransfer.effectAllowed = 'move';
+                      };
+
+                      const handleDragStartFromSlot = (e, index) => {
+                        const item = currentState.droppedItems[index];
+                        setReorderStates(prev => ({
+                          ...prev,
+                          [questionId]: {
+                            ...currentState,
+                            draggedItem: item,
+                            isDraggingFromSource: false,
+                            wasDropped: false,
+                            dragOverIndex: index
+                          }
+                        }));
+                        e.dataTransfer.effectAllowed = 'move';
+                      };
+
+                      const handleDropOnSlot = (e, index) => {
+                        e.preventDefault();
+                        const newState = { ...currentState, wasDropped: true, dragOverIndex: null };
+                        if (currentState.draggedItem) {
+                          const currentItem = currentState.droppedItems[index];
+                          if (currentItem) newState.sourceItems = [...currentState.sourceItems, currentItem];
+                          if (!currentState.isDraggingFromSource) {
+                            const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem && parseInt(i) !== index);
+                            if (oldIndex !== undefined) delete newState.droppedItems[parseInt(oldIndex)];
+                          } else {
+                            // Remove only one occurrence from source to preserve duplicates
+                            const newSource = [...currentState.sourceItems];
+                            const rmIdx = newSource.findIndex(item => item === currentState.draggedItem);
+                            if (rmIdx !== -1) newSource.splice(rmIdx, 1);
+                            newState.sourceItems = newSource;
+                          }
+                          newState.droppedItems = { ...currentState.droppedItems, [index]: currentState.draggedItem };
+                        }
+                        newState.draggedItem = null;
+                        newState.isDraggingFromSource = false;
+                        setReorderStates(prev => ({ ...prev, [questionId]: newState }));
+                      };
+
+                      const handleDragOverSlot = (e, index) => {
+                        e.preventDefault();
+                        setReorderStates(prev => ({
+                          ...prev,
+                          [questionId]: { ...currentState, dragOverIndex: index }
+                        }));
+                        e.dataTransfer.dropEffect = 'move';
+                      };
+
+                      const handleDragLeaveSlot = () => {
+                        setReorderStates(prev => ({
+                          ...prev,
+                          [questionId]: { ...currentState, dragOverIndex: null }
+                        }));
+                      };
+
+                      const handleDragEnd = () => {
+                        if (currentState.draggedItem && !currentState.isDraggingFromSource && !currentState.wasDropped) {
+                          const newState = { ...currentState };
+                          // Return item back to source without deduping to preserve duplicates
+                          newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
+                          const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
+                          if (oldIndex !== undefined) delete newState.droppedItems[oldIndex];
+                          newState.draggedItem = null;
+                          newState.isDraggingFromSource = false;
+                          newState.dragOverIndex = null;
+                          newState.wasDropped = false;
+                          setReorderStates(prev => ({ ...prev, [questionId]: newState }));
+                        }
+                      };
+
+                      return (
+                        <div style={{ marginBottom: '16px' }}>
+                          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                            Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
+                          </div>
+                          <div style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}>
+                            <div 
+                              className="question-text-content"
+                              dangerouslySetInnerHTML={{ __html: displayText || 'Rearrange the words to form a correct sentence:' }}
+                            />
+                          </div>
+
+                          {/* Slots Row */}
+                          <div style={{
+                            marginBottom: '16px',
+                            padding: '16px',
+                            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+                            borderRadius: '8px',
+                            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                          }}>
+                            <div style={{ fontSize: '14px', fontWeight: 350, marginBottom: '12px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                              Drop the words here in order:
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {Array.from({ length: numSlots }).map((_, index) => (
+                                <div
+                                  key={index}
+                                  onDrop={(e) => handleDropOnSlot(e, index)}
+                                  onDragOver={(e) => handleDragOverSlot(e, index)}
+                                  onDragLeave={handleDragLeaveSlot}
+                                  onDragEnd={handleDragEnd}
+                                  style={{
+                                    minWidth: '80px',
+                                    height: '50px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: currentState.droppedItems[index] 
+                                      ? `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
+                                      : currentState.dragOverIndex === index 
+                                        ? `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
+                                        : `2px dashed rgba(0, 0, 0, 0.5)`,
+                                    borderRadius: '6px',
+                                    background: currentState.droppedItems[index]
+                                      ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)')
+                                      : currentState.dragOverIndex === index
+                                        ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.15)')
+                                        : '#ffffff',
+                                    position: 'relative',
+                                    transition: 'all 0.3s ease',
+                                    transform: currentState.dragOverIndex === index ? 'scale(1.05)' : 'scale(1)',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {currentState.droppedItems[index] ? (
+                                    <div
+                                      draggable
+                                      onDragStart={(e) => handleDragStartFromSlot(e, index)}
+                                      onDragEnd={handleDragEnd}
+                                      style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '6px 8px',
+                                        background: theme === 'sun' ? 'rgba(24, 144, 255, 0.12)' : 'rgba(138, 122, 255, 0.14)',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'grab',
+                                        userSelect: 'none'
+                                      }}
+                                    >
+                                      <span 
+                                        style={{ fontSize: '13px', fontWeight: '700', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', textAlign: 'center' }}
+                                        dangerouslySetInnerHTML={{ __html: currentState.droppedItems[index] || '' }}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                                      <span style={{ fontSize: '10px', fontWeight: '600', color: 'rgba(0, 0, 0, 0.5)' }}>
+                                        {index + 1}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Source Words */}
+                          <div
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const newState = { ...currentState, wasDropped: true };
+                              if (currentState.draggedItem && !currentState.isDraggingFromSource) {
+                                // Return item back to source without deduping to preserve duplicates
+                                newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
+                                const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
+                                if (oldIndex) delete newState.droppedItems[oldIndex];
+                                newState.draggedItem = null;
+                                newState.isDraggingFromSource = false;
+                                newState.dragOverIndex = null;
+                                setReorderStates(prev => ({ ...prev, [questionId]: newState }));
+                              }
+                            }}
+                            onDragOver={(e) => { e.preventDefault(); }}
+                            style={{
+                              padding: '16px',
+                              background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+                              borderRadius: '8px',
+                              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+                            }}
+                          >
+                            <div style={{ fontSize: '14px', fontWeight: 350, marginBottom: '12px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
+                              Drag these words to the slots above:
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {currentState.sourceItems.map((item, idx) => (
+                                <div
+                                  key={`${item}-${idx}`}
+                                  draggable
+                                  onDragStart={(e) => handleDragStartFromSource(e, item)}
+                                  onDragEnd={handleDragEnd}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: '8px 12px',
+                                    background: theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)',
+                                    border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                    cursor: 'grab',
+                                    userSelect: 'none',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: theme === 'sun' ? '0 2px 6px rgba(24, 144, 255, 0.15)' : '0 2px 6px rgba(138, 122, 255, 0.15)'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                    e.currentTarget.style.boxShadow = theme === 'sun' ? '0 4px 10px rgba(24, 144, 255, 0.25)' : '0 4px 10px rgba(138, 122, 255, 0.25)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.boxShadow = theme === 'sun' ? '0 2px 6px rgba(24, 144, 255, 0.15)' : '0 2px 6px rgba(138, 122, 255, 0.15)';
+                                  }}
+                                  dangerouslySetInnerHTML={{ __html: item || '' }}
+                                >
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <>
+                      <div style={{ marginBottom: '16px' }}>
+                        <Typography.Text style={{ 
+                          fontSize: '16px', 
+                          fontWeight: 600,
+                          color: '#000000',
+                          display: 'block',
+                          marginBottom: '8px'
+                        }}>
+                          Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
+                        </Typography.Text>
+                        <Typography.Text style={{ 
+                          fontSize: '15px', 
+                          fontWeight: 350,
+                          color: '#000000',
+                          display: 'block',
+                          lineHeight: '1.8'
+                        }}>
+                          {q.question || q.questionText}
+                        </Typography.Text>
+                      </div>
+
+                    <div style={{ 
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '14px',
+                      width: '100%'
+                    }}>
+                      {q.type === 'MULTIPLE_SELECT' ? (
+                      // Multiple Select (Checkbox)
+                      q.options?.map((option) => (
+                        <div 
+                          key={option.key} 
+                          className={`option-item ${selectedAnswers[q.id]?.includes(option.key) ? 'selected-answer' : ''}`}
+                          style={{ 
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '14px 18px',
+                            background: selectedAnswers[q.id]?.includes(option.key)
+                              ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)')
+                              : theme === 'sun'
+                                ? 'rgba(255, 255, 255, 0.85)'
+                                : 'rgba(255, 255, 255, 0.7)',
+                            border: `2px solid ${
+                              selectedAnswers[q.id]?.includes(option.key)
+                                ? (theme === 'sun' ? 'rgb(24, 144, 255)' : 'rgb(138, 122, 255)')
+                                : theme === 'sun' 
+                                  ? 'rgba(113, 179, 253, 0.2)' 
+                                  : 'rgba(138, 122, 255, 0.15)'
+                            }`,
+                            borderRadius: '12px',
+                            boxShadow: theme === 'sun' 
+                              ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                              : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                            fontSize: '14px',
+                            fontWeight: '350',
+                            position: 'relative',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            cursor: 'pointer',
+                            minHeight: '50px',
+                            boxSizing: 'border-box',
+                            width: '100%',
+                            minWidth: 0,
+                            maxWidth: '100%',
+                            overflow: 'hidden'
+                          }}
+                          onClick={() => {
+                            const currentAnswers = selectedAnswers[q.id] || [];
+                            const newAnswers = currentAnswers.includes(option.key)
+                              ? currentAnswers.filter(key => key !== option.key)
+                              : [...currentAnswers, option.key];
+                            setSelectedAnswers(prev => ({
+                              ...prev,
+                              [q.id]: newAnswers
+                            }));
+                          }}
+                        >
+                          <input 
+                            type="checkbox" 
+                            checked={selectedAnswers[q.id]?.includes(option.key) || false}
+                            onChange={() => {}}
+                            style={{ 
+                              width: '18px',
+                              height: '18px',
+                              accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                              cursor: 'pointer',
+                              flexShrink: 0
+                            }} 
+                          />
+                          <span style={{ 
+                            flexShrink: 0, 
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                            fontWeight: '600',
+                            fontSize: '16px'
+                          }}>
+                            {option.key}.
+                          </span>
+                          <Typography.Text style={{ 
+                            fontSize: '14px',
+                            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                            fontWeight: '350',
+                            flex: 1,
+                            minWidth: 0,
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            overflow: 'hidden'
+                          }}>
+                            {option.text}
+                          </Typography.Text>
+                        </div>
+                      ))
+                    ) : (
+                      // Multiple Choice (Radio) or True/False
+                      q.options?.map((option) => (
+                        <div 
+                          key={option.key} 
+                          className={`option-item ${selectedAnswers[q.id] === option.key ? 'selected-answer' : ''}`}
+                          style={{ 
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '14px 18px',
+                            background: selectedAnswers[q.id] === option.key 
+                              ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)')
+                              : theme === 'sun'
+                                ? 'rgba(255, 255, 255, 0.85)'
+                                : 'rgba(255, 255, 255, 0.7)',
+                            border: `2px solid ${
+                              selectedAnswers[q.id] === option.key 
+                                ? (theme === 'sun' ? 'rgb(24, 144, 255)' : 'rgb(138, 122, 255)')
+                                : theme === 'sun' 
+                                  ? 'rgba(113, 179, 253, 0.2)' 
+                                  : 'rgba(138, 122, 255, 0.15)'
+                            }`,
+                            borderRadius: '12px',
+                            boxShadow: theme === 'sun' 
+                              ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                              : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                            fontSize: '14px',
+                            fontWeight: '350',
+                            position: 'relative',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            cursor: 'pointer',
+                            minHeight: '50px',
+                            boxSizing: 'border-box',
+                            width: '100%',
+                            minWidth: 0,
+                            maxWidth: '100%',
+                            overflow: 'hidden'
+                          }}
+                          onClick={() => handleAnswerSelect(q.id, option.key)}
+                        >
+                          <input 
+                            type="radio" 
+                            name={`question-${q.id}`} 
+                            checked={selectedAnswers[q.id] === option.key}
+                            onChange={() => handleAnswerSelect(q.id, option.key)}
+                            style={{ 
+                              width: '18px',
+                              height: '18px',
+                              accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                              cursor: 'pointer',
+                              flexShrink: 0
+                            }} 
+                          />
+                          {q.type === 'TRUE_OR_FALSE' ? (
+                            <Typography.Text style={{ 
+                              fontSize: '14px',
+                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                              fontWeight: '350',
+                              flex: 1,
+                              minWidth: 0,
+                              wordBreak: 'break-word',
+                              overflowWrap: 'break-word',
+                              overflow: 'hidden'
+                            }}>
+                              {option.text}
+                            </Typography.Text>
+                          ) : (
+                            <>
+                              <span style={{ 
+                                flexShrink: 0, 
+                                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                                fontWeight: '600',
+                                fontSize: '16px'
+                              }}>
+                                {option.key}.
+                              </span>
+                              <Typography.Text style={{ 
+                                fontSize: '14px',
+                                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                fontWeight: '350',
+                                flex: 1,
+                                minWidth: 0,
+                                wordBreak: 'break-word',
+                                overflowWrap: 'break-word',
+                                overflow: 'hidden'
+                              }}>
+                                {option.text}
+                              </Typography.Text>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    )}
+                    </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </>
+  );
+};
+// Listening Section Component
+const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQuestionNumbers }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
+  const [selectedAnswers, setSelectedAnswers] = useState({});
+  const [droppedItems, setDroppedItems] = useState({});
+  const [availableItems, setAvailableItems] = useState({});
+  const [dragOverPosition, setDragOverPosition] = useState({});
+  const [reorderStates, setReorderStates] = useState({});
+  // Local refs for LI Fill-in-the-Blank inputs
+  const fillBlankRefs = useRef({});
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [audioRef, setAudioRef] = useState(null);
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Register answer collectors for all questions in this section
+  useEffect(() => {
+    if (!registerAnswerCollector || !question.questions) return;
+
+    const unregisterFunctions = [];
+
+    question.questions.forEach(q => {
+      const getAnswer = () => {
+        let answer = null;
+        let options;
+
+        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+          answer = selectedAnswers[q.id] || null;
+          if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+            options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: opt.text }));
+          } else if (q?.content?.data && Array.isArray(q.content.data)) {
+            options = q.content.data.map((d, idx) => ({
+              key: q.type === 'TRUE_OR_FALSE' ? (String(d.value).toLowerCase() === 'true' ? 'A' : 'B') : (d.id || String.fromCharCode(65 + idx)),
+              text: d.value
+            }));
+          }
+        } else if (q.type === 'MULTIPLE_SELECT') {
+          answer = selectedAnswers[q.id] || [];
+          if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+            options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: opt.text }));
+          } else if (q?.content?.data && Array.isArray(q.content.data)) {
+            options = q.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }));
+          }
+        } else if (q.type === 'DROPDOWN') {
+          // Collect all dropdown answers for this question
+          const dropdownAnswers = {};
+          Object.keys(selectedAnswers).forEach(key => {
+            if (key.startsWith(`${q.id}_pos_`)) {
+              dropdownAnswers[key] = selectedAnswers[key];
+            }
+          });
+          answer = Object.keys(dropdownAnswers).length > 0 ? dropdownAnswers : null;
+        } else if (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK') {
+          // Collect LI fill-in-the-blank answers by position
+          const fibAnswers = {};
+          Object.keys(selectedAnswers).forEach(key => {
+            if (key.startsWith(`${q.id}_pos_`)) {
+              fibAnswers[key] = selectedAnswers[key];
+            }
+          });
+          answer = Object.keys(fibAnswers).length > 0 ? fibAnswers : null;
+        } else if (q.type === 'DRAG_AND_DROP') {
+          answer = droppedItems[q.id] || null;
+        } else if (q.type === 'REARRANGE' || q.type === 'REORDER') {
+          const reorderState = reorderStates[q.id];
+          if (reorderState?.items && Array.isArray(reorderState.items) && reorderState.items.length > 0) {
+            answer = reorderState.items;
+          } else if (reorderState?.droppedItems && typeof reorderState.droppedItems === 'object') {
+            // Derive ordered array from droppedItems mapping
+            const indices = Object.keys(reorderState.droppedItems)
+              .map(k => parseInt(k, 10))
+              .filter(i => !Number.isNaN(i))
+              .sort((a, b) => a - b);
+            const arr = indices.map(i => reorderState.droppedItems[i]).filter(Boolean);
+            answer = arr.length > 0 ? arr : null;
+          } else {
+            answer = null;
+          }
+        }
+
+        // Normalize type names to match API
+        const normalizedType = (q.type === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
+          : (q.type === 'REARRANGE') ? 'REORDER'
+          : q.type;
+        return answer ? { answer, questionType: normalizedType, options } : null;
+      };
+
+      const unregister = registerAnswerCollector(q.id, getAnswer);
+      if (unregister) {
+        unregisterFunctions.push(unregister);
+      }
+    });
+
+    return () => {
+      unregisterFunctions.forEach(unregister => unregister());
+    };
+  }, [registerAnswerCollector, question.questions, selectedAnswers, droppedItems, reorderStates]);
+
+  // Register answer restorers for all questions in this section
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question.questions) return;
+
+    const unregisterFunctions = [];
+
+    question.questions.forEach(q => {
+      const setAnswer = (answer) => {
+        if (!answer && answer !== 0 && answer !== '') return;
+
+        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_OR_FALSE') {
+          if (typeof answer === 'string') {
+            // Map restored text/value back to option key (A/B/...)
+            let options = [];
+            if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+              options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text }));
+            } else if (q?.content?.data && Array.isArray(q.content.data)) {
+              options = q.content.data.map((d, idx) => ({
+                key: q.type === 'TRUE_OR_FALSE' ? (String(d.value).toLowerCase() === 'true' ? 'A' : 'B') : (d.id || String.fromCharCode(65 + idx)),
+                text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value
+              }));
+            }
+            const normalized = String(answer).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+            const match = options.find(o => o.text === normalized || o.key === normalized);
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: match ? match.key : normalized }));
+          }
+        } else if (q.type === 'MULTIPLE_SELECT') {
+          if (Array.isArray(answer)) {
+            let options = [];
+            if (q?.options && Array.isArray(q.options) && q.options.length > 0) {
+              options = q.options.map((opt, idx) => ({ key: opt.key || String.fromCharCode(65 + idx), text: typeof opt.text === 'string' ? opt.text.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : opt.text }));
+            } else if (q?.content?.data && Array.isArray(q.content.data)) {
+              options = q.content.data.map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: typeof d.value === 'string' ? d.value.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim() : d.value }));
+            }
+            const keys = answer.map(val => {
+              const normalized = String(val).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+              const match = options.find(o => o.text === normalized || o.key === normalized);
+              return match ? match.key : normalized;
+            });
+            setSelectedAnswers(prev => ({ ...prev, [q.id]: keys }));
+          }
+        } else if (q.type === 'DROPDOWN') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setSelectedAnswers(prev => ({ ...prev, ...answer }));
+          }
+        } else if (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setSelectedAnswers(prev => ({ ...prev, ...answer }));
+            // Push values into corresponding contentEditable spans
+            Object.keys(answer).forEach(key => {
+              const el = fillBlankRefs.current[key];
+              const val = answer[key] ?? '';
+              if (el && document.activeElement !== el) {
+                el.textContent = String(val);
+              }
+            });
+          }
+        } else if (q.type === 'DRAG_AND_DROP') {
+          if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+            setDroppedItems(prev => ({ ...prev, [q.id]: answer }));
+          }
+        } else if (q.type === 'REARRANGE' || q.type === 'REORDER') {
+          if (Array.isArray(answer)) {
+            // Place restored items into dropped slots by index
+            const dropped = answer.reduce((acc, val, idx) => {
+              if (val !== undefined && val !== null && String(val).trim() !== '') acc[idx] = val;
+              return acc;
+            }, {});
+            const reorderState = {
+              sourceItems: [],
+              droppedItems: dropped,
+              dragOverIndex: null,
+              draggedItem: null,
+              isDraggingFromSource: false,
+              wasDropped: false
+            };
+            setReorderStates(prev => ({ ...prev, [q.id]: reorderState }));
+          }
+        }
+      };
+
+      const unregister = registerAnswerRestorer(q.id, setAnswer);
+      if (unregister) {
+        unregisterFunctions.push(unregister);
+      }
+    });
+
+    return () => {
+      unregisterFunctions.forEach(unregister => unregister());
+    };
+  }, [registerAnswerRestorer, question.questions]);
+
+  // Debounced auto-save for LI changes
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, selectedAnswers, droppedItems, reorderStates]);
+
+  // Initialize available items for DRAG_AND_DROP questions (include all values)
+  useEffect(() => {
+    if (question.questions) {
+      setAvailableItems(prev => {
+        const newItems = { ...prev };
+        let hasChanges = false;
+        question.questions.forEach(q => {
+          if (q.type === 'DRAG_AND_DROP' && q.content?.data && !newItems[q.id]) {
+            const all = (q.content.data || []).map(it => it.value).filter(Boolean);
+            if (all.length > 0) {
+              newItems[q.id] = all;
+              hasChanges = true;
+            }
+          }
+        });
+        return hasChanges ? newItems : prev;
+      });
+    }
+  }, [question.questions]);
+
+  const handleAnswerSelect = (questionId, optionKey) => {
+    setSelectedAnswers(prev => ({
+      ...prev,
+      [questionId]: optionKey
+    }));
+  };
+
+  const handlePlayPause = () => {
+    if (audioRef) {
+      if (isPlaying) {
+        audioRef.pause();
+      } else {
+        audioRef.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = (e) => {
+    setCurrentTime(e.target.currentTime);
+  };
+
+  const handleLoadedMetadata = (e) => {
+    setDuration(e.target.duration);
+  };
+
+  const handleSeek = (e) => {
+    if (audioRef) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const newTime = (clickX / rect.width) * duration;
+      audioRef.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  };
+
+  const handleVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    if (audioRef) {
+      audioRef.volume = newVolume;
+    }
+  };
+
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  return (
+    <>
+      <style>
+        {`
+          .listening-passage-scrollbar::-webkit-scrollbar {
+            width: 8px;
+          }
+          .listening-passage-scrollbar::-webkit-scrollbar-track {
+            background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'};
+            border-radius: 4px;
+          }
+          .listening-passage-scrollbar::-webkit-scrollbar-thumb {
+            background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'};
+            border-radius: 4px;
+            border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'};
+          }
+          .listening-passage-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'};
+          }
+        `}
+      </style>
+      <div
+        className={`question-item ${theme}-question-item`}
+        style={{
+          marginBottom: '24px',
+          borderRadius: '16px',
+          padding: '24px',
+          border: '2px solid',
+          borderColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          background: theme === 'sun' 
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+          boxShadow: theme === 'sun' 
+            ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+            : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        {/* Header */}
+        <div className="question-header" style={{
+          paddingBottom: '14px',
+          marginBottom: '16px',
+          borderBottom: '2px solid',
+          borderBottomColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          position: 'relative',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Typography.Text strong style={{ 
+            fontSize: '20px', 
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+          }}>
+            {index + 1}. Listening Section
+          </Typography.Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+              ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
+          </Typography.Text>
+          </div>
+        </div>
+        {/* Two Column Layout */}
+        <div style={{ display: 'flex', gap: '24px', minHeight: '500px' }}>
+          {/* Left Column - Audio Player and Transcript */}
+          <div 
+            className="listening-passage-scrollbar"
+            style={{
+              flex: '1',
+              padding: '20px',
+              background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+              borderRadius: '12px',
+              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              overflowY: 'auto',
+              maxHeight: '600px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: theme === 'sun' 
+                ? '#1890ff rgba(24, 144, 255, 0.2)' 
+                : '#8B5CF6 rgba(138, 122, 255, 0.2)'
+            }}>
+            
+            {/* Audio Title removed as requested */}
+
+            {/* Audio Player */}
+            <div style={{
+              background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px',
+              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              boxShadow: theme === 'sun' 
+                ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                : '0 2px 8px rgba(0, 0, 0, 0.2)'
+            }}>
+              <audio
+                ref={setAudioRef}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={() => setIsPlaying(false)}
+                style={{ display: 'none' }}
+              >
+                <source src={question.audioUrl} type="audio/wav" />
+                Your browser does not support the audio element.
+              </audio>
+
+              {/* Audio Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                {/* Play/Pause Button */}
+                <button
+                  onClick={handlePlayPause}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    background: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                    color: 'white',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.3s ease',
+                    boxShadow: theme === 'sun' 
+                      ? '0 4px 12px rgba(24, 144, 255, 0.3)' 
+                      : '0 4px 12px rgba(138, 122, 255, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  {isPlaying ? '⏸️' : '▶️'}
+                </button>
+
+                {/* Time Display */}
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#333' : '#1F2937',
+                  minWidth: '80px'
+                }}>
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </div>
+
+                {/* Progress Bar */}
+                <div
+                  style={{
+                    flex: 1,
+                    height: '6px',
+                    background: theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}
+                  onClick={handleSeek}
+                >
+                  <div
+                    style={{
+                      width: `${duration ? (currentTime / duration) * 100 : 0}%`,
+                      height: '100%',
+                      background: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                      borderRadius: '3px',
+                      transition: 'width 0.1s ease'
+                    }}
+                  />
+                </div>
+
+                {/* Volume Control */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ 
+                    fontSize: '16px',
+                    color: theme === 'sun' ? '#666' : '#ccc'
+                  }}>🔊</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={volume}
+                    onChange={handleVolumeChange}
+                    style={{
+                      width: '60px',
+                      accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Questions */}
+          <div style={{
+            flex: '1',
+            background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '12px',
+            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+            overflowY: 'auto',
+            maxHeight: '600px'
+          }}>
+            <div style={{ padding: '20px' }}>
+              {/* Questions List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {question.questions
+                  .slice()
+                  .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)))
+                  .map((q, qIndex) => (
+                  <div key={q.id} style={{
+                    padding: '16px',
+                    background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '8px',
+                    border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
+                  }}>
+                    {/* Question Types - mirrored from Reading */}
+                    {(() => {
+                      return null;
+                    })()}
+                    {q.type === 'DROPDOWN' ? (
+                      <div style={{ 
+                        marginBottom: '16px',
+                        fontSize: '15px', 
+                        fontWeight: 350,
+                        lineHeight: '1.8',
+                        color: '#000000'
+                      }}>
+                        <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                          Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
+                        </div>
+                        <div>
+                          {(() => {
+                            const text = q.questionText || q.question || '';
+                            const parts = [];
+                            const regex = /\[\[pos_(.*?)\]\]/g;
+                            let last = 0; let match; let idx = 0;
+                            const contentData = q.content?.data || [];
+                            const hasPositionIds = contentData.some(opt => opt.positionId);
+                            
+                            // Pre-calculate group keys if no positionId
+                            let groupKeysInOrder = [];
+                            if (!hasPositionIds) {
+                              const groupKeyFromId = (id) => {
+                                if (!id || typeof id !== 'string') return id;
+                                const m = id.match(/^([^_]+?\d+)/);
+                                return (m && m[1]) || id.split('_')[0] || id;
+                              };
+                              const extractNumber = (groupKey) => {
+                                if (!groupKey) return 0;
+                                const match = groupKey.match(/(\d+)$/);
+                                return match ? parseInt(match[1], 10) : 0;
+                              };
+                              const seen = new Set();
+                              const groupKeyMap = new Map();
+                              for (let i = 0; i < contentData.length; i++) {
+                                const item = contentData[i];
+                                if (!item || !item.id) continue;
+                                const gk = groupKeyFromId(item.id);
+                                if (gk && !seen.has(gk)) {
+                                  seen.add(gk);
+                                  groupKeyMap.set(gk, i);
+                                  groupKeysInOrder.push(gk);
+                                }
+                              }
+                              groupKeysInOrder.sort((a, b) => {
+                                const numA = extractNumber(a);
+                                const numB = extractNumber(b);
+                                if (numA !== numB) return numA - numB;
+                                return (groupKeyMap.get(a) || 0) - (groupKeyMap.get(b) || 0);
+                              });
+                            }
+                            
+                            // Collect all placeholders first
+                            const allMatches = [];
+                            let tempMatch;
+                            const tempRegex = /\[\[pos_(.*?)\]\]/g;
+                            while ((tempMatch = tempRegex.exec(text)) !== null) {
+                              allMatches.push(tempMatch[1]);
+                            }
+                            
+                            while ((match = regex.exec(text)) !== null) {
+                              if (match.index > last) parts.push(text.slice(last, match.index));
+                              const positionId = match[1];
+                              const currentPlaceholderIndex = allMatches.indexOf(positionId);
+                              
+                              // Filter options
+                              let optionsForPosition = [];
+                              if (hasPositionIds) {
+                                optionsForPosition = contentData.filter(opt => String(opt.positionId || '') === String(positionId));
+                              } else {
+                                const groupKeyFromId = (id) => {
+                                  if (!id || typeof id !== 'string') return id;
+                                  const m = id.match(/^([^_]+?\d+)/);
+                                  return (m && m[1]) || id.split('_')[0] || id;
+                                };
+                                const groupKeyForThisPos = groupKeysInOrder[currentPlaceholderIndex];
+                                if (groupKeyForThisPos) {
+                                  optionsForPosition = contentData.filter(item => groupKeyFromId(item.id) === groupKeyForThisPos);
+                                } else {
+                                  optionsForPosition = contentData;
+                                }
+                              }
+                              parts.push(
+                              <select
+                                  key={`dd_${q.id}_${idx++}`}
+                                  value={selectedAnswers[`${q.id}_pos_${positionId}`] || ''}
+                                onChange={(e) => setSelectedAnswers(prev => ({
+                                  ...prev,
+                                    [`${q.id}_pos_${positionId}`]: e.target.value
+                                }))}
+                                style={{
+                                  display: 'inline-block',
+                                  minWidth: '120px',
+                                  height: '32px',
+                                  padding: '4px 12px',
+                                  margin: '0 8px 6px 8px',
+                                  background: theme === 'sun' 
+                                    ? 'rgba(24, 144, 255, 0.08)' 
+                                    : 'rgba(138, 122, 255, 0.12)',
+                                  border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  fontWeight: '600',
+                                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  textAlign: 'center'
+                                }}
+                              >
+                                <option value="">Select</option>
+                                  {optionsForPosition.map((item) => (
+                                    <option key={item.id} value={item.value || ''}>
+                                      {item.value || ''}
+                                  </option>
+                                ))}
+                              </select>
+                              );
+                              last = match.index + match[0].length;
+                            }
+                            if (last < text.length) parts.push(text.slice(last));
+                            return parts;
+                          })()}
+                        </div>
+                      </div>
+                    ) : q.type === 'DRAG_AND_DROP' ? (
+                      (() => {
+                        const qDroppedItems = droppedItems[q.id] || {};
+                        const allItems = (q.content?.data || []).map(item => item.value).filter(Boolean);
+                        if (availableItems[q.id] === undefined && allItems.length > 0) {
+                          setAvailableItems(prev => ({ ...prev, [q.id]: allItems }));
+                        }
+                        const qAvailableItems = availableItems[q.id] || allItems;
+
+                        const handleDragStart = (e, item, isDropped = false, positionId = null) => {
+                          e.dataTransfer.setData('text/plain', item);
+                          e.dataTransfer.setData('isDropped', isDropped);
+                          e.dataTransfer.setData('positionId', positionId || '');
+                          e.dataTransfer.setData('questionId', q.id);
+                        };
+                        const handleDrop = (e, positionId) => {
+                          e.preventDefault();
+                          const item = e.dataTransfer.getData('text/plain');
+                          const isDropped = e.dataTransfer.getData('isDropped') === 'true';
+                          const fromPositionId = e.dataTransfer.getData('positionId');
+                          const questionId = e.dataTransfer.getData('questionId');
+                          if (questionId !== q.id.toString()) return;
+                          setDroppedItems(prev => {
+                            const newItems = { ...prev };
+                            if (!newItems[q.id]) newItems[q.id] = {};
+                            const currentItem = newItems[q.id][positionId];
+                            setDragOverPosition(pr => ({ ...pr, [q.id]: null }));
+                            if (fromPositionId && fromPositionId !== positionId) {
+                              newItems[q.id][positionId] = item;
+                              if (fromPositionId in newItems[q.id]) delete newItems[q.id][fromPositionId];
+                              if (currentItem) {
+                                setAvailableItems(prev => ({ ...prev, [q.id]: [...(prev[q.id] || []), currentItem] }));
+                              }
+                              return newItems;
+                            }
+                            if (!isDropped) {
+                              newItems[q.id][positionId] = item;
+                              setAvailableItems(prev => ({ ...prev, [q.id]: (prev[q.id] || []).filter(i => i !== item) }));
+                            }
+                            return newItems;
+                          });
+                        };
+                        const handleDragStartFromDropped = (e, item, positionId) => {
+                          handleDragStart(e, item, true, positionId);
+                          setDroppedItems(prev => {
+                            const newItems = { ...prev };
+                            if (newItems[q.id]) delete newItems[q.id][positionId];
+                            return newItems;
+                          });
+                          setAvailableItems(prev => ({ ...prev, [q.id]: [...(prev[q.id] || []), item] }));
+                        };
+                        const handleDragOver = (e, positionId) => {
+                          e.preventDefault();
+                          setDragOverPosition(prev => ({ ...prev, [q.id]: positionId }));
+                        };
+                        const handleDragLeave = (e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget)) {
+                            setDragOverPosition(prev => ({ ...prev, [q.id]: null }));
+                          }
+                        };
+
+                        const text = q.questionText || q.question || '';
+                        const parts = [];
+                        const regex = /\[\[pos_(.*?)\]\]/g;
+                        let last = 0; let match; let idx = 0; const positions = [];
+                        while ((match = regex.exec(text)) !== null) {
+                          if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) });
+                          const posId = match[1];
+                          positions.push(posId);
+                          parts.push({ type: 'position', positionId: posId, index: idx++ });
+                          last = match.index + match[0].length;
+                        }
+                        if (last < text.length) parts.push({ type: 'text', content: text.slice(last) });
+
+                        const toPlain = (s) => (typeof s === 'string' ? s.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim() : s);
+
+                        return (
+                          <div style={{ marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '200px' }}>
+                              <div style={{ padding: '16px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255,255,255,0.02)', borderRadius: '8px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255,255,255,0.1)'}` }}>
+                                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:</div>
+                                <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: '#000000' }}>
+                                  {parts.map((part, pIdx) => (
+                                    <React.Fragment key={pIdx}>
+                                      {part.type === 'text' ? (
+                                        <span 
+                                          className="question-text-content"
+                                          dangerouslySetInnerHTML={{ __html: part.content || '' }}
+                                        />
+                                      ) : (
+                                        qDroppedItems[part.positionId] ? (
+                                          <span 
+                                            draggable 
+                                            onDragStart={(e) => handleDragStartFromDropped(e, qDroppedItems[part.positionId], part.positionId)} 
+                                            style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'100px', maxWidth:'200px', minHeight:'28px', padding:'4px 8px', margin:'0 6px', background: theme==='sun'? 'rgba(24,144,255,0.15)':'rgba(138,122,255,0.18)', border: `2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'6px', fontSize:'14px', fontWeight:'350', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', verticalAlign:'baseline', textAlign:'center', wordBreak:'break-word', wordWrap:'break-word', overflowWrap:'break-word', whiteSpace:'normal', overflow:'hidden' }}
+                                            dangerouslySetInnerHTML={{ __html: qDroppedItems[part.positionId] || '' }}
+                                          />
+                                        ) : (
+                                          <span onDrop={(e)=>handleDrop(e, part.positionId)} onDragOver={(e)=>handleDragOver(e, part.positionId)} onDragLeave={handleDragLeave} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'100px', minHeight:'28px', padding:'4px 8px', margin:'0 6px', background: dragOverPosition[q.id]===part.positionId ? (theme==='sun'?'rgba(24,144,255,0.2)':'rgba(138,122,255,0.25)') : '#ffffff', border:`2px ${dragOverPosition[q.id]===part.positionId ? 'solid':'dashed'} ${dragOverPosition[q.id]===part.positionId ? (theme==='sun'?'#1890ff':'#8B5CF6') : 'rgba(0,0,0,0.5)'}`, borderRadius:'6px', fontSize:'14px', color: dragOverPosition[q.id]===part.positionId ? (theme==='sun'?'#1890ff':'#8B5CF6') : 'rgba(0,0,0,0.5)', textAlign:'center' }}>
+                                            {dragOverPosition[q.id]===part.positionId ? 'Drop here!' : 'Drop here'}
+                                          </span>
+                                        )
+                            )}
+                          </React.Fragment>
+                        ))}
+                        </div>
+                      </div>
+
+                              <div style={{ padding:'16px', background: theme==='sun'?'#ffffff':'rgba(255,255,255,0.03)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
+                                <Typography.Text style={{ fontSize:'13px', fontWeight:600, marginBottom:'12px', display:'block', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drag these words:</Typography.Text>
+                                <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', justifyContent:'center', alignItems:'center', minHeight:'80px' }}>
+                                  {qAvailableItems.map((item, idx) => (
+                                    <span 
+                                      key={idx} 
+                                      draggable 
+                                      onDragStart={(e)=>handleDragStart(e, item)} 
+                                      style={{ padding:'8px 12px', background: theme==='sun'?'rgba(24,144,255,0.08)':'rgba(138,122,255,0.12)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', fontSize:'13px', fontWeight:'600', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', userSelect:'none', minWidth:'60px', maxWidth:'200px', textAlign:'center', wordBreak:'break-word', wordWrap:'break-word', overflowWrap:'break-word', whiteSpace:'normal', overflow:'hidden' }}
+                                      dangerouslySetInnerHTML={{ __html: item || '' }}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : (q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK' || q.questionType === 'FILL_BLANK' || q.questionType === 'FILL_IN_THE_BLANK') ? (
+                      <div style={{ 
+                        marginBottom: '16px',
+                        fontSize: '15px', 
+                        fontWeight: 350,
+                        lineHeight: '1.8',
+                        color: '#000000'
+                      }}>
+                        <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                          Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
+                        </div>
+                        <div>
+                          {(() => {
+                            const text = q.questionText || q.question || '';
+                            const parts = [];
+                            const regex = /\[\[pos_(.*?)\]\]/g;
+                            let last = 0; let match; let idx = 0;
+                            while ((match = regex.exec(text)) !== null) {
+                              if (match.index > last) parts.push(text.slice(last, match.index));
+                              const positionId = match[1];
+                              parts.push(
+                                <span
+                                  key={`fib_${q.id}_${idx++}`}
+                                  className="paragraph-input"
+                                  contentEditable
+                                  suppressContentEditableWarning
+                                  onInput={(e) => {
+                                    const textVal = e.currentTarget.textContent || e.currentTarget.innerText || '';
+                                    setSelectedAnswers(prev => ({
+                                      ...prev,
+                                      [`${q.id}_pos_${positionId}`]: textVal
+                                    }));
+                                  }}
+                                  onBlur={(e) => {
+                                    const textVal = e.currentTarget.textContent || e.currentTarget.innerText || '';
+                                    setSelectedAnswers(prev => ({
+                                      ...prev,
+                                      [`${q.id}_pos_${positionId}`]: textVal
+                                    }));
+                                  }}
+                                  ref={(el) => {
+                                    if (el) {
+                                      fillBlankRefs.current[`${q.id}_pos_${positionId}`] = el;
+                                    } else {
+                                      delete fillBlankRefs.current[`${q.id}_pos_${positionId}`];
+                                    }
+                                  }}
+                                  style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'120px', maxWidth:'200px', minHeight:'32px', padding:'4px 12px', margin:'4px 8px 6px 8px', background: theme==='sun'?'#E9EEFF94':'rgba(255,255,255,0.1)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'8px', cursor:'text', outline:'none', verticalAlign:'top', lineHeight:'1.4', fontSize:'14px', boxSizing:'border-box', color:'#000000', textAlign:'center', wordBreak:'break-word', wordWrap:'break-word', overflowWrap:'break-word', whiteSpace:'normal', overflow:'hidden' }}
+                                />
+                              );
+                              last = match.index + match[0].length;
+                            }
+                            if (last < text.length) parts.push(text.slice(last));
+                            return parts;
+                          })()}
+                        </div>
+                      </div>
+                    ) : q.type === 'REARRANGE' ? (
+                      (() => {
+                        const questionId = q.id;
+                        const currentState = {
+                          sourceItems: q.content?.data?.map(item => item.value) || [],
+                          droppedItems: {},
+                          dragOverIndex: null,
+                          draggedItem: null,
+                          isDraggingFromSource: false,
+                          wasDropped: false,
+                          ...(reorderStates[questionId] || {})
+                        };
+                        const numSlots = (q.content?.data?.filter(it => it?.value)?.length) || currentState.sourceItems.length || 0;
+                        // Remove placeholder tokens but keep HTML formatting
+                        const displayText = ((q.questionText || q.question || '').replace(/\[\[pos_.*?\]\]/g,'')).trim();
+
+                        const handleDragStartFromSource = (e, item) => {
+                          setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, draggedItem: item, isDraggingFromSource: true } }));
+                          e.dataTransfer.effectAllowed = 'move';
+                        };
+                        const handleDragStartFromSlot = (e, index) => {
+                          const item = currentState.droppedItems[index];
+                          setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, draggedItem: item, isDraggingFromSource: false, wasDropped: false, dragOverIndex: index } }));
+                          e.dataTransfer.effectAllowed = 'move';
+                        };
+                        const handleDropOnSlot = (e, index) => {
+                          e.preventDefault();
+                          const newState = { ...currentState, wasDropped: true, dragOverIndex: null };
+                          if (currentState.draggedItem) {
+                            const currentItem = currentState.droppedItems[index];
+                            if (currentItem) newState.sourceItems = [...currentState.sourceItems, currentItem];
+                            if (!currentState.isDraggingFromSource) {
+                              const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem && parseInt(i) !== index);
+                              if (oldIndex !== undefined) delete newState.droppedItems[parseInt(oldIndex)];
+                          } else {
+                              // Remove only one occurrence from source to preserve duplicates
+                              const newSource = [...currentState.sourceItems];
+                              const rmIdx = newSource.findIndex(item => item === currentState.draggedItem);
+                              if (rmIdx !== -1) newSource.splice(rmIdx, 1);
+                              newState.sourceItems = newSource;
+                            }
+                            newState.droppedItems = { ...currentState.droppedItems, [index]: currentState.draggedItem };
+                          }
+                          newState.draggedItem = null; newState.isDraggingFromSource = false;
+                          setReorderStates(prev => ({ ...prev, [questionId]: newState }));
+                        };
+                        const handleDragOverSlot = (e, index) => { e.preventDefault(); setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, dragOverIndex: index } })); e.dataTransfer.dropEffect='move'; };
+                        const handleDragLeaveSlot = () => { setReorderStates(prev => ({ ...prev, [questionId]: { ...currentState, dragOverIndex: null } })); };
+                        const handleDragEnd = () => {
+                          if (currentState.draggedItem && !currentState.isDraggingFromSource && !currentState.wasDropped) {
+                            const newState = { ...currentState };
+                            // Return item back to source without deduping to preserve duplicates
+                            newState.sourceItems = [...newState.sourceItems, currentState.draggedItem];
+                            const oldIndex = Object.keys(currentState.droppedItems).find(i => currentState.droppedItems[i] === currentState.draggedItem);
+                            if (oldIndex !== undefined) delete newState.droppedItems[oldIndex];
+                            newState.draggedItem = null; newState.isDraggingFromSource = false; newState.dragOverIndex = null; newState.wasDropped = false;
+                            setReorderStates(prev => ({ ...prev, [questionId]: newState }));
+                          }
+                        };
+
+                        return (
+                          <div style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:</div>
+                            <div 
+                              className="question-text-content"
+                              style={{ fontSize: '15px', fontWeight: 350, marginBottom: '16px', lineHeight: '1.8', color: '#000000' }}
+                              dangerouslySetInnerHTML={{ __html: displayText || '' }}
+                            />
+                            <div style={{ marginBottom:'16px', padding:'16px', background: theme==='sun'?'#f9f9f9':'rgba(255,255,255,0.02)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
+                              <div style={{ fontSize:'14px', fontWeight:350, marginBottom:'12px', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drop the words here in order:</div>
+                              <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
+                                {Array.from({ length: numSlots }).map((_, index) => (
+                                  <div key={index} onDrop={(e)=>handleDropOnSlot(e,index)} onDragOver={(e)=>handleDragOverSlot(e,index)} onDragLeave={handleDragLeaveSlot} onDragEnd={handleDragEnd} style={{ minWidth:'80px', height:'50px', display:'flex', alignItems:'center', justifyContent:'center', border: currentState.droppedItems[index] ? `2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}` : currentState.dragOverIndex===index ? `3px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}` : `2px dashed rgba(0,0,0,0.5)`, borderRadius:'6px', background: currentState.droppedItems[index] ? (theme==='sun'?'rgba(24,144,255,0.1)':'rgba(138,122,255,0.1)') : currentState.dragOverIndex===index ? (theme==='sun'?'rgba(24,144,255,0.15)':'rgba(138,122,255,0.15)') : '#ffffff', transition:'all 0.3s ease', transform: currentState.dragOverIndex===index ? 'scale(1.05)' : 'scale(1)' }}>
+                                    {currentState.droppedItems[index] ? (
+                                      <div draggable onDragStart={(e)=>handleDragStartFromSlot(e,index)} onDragEnd={handleDragEnd} style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', padding:'6px 8px', background: 'transparent', border:'none', borderRadius:'4px', cursor:'grab', userSelect:'none' }}>
+                                        <span style={{ fontSize:'13px', fontWeight:'700', color: theme==='sun'?'#1890ff':'#8B5CF6', textAlign:'center' }}>{currentState.droppedItems[index]}</span>
+                                      </div>
+                                    ) : (
+                                      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'2px' }}>
+                                        <span style={{ fontSize:'10px', fontWeight:'600', color:'rgba(0,0,0,0.5)' }}>{index + 1}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                        ))}
+                        </div>
+                      </div>
+                            <div onDrop={(e)=>{ e.preventDefault(); const newState={...currentState, wasDropped:true}; if(currentState.draggedItem && !currentState.isDraggingFromSource){ newState.sourceItems=[...newState.sourceItems, currentState.draggedItem]; const oldIndex=Object.keys(currentState.droppedItems).find(i=>currentState.droppedItems[i]===currentState.draggedItem); if(oldIndex){ delete newState.droppedItems[oldIndex]; } newState.draggedItem=null; newState.isDraggingFromSource=false; newState.dragOverIndex=null; setReorderStates(prev=>({ ...prev, [questionId]: newState })); } }} onDragOver={(e)=>{e.preventDefault();}} style={{ padding:'16px', background: theme==='sun'?'#ffffff':'rgba(255,255,255,0.03)', borderRadius:'8px', border:`1px solid ${theme==='sun'?'#e8e8e8':'rgba(255,255,255,0.1)'}` }}>
+                              <div style={{ fontSize:'14px', fontWeight:350, marginBottom:'12px', color: theme==='sun'?'rgb(15,23,42)':'rgb(45,27,105)' }}>Drag these words to the slots above:</div>
+                              <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
+                                {currentState.sourceItems.map((item, idx) => (
+                                  <div key={`${item}-${idx}`} draggable onDragStart={(e)=>handleDragStartFromSource(e,item)} onDragEnd={handleDragEnd} style={{ display:'inline-flex', alignItems:'center', padding:'8px 12px', background: theme==='sun'?'rgba(24,144,255,0.08)':'rgba(138,122,255,0.12)', border:`2px solid ${theme==='sun'?'#1890ff':'#8B5CF6'}`, borderRadius:'6px', fontSize:'12px', fontWeight:'600', color: theme==='sun'?'#1890ff':'#8B5CF6', cursor:'grab', userSelect:'none' }}>{item}</div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <>
+                        <div style={{ marginBottom: '16px' }}>
+                          <Typography.Text style={{ 
+                            fontSize: '16px', 
+                            fontWeight: 600,
+                            color: '#000000',
+                            display: 'block',
+                            marginBottom: '8px'
+                          }}>
+                            Question {globalQuestionNumbers?.get(q.id) || (qIndex + 1)}:
+                          </Typography.Text>
+                          <div 
+                            className="question-text-content"
+                            style={{ 
+                              fontSize: '15px', 
+                              fontWeight: 350,
+                              color: '#000000',
+                              display: 'block',
+                              lineHeight: '1.8'
+                            }}
+                            dangerouslySetInnerHTML={{ __html: q.question || q.questionText || '' }}
+                          />
+                        </div>
+
+                        <div style={{ 
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '14px' 
+                        }}>
+                          {q.type === 'MULTIPLE_SELECT' ? (
+                          // Multiple Select (Checkbox)
+                          q.options?.map((option) => (
+                            <div 
+                              key={option.key} 
+                              className={`option-item ${selectedAnswers[q.id]?.includes(option.key) ? 'selected-answer' : ''}`}
+                              style={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: '14px 18px',
+                                background: selectedAnswers[q.id]?.includes(option.key)
+                                  ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)')
+                                  : theme === 'sun'
+                                    ? 'rgba(255, 255, 255, 0.85)'
+                                    : 'rgba(255, 255, 255, 0.7)',
+                                border: `2px solid ${
+                                  selectedAnswers[q.id]?.includes(option.key)
+                                    ? (theme === 'sun' ? 'rgb(24, 144, 255)' : 'rgb(138, 122, 255)')
+                                    : theme === 'sun' 
+                                      ? 'rgba(113, 179, 253, 0.2)' 
+                                      : 'rgba(138, 122, 255, 0.15)'
+                                }`,
+                                borderRadius: '12px',
+                                boxShadow: theme === 'sun' 
+                                  ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                                  : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                                fontSize: '14px',
+                                fontWeight: '350',
+                                position: 'relative',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                cursor: 'pointer',
+                                minHeight: '50px',
+                                boxSizing: 'border-box'
+                              }}
+                              onClick={() => {
+                                const currentAnswers = selectedAnswers[q.id] || [];
+                                const newAnswers = currentAnswers.includes(option.key)
+                                  ? currentAnswers.filter(key => key !== option.key)
+                                  : [...currentAnswers, option.key];
+                                setSelectedAnswers(prev => ({
+                                  ...prev,
+                                  [q.id]: newAnswers
+                                }));
+                              }}
+                            >
+                              <input 
+                                type="checkbox" 
+                                checked={selectedAnswers[q.id]?.includes(option.key) || false}
+                                onChange={() => {}}
+                                style={{ 
+                                  width: '18px',
+                                  height: '18px',
+                                  accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                  cursor: 'pointer'
+                                }} 
+                              />
+                              <span style={{ 
+                                flexShrink: 0, 
+                                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                                fontWeight: '600',
+                                fontSize: '16px'
+                              }}>
+                                {option.key}.
+                              </span>
+                              <span 
+                                className="option-text"
+                                style={{ 
+                                  fontSize: '14px',
+                                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                  fontWeight: '350',
+                                  flex: 1,
+                                  lineHeight: '1.6'
+                                }}
+                                dangerouslySetInnerHTML={{ __html: option.text || '' }}
+                              />
+                            </div>
+                          ))
+                        ) : (
+                          // Multiple Choice (Radio) or True/False
+                          q.options?.map((option) => (
+                            <div 
+                              key={option.key} 
+                              className={`option-item ${selectedAnswers[q.id] === option.key ? 'selected-answer' : ''}`}
+                              style={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: '14px 18px',
+                                background: selectedAnswers[q.id] === option.key 
+                                  ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)')
+                                  : theme === 'sun'
+                                    ? 'rgba(255, 255, 255, 0.85)'
+                                    : 'rgba(255, 255, 255, 0.7)',
+                                border: `2px solid ${
+                                  selectedAnswers[q.id] === option.key 
+                                    ? (theme === 'sun' ? 'rgb(24, 144, 255)' : 'rgb(138, 122, 255)')
+                                    : theme === 'sun' 
+                                      ? 'rgba(113, 179, 253, 0.2)' 
+                                      : 'rgba(138, 122, 255, 0.15)'
+                                }`,
+                                borderRadius: '12px',
+                                boxShadow: theme === 'sun' 
+                                  ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                                  : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                                fontSize: '14px',
+                                fontWeight: '350',
+                                position: 'relative',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                cursor: 'pointer',
+                                minHeight: '50px',
+                                boxSizing: 'border-box'
+                              }}
+                              onClick={() => handleAnswerSelect(q.id, option.key)}
+                            >
+                              <input 
+                                type="radio" 
+                                name={`question-${q.id}`} 
+                                checked={selectedAnswers[q.id] === option.key}
+                                onChange={() => handleAnswerSelect(q.id, option.key)}
+                                style={{ 
+                                  width: '18px',
+                                  height: '18px',
+                                  accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                  cursor: 'pointer'
+                                }} 
+                              />
+                              {q.type === 'TRUE_OR_FALSE' ? (
+                                <Typography.Text style={{ 
+                                  fontSize: '14px',
+                                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                  fontWeight: '350',
+                                  flex: 1
+                                }}>
+                                  <span 
+                                    className="option-text"
+                                    style={{ flex: 1, lineHeight: '1.6' }}
+                                    dangerouslySetInnerHTML={{ __html: option.text || '' }}
+                                  />
+                                </Typography.Text>
+                              ) : (
+                                <>
+                                  <span style={{ 
+                                    flexShrink: 0, 
+                                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                                    fontWeight: '600',
+                                    fontSize: '16px'
+                                  }}>
+                                    {option.key}.
+                                  </span>
+                                  <span 
+                                    className="option-text"
+                                    style={{ 
+                                      fontSize: '14px',
+                                      color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                                      fontWeight: '350',
+                                      flex: 1,
+                                      lineHeight: '1.6'
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: option.text || '' }}
+                                  />
+                                </>
+                              )}
+                            </div>
+                          ))
+                        )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+// Writing Section Component
+const WritingSectionItem = ({ question, index, theme }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const [essayText, setEssayText] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [wordCount, setWordCount] = useState(0);
+  const [writingMode, setWritingMode] = useState(null); // null or 'handwriting'
+  const [isUploading, setIsUploading] = useState(false);
+  const renderTextWithMedia = useCallback((text) => {
+    if (!text) return text;
+
+    const raw = String(text);
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const segments = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = urlRegex.exec(raw)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ type: 'text', content: raw.substring(lastIndex, match.index) });
+      }
+      const url = match[0];
+      const cleanUrl = url.split('?')[0].split('#')[0];
+      if (IMAGE_EXTENSION_REGEX.test(cleanUrl.toLowerCase())) {
+        segments.push({ type: 'image', content: url });
+      } else {
+        segments.push({ type: 'link', content: url });
+      }
+      lastIndex = match.index + url.length;
+    }
+
+    if (lastIndex < raw.length) {
+      segments.push({ type: 'text', content: raw.substring(lastIndex) });
+    }
+
+    if (segments.length === 0) {
+      return raw;
+    }
+
+    return segments.map((segment, idx) => {
+      if (segment.type === 'text') {
+        return (
+          <React.Fragment key={`text-${idx}`}>
+            {segment.content}
+          </React.Fragment>
+        );
+      }
+      if (segment.type === 'image') {
+        const imageUrl = segment.content;
+        return (
+          <img
+            key={`img-${idx}`}
+            src={imageUrl}
+            alt="Submitted content"
+            style={{
+              maxWidth: '100%',
+              height: 'auto',
+              display: 'block',
+              margin: '12px 0',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+            }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              const urlText = document.createTextNode(imageUrl);
+              e.currentTarget.parentNode?.appendChild(urlText);
+            }}
+          />
+        );
+      }
+      return (
+        <a
+          key={`link-${idx}`}
+          href={segment.content}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+            wordBreak: 'break-all'
+          }}
+        >
+          {segment.content}
+        </a>
+      );
+    });
+  }, [theme]);
+
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>(?=\s*)/gi, '\n')
+      .replace(/<\/?p[^>]*>/gi, '\n')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
+  // Word count effect
+  useEffect(() => {
+    const words = essayText.trim().split(/\s+/).filter(word => word.length > 0);
+    setWordCount(words.length);
+  }, [essayText]);
+
+  // Register answer collector so Writing answers are included in submit payload
+  useEffect(() => {
+    if (!registerAnswerCollector || !question?.id) return;
+
+    const getAnswer = () => {
+      const text = (essayText || '').trim();
+      if (text) {
+        return { answer: text, questionType: 'WRITING' };
+      }
+      if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        // Extract URLs from uploaded files (prefer server URL)
+        const fileUrls = uploadedFiles
+          .map(f => {
+            // If file has url property (server URL), use it
+            if (f?.url && typeof f.url === 'string') {
+              return f.url;
+            }
+            // Otherwise fallback to name or value
+            return typeof f === 'string' ? f : (f?.value || f?.name);
+          })
+          .filter(Boolean);
+        if (fileUrls.length > 0) {
+          return { answer: fileUrls, questionType: 'WRITING' };
+        }
+      }
+      return null;
+    };
+
+    const unregister = registerAnswerCollector(question.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, question?.id, essayText, uploadedFiles]);
+
+  // Register answer restorer to prefill saved writing text from drafts/results
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question?.id) return;
+
+    const setAnswer = (answer) => {
+      if (typeof answer === 'string') {
+        const trimmed = answer.trim();
+        if (!trimmed) {
+          setEssayText('');
+          setUploadedFiles([]);
+          setWritingMode(null);
+          return;
+        }
+
+        if (isLikelyFileReference(trimmed)) {
+          const restoredFile = {
+            id: Date.now() + Math.random(),
+            name: deriveFileNameFromUrl(trimmed, 'attachment_1'),
+            size: 0,
+            type: 'application/octet-stream',
+            url: trimmed
+          };
+          setUploadedFiles([restoredFile]);
+          setEssayText('');
+          setWritingMode(null);
+        } else {
+          setEssayText(trimmed);
+          setWritingMode('handwriting');
+          setUploadedFiles([]);
+        }
+        return;
+      }
+    if (Array.isArray(answer) && answer.length > 0) {
+
+      const normalizedEntries = answer
+        .map((item, index) => {
+          if (!item) return null;
+          if (typeof item === 'string') {
+            const trimmed = item.trim();
+            const isFile = isLikelyFileReference(trimmed);
+            return {
+              raw: item,
+              value: trimmed,
+              fileUrl: isFile ? trimmed : null,
+              fileName: null,
+              index,
+              isFile
+            };
+          }
+          if (typeof item === 'object') {
+            const value = String(item.value ?? item.text ?? item.name ?? item.id ?? '').trim();
+            const urlCandidate = item.url || item.href || item.link || item.id || value;
+            const fileName = item.name || item.fileName || item.filename || null;
+            const isFile = isLikelyFileReference(urlCandidate);
+            return {
+              raw: item,
+              value,
+              fileUrl: isFile ? urlCandidate : (item.url && isLikelyFileReference(item.url) ? item.url : null),
+              fileName,
+              index,
+              isFile
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      const fileEntries = normalizedEntries.filter(entry => entry.isFile && entry.fileUrl);
+
+      if (fileEntries.length === 0) {
+        const text = normalizedEntries
+          .map(entry => entry.value)
+          .filter(Boolean)
+          .join('\n\n')
+          .trim();
+
+        if (text) {
+          setEssayText(text);
+          setWritingMode('handwriting');
+          setUploadedFiles([]);
+        } else {
+          console.warn(`⚠️ WRITING: Array answer contained no recognizable text or files for question ${question?.id}:`, answer);
+        }
+        return;
+      }
+
+      const files = fileEntries
+        .map((entry, idx) => {
+          const raw = entry.raw;
+          let fileUrl = entry.fileUrl;
+          if (!fileUrl && typeof raw === 'object') {
+            fileUrl = raw.url || raw.id || raw.value || null;
+          }
+          if (!fileUrl && typeof raw === 'string') {
+            fileUrl = raw;
+          }
+
+          if (!fileUrl || typeof fileUrl !== 'string') return null;
+
+          let fileName = entry.fileName;
+          if (!fileName && typeof raw === 'object') {
+            fileName = raw.name || raw.fileName || raw.filename || null;
+          }
+
+          if (!fileName) {
+            fileName = deriveFileNameFromUrl(fileUrl, `attachment_${idx + 1}`);
+          }
+
+          if (!fileName) fileName = `attachment_${idx + 1}`;
+
+          return {
+            id: Date.now() + Math.random() + idx,
+            name: fileName,
+            size: (raw && typeof raw === 'object' && raw.size) || 0,
+            type: (raw && typeof raw === 'object' && (raw.type || raw.mimeType)) || 'application/octet-stream',
+            url: fileUrl
+          };
+        })
+        .filter(Boolean);
+
+      if (files.length > 0) {
+        setUploadedFiles(files);
+        setEssayText('');
+        setWritingMode(null);
+      } else {
+        console.warn(`⚠️ WRITING: No valid files extracted from answer for question ${question?.id}:`, answer);
+      }
+        return;
+      }
+      if (answer && typeof answer === 'object' && answer.text) {
+        setEssayText(String(answer.text));
+        setWritingMode('handwriting');
+      }
+    };
+
+    const unregister = registerAnswerRestorer(question.id, setAnswer);
+    return unregister;
+  }, [registerAnswerRestorer, question?.id]);
+
+  // Debounced auto-save for WR changes
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, essayText, uploadedFiles, writingMode]);
+
+
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    
+    // Validate file types - only allow JPG and PNG
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+    
+    const invalidFiles = files.filter(file => {
+      const fileName = file.name.toLowerCase();
+      const fileExtension = '.' + fileName.split('.').pop();
+      const isValidType = file.type && allowedTypes.includes(file.type.toLowerCase());
+      const isValidExtension = allowedExtensions.includes(fileExtension);
+      // File is invalid if it doesn't have a valid type AND doesn't have a valid extension
+      return !isValidType && !isValidExtension;
+    });
+    
+    if (invalidFiles.length > 0) {
+      const invalidFileNames = invalidFiles.map(f => f.name).join(', ');
+      spaceToast.error(`Only JPG and PNG image files are allowed. Invalid file(s): ${invalidFileNames}`);
+      // Reset file input
+      event.target.value = '';
+      return;
+    }
+    
+    // Set uploading state
+    setIsUploading(true);
+    
+    try {
+      // Upload each file to server and get server URLs
+      const uploadedFilesData = await Promise.all(
+        files.map(async (file) => {
+          try {
+            // Upload file to backend
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            // Get URL from response (handle different response structures)
+            const serverUrl = uploadRes?.data?.url || uploadRes?.data?.data?.url || uploadRes?.data || uploadRes;
+            
+            if (serverUrl && typeof serverUrl === 'string') {
+              return {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                url: serverUrl // Use server URL instead of blob URL
+              };
+            } else {
+              throw new Error('Server did not return valid URL');
+            }
+          } catch (error) {
+            console.error('❌ Failed to upload file:', file.name, error);
+            spaceToast.error(`Failed to upload file: ${file.name}`);
+            return null; // Return null for failed uploads
+          }
+        })
+      );
+      
+      // Filter out null values (failed uploads)
+      const successfulUploads = uploadedFilesData.filter(file => file !== null);
+      
+      if (successfulUploads.length > 0) {
+        setUploadedFiles(prev => [...prev, ...successfulUploads]);
+      }
+    } finally {
+      // Reset uploading state
+      setIsUploading(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
+  const removeFile = (fileId) => {
+    setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+  return (
+    <>
+      <style>
+        {`
+          .writing-prompt-scrollbar::-webkit-scrollbar {
+            width: 8px;
+          }
+          .writing-prompt-scrollbar::-webkit-scrollbar-track {
+            background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'};
+            border-radius: 4px;
+          }
+          .writing-prompt-scrollbar::-webkit-scrollbar-thumb {
+            background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'};
+            border-radius: 4px;
+            border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'};
+          }
+          .writing-prompt-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'};
+          }
+        `}
+      </style>
+      <div
+        className={`question-item ${theme}-question-item`}
+        style={{
+          marginBottom: '24px',
+          borderRadius: '16px',
+          padding: '24px',
+          border: '2px solid',
+          borderColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          background: theme === 'sun' 
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+          boxShadow: theme === 'sun' 
+            ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+            : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        {/* Header */}
+        <div className="question-header" style={{
+          paddingBottom: '14px',
+          marginBottom: '16px',
+          borderBottom: '2px solid',
+          borderBottomColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          position: 'relative'
+        }}>
+          <Typography.Text strong style={{ 
+            fontSize: '16px', 
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+          }}>
+            {index + 1}. Writing Section
+          </Typography.Text>
+          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+            ({question.score || 0} {(question.score || 0) > 1 ? 'weights' : 'weight'})
+          </Typography.Text>
+        </div>
+
+        {/* Two Column Layout */}
+        <div style={{ display: 'flex', gap: '24px', minHeight: '600px' }}>
+          {/* Left Column - Writing Prompt */}
+          <div 
+            className="writing-prompt-scrollbar"
+            style={{
+              flex: '1',
+              padding: '20px',
+              background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+              borderRadius: '12px',
+              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              overflowY: 'auto',
+              maxHeight: '600px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: theme === 'sun' 
+                ? '#1890ff rgba(24, 144, 255, 0.2)' 
+                : '#8B5CF6 rgba(138, 122, 255, 0.2)'
+            }}>
+            
+            {/* Writing Prompt */}
+            <div 
+              className="passage-text-content"
+              style={{
+                fontSize: '15px',
+                lineHeight: '1.8',
+                color: theme === 'sun' ? '#333' : '#1F2937',
+                textAlign: 'justify'
+              }}
+              dangerouslySetInnerHTML={{ __html: question.prompt || '' }}
+            />
+            {/* Legacy formatting removed - using HTML directly now */}
+            {false && question.prompt && (
+            <div style={{
+              fontSize: '15px',
+              lineHeight: '1.8',
+              color: theme === 'sun' ? '#333' : '#1F2937',
+              textAlign: 'justify'
+            }}>
+              {(question.prompt || '').split('\n').map((line, idx) => {
+                if (line.startsWith('**') && line.endsWith('**')) {
+                  return (
+                    <div key={idx} style={{
+                      fontWeight: '600',
+                      fontSize: '16px',
+                      margin: '16px 0 8px 0',
+                      color: theme === 'sun' ? '#1E40AF' : '#1F2937'
+                    }}>
+                      {line.replace(/\*\*/g, '')}
+                    </div>
+                  );
+                } else if (line.startsWith('- ')) {
+                  return (
+                    <div key={idx} style={{
+                      margin: '4px 0',
+                      paddingLeft: '16px',
+                      position: 'relative'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        left: '0',
+                        color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                        fontWeight: 'bold'
+                      }}>•</span>
+                      {line.substring(2)}
+                    </div>
+                  );
+                } else if (line.match(/^\d+\./)) {
+                  return (
+                    <div key={idx} style={{
+                      margin: '4px 0',
+                      paddingLeft: '16px',
+                      position: 'relative'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        left: '0',
+                        color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                        fontWeight: 'bold'
+                      }}>{(line.match(/^\d+\./) || [''])[0]}</span>
+                      {line.replace(/^\d+\.\s*/, '')}
+                    </div>
+                  );
+                } else if (line.trim() === '') {
+                  return <div key={idx} style={{ height: '8px' }} />;
+                } else {
+                  return (
+                    <div key={idx} style={{ margin: '8px 0' }}>
+                      {line}
+                    </div>
+                  );
+                }
+              })}
+            </div>
+            )}
+          </div>
+
+          {/* Right Column - Writing Area */}
+          <div style={{
+            flex: '1',
+            background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '12px',
+            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+            overflowY: 'auto',
+            maxHeight: '600px'
+          }}>
+            <div style={{ padding: '20px' }}>
+              {writingMode === null ? (
+                /* Show 2 options initially - Hide in view only mode */
+                isViewOnly ? (
+                  /* View only mode: Show submitted answer if exists, otherwise show message */
+                  (essayText.trim() || uploadedFiles.length > 0) ? (
+                    <div>
+                      {essayText.trim() && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '8px'
+                          }}>
+                            <label style={{
+                              fontSize: '18px',
+                              fontWeight: '600',
+                              color: theme === 'sun' ? '#333' : '#1F2937'
+                            }}>
+                              Submitted Essay:
+                            </label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ 
+                                fontSize: '16px', 
+                                fontWeight: '500',
+                                color: theme === 'sun' ? '#666' : '#999',
+                                letterSpacing: '0.3px'
+                              }}>
+                                {wordCount}
+                              </span>
+                              <span style={{ 
+                                fontSize: '16px',
+                                color: theme === 'sun' ? '#999' : '#777',
+                                fontWeight: '400'
+                              }}>
+                                words
+                              </span>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              width: '100%',
+                              minHeight: '200px',
+                              padding: '16px',
+                              fontSize: '14px',
+                              fontFamily: 'inherit',
+                              border: `2px solid ${theme === 'sun' 
+                                ? 'rgba(24, 144, 255, 0.2)' 
+                                : 'rgba(138, 122, 255, 0.3)'}`,
+                              borderRadius: '8px',
+                              background: theme === 'sun' 
+                                ? 'linear-gradient(135deg, #ffffff 0%, rgba(24, 144, 255, 0.02) 100%)'
+                                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(138, 122, 255, 0.05) 100%)',
+                              color: theme === 'sun' ? '#333' : '#1F2937',
+                              whiteSpace: 'pre-wrap',
+                              wordWrap: 'break-word'
+                            }}
+                          >
+                            {renderTextWithMedia(essayText)}
+                          </div>
+                        </div>
+                      )}
+                      {uploadedFiles.length > 0 && (
+                        <div style={{ marginTop: essayText.trim() ? '20px' : '0' }}>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            marginBottom: '12px',
+                            color: theme === 'sun' ? '#333' : '#1F2937'
+                          }}>
+                            Uploaded Files:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                            {uploadedFiles.map((file) => (
+                              <div
+                                key={file.id}
+                                style={{
+                                  position: 'relative',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '8px',
+                                  padding: '8px',
+                                  background: theme === 'sun' 
+                                    ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
+                                    : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
+                                  border: `1px solid ${theme === 'sun' 
+                                    ? 'rgba(24, 144, 255, 0.2)' 
+                                    : 'rgba(138, 122, 255, 0.25)'}`,
+                                  borderRadius: '8px',
+                                  transition: 'all 0.3s ease'
+                                }}
+                              >
+                                {file.url && (
+                                  <img
+                                    src={file.url}
+                                    alt={file.name}
+                                    style={{
+                                      width: '500px',
+                                      height: '500px',
+                                      objectFit: 'contain',
+                                      borderRadius: '6px',
+                                      border: `1px solid ${theme === 'sun' 
+                                        ? 'rgba(24, 144, 255, 0.1)' 
+                                        : 'rgba(138, 122, 255, 0.15)'}`,
+                                      background: theme === 'sun' ? '#f5f5f5' : 'rgba(0, 0, 0, 0.05)'
+                                    }}
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                    }}
+                                  />
+                                )}
+                                <div style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'space-between',
+                                  gap: '8px',
+                                  fontSize: '12px'
+                                }}>
+                                  <span style={{ 
+                                    color: theme === 'sun' ? '#333' : '#1F2937',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    maxWidth: '400px'
+                                  }}>
+                                    {file.name}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{
+                      padding: '40px',
+                      textAlign: 'center',
+                      color: theme === 'sun' ? '#999' : '#777',
+                      fontSize: '14px'
+                    }}>
+                      No answer submitted
+                    </div>
+                  )
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Handwriting Option - Hide when files are uploaded */}
+                    {uploadedFiles.length === 0 && (
+                      <div
+                        onClick={() => setWritingMode('handwriting')}
+                        style={{
+                          padding: '24px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                          border: `2px solid ${theme === 'sun' 
+                            ? 'rgba(24, 144, 255, 0.3)' 
+                            : 'rgba(138, 122, 255, 0.3)'}`,
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = theme === 'sun' 
+                            ? '0 4px 12px rgba(24, 144, 255, 0.2)'
+                            : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>✍️</div>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '600',
+                          color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                          marginBottom: '4px'
+                        }}>
+                          Write Essay Here
+                        </div>
+                        <div style={{ 
+                          fontSize: '13px',
+                          color: theme === 'sun' ? '#666' : '#999'
+                        }}>
+                          Type your essay directly in the text area
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upload File Option */}
+                    <div style={{
+                      position: 'relative'
+                    }}>
+                      <input
+                        type="file"
+                        id={`upload-option-${question.id}`}
+                        accept="image/jpeg,image/jpg,image/png,.jpg,.jpeg,.png"
+                        multiple
+                        onChange={handleFileUpload}
+                        disabled={isViewOnly || isUploading}
+                        style={{ display: 'none' }}
+                      />
+                      <label
+                        htmlFor={isUploading ? undefined : `upload-option-${question.id}`}
+                        style={{
+                          display: 'block',
+                          padding: '24px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                          border: `2px solid ${theme === 'sun' 
+                            ? 'rgba(82, 196, 26, 0.3)' 
+                            : 'rgba(138, 122, 255, 0.3)'}`,
+                          borderRadius: '12px',
+                          cursor: isUploading ? 'wait' : 'pointer',
+                          textAlign: 'center',
+                          transition: 'all 0.3s ease',
+                          opacity: isUploading ? 0.7 : 1,
+                          pointerEvents: isUploading ? 'none' : 'auto'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isUploading) {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = theme === 'sun' 
+                              ? '0 4px 12px rgba(82, 196, 26, 0.2)'
+                              : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        {isUploading ? (
+                          <>
+                            <Spin size="large" style={{ marginBottom: '8px' }} />
+                            <div style={{ 
+                              fontSize: '16px', 
+                              fontWeight: '600',
+                              color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                              marginBottom: '4px'
+                            }}>
+                              Uploading...
+                            </div>
+                            <div style={{ 
+                              fontSize: '13px',
+                              color: theme === 'sun' ? '#666' : '#999'
+                            }}>
+                              Please wait while files are being uploaded
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: '32px', marginBottom: '8px' }}>📎</div>
+                            <div style={{ 
+                              fontSize: '16px', 
+                              fontWeight: '600',
+                              color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                              marginBottom: '4px'
+                            }}>
+                              Upload
+                            </div>
+                            <div style={{ 
+                              fontSize: '13px',
+                              color: theme === 'sun' ? '#666' : '#999'
+                            }}>
+                              Upload image(s) of your handwritten essay (Max 5MB per image)
+                            </div>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                )
+              ) : writingMode === 'handwriting' ? (
+                /* Show textarea when handwriting mode */
+                <div>
+                  {!isViewOnly && (
+                    <button
+                      onClick={() => {
+                        setWritingMode(null);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        marginBottom: '16px',
+                        background: 'none',
+                        border: `1px solid ${theme === 'sun' ? '#d9d9d9' : 'rgba(255, 255, 255, 0.2)'}`,
+                        borderRadius: '6px',
+                        color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      ← Back to options
+                    </button>
+                  )}
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}>
+                      <label style={{
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        color: theme === 'sun' ? '#333' : '#1F2937'
+                      }}>
+                        {isViewOnly ? 'Submitted Essay:' : 'Your Essay:'}
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '500',
+                          color: theme === 'sun' ? '#666' : '#999',
+                          letterSpacing: '0.3px'
+                        }}>
+                          {wordCount}
+                        </span>
+                        <span style={{ 
+                          fontSize: '16px',
+                          color: theme === 'sun' ? '#999' : '#777',
+                          fontWeight: '400'
+                        }}>
+                          words
+                        </span>
+                      </div>
+                    </div>
+                    <textarea
+                      value={essayText}
+                      onChange={(e) => setEssayText(e.target.value)}
+                      readOnly={isViewOnly}
+                      disabled={isViewOnly}
+                      placeholder="Start writing your essay here..."
+                      style={{
+                        width: '100%',
+                        minHeight: '400px',
+                        padding: '16px',
+                        fontSize: '14px',
+                        fontFamily: 'inherit',
+                        border: `2px solid ${theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.2)' 
+                          : 'rgba(138, 122, 255, 0.3)'}`,
+                        borderRadius: '8px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, #ffffff 0%, rgba(24, 144, 255, 0.02) 100%)'
+                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(138, 122, 255, 0.05) 100%)',
+                        color: theme === 'sun' ? '#333' : '#1F2937',
+                        resize: 'vertical',
+                        outline: 'none',
+                        transition: 'all 0.3s ease',
+                        boxShadow: theme === 'sun' 
+                          ? '0 2px 8px rgba(24, 144, 255, 0.1)'
+                          : '0 2px 8px rgba(138, 122, 255, 0.15)'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+                        e.target.style.boxShadow = theme === 'sun' 
+                          ? '0 4px 12px rgba(24, 144, 255, 0.2)'
+                          : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.2)' 
+                          : 'rgba(138, 122, 255, 0.3)';
+                        e.target.style.boxShadow = theme === 'sun' 
+                          ? '0 2px 8px rgba(24, 144, 255, 0.1)'
+                          : '0 2px 8px rgba(138, 122, 255, 0.15)';
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+              {/* Show uploaded files below options */}
+              {uploadedFiles.length > 0 && (
+                <div style={{ marginTop: '20px' }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    marginBottom: '12px',
+                    color: theme === 'sun' ? '#333' : '#1F2937'
+                  }}>
+                    Uploaded Files:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    {uploadedFiles.map((file) => (
+                      <div
+                        key={file.id}
+                        style={{
+                          position: 'relative',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          padding: '8px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
+                            : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
+                          border: `1px solid ${theme === 'sun' 
+                            ? 'rgba(24, 144, 255, 0.2)' 
+                            : 'rgba(138, 122, 255, 0.25)'}`,
+                          borderRadius: '8px',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        {/* Display image if URL is available */}
+                        {file.url && (
+                          <img
+                            src={file.url}
+                            alt={file.name}
+                            style={{
+                              width: '500px',
+                              height: '500px',
+                              objectFit: 'contain',
+                              borderRadius: '6px',
+                              border: `1px solid ${theme === 'sun' 
+                                ? 'rgba(24, 144, 255, 0.1)' 
+                                : 'rgba(138, 122, 255, 0.15)'}`,
+                              background: theme === 'sun' ? '#f5f5f5' : 'rgba(0, 0, 0, 0.05)'
+                            }}
+                            onError={(e) => {
+                              // Hide image if it fails to load
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        {/* File name */}
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          fontSize: '12px'
+                        }}>
+                          <span style={{ 
+                            color: theme === 'sun' ? '#333' : '#1F2937',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '400px'
+                          }}>
+                            {file.name}
+                          </span>
+                          {!isViewOnly && (
+                            <button
+                              onClick={() => removeFile(file.id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#ff4d4f',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                padding: '2px 4px',
+                                borderRadius: '4px',
+                                transition: 'all 0.2s ease',
+                                flexShrink: 0
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.background = 'rgba(255, 77, 79, 0.1)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.background = 'none';
+                              }}
+                              title="Remove file"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+// Speaking Section Component
+const VIDEO_FILE_EXTS = ['.mp4', '.mov', '.m4v', '.mkv', '.avi'];
+const AUDIO_FILE_EXTS = ['.mp3', '.wav', '.aac', '.m4a', '.ogg', '.webm'];
+const inferMediaKindFromUrl = (value) => {
+  if (!value || typeof value !== 'string') return 'audio';
+  const lower = value.toLowerCase();
+  if (VIDEO_FILE_EXTS.some(ext => lower.includes(ext))) {
+    return 'video';
+  }
+  if (lower.includes('video')) return 'video';
+  return 'audio';
+};
+const detectMediaKindFromFile = (file) => {
+  if (!file) return 'unknown';
+  const type = (file.type || '').toLowerCase();
+  const name = (file.name || '').toLowerCase();
+  const ext = name.includes('.') ? `.${name.split('.').pop()}` : '';
+  if (type.startsWith('video/')) return 'video';
+  if (type.startsWith('audio/')) return 'audio';
+  if (VIDEO_FILE_EXTS.includes(ext)) return 'video';
+  if (AUDIO_FILE_EXTS.includes(ext)) return 'audio';
+  return 'unknown';
+};
+
+const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [recordingType, setRecordingType] = useState('audio'); // 'audio' | 'video'
+  const [recordingMode, setRecordingMode] = useState(null); // current mode if actively recording
+  const [livePreviewStream, setLivePreviewStream] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const liveVideoRef = useRef(null);
+
+  // Helper function to extract URL from upload response
+  const extractUrlFromResponse = (uploadRes) => {
+    // Try multiple possible paths in order of likelihood
+    if (uploadRes?.data?.url) {
+      return uploadRes.data.url;
+    }
+    if (uploadRes?.data?.data?.url) {
+      return uploadRes.data.data.url;
+    }
+    if (typeof uploadRes?.data === 'string') {
+      return uploadRes.data;
+    }
+    if (typeof uploadRes === 'string') {
+      return uploadRes;
+    }
+    if (uploadRes?.url) {
+      return uploadRes.url;
+    }
+    if (uploadRes?.data?.fileUrl) {
+      return uploadRes.data.fileUrl;
+    }
+    if (uploadRes?.fileUrl) {
+      return uploadRes.fileUrl;
+    }
+    return null;
+  };
+
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>(?=\s*)/gi, '\n')
+      .replace(/<\/?p[^>]*>/gi, '\n')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  useEffect(() => {
+    if (liveVideoRef.current) {
+      if (livePreviewStream) {
+        liveVideoRef.current.srcObject = livePreviewStream;
+      } else {
+        liveVideoRef.current.srcObject = null;
+      }
+    }
+  }, [livePreviewStream]);
+  useEffect(() => {
+    return () => {
+      if (livePreviewStream) {
+        livePreviewStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [livePreviewStream]);
+
+  const startRecording = (mode = 'audio') => {
+    if (isViewOnly) return;
+    if (uploadedFiles.length > 0) {
+      spaceToast.error('Please remove the uploaded files before recording');
+      return;
+    }
+    const constraints = mode === 'video'
+      ? { audio: true, video: { width: 1280, height: 720, facingMode: 'user' } }
+      : { audio: true };
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      spaceToast.error('Browser does not support recording audio or video.');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(stream => {
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        audioChunksRef.current = [];
+        setRecordingMode(mode);
+        setRecordingType(mode);
+        if (mode === 'video') {
+          setLivePreviewStream(stream);
+        } else {
+          setLivePreviewStream(null);
+        }
+
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const mimeType = mode === 'video' ? 'video/webm' : 'audio/webm';
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+          // Create temporary blob URL for preview
+          const tempUrl = URL.createObjectURL(audioBlob);
+          setAudioUrl(tempUrl);
+          
+          // Immediately upload to server and replace blob URL with server URL
+          // Keep in audioUrl (recording section), don't move to uploadedFiles
+          try {
+            const ext = 'webm';
+            const file = new File([audioBlob], `speaking-${mode}-${Date.now()}.${ext}`, { 
+              type: audioBlob.type || mimeType 
+            });
+            
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            
+            // Extract URL from response using helper function
+            const serverUrl = extractUrlFromResponse(uploadRes);
+            
+            if (serverUrl && typeof serverUrl === 'string') {
+              // Replace temp blob URL with server URL, keep in audioUrl
+              URL.revokeObjectURL(tempUrl);
+              setAudioUrl(serverUrl);
+            } else {
+              console.warn('⚠️ [Speaking] Server did not return valid URL, keeping blob URL. Response:', uploadRes);
+            }
+          } catch (error) {
+            console.error('❌ [Speaking] Failed to upload recorded audio:', error);
+            // Keep blob URL as fallback
+          }
+          setIsRecording(false);
+          setRecordingMode(null);
+          setLivePreviewStream(null);
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+      })
+      .catch(err => {
+        console.error('Error accessing media devices:', err);
+        let message = 'Không thể truy cập micro/camera. Vui lòng kiểm tra quyền truy cập thiết bị.';
+        const errorName = err?.name || err?.code;
+        if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+          message = 'Bạn đã từ chối quyền micro/camera. Hãy cho phép quyền trong trình duyệt và thử lại.';
+        } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+          message = 'Không tìm thấy micro/camera. Vui lòng kiểm tra thiết bị đã kết nối đúng chưa.';
+        } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+          message = 'Thiết bị micro/camera hiện đang được sử dụng bởi ứng dụng khác.';
+        } else if (String(err?.message || '').includes('Only secure origins')) {
+          message = 'Trình duyệt yêu cầu truy cập qua HTTPS để bật micro/camera. Hãy mở bài thi bằng kết nối HTTPS.';
+        }
+        spaceToast.error(message);
+        setIsRecording(false);
+        setRecordingMode(null);
+        if (livePreviewStream) {
+          livePreviewStream.getTracks().forEach(track => track.stop());
+          setLivePreviewStream(null);
+        }
+      });
+  };
+
+  const stopRecording = () => {
+    if (isViewOnly) return;
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+      setRecordingMode(null);
+      setLivePreviewStream(null);
+    }
+  };
+
+  const handleFileUpload = async (event) => {
+    if (isViewOnly) return;
+    // Disable upload if recording exists
+    if (audioUrl || isRecording) {
+      spaceToast.error('Please remove the recording before uploading files');
+      event.target.value = '';
+      return;
+    }
+    const files = Array.from(event.target.files);
+    
+    const MAX_AUDIO_SIZE = 3 * 1024 * 1024;
+    const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
+    const invalidTypeFiles = files.filter(f => detectMediaKindFromFile(f) === 'unknown');
+    if (invalidTypeFiles.length > 0) {
+      const names = invalidTypeFiles.map(f => f.name).join(', ');
+      spaceToast.error(`Only accept audio (MP3/WebM) and video (MP4/WebM). Invalid files: ${names}`);
+      event.target.value = '';
+      return;
+    }
+    const oversizeFiles = files.filter(f => {
+      const kind = detectMediaKindFromFile(f);
+      const limit = kind === 'video' ? MAX_VIDEO_SIZE : MAX_AUDIO_SIZE;
+      return f.size > limit;
+    });
+    if (oversizeFiles.length > 0) {
+      const names = oversizeFiles.map(f => f.name).join(', ');
+      spaceToast.error('Size limit is 3MB for audio and 5MB for video. Exceeded limit: ' + names);
+      event.target.value = '';
+      return;
+    }
+    
+    // Upload each valid file to server and get server URLs
+    try {
+      const uploadedFilesData = await Promise.all(
+        files.map(async (file) => {
+          try {
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            const serverUrl = extractUrlFromResponse(uploadRes);
+            if (serverUrl && typeof serverUrl === 'string') {
+              return {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                kind: detectMediaKindFromFile(file),
+                url: serverUrl
+              };
+            } 
+          } catch (error) {
+            console.error('❌ [Speaking] Failed to upload file:', file.name, error);
+            spaceToast.error(`Tải lên thất bại: ${file.name}`);
+            return null;
+          }
+        })
+      );
+      const successful = uploadedFilesData.filter(Boolean);
+      if (successful.length > 0) {
+        setUploadedFiles(prev => [...prev, ...successful]);
+        // Clear audioUrl if files are uploaded
+        if (audioUrl) {
+          setAudioUrl(null);
+          setRecordingType('audio');
+        }
+      }
+    } finally {
+      // Reset input
+      event.target.value = '';
+    }
+  };
+
+  const removeFile = (fileId) => {
+    if (isViewOnly) return;
+    setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  const removeRecording = () => {
+    if (isViewOnly) return;
+    if (audioUrl && audioUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(audioUrl);
+    }
+    setAudioUrl(null);
+    setRecordingType('audio');
+    setRecordingMode(null);
+    if (livePreviewStream) {
+      livePreviewStream.getTracks().forEach(track => track.stop());
+      setLivePreviewStream(null);
+    }
+  };
+
+  // Register answer collector for Speaking
+  useEffect(() => {
+    if (!registerAnswerCollector || !question?.id) return;
+
+    const getAnswer = () => {
+      if (isViewOnly) return null;
+      
+      // Prefer recorded audio (audioUrl), then uploaded files
+      // Recorded audio should be saved as string, uploaded files as array
+      if (audioUrl) {
+        return { answer: audioUrl, questionType: 'SPEAKING' };
+      }
+      if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        // Extract URLs from uploaded files (prefer server URL)
+        const fileUrls = uploadedFiles
+          .map(f => {
+            // If file has url property (server URL), use it
+            if (f?.url && typeof f.url === 'string') {
+              return f.url;
+            }
+            // Otherwise fallback to name or value
+            return typeof f === 'string' ? f : (f?.value || f?.name);
+          })
+          .filter(Boolean);
+        if (fileUrls.length > 0) {
+          return { answer: fileUrls, questionType: 'SPEAKING' };
+        }
+      }
+      return null;
+    };
+
+    const unregister = registerAnswerCollector(question.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, question?.id, audioUrl, uploadedFiles]);
+
+  // Register restorer to prefill speaking answer from draft/result
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question?.id) return;
+
+    const setAnswer = (answer) => {
+      if (typeof answer === 'string') {
+        // String URL - could be recorded audio/video
+        setRecordingType(inferMediaKindFromUrl(answer));
+        setAudioUrl(answer);
+        return;
+      }
+      if (Array.isArray(answer) && answer.length > 0) {
+        // Handle array of file URLs or objects with URL (from submittedContent.data format)
+        const files = answer
+          .filter(Boolean)
+          .map((item, index) => {
+            let fileUrl = null;
+            let fileName = null;
+            
+            // Check if item is an object with id/value (from submittedContent.data format)
+            if (typeof item === 'object' && item !== null) {
+              // Prefer id, then value, then url, then name
+              // Ensure we get the full URL string, not truncated
+              fileUrl = item.id || item.value || item.url || item.name;
+              // Ensure fileUrl is a complete string
+              if (fileUrl && typeof fileUrl === 'string') {
+                fileUrl = String(fileUrl).trim(); // Ensure it's a full string
+              }
+              fileName = item.name || item.fileName || item.filename;
+            } else if (typeof item === 'string') {
+              // Item is directly a URL string
+              fileUrl = String(item).trim(); // Ensure it's a full string
+            }
+            
+            // Extract filename from URL if not provided
+            if (!fileName && fileUrl && typeof fileUrl === 'string') {
+              try {
+                // Try to extract filename from URL
+                const urlObj = new URL(fileUrl);
+                const pathParts = urlObj.pathname.split('/');
+                fileName = pathParts[pathParts.length - 1] || `audio_${index + 1}`;
+                // Remove query parameters from filename if any
+                fileName = fileName.split('?')[0];
+              } catch (e) {
+                // If URL parsing fails, use default name
+                fileName = `audio_${index + 1}.mp3`;
+              }
+            }
+            
+            // Default filename if still not found
+            if (!fileName) {
+              fileName = `audio_${index + 1}.mp3`;
+            }
+            
+            const detectedKind = inferMediaKindFromUrl(fileUrl);
+            return {
+              id: Date.now() + Math.random() + index,
+              name: fileName,
+              size: 0,
+              type: detectedKind === 'video' ? 'video/mp4' : 'audio/mpeg',
+              kind: detectedKind,
+              url: fileUrl // Use the URL from id/value/url property
+            };
+          })
+          .filter(file => file.url); // Only keep files with valid URLs
+        
+        if (files.length > 0) {
+          // When answer is an array, it means uploaded files (not recorded audio)
+          // Recorded audio is saved as a single string, not an array
+          // So set all to uploadedFiles
+          setUploadedFiles(files);
+        } else {
+          console.warn(`⚠️ SPEAKING: No valid files extracted from answer for question ${question?.id}:`, answer);
+        }
+        return;
+      }
+    };
+
+    const unregister = registerAnswerRestorer(question.id, setAnswer);
+    return unregister;
+  }, [registerAnswerRestorer, question?.id]);
+
+  // Debounced auto-save for SP changes
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, isRecording, audioUrl, uploadedFiles, recordingType, recordingMode]);
+  return (
+    <>
+      <style>
+        {`
+          .speaking-prompt-scrollbar::-webkit-scrollbar {
+            width: 8px;
+          }
+          .speaking-prompt-scrollbar::-webkit-scrollbar-track {
+            background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'};
+            border-radius: 4px;
+          }
+          .speaking-prompt-scrollbar::-webkit-scrollbar-thumb {
+            background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'};
+            border-radius: 4px;
+            border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'};
+          }
+          .speaking-prompt-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'};
+          }
+        `}
+      </style>
+      <div
+        className={`question-item ${theme}-question-item`}
+        style={{
+          marginBottom: '24px',
+          borderRadius: '16px',
+          padding: '24px',
+          border: '2px solid',
+          borderColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          background: theme === 'sun' 
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+          boxShadow: theme === 'sun' 
+            ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+            : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        {/* Header */}
+        <div className="question-header" style={{
+          paddingBottom: '14px',
+          marginBottom: '16px',
+          borderBottom: '2px solid',
+          borderBottomColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          position: 'relative'
+        }}>
+          <Typography.Text strong style={{ 
+            fontSize: '20px', 
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+          }}>
+            {index + 1}. Speaking Section
+          </Typography.Text>
+          <Typography.Text style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.7 }}>
+            ({question.score || 0} {(question.score || 0) > 1 ? 'weights' : 'weight'})
+          </Typography.Text>
+        </div>
+        {/* Layout: Left - Prompt, Right - Recording */}
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+          {/* Left Section - Prompt */}
+          <div 
+            className="speaking-prompt-scrollbar"
+            style={{
+              flex: '1',
+              padding: '20px',
+              background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+              borderRadius: '12px',
+              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              overflowY: 'auto',
+              maxHeight: '500px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: theme === 'sun' 
+                ? '#1890ff rgba(24, 144, 255, 0.2)' 
+                : '#8B5CF6 rgba(138, 122, 255, 0.2)'
+            }}>
+            
+            {/* Maximum Recording Time */}
+            <div style={{
+              marginBottom: '16px',
+              fontWeight: '600',
+              fontSize: '20px',
+              color: theme === 'sun' ? '#1E40AF' : '#1F2937',
+              textAlign: 'left'
+            }}>
+              🎤 Maximum limit 3 minutes
+            </div>
+            
+            <div style={{
+              fontSize: '15px',
+              lineHeight: '1.8',
+              color: theme === 'sun' ? '#333' : '#1F2937',
+              textAlign: 'justify'
+            }}>
+              <div dangerouslySetInnerHTML={{ __html: processPassageContent(question.prompt, theme, 'SP') }} />
+            </div>
+          </div>
+
+          {/* Right Section - Recording Area */}
+          <div style={{
+            flex: '1',
+            padding: '24px',
+            background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '12px',
+            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+            textAlign: 'center'
+          }}>
+            {/* Recorded Media Display - Only show if no uploaded files */}
+            {audioUrl && uploadedFiles.length === 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                {recordingType === 'video' ? (
+                  <video 
+                    controls 
+                    preload="metadata"
+                    style={{ width: '100%', borderRadius: '8px', maxHeight: '360px' }} 
+                    src={audioUrl}
+                    playsInline
+                    onError={(e) => {
+                      console.error('❌ [Video Player] Error loading recorded video:', audioUrl, e);
+                    }}
+                  >
+                    Your browser does not support the video element.
+                  </video>
+                ) : (
+                  <audio 
+                    controls 
+                    preload="metadata"
+                    type="audio/mpeg"
+                    style={{ width: '100%', height: '40px' }} 
+                    src={audioUrl}
+                    onError={(e) => {
+                      console.error('❌ [Audio Player] Error loading recorded audio:', audioUrl, e);
+                    }}
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                )}
+                {!isViewOnly && (
+                <button
+                  onClick={removeRecording}
+                  style={{
+                    marginTop: '8px',
+                    padding: '6px 16px',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                      : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    color: '#000000',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  ✕ Remove Recording
+                </button>
+                )}
+              </div>
+            )}
+
+            {isRecording && recordingMode === 'video' && livePreviewStream && (
+              <div style={{ marginBottom: '16px' }}>
+                <video
+                  ref={liveVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  style={{
+                    width: '100%',
+                    maxHeight: '320px',
+                    borderRadius: '12px',
+                    background: '#000'
+                  }}
+                />
+                <div style={{ marginTop: '6px', fontSize: '13px', color: theme === 'sun' ? '#1E40AF' : '#8B5CF6' }}>
+                  Đang ghi hình...
+                </div>
+              </div>
+            )}
+
+            {/* Recording Controls */}
+            {!isViewOnly && uploadedFiles.length === 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '16px',
+                  flexWrap: 'wrap'
+                }}>
+                  {['audio', 'video'].map((mode) => {
+                    const isModeRecording = isRecording && recordingMode === mode;
+                    const disabled = isRecording && recordingMode !== mode;
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => {
+                          if (isModeRecording) {
+                            stopRecording();
+                          } else if (!isRecording) {
+                            startRecording(mode);
+                          }
+                        }}
+                        disabled={disabled}
+                        style={{
+                          width: '120px',
+                          height: '120px',
+                          borderRadius: '50%',
+                          border: 'none',
+                          background: disabled
+                            ? '#d9d9d9'
+                            : (isModeRecording ? '#ff4d4f' : 'rgb(227, 244, 255)'),
+                          color: disabled ? '#666' : '#0f172a',
+                          cursor: disabled ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          margin: '0 8px 16px',
+                          boxShadow: disabled
+                            ? 'none'
+                            : (isModeRecording
+                              ? '0 0 20px rgba(255, 77, 79, 0.5)'
+                              : '0 4px 12px rgba(24, 144, 255, 0.3)'),
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        <span style={{ fontSize: '32px' }}>
+                          {mode === 'audio' ? '🎙' : '📹'}
+                        </span>
+                        <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                          {isModeRecording
+                            ? 'Stop'
+                            : mode === 'audio' ? 'Record Audio' : 'Record Video'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: theme === 'sun' ? '#666' : '#999',
+                  textAlign: 'center'
+                }}>
+                  {isRecording 
+                    ? (recordingMode === 'video' ? 'Click the video button to stop' : 'Click the audio button to stop')
+                    : 'Choose audio or video to record'}
+                </div>
+              </div>
+            )}
+
+            {/* Upload Section - Similar to Writing */}
+            {!isViewOnly && (
+            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}` }}>
+              <div style={{ 
+                fontSize: '18px', 
+                fontWeight: '600',
+                color: theme === 'sun' ? '#333' : '#1F2937',
+                marginBottom: '16px'
+              }}>
+                Upload Audio/Video File (Optional):
+              </div>
+              
+              <div style={{
+                position: 'relative'
+              }}>
+                <input
+                  type="file"
+                  id="speaking-audio-upload"
+                  accept="audio/*,video/*"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+                <label
+                  htmlFor="speaking-audio-upload"
+                  style={{
+                    display: 'block',
+                    padding: '20px',
+                    background: (audioUrl || isRecording) 
+                      ? (theme === 'sun' ? '#f5f5f5' : 'rgba(255, 255, 255, 0.1)')
+                      : (theme === 'sun' 
+                        ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)'),
+                    border: `2px solid ${(audioUrl || isRecording)
+                      ? (theme === 'sun' ? '#d9d9d9' : 'rgba(255, 255, 255, 0.1)')
+                      : (theme === 'sun' 
+                        ? 'rgba(82, 196, 26, 0.3)' 
+                        : 'rgba(138, 122, 255, 0.3)')}`,
+                    borderRadius: '12px',
+                    cursor: (audioUrl || isRecording) ? 'not-allowed' : 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.3s ease',
+                    opacity: (audioUrl || isRecording) ? 0.6 : 1,
+                    pointerEvents: (audioUrl || isRecording) ? 'none' : 'auto'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                      ? '0 4px 12px rgba(82, 196, 26, 0.2)'
+                      : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>📎</div>
+                  <div style={{ 
+                    fontSize: '16px', 
+                    fontWeight: '600',
+                    color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                    marginBottom: '4px'
+                  }}>
+                    Upload Audio / Video
+                  </div>
+                  <div style={{ 
+                    fontSize: '13px',
+                    color: theme === 'sun' ? '#666' : '#999'
+                  }}>
+                    MP3/WebM ≤ 3MB hoặc MP4/WebM video ≤ 5MB
+                  </div>
+                </label>
+              </div>
+            </div>
+            )}
+
+            {/* Uploaded Files */}
+            {uploadedFiles.length > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {uploadedFiles.map((file) => {
+                    const resolvedKind = file.kind 
+                      || ((file.type || '').startsWith('video/') ? 'video'
+                        : (inferMediaKindFromUrl(file.url) === 'video' ? 'video' : 'audio'));
+                    const fileKind = resolvedKind === 'video' ? 'video' : 'audio';
+                    const isVideo = fileKind === 'video';
+                    return (
+                      <div
+                        key={file.id}
+                        style={{
+                          padding: '12px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
+                            : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
+                          border: `1px solid ${theme === 'sun' 
+                            ? 'rgba(24, 144, 255, 0.2)' 
+                            : 'rgba(138, 122, 255, 0.25)'}`,
+                          borderRadius: '8px',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{isVideo ? '🎥' : '🎵'}</span>
+                            <span style={{ 
+                              color: theme === 'sun' ? '#333' : '#1F2937',
+                              fontSize: '13px',
+                              fontWeight: '500'
+                            }}>
+                          {file.name}
+                        </span>
+                          </div>
+                        {!isViewOnly && (
+                        <button
+                          onClick={() => removeFile(file.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ff4d4f',
+                            cursor: 'pointer',
+                              fontSize: '16px',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'none';
+                          }}
+                        >
+                          ✕
+                        </button>
+                        )}
+                        </div>
+                        {file.url && (
+                          isVideo ? (
+                            <video
+                              controls
+                              preload="metadata"
+                              style={{
+                                width: '100%',
+                                maxHeight: '300px',
+                                borderRadius: '8px',
+                                background: '#000'
+                              }}
+                              src={file.url}
+                              playsInline
+                              onError={(e) => {
+                                console.error('❌ [Video Player] Error loading video:', file.url, e);
+                              }}
+                            >
+                              Your browser does not support the video element.
+                            </video>
+                          ) : (
+                            <audio 
+                              controls 
+                              preload="metadata"
+                              type="audio/mpeg"
+                              style={{ 
+                                width: '100%', 
+                                height: '40px',
+                                borderRadius: '4px'
+                              }} 
+                              src={file.url}
+                              onError={(e) => {
+                                console.error('❌ [Audio Player] Error loading audio:', file.url, e);
+                              }}
+                            >
+                              Your browser does not support the audio element.
+                            </audio>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+// Speaking With Audio Section Component
+const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, isViewOnly }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const triggerAutoSave = useContext(AutoSaveTriggerContext);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+
+  // Helper function to extract URL from upload response
+  const extractUrlFromResponse = (uploadRes) => {
+    // Try multiple possible paths in order of likelihood
+    if (uploadRes?.data?.url) {
+      return uploadRes.data.url;
+    }
+    if (uploadRes?.data?.data?.url) {
+      return uploadRes.data.data.url;
+    }
+    if (typeof uploadRes?.data === 'string') {
+      return uploadRes.data;
+    }
+    if (typeof uploadRes === 'string') {
+      return uploadRes;
+    }
+    if (uploadRes?.url) {
+      return uploadRes.url;
+    }
+    if (uploadRes?.data?.fileUrl) {
+      return uploadRes.data.fileUrl;
+    }
+    if (uploadRes?.fileUrl) {
+      return uploadRes.fileUrl;
+    }
+    return null;
+  };
+
+  const toPlainText = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>(?=\s*)/gi, '\n')
+      .replace(/<\/?p[^>]*>/gi, '\n')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .replace(/\s+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const audioRef = useRef(null);
+
+  const startRecording = () => {
+    if (isViewOnly) return;
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          // Create temporary blob URL for preview
+          const tempUrl = URL.createObjectURL(audioBlob);
+          setAudioUrl(tempUrl);
+          
+          // Immediately upload to server and replace blob URL with server URL
+          // Keep in audioUrl (recording section), don't move to uploadedFiles
+          try {
+            const ext = 'webm';
+            const file = new File([audioBlob], `speaking-${Date.now()}.${ext}`, { 
+              type: audioBlob.type || 'audio/webm' 
+            });
+            
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            
+            // Extract URL from response using helper function
+            const serverUrl = extractUrlFromResponse(uploadRes);
+            
+            if (serverUrl && typeof serverUrl === 'string') {
+              // Replace temp blob URL with server URL, keep in audioUrl
+              URL.revokeObjectURL(tempUrl);
+              setAudioUrl(serverUrl);
+            } else {
+              console.warn('⚠️ [Speaking] Server did not return valid URL, keeping blob URL. Response:', uploadRes);
+            }
+          } catch (error) {
+            console.error('❌ [Speaking] Failed to upload recorded audio:', error);
+            // Keep blob URL as fallback
+          }
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+      })
+      .catch(err => {
+        console.error('Error accessing microphone:', err);
+        alert('Could not access microphone. Please check permissions.');
+      });
+  };
+
+  const stopRecording = () => {
+    if (isViewOnly) return;
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+    }
+  };
+
+  const handleFileUpload = async (event) => {
+    if (isViewOnly) return;
+    // Disable upload if recording exists
+    if (audioUrl || isRecording) {
+      spaceToast.error('Vui lòng xóa bản ghi âm trước khi upload file');
+      event.target.value = '';
+      return;
+    }
+    const files = Array.from(event.target.files);
+    
+    // Validate MP3 or WebM audio and max size 3MB
+    const maxSizeBytes = 3 * 1024 * 1024;
+    const isAudioFile = (file) => {
+      const name = (file?.name || '').toLowerCase();
+      const ext = '.' + name.split('.').pop();
+      const type = (file?.type || '').toLowerCase();
+      return type === 'audio/mpeg' || ext === '.mp3' || 
+             type === 'audio/webm' || ext === '.webm' ||
+             type.startsWith('audio/');
+    };
+    const oversizeFiles = files.filter(f => f.size > maxSizeBytes);
+    const invalidTypeFiles = files.filter(f => !isAudioFile(f));
+    if (invalidTypeFiles.length > 0) {
+      const names = invalidTypeFiles.map(f => f.name).join(', ');
+      spaceToast.error(`Chỉ chấp nhận file audio MP3 hoặc WebM. File không hợp lệ: ${names}`);
+      event.target.value = '';
+      return;
+    }
+    if (oversizeFiles.length > 0) {
+      const names = oversizeFiles.map(f => f.name).join(', ');
+      spaceToast.error(`Kích thước tối đa 3MB cho mỗi tệp. Quá giới hạn: ${names}`);
+      event.target.value = '';
+      return;
+    }
+    
+    // Upload each valid file to server and get server URLs
+    try {
+      const uploadedFilesData = await Promise.all(
+        files.map(async (file) => {
+          try {
+            const uploadRes = await dailyChallengeApi.uploadFile(file);
+            const serverUrl = extractUrlFromResponse(uploadRes);
+            if (serverUrl && typeof serverUrl === 'string') {
+              return {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                url: serverUrl
+              };
+            } else {
+              console.error('❌ [Speaking] Server did not return valid URL. Response:', uploadRes);
+              throw new Error('Server did not return valid URL');
+            }
+          } catch (error) {
+            console.error('❌ [Speaking] Failed to upload file:', file.name, error);
+            spaceToast.error(`Tải lên thất bại: ${file.name}`);
+            return null;
+          }
+        })
+      );
+      const successful = uploadedFilesData.filter(Boolean);
+      if (successful.length > 0) {
+        setUploadedFiles(prev => [...prev, ...successful]);
+        // Clear audioUrl if files are uploaded
+        if (audioUrl) {
+          setAudioUrl(null);
+        }
+      }
+    } finally {
+      // Reset input
+      event.target.value = '';
+    }
+  };
+
+  const removeFile = (fileId) => {
+    if (isViewOnly) return;
+    setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  // Register answer collector for Speaking with audio prompt
+  useEffect(() => {
+    if (!registerAnswerCollector || !question?.id) return;
+
+    const getAnswer = () => {
+      if (isViewOnly) return null;
+      
+      
+      if (audioUrl) {
+        return { answer: audioUrl, questionType: 'SPEAKING' };
+      }
+      if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        // Extract URLs from uploaded files (prefer server URL)
+        const fileUrls = uploadedFiles
+          .map(f => {
+            // If file has url property (server URL), use it
+            if (f?.url && typeof f.url === 'string') {
+              return f.url;
+            }
+            // Otherwise fallback to name or value
+            return typeof f === 'string' ? f : (f?.value || f?.name);
+          })
+          .filter(Boolean);
+        if (fileUrls.length > 0) {
+          return { answer: fileUrls, questionType: 'SPEAKING' };
+      }
+      }
+      return null;
+    };
+
+    const unregister = registerAnswerCollector(question.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, question?.id, audioUrl, uploadedFiles]);
+
+  // Register restorer to prefill saved speaking answer
+  useEffect(() => {
+    if (!registerAnswerRestorer || !question?.id) return;
+
+    const setAnswer = (answer) => {
+      if (typeof answer === 'string') {
+        // String URL - always treated as recorded audio (from web recording)
+        // Display in recording section, not upload section
+        setAudioUrl(answer);
+        return;
+      }
+      if (Array.isArray(answer) && answer.length > 0) {
+        // Handle array of file URLs or objects with URL (from submittedContent.data format)
+        const files = answer
+          .filter(Boolean)
+          .map((item, index) => {
+            let fileUrl = null;
+            let fileName = null;
+            
+            // Check if item is an object with id/value (from submittedContent.data format)
+            if (typeof item === 'object' && item !== null) {
+              // Prefer id, then value, then url, then name
+              // Ensure we get the full URL string, not truncated
+              fileUrl = item.id || item.value || item.url || item.name;
+              // Ensure fileUrl is a complete string
+              if (fileUrl && typeof fileUrl === 'string') {
+                fileUrl = String(fileUrl).trim(); // Ensure it's a full string
+              }
+              fileName = item.name || item.fileName || item.filename;
+            } else if (typeof item === 'string') {
+              // Item is directly a URL string
+              fileUrl = String(item).trim(); // Ensure it's a full string
+            }
+            
+            // Extract filename from URL if not provided
+            if (!fileName && fileUrl && typeof fileUrl === 'string') {
+              try {
+                // Try to extract filename from URL
+                const urlObj = new URL(fileUrl);
+                const pathParts = urlObj.pathname.split('/');
+                fileName = pathParts[pathParts.length - 1] || `audio_${index + 1}`;
+                // Remove query parameters from filename if any
+                fileName = fileName.split('?')[0];
+              } catch (e) {
+                // If URL parsing fails, use default name
+                fileName = `audio_${index + 1}.mp3`;
+              }
+            }
+            
+            // Default filename if still not found
+            if (!fileName) {
+              fileName = `audio_${index + 1}.mp3`;
+            }
+            
+            return {
+              id: Date.now() + Math.random() + index,
+              name: fileName,
+              size: 0,
+              type: 'audio/mpeg', // Default to audio type
+              url: fileUrl // Use the URL from id/value/url property (full URL, not truncated)
+            };
+          })
+          .filter(file => file.url); // Only keep files with valid URLs
+        
+        if (files.length > 0) {
+          // When answer is an array, it means uploaded files (not recorded audio)
+          // Recorded audio is saved as a single string, not an array
+          // So set all to uploadedFiles
+          setUploadedFiles(files);
+        } else {
+          console.warn(`⚠️ SPEAKING: No valid files extracted from answer for question ${question?.id}:`, answer);
+        }
+        return;
+      }
+      
+      console.warn(`⚠️ [Speaking Restore] Question ${question?.id} - Unexpected answer format:`, answer);
+    };
+
+    const unregister = registerAnswerRestorer(question.id, setAnswer);
+    return unregister;
+  }, [registerAnswerRestorer, question?.id]);
+
+  useEffect(() => {
+    if (triggerAutoSave) triggerAutoSave();
+  }, [triggerAutoSave, isRecording, audioUrl, uploadedFiles, isPlaying, currentTime]);
+
+  const removeRecording = () => {
+    if (isViewOnly) return;
+    setAudioUrl(null);
+  };
+
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleSeek = (e) => {
+    if (audioRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+      const newTime = (clickX / width) * duration;
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  };
+  const handleVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+  };
+
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  return (
+    <>
+      <style>
+        {`
+          .speaking-audio-prompt-scrollbar::-webkit-scrollbar {
+            width: 8px;
+          }
+          .speaking-audio-prompt-scrollbar::-webkit-scrollbar-track {
+            background: ${theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)'};
+            border-radius: 4px;
+          }
+          .speaking-audio-prompt-scrollbar::-webkit-scrollbar-thumb {
+            background: ${theme === 'sun' ? '#1890ff' : '#8B5CF6'};
+            border-radius: 4px;
+            border: 1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.2)'};
+          }
+          .speaking-audio-prompt-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: ${theme === 'sun' ? '#40a9ff' : '#a78bfa'};
+          }
+        `}
+      </style>
+      <div
+        className={`question-item ${theme}-question-item`}
+        style={{
+          marginBottom: '24px',
+          borderRadius: '16px',
+          padding: '24px',
+          border: '2px solid',
+          borderColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          background: theme === 'sun' 
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+          boxShadow: theme === 'sun' 
+            ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+            : '0 4px 16px rgba(138, 122, 255, 0.12)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        {/* Header */}
+        <div className="question-header" style={{
+          paddingBottom: '14px',
+          marginBottom: '16px',
+          borderBottom: '2px solid',
+          borderBottomColor: theme === 'sun' 
+            ? 'rgba(113, 179, 253, 0.25)' 
+            : 'rgba(138, 122, 255, 0.2)',
+          position: 'relative'
+        }}>
+        <Typography.Text strong style={{ 
+            fontSize: '20px', 
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+          }}>
+            {index + 1}. Speaking With Audio Section
+          </Typography.Text>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', marginLeft: '12px' }}>
+          <Typography.Text style={{ fontSize: '14px', opacity: 0.7 }}>
+            ({question.score || sectionScore?.totalScore || 0} {(question.score || sectionScore?.totalScore || 0) !== 1 ? 'weights' : 'weight'})
+          </Typography.Text>
+        </div>
+        </div>
+
+        {/* Layout: Left - Audio Player, Right - Recording */}
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+          {/* Left Section - Audio Player */}
+          <div 
+            className="speaking-audio-prompt-scrollbar"
+            style={{
+              flex: '1',
+              padding: '20px',
+              background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+              borderRadius: '12px',
+              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              overflowY: 'auto',
+              maxHeight: '500px',
+              scrollbarWidth: 'thin',
+              scrollbarColor: theme === 'sun' 
+                ? '#1890ff rgba(24, 144, 255, 0.2)' 
+                : '#8B5CF6 rgba(138, 122, 255, 0.2)'
+            }}>
+            
+            {/* Maximum Recording Time */}
+            <div style={{
+              marginBottom: '16px',
+              fontWeight: '600',
+              fontSize: '20px',
+              color: theme === 'sun' ? '#1E40AF' : '#1F2937',
+              textAlign: 'left'
+            }}>
+              🎤 Maximum limit 3 minutes
+            </div>
+
+            {/* Audio Player */}
+            <div style={{
+              background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px',
+              border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+              boxShadow: theme === 'sun' 
+                ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                : '0 2px 8px rgba(0, 0, 0, 0.2)'
+            }}>
+              <audio
+                ref={audioRef}
+                src={question.audioUrl}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={() => setIsPlaying(false)}
+                style={{ display: 'none' }}
+              >
+                <source src={question.audioUrl} type="audio/wav" />
+                Your browser does not support the audio element.
+              </audio>
+
+              {/* Audio Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                {/* Play/Pause Button */}
+                <button
+                  onClick={togglePlayPause}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    background: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                    color: 'white',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.3s ease',
+                    boxShadow: theme === 'sun' 
+                      ? '0 4px 12px rgba(24, 144, 255, 0.3)' 
+                      : '0 4px 12px rgba(138, 122, 255, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  {isPlaying ? '⏸️' : '▶️'}
+                </button>
+
+                {/* Time Display */}
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#333' : '#1F2937',
+                  minWidth: '80px'
+                }}>
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </div>
+
+                {/* Progress Bar */}
+                <div
+                  style={{
+                    flex: 1,
+                    height: '6px',
+                    background: theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}
+                  onClick={handleSeek}
+                >
+                  <div
+                    style={{
+                      width: `${duration ? (currentTime / duration) * 100 : 0}%`,
+                      height: '100%',
+                      background: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                      borderRadius: '3px',
+                      transition: 'width 0.1s ease'
+                    }}
+                  />
+                </div>
+
+                {/* Volume Control */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ 
+                    fontSize: '16px',
+                    color: theme === 'sun' ? '#666' : '#ccc'
+                  }}>🔊</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={volume}
+                    onChange={handleVolumeChange}
+                    style={{
+                      width: '60px',
+                      accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Transcript Content */}
+            {question.transcript && (
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '8px',
+                padding: '16px',
+                border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(138, 122, 255, 0.3)'}`,
+                fontSize: '15px',
+                lineHeight: '1.8',
+                color: '#333',
+                textAlign: 'justify',
+                boxShadow: theme === 'sun' 
+                  ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                  : '0 2px 8px rgba(138, 122, 255, 0.2)'
+              }}>
+                <div style={{ 
+                  fontSize: '18px', 
+                  fontWeight: '600',
+                  marginBottom: '12px',
+                  color: theme === 'sun' ? '#1E40AF' : '#8B5CF6'
+                }}>
+                </div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>
+                  <div dangerouslySetInnerHTML={{ __html: processPassageContent(question.transcript, theme, 'SP') }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Section - Recording Area */}
+          <div style={{
+            flex: '1',
+            padding: '24px',
+            background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '12px',
+            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+            textAlign: 'center'
+          }}>
+            {/* Recorded Audio Display - Only show if no uploaded files */}
+            {audioUrl && uploadedFiles.length === 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <audio 
+                  controls 
+                  preload="metadata"
+                  type="audio/mpeg"
+                  style={{ width: '100%', height: '40px' }} 
+                  src={audioUrl}
+                  onError={(e) => {
+                    console.error('❌ [Audio Player] Error loading recorded audio:', audioUrl, e);
+                    console.error('❌ [Audio Player] Error details:', e.target.error);
+                    console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                    console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                  }}
+                >
+                  Your browser does not support the audio element.
+                </audio>
+                {!isViewOnly && (
+                <button
+                  onClick={removeRecording}
+                  style={{
+                    marginTop: '8px',
+                    padding: '6px 16px',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                      : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    color: '#000000',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  ✕ Remove Recording
+                </button>
+                )}
+              </div>
+            )}
+
+            {/* Mic Button - Large and Centered - Hide if uploaded files exist */}
+            {!isViewOnly && uploadedFiles.length === 0 && (
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={uploadedFiles.length > 0}
+              style={{
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                border: 'none',
+                background: uploadedFiles.length > 0
+                  ? '#d9d9d9'
+                  : (isRecording 
+                    ? '#ff4d4f'
+                    : 'rgb(227, 244, 255)'),
+                color: 'white',
+                cursor: uploadedFiles.length > 0 ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                boxShadow: uploadedFiles.length > 0
+                  ? 'none'
+                  : (isRecording
+                    ? '0 0 20px rgba(255, 77, 79, 0.5)'
+                    : '0 4px 12px rgba(24, 144, 255, 0.3)'),
+                transition: 'all 0.3s ease',
+                opacity: uploadedFiles.length > 0 ? 0.6 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!isRecording) {
+                  e.target.style.transform = 'scale(1.05)';
+                  e.target.style.boxShadow = '0 6px 16px rgba(24, 144, 255, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isRecording) {
+                  e.target.style.transform = 'scale(1)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(24, 144, 255, 0.3)';
+                }
+              }}
+            >
+              <img 
+                src="/img/icon-mic.png" 
+                alt="Microphone" 
+                style={{ 
+                  width: '60px',
+                  height: '60px',
+                  filter: 'none'
+                }} 
+              />
+            </button>
+            )}
+
+            {uploadedFiles.length === 0 && (
+              <>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
+                  marginBottom: '8px'
+                }}>
+                  {isViewOnly ? 'Submitted answer' : (isRecording ? 'Recording...' : 'Click to start recording')}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: theme === 'sun' ? '#666' : '#999'
+                }}>
+                  {isViewOnly ? '' : (isRecording ? 'Click the microphone again to stop' : 'Press the microphone to record your response')}
+                </div>
+              </>
+            )}
+
+            {/* Upload Section - Similar to Writing */}
+            {!isViewOnly && (
+            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.2)'}` }}>
+              <div style={{ 
+                fontSize: '18px', 
+                fontWeight: '600',
+                color: theme === 'sun' ? '#333' : '#1F2937',
+                marginBottom: '16px'
+              }}>
+                Upload Audio File (Optional):
+              </div>
+              
+              <div style={{
+                position: 'relative'
+              }}>
+                <input
+                  type="file"
+                  id="speaking-with-audio-upload"
+                  accept="audio/*"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+                <label
+                  htmlFor="speaking-with-audio-upload"
+                  style={{
+                    display: 'block',
+                    padding: '20px',
+                    background: theme === 'sun' 
+                      ? 'linear-gradient(135deg, rgba(237, 250, 230, 0.5) 0%, rgba(207, 244, 192, 0.4) 100%)'
+                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(244, 240, 255, 0.5) 100%)',
+                    border: `2px solid ${theme === 'sun' 
+                      ? 'rgba(82, 196, 26, 0.3)' 
+                      : 'rgba(138, 122, 255, 0.3)'}`,
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                      ? '0 4px 12px rgba(82, 196, 26, 0.2)'
+                      : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>📎</div>
+                  <div style={{ 
+                    fontSize: '16px', 
+                    fontWeight: '600',
+                    color: theme === 'sun' ? '#1E40AF' : '#8377A0',
+                    marginBottom: '4px'
+                  }}>
+                    Upload Audio
+                  </div>
+                  <div style={{ 
+                    fontSize: '13px',
+                    color: theme === 'sun' ? '#666' : '#999'
+                  }}>
+                    Upload MP3 audio file (Max 5MB)
+                  </div>
+                </label>
+              </div>
+            </div>
+            )}
+
+            {/* Uploaded Files */}
+            {uploadedFiles.length > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {uploadedFiles.map((file) => (
+                    <div
+                      key={file.id}
+                      style={{
+                        padding: '12px',
+                        background: theme === 'sun' 
+                          ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.05) 100%)'
+                          : 'linear-gradient(135deg, rgba(138, 122, 255, 0.12) 0%, rgba(167, 139, 250, 0.08) 100%)',
+                        border: `1px solid ${theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.2)' 
+                          : 'rgba(138, 122, 255, 0.25)'}`,
+                        borderRadius: '8px',
+                        transition: 'all 0.3s ease'
+                      }}
+                    >
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>🎵</span>
+                          <span style={{ 
+                            color: theme === 'sun' ? '#333' : '#1F2937',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                          }}>
+                        {file.name}
+                      </span>
+                        </div>
+                      {!isViewOnly && (
+                      <button
+                        onClick={() => removeFile(file.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ff4d4f',
+                          cursor: 'pointer',
+                            fontSize: '16px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'none';
+                        }}
+                      >
+                        ✕
+                      </button>
+                      )}
+                      </div>
+                      {file.url && (
+                        <audio 
+                          controls 
+                          preload="metadata"
+                          type="audio/mpeg"
+                          style={{ 
+                            width: '100%', 
+                            height: '40px',
+                            borderRadius: '4px'
+                          }} 
+                          src={file.url}
+                          onError={(e) => {
+                            console.error('❌ [Audio Player] Error loading audio:', file.url, e);
+                            console.error('❌ [Audio Player] Error details:', e.target.error);
+                            console.error('❌ [Audio Player] Error code:', e.target.error?.code);
+                            console.error('❌ [Audio Player] Error message:', e.target.error?.message);
+                          }}
+                        >
+                          Your browser does not support the audio element.
+                        </audio>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+// Multiple Choice Container Component
+const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const [selectedAnswer, setSelectedAnswer] = React.useState(null);
+  const questionText = data?.question || data?.questionText || 'What is the capital city of Vietnam?';
+  const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0
+    ? data.options
+    : null;
+
+  const normalizedOptions = React.useMemo(() => {
+    const fallbackOptions = ['A','B','C','D'].map((k, i) => ({
+      key: k,
+      text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i]
+    }));
+    const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
+      ? data.content.data.map((d, idx) => ({
+          key: d.id || d.key || d.value || `opt_${idx}`,
+          text: d.value
+        }))
+      : null;
+    const baseOptions = optionsFromApi || contentOpts || fallbackOptions;
+    return baseOptions.map((opt, idx) => {
+      const valueKey = String(opt.valueKey || opt.key || opt.id || (opt.text ?? opt.value) || `opt_${idx}`);
+      const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
+      const text = typeof opt.text === 'string'
+        ? opt.text
+        : typeof opt.value === 'string'
+          ? opt.value
+          : '';
+      return {
+        ...opt,
+        valueKey,
+        displayKey,
+        text,
+        plainText: stripHtmlContent(text)
+      };
+    });
+  }, [optionsFromApi, data?.content?.data]);
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      if (!selectedAnswer) return null;
+      const options = normalizedOptions.map((o) => ({ key: o.valueKey, text: o.text }));
+      return { answer: selectedAnswer, questionType: 'MULTIPLE_CHOICE', options };
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, selectedAnswer, normalizedOptions]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (typeof restored === 'string' && restored) {
+        const normalized = String(restored).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+        const match = normalizedOptions.find((o) => {
+          const optionPlain = o.plainText || stripHtmlContent(o.text);
+          return optionPlain === normalized ||
+            o.text === normalized ||
+            o.valueKey === normalized ||
+            o.displayKey === normalized;
+        });
+        setSelectedAnswer(match ? match.valueKey : normalized);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id, normalizedOptions]);
+
+  return (
+    <div
+      className={`question-item ${theme}-question-item`}
+      style={{
+        marginBottom: '24px',
+        borderRadius: '16px',
+        padding: '24px',
+        border: '2px solid',
+        borderColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        background: theme === 'sun' 
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+        boxShadow: theme === 'sun' 
+          ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+          : '0 4px 16px rgba(138, 122, 255, 0.12)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      {/* Header */}
+      <div className="question-header" style={{
+        paddingBottom: '14px',
+        marginBottom: '16px',
+        borderBottom: '2px solid',
+        borderBottomColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography.Text strong style={{ 
+          fontSize: '16px', 
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+        }}>
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
+        </Typography.Text>
+        <Typography.Text style={{ 
+          fontSize: '14px', 
+          color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+          fontStyle: 'italic'
+        }}>
+          Multiple Choice
+        </Typography.Text>
+      </div>
+
+      {/* Content Area */}
+      <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+        <div 
+          className="question-text-content"
+          style={{ 
+            fontSize: '15px', 
+            fontWeight: 350,
+            marginBottom: '12px',
+            display: 'block',
+            lineHeight: '1.8',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}
+          dangerouslySetInnerHTML={{ __html: questionText }}
+        />
+
+        {/* Options */}
+        <div className="question-options" style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(2, 1fr)', 
+          gap: '14px', 
+          marginTop: '12px',
+          width: '100%'
+        }}>
+          {normalizedOptions.map((opt, idx) => {
+            const key = opt.valueKey;
+            const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
+            const isSelected = selectedAnswer === key;
+            return (
+              <div
+                key={idx}
+                onClick={() => { if (!isViewOnly) setSelectedAnswer(key); }}
+                className={`option-item ${isSelected ? 'selected-answer' : ''}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '14px 18px',
+                  background: isSelected
+                    ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)')
+                    : theme === 'sun'
+                      ? 'rgba(255, 255, 255, 0.85)'
+                      : 'rgba(255, 255, 255, 0.7)',
+                  border: `2px solid ${
+                    isSelected
+                      ? (theme === 'sun' ? 'rgb(24, 144, 255)' : 'rgb(138, 122, 255)')
+                      : theme === 'sun' 
+                        ? 'rgba(113, 179, 253, 0.2)' 
+                        : 'rgba(138, 122, 255, 0.15)'
+                  }`,
+        borderRadius: '12px',
+        boxShadow: theme === 'sun' 
+                    ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                    : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                  fontSize: '14px',
+                  fontWeight: '350',
+                  position: 'relative',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  cursor: isViewOnly ? 'default' : 'pointer',
+                  minHeight: '50px',
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  overflow: 'hidden'
+                }}
+              >
+                <input 
+                  type="radio" 
+                  name="question-1"
+                  checked={isSelected}
+                  onChange={() => { if (!isViewOnly) setSelectedAnswer(key); }}
+                  disabled={isViewOnly}
+                  style={{ 
+                    width: '18px',
+                    height: '18px',
+                    accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                    cursor: isViewOnly ? 'default' : 'pointer',
+                    flexShrink: 0
+                  }} 
+                />
+                <span style={{ 
+                  flexShrink: 0, 
+                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                  fontWeight: '600',
+                  fontSize: '16px'
+                }}>
+                  {displayKey}.
+                </span>
+                <span 
+                  className="option-text"
+                  style={{ 
+                    fontSize: '14px',
+                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                    fontWeight: '350',
+                    flex: 1,
+                    lineHeight: '1.6',
+                    minWidth: 0,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    overflow: 'hidden'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: opt.text || opt.value || '' }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Multiple Select Container Component
+const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const [selectedAnswers, setSelectedAnswers] = React.useState([]);
+  const questionText = data?.question || data?.questionText || 'Which of the following are Southeast Asian countries? (Select all that apply)';
+  const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
+
+  const normalizedOptions = React.useMemo(() => {
+    const fallbackOptions = ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }));
+    const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
+      ? data.content.data.map((d, idx) => ({
+          key: d.id || d.key || d.value || `opt_${idx}`,
+          text: d.value
+        }))
+      : null;
+    const baseOptions = optionsFromApi || contentOpts || fallbackOptions;
+    return baseOptions.map((opt, idx) => {
+      const valueKey = String(opt.valueKey || opt.key || opt.id || (opt.text ?? opt.value) || `opt_${idx}`);
+      const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
+      const text = typeof opt.text === 'string'
+        ? opt.text
+        : typeof opt.value === 'string'
+          ? opt.value
+          : '';
+      return {
+        ...opt,
+        valueKey,
+        displayKey,
+        text,
+        plainText: stripHtmlContent(text)
+      };
+    });
+  }, [optionsFromApi, data?.content?.data]);
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      if (selectedAnswers.length === 0) return null;
+      const options = normalizedOptions.map((o) => ({ key: o.valueKey, text: o.text }));
+      return { answer: selectedAnswers, questionType: 'MULTIPLE_SELECT', options };
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, selectedAnswers, normalizedOptions]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (Array.isArray(restored)) {
+        const keys = restored.map(val => {
+          const normalized = String(val).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+          const match = normalizedOptions.find((o) => {
+            const optionPlain = o.plainText || stripHtmlContent(o.text);
+            return optionPlain === normalized ||
+              o.text === normalized ||
+              o.valueKey === normalized ||
+              o.displayKey === normalized;
+          });
+          return match ? match.valueKey : normalized;
+        });
+        setSelectedAnswers(keys);
+      } else if (typeof restored === 'string' && restored) {
+        const normalized = String(restored).replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+        const match = normalizedOptions.find(o =>
+          o.text === normalized ||
+          o.valueKey === normalized ||
+          o.displayKey === normalized
+        );
+        setSelectedAnswers([match ? match.valueKey : normalized]);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id, normalizedOptions]);
+
+  const toggleAnswer = (key) => {
+    if (selectedAnswers.includes(key)) {
+      setSelectedAnswers(selectedAnswers.filter(k => k !== key));
+    } else {
+      setSelectedAnswers([...selectedAnswers, key]);
+    }
+  };
+
+  return (
+    <div
+      className={`question-item ${theme}-question-item`}
+      style={{
+        marginBottom: '24px',
+        borderRadius: '16px',
+        padding: '24px',
+        border: '2px solid',
+        borderColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        background: theme === 'sun' 
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+        boxShadow: theme === 'sun' 
+          ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+          : '0 4px 16px rgba(138, 122, 255, 0.12)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      {/* Header */}
+      <div className="question-header" style={{
+        paddingBottom: '14px',
+        marginBottom: '16px',
+        borderBottom: '2px solid',
+        borderBottomColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography.Text strong style={{ 
+          fontSize: '16px', 
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+        }}>
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
+        </Typography.Text>
+        <Typography.Text style={{ 
+          fontSize: '14px', 
+          color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+          fontStyle: 'italic'
+        }}>
+          Multiple Select
+        </Typography.Text>
+      </div>
+
+      {/* Content Area */}
+      <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+        <div 
+          className="question-text-content"
+          style={{ 
+            fontSize: '15px', 
+            fontWeight: 350,
+            marginBottom: '12px',
+            display: 'block',
+            lineHeight: '1.8',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}
+          dangerouslySetInnerHTML={{ __html: questionText }}
+        />
+
+        {/* Options */}
+        <div className="question-options" style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(2, 1fr)', 
+          gap: '14px', 
+          marginTop: '12px',
+          width: '100%'
+        }}>
+          {normalizedOptions.map((opt, idx) => {
+            const key = opt.valueKey;
+            const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
+            const isSelected = selectedAnswers.includes(key);
+            return (
+              <div
+                key={idx}
+                onClick={() => { if (!isViewOnly) toggleAnswer(key); }}
+                className={`option-item ${isSelected ? 'selected-answer' : ''}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '14px 18px',
+                  background: isSelected
+                    ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)')
+                    : theme === 'sun'
+                      ? 'rgba(255, 255, 255, 0.85)'
+                      : 'rgba(255, 255, 255, 0.7)',
+                  border: `2px solid ${
+                    isSelected
+                      ? (theme === 'sun' ? 'rgb(24, 144, 255)' : 'rgb(138, 122, 255)')
+                      : theme === 'sun' 
+                        ? 'rgba(113, 179, 253, 0.2)' 
+                        : 'rgba(138, 122, 255, 0.15)'
+                  }`,
+                  borderRadius: '12px',
+                  boxShadow: theme === 'sun' 
+                    ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                    : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                  fontSize: '14px',
+                  fontWeight: '350',
+                  position: 'relative',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            cursor: isViewOnly ? 'default' : 'pointer',
+                  minHeight: '50px',
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  minWidth: 0,
+                  maxWidth: '100%',
+                  overflow: 'hidden'
+                }}
+              >
+                <input 
+                  type="checkbox" 
+                  checked={isSelected}
+                  onChange={() => { if (!isViewOnly) toggleAnswer(key); }}
+                  disabled={isViewOnly}
+                  style={{ 
+                    width: '18px',
+                    height: '18px',
+                    accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                    cursor: isViewOnly ? 'default' : 'pointer',
+                    flexShrink: 0
+                  }} 
+                />
+                <span style={{ 
+                  flexShrink: 0, 
+                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                  fontWeight: '600',
+                  fontSize: '16px'
+                }}>
+                  {displayKey}.
+                </span>
+                <span 
+                  className="option-text"
+                  style={{ 
+                    fontSize: '14px',
+                    color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                    fontWeight: '350',
+                    flex: 1,
+                    lineHeight: '1.6',
+                    minWidth: 0,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    overflow: 'hidden'
+                  }}
+                  dangerouslySetInnerHTML={{ __html: opt.text || opt.value || '' }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+// True/False Container Component
+const TrueFalseContainer = ({ theme, data, globalQuestionNumber }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const [selectedAnswer, setSelectedAnswer] = React.useState(null);
+  const questionText = data?.question || data?.questionText || 'The Earth revolves around the Sun.';
+
+  // Normalize options from API: prefer backend ids (e.g., 'opt1', 'opt2')
+  const tfOptions = React.useMemo(() => {
+    const normalizeText = (val) =>
+      typeof val === 'string'
+        ? val.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim()
+        : val;
+    if (Array.isArray(data?.options) && data.options.length > 0) {
+      return data.options.map((opt, idx) => ({
+        key: opt.key || opt.id || (String(opt.text).toLowerCase() === 'true' ? 'opt1' : 'opt2'),
+        text: normalizeText(opt.text),
+        displayKey: opt.displayKey || String.fromCharCode(65 + idx)
+      }));
+    }
+    const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
+    return contentData.map((d, idx) => ({
+      key: d.id || (String(d.value).toLowerCase() === 'true' ? 'opt1' : 'opt2'),
+      text: normalizeText(d.value),
+      displayKey: d.displayKey || String.fromCharCode(65 + idx)
+    }));
+  }, [data?.options, data?.content?.data]);
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      if (!selectedAnswer) return null;
+      // Pass options with backend ids so formatter emits id=opt1/opt2
+      const options = tfOptions.map(opt => ({ key: opt.key, text: opt.text }));
+      return { answer: selectedAnswer, questionType: 'TRUE_OR_FALSE', options };
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, selectedAnswer, tfOptions]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (!restored) return;
+      // Accept either backend id ('opt1') or text ('True'/'False')
+      if (typeof restored === 'string') {
+        const normalized = restored.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+        const match = tfOptions.find(o => o.key === normalized || String(o.text).toLowerCase() === normalized.toLowerCase());
+        setSelectedAnswer(match ? match.key : normalized);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id, tfOptions]);
+
+  return (
+    <div
+      className={`question-item ${theme}-question-item`}
+      style={{
+        marginBottom: '24px',
+        borderRadius: '16px',
+        padding: '24px',
+        border: '2px solid',
+        borderColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        background: theme === 'sun' 
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+        boxShadow: theme === 'sun' 
+          ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+          : '0 4px 16px rgba(138, 122, 255, 0.12)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      {/* Header */}
+      <div className="question-header" style={{
+        paddingBottom: '14px',
+        marginBottom: '16px',
+        borderBottom: '2px solid',
+        borderBottomColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography.Text strong style={{ 
+            fontSize: '16px', 
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+        }}>
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
+        </Typography.Text>
+        <Typography.Text style={{ 
+          fontSize: '14px', 
+          color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+          fontStyle: 'italic'
+        }}>
+          True/False
+        </Typography.Text>
+      </div>
+
+      {/* Content Area */}
+      <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+        <div 
+          className="question-text-content"
+          style={{ 
+            fontSize: '15px', 
+            fontWeight: 350,
+            marginBottom: '12px',
+            display: 'block',
+            lineHeight: '1.8',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}
+          dangerouslySetInnerHTML={{ __html: questionText }}
+        />
+
+        {/* Options */}
+        <div className="question-options" style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(2, 1fr)', 
+          gap: '14px', 
+          marginTop: '12px' 
+        }}>
+          {tfOptions.map((opt, idx) => {
+            const isSelected = selectedAnswer === opt.key;
+            return (
+              <div
+                key={opt.key}
+                onClick={() => { if (!isViewOnly) setSelectedAnswer(opt.key); }}
+                className={`option-item ${isSelected ? 'selected-answer' : ''}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '14px 18px',
+                  background: isSelected
+                    ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)')
+                    : theme === 'sun'
+                      ? 'rgba(255, 255, 255, 0.85)'
+                      : 'rgba(255, 255, 255, 0.7)',
+                  border: `2px solid ${
+                    isSelected
+                      ? (theme === 'sun' ? 'rgb(24, 144, 255)' : 'rgb(138, 122, 255)')
+                      : theme === 'sun' 
+                        ? 'rgba(113, 179, 253, 0.2)' 
+                        : 'rgba(138, 122, 255, 0.15)'
+                  }`,
+                  borderRadius: '12px',
+                  boxShadow: theme === 'sun' 
+                    ? '0 2px 6px rgba(113, 179, 253, 0.08)'
+                    : '0 2px 6px rgba(138, 122, 255, 0.08)',
+                  fontSize: '14px',
+                  fontWeight: '350',
+                  position: 'relative',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  cursor: isViewOnly ? 'default' : 'pointer',
+                  minHeight: '50px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <input 
+                  type="radio" 
+                  name="question-3"
+                  checked={isSelected}
+                  onChange={() => { if (!isViewOnly) setSelectedAnswer(opt.key); }}
+                  disabled={isViewOnly}
+                  style={{ 
+                    width: '18px',
+                    height: '18px',
+                    accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                    cursor: isViewOnly ? 'default' : 'pointer'
+                  }} 
+                />
+                <span style={{ 
+                  flexShrink: 0, 
+                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', 
+                  fontWeight: '600',
+                  fontSize: '16px'
+                }}>
+                  {(opt.displayKey || (String(opt.text).toLowerCase() === 'true' ? 'A' : 'B'))}.
+                </span>
+                <Typography.Text style={{ 
+                  fontSize: '14px',
+                  color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                  fontWeight: '350',
+                  flex: 1
+                }}>
+                  {opt.text}
+                </Typography.Text>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+// Dropdown Container Component
+const DropdownContainer = ({ theme, data, globalQuestionNumber }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const [selectedAnswers, setSelectedAnswers] = React.useState({});
+  const questionText = data?.questionText || data?.question || 'Choose the correct words to complete the sentence:';
+  const contentData = Array.isArray(data?.content?.data) ? data.content.data : [];
+  const contentRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    const getAnswer = () => {
+      const formattedAnswers = {};
+      Object.keys(selectedAnswers).forEach((posId) => {
+        const value = selectedAnswers[posId];
+        if (value == null || String(value).trim() === '') return;
+        const normalized = posId.startsWith('pos_') ? posId.slice(4) : posId;
+        formattedAnswers[`${data.id}_pos_${normalized}`] = value;
+      });
+      return Object.keys(formattedAnswers).length > 0 ? { answer: formattedAnswers, questionType: 'DROPDOWN' } : null;
+    };
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, selectedAnswers]);
+
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
+        const mapped = {};
+        Object.keys(restored).forEach((key) => {
+          let pos = key;
+          if (key.includes('_pos_')) {
+            const parts = key.split('_pos_');
+            pos = parts[parts.length - 1];
+          }
+          if (!String(pos).startsWith('pos_')) {
+            pos = `pos_${pos}`;
+          }
+          mapped[pos] = restored[key];
+        });
+        setSelectedAnswers(mapped);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id]);
+
+  const handleDropdownChange = React.useCallback((positionId, value) => {
+    if (isViewOnly) return;
+    setSelectedAnswers((prev) => {
+      const next = { ...prev };
+      if (value == null || String(value).trim() === '') {
+        delete next[positionId];
+      } else {
+        next[positionId] = value;
+      }
+      return next;
+    });
+  }, [isViewOnly]);
+
+  const sanitizeOptionLabel = React.useCallback((raw) => {
+    return String(raw ?? '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }, []);
+
+  const groupKeyFromId = React.useCallback((id) => {
+    if (!id || typeof id !== 'string') return id;
+    const match = id.match(/^([^_]+?\d+)/);
+    return (match && match[1]) || id.split('_')[0] || id;
+  }, []);
+
+  const extractNumber = React.useCallback((key) => {
+    if (!key) return 0;
+    const match = key.match(/(\d+)$/);
+    return match ? parseInt(match[1], 10) : 0;
+  }, []);
+
+  const hasPositionIds = React.useMemo(() => {
+    return contentData.some((item) => item && item.positionId !== undefined && item.positionId !== null && String(item.positionId) !== '');
+  }, [contentData]);
+
+  const groupKeysInOrder = React.useMemo(() => {
+    if (hasPositionIds) return [];
+    const seen = new Set();
+    const order = [];
+    contentData.forEach((item, idx) => {
+      if (!item || !item.id) return;
+      const key = groupKeyFromId(item.id);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      order.push({ key, idx });
+    });
+    order.sort((a, b) => {
+      const numA = extractNumber(a.key);
+      const numB = extractNumber(b.key);
+      if (numA !== numB) return numA - numB;
+      return a.idx - b.idx;
+    });
+    return order.map((entry) => entry.key);
+  }, [contentData, hasPositionIds, groupKeyFromId, extractNumber]);
+
+  const getOptionsForSlot = React.useCallback((slotIndex, posToken) => {
+    let candidates = [];
+    if (hasPositionIds) {
+      const token = String(posToken ?? '');
+      candidates = contentData.filter((item) => String(item?.positionId ?? '') === token);
+    } else {
+      const groupKey = groupKeysInOrder[slotIndex];
+      if (groupKey) {
+        candidates = contentData.filter((item) => groupKeyFromId(item?.id) === groupKey);
+      } else {
+        candidates = contentData;
+      }
+    }
+    return candidates
+      .map((item) => {
+        const rawValue = item?.value ?? item?.text ?? '';
+        const value = String(rawValue);
+        if (!value) return null;
+        return {
+          value,
+          label: sanitizeOptionLabel(rawValue) || value,
+        };
+      })
+      .filter(Boolean);
+  }, [contentData, hasPositionIds, groupKeysInOrder, groupKeyFromId, sanitizeOptionLabel]);
+
+  React.useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+    let slotIndex = 0;
+    const html = String(questionText || '').replace(/\[\[pos_(.*?)\]\]/g, (_match, pos) => `<span class="dropdown-slot" data-pos="${pos}" data-slot-index="${slotIndex++}"></span>`);
+    container.innerHTML = html;
+    const cleanup = [];
+    const slots = Array.from(container.querySelectorAll('span.dropdown-slot'));
+    // Sort slots by data-slot-index to ensure correct order even when HTML contains tables
+    slots.sort((a, b) => {
+      const idxA = Number(a.getAttribute('data-slot-index') || '0');
+      const idxB = Number(b.getAttribute('data-slot-index') || '0');
+      return idxA - idxB;
+    });
+    slots.forEach((slot) => {
+      const posToken = slot.getAttribute('data-pos') || '';
+      const idx = Number(slot.getAttribute('data-slot-index') || '0');
+      const stateKey = posToken.startsWith('pos_') ? posToken : `pos_${posToken}`;
+      const select = document.createElement('select');
+      select.className = 'dropdown-input';
+      select.setAttribute('data-state-key', stateKey);
+      select.setAttribute('data-pos-token', posToken);
+      select.style.display = 'inline-block';
+      select.style.minWidth = '120px';
+      select.style.height = '32px';
+      select.style.padding = '4px 12px';
+      select.style.margin = '0 8px';
+      select.style.background = theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)';
+      select.style.border = `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`;
+      select.style.borderRadius = '8px';
+      select.style.fontSize = '14px';
+      select.style.fontWeight = '600';
+      select.style.color = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+      select.style.cursor = isViewOnly ? 'default' : 'pointer';
+      select.style.outline = 'none';
+      select.style.verticalAlign = 'middle';
+      select.style.textAlign = 'center';
+      select.style.textAlignLast = 'center';
+
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.textContent = 'Select';
+      select.appendChild(placeholderOption);
+
+      // Use positionId (posToken) directly if hasPositionIds is true, otherwise use slotIndex
+      const options = getOptionsForSlot(idx, posToken);
+      options.forEach(({ value, label }) => {
+        const optionEl = document.createElement('option');
+        optionEl.value = value;
+        optionEl.textContent = label;
+        select.appendChild(optionEl);
+      });
+
+      select.disabled = !!isViewOnly;
+
+      const handleChange = (event) => handleDropdownChange(stateKey, event.target.value);
+      select.addEventListener('change', handleChange);
+      cleanup.push(() => select.removeEventListener('change', handleChange));
+
+      slot.replaceWith(select);
+    });
+
+    return () => {
+      cleanup.forEach((fn) => fn());
+    };
+  }, [questionText, getOptionsForSlot, handleDropdownChange, isViewOnly, theme]);
+
+  React.useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+    const selects = container.querySelectorAll('select.dropdown-input');
+    selects.forEach((select) => {
+      const stateKey = select.getAttribute('data-state-key');
+      if (!stateKey) return;
+      const value = selectedAnswers[stateKey] ?? '';
+      if (value) {
+        select.value = value;
+      } else {
+        select.value = '';
+      }
+      select.disabled = !!isViewOnly;
+    });
+  }, [selectedAnswers, isViewOnly]);
+
+  return (
+    <div
+      className={`question-item ${theme}-question-item`}
+      style={{
+        marginBottom: '24px',
+        borderRadius: '16px',
+        padding: '24px',
+        border: '2px solid',
+        borderColor: theme === 'sun'
+          ? 'rgba(113, 179, 253, 0.25)'
+          : 'rgba(138, 122, 255, 0.2)',
+        background: theme === 'sun'
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+        boxShadow: theme === 'sun'
+          ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+          : '0 4px 16px rgba(138, 122, 255, 0.12)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      <div className="question-header" style={{
+        paddingBottom: '14px',
+        marginBottom: '16px',
+        borderBottom: '2px solid',
+        borderBottomColor: theme === 'sun'
+          ? 'rgba(113, 179, 253, 0.25)'
+          : 'rgba(138, 122, 255, 0.2)',
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography.Text strong style={{
+          fontSize: '16px',
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+        }}>
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
+        </Typography.Text>
+        <Typography.Text style={{
+          fontSize: '14px',
+          color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+          fontStyle: 'italic'
+        }}>
+          Dropdown
+        </Typography.Text>
+      </div>
+
+      <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+        <div
+          ref={contentRef}
+          className="question-text-content"
+          style={{
+            fontSize: '15px',
+            fontWeight: 350,
+            lineHeight: '1.8',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+            marginBottom: '16px'
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+// Drag and Drop Container Component
+const DragDropContainer = ({ theme, data, globalQuestionNumber }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const [droppedItems, setDroppedItems] = React.useState({});
+  const dragDropContentData = React.useMemo(() => getContentDataArray(data), [data]);
+  const initialPool = React.useMemo(() => {
+    const values = dragDropContentData.map(it => (typeof it?.value === 'string' ? it.value : (it?.text ?? ''))).filter(Boolean);
+    return values.length ? values : ['love', 'like', 'enjoy', 'hate'];
+  }, [dragDropContentData]);
+  const [availableItems, setAvailableItems] = React.useState(initialPool);
+  const [dragOverPosition, setDragOverPosition] = React.useState(null);
+
+  const buildRemainingPool = React.useCallback((pool, usedValues) => {
+    const remaining = [];
+    const counts = new Map();
+    usedValues.forEach((value) => {
+      counts.set(value, (counts.get(value) || 0) + 1);
+    });
+    pool.forEach((value) => {
+      const current = counts.get(value) || 0;
+      if (current > 0) {
+        counts.set(value, current - 1);
+      } else {
+        remaining.push(value);
+      }
+    });
+    return remaining;
+  }, []);
+
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    const getAnswer = () => {
+      const keys = Object.keys(droppedItems);
+      return keys.length > 0 ? { answer: droppedItems, questionType: 'DRAG_AND_DROP' } : null;
+    };
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, droppedItems]);
+
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
+        const normalized = {};
+        Object.keys(restored).forEach((key) => {
+          const normalizedKey = String(key).startsWith('pos_') ? String(key) : `pos_${key}`;
+          normalized[normalizedKey] = restored[key];
+        });
+        setDroppedItems(normalized);
+        setAvailableItems(buildRemainingPool(initialPool, Object.values(normalized)));
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id, initialPool, buildRemainingPool]);
+
+  React.useEffect(() => {
+    setDroppedItems({});
+    setAvailableItems(initialPool);
+  }, [data?.id, initialPool]);
+
+  const handleDragStart = React.useCallback((e, item, isDropped = false, positionId = null) => {
+    if (isViewOnly) return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', item);
+    e.dataTransfer.setData('isDropped', String(isDropped));
+    e.dataTransfer.setData('positionId', positionId || '');
+  }, [isViewOnly]);
+
+  const handleDrop = React.useCallback((e, positionId) => {
+    if (isViewOnly) return;
+    e.preventDefault();
+    setDragOverPosition(null);
+    const item = e.dataTransfer.getData('text/plain');
+    if (!item) return;
+    const fromPositionId = e.dataTransfer.getData('positionId');
+
+    setDroppedItems((prev) => {
+      const next = { ...prev };
+      const previousValue = prev[positionId];
+
+      if (fromPositionId && fromPositionId !== positionId && fromPositionId in next) {
+        delete next[fromPositionId];
+      }
+
+      next[positionId] = item;
+
+      setAvailableItems((prevPool) => {
+        const updated = [...prevPool];
+        const removeFromPool = (value) => {
+          const idx = updated.indexOf(value);
+          if (idx !== -1) {
+            updated.splice(idx, 1);
+          }
+        };
+
+        if (previousValue && previousValue !== item) {
+          updated.push(previousValue);
+        }
+
+        removeFromPool(item);
+
+        return updated;
+      });
+
+      return next;
+    });
+  }, [isViewOnly]);
+
+  const handleDragStartFromDropped = React.useCallback((e, item, positionId) => {
+    if (isViewOnly) return;
+    handleDragStart(e, item, true, positionId);
+    setDroppedItems((prev) => {
+      const next = { ...prev };
+      delete next[positionId];
+      return next;
+    });
+    setAvailableItems((prev) => [...prev, item]);
+  }, [handleDragStart, isViewOnly]);
+
+  const handleDragOver = React.useCallback((e, positionId) => {
+    e.preventDefault();
+    setDragOverPosition(positionId);
+  }, []);
+
+  const handleDragLeave = React.useCallback((e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOverPosition(null);
+    }
+  }, []);
+
+  const questionText = data?.questionText || data?.question || '';
+  const questionContentRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const container = questionContentRef.current;
+    if (!container) return;
+    let slotIndex = 0;
+    const html = String(questionText || '').replace(/\[\[pos_(.*?)\]\]/g, (_match, pos) => `<span class="drag-slot" data-pos="${pos}" data-slot-index="${slotIndex++}"></span>`);
+    container.innerHTML = html;
+    const slots = Array.from(container.querySelectorAll('span.drag-slot'));
+    const cleanup = [];
+    slots.forEach((slot) => {
+      const posToken = slot.getAttribute('data-pos') || '';
+      const stateKey = posToken.startsWith('pos_') ? posToken : `pos_${posToken}`;
+      const wrapper = document.createElement('span');
+      wrapper.className = 'drag-slot-wrapper';
+      wrapper.setAttribute('data-state-key', stateKey);
+      wrapper.style.display = 'inline-flex';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.justifyContent = 'center';
+      wrapper.style.minWidth = '120px';
+      wrapper.style.maxWidth = '200px';
+      wrapper.style.height = 'auto';
+      wrapper.style.minHeight = '32px';
+      wrapper.style.margin = '0 8px';
+      wrapper.style.borderRadius = '8px';
+      wrapper.style.padding = '4px 12px';
+      wrapper.style.boxSizing = 'border-box';
+      wrapper.style.verticalAlign = 'top';
+      wrapper.style.transition = 'all 0.2s ease';
+      wrapper.style.cursor = isViewOnly ? 'default' : 'pointer';
+      wrapper.style.wordBreak = 'break-word';
+      wrapper.style.wordWrap = 'break-word';
+      wrapper.style.overflowWrap = 'break-word';
+      wrapper.style.whiteSpace = 'normal';
+      wrapper.style.overflow = 'hidden';
+
+      const onDrop = (event) => handleDrop(event, stateKey);
+      const onDragOver = (event) => handleDragOver(event, stateKey);
+      const onDragLeaveHandler = (event) => handleDragLeave(event);
+
+      wrapper.addEventListener('drop', onDrop);
+      wrapper.addEventListener('dragover', onDragOver);
+      wrapper.addEventListener('dragleave', onDragLeaveHandler);
+      cleanup.push(() => {
+        wrapper.removeEventListener('drop', onDrop);
+        wrapper.removeEventListener('dragover', onDragOver);
+        wrapper.removeEventListener('dragleave', onDragLeaveHandler);
+      });
+
+      slot.replaceWith(wrapper);
+    });
+
+    return () => {
+      cleanup.forEach((fn) => fn());
+    };
+  }, [questionText, handleDrop, handleDragOver, handleDragLeave, isViewOnly]);
+
+  React.useEffect(() => {
+    const container = questionContentRef.current;
+    if (!container) return;
+    const wrappers = Array.from(container.querySelectorAll('span.drag-slot-wrapper[data-state-key]'));
+    wrappers.forEach((wrapper) => {
+      const stateKey = wrapper.getAttribute('data-state-key');
+      if (!stateKey) return;
+      const value = droppedItems[stateKey];
+      wrapper.innerHTML = '';
+      if (value) {
+        wrapper.style.background = theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)';
+        wrapper.style.border = `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`;
+        wrapper.style.color = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+        wrapper.style.cursor = isViewOnly ? 'default' : 'grab';
+        const chip = document.createElement('span');
+        chip.style.display = 'inline-flex';
+        chip.style.alignItems = 'center';
+        chip.style.justifyContent = 'center';
+        chip.style.width = '100%';
+        chip.style.height = '100%';
+        chip.style.fontSize = '15px';
+        chip.style.fontWeight = '350';
+        chip.style.lineHeight = '1.4';
+        chip.style.boxSizing = 'border-box';
+        chip.style.textAlign = 'center';
+        chip.style.cursor = isViewOnly ? 'default' : 'grab';
+        chip.style.wordBreak = 'break-word';
+        chip.style.wordWrap = 'break-word';
+        chip.style.overflowWrap = 'break-word';
+        chip.style.whiteSpace = 'normal';
+        chip.style.overflow = 'hidden';
+        chip.draggable = !isViewOnly;
+        chip.innerHTML = value;
+        if (!isViewOnly) {
+          chip.addEventListener('dragstart', (event) => handleDragStartFromDropped(event, value, stateKey));
+        }
+        wrapper.appendChild(chip);
+      } else {
+        wrapper.style.background = '#ffffff';
+        wrapper.style.border = '2px dashed rgba(0, 0, 0, 0.5)';
+        wrapper.style.color = 'rgba(0, 0, 0, 0.5)';
+        wrapper.style.cursor = isViewOnly ? 'default' : 'pointer';
+        const placeholder = document.createElement('span');
+        placeholder.textContent = 'Drop here';
+        placeholder.style.width = '100%';
+        placeholder.style.textAlign = 'center';
+        placeholder.style.fontSize = '14px';
+        placeholder.style.fontWeight = '350';
+        placeholder.style.lineHeight = '1.4';
+        wrapper.appendChild(placeholder);
+      }
+    });
+  }, [droppedItems, theme, isViewOnly, handleDragStartFromDropped]);
+
+  React.useEffect(() => {
+    const container = questionContentRef.current;
+    if (!container) return;
+    const wrappers = Array.from(container.querySelectorAll('span.drag-slot-wrapper[data-state-key]'));
+    wrappers.forEach((wrapper) => {
+      const stateKey = wrapper.getAttribute('data-state-key');
+      if (!stateKey) return;
+      if (stateKey === dragOverPosition) {
+        wrapper.style.transform = 'scale(1.05)';
+        wrapper.style.boxShadow = theme === 'sun'
+          ? '0 4px 12px rgba(24, 144, 255, 0.3)'
+          : '0 4px 12px rgba(138, 122, 255, 0.3)';
+        if (!droppedItems[stateKey]) {
+          wrapper.style.border = `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`;
+          wrapper.style.background = theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(138, 122, 255, 0.25)';
+          wrapper.style.color = theme === 'sun' ? '#1890ff' : '#8B5CF6';
+        }
+      } else {
+        wrapper.style.transform = 'scale(1)';
+        wrapper.style.boxShadow = 'none';
+        if (!droppedItems[stateKey]) {
+          wrapper.style.border = '2px dashed rgba(0, 0, 0, 0.5)';
+          wrapper.style.background = '#ffffff';
+          wrapper.style.color = 'rgba(0, 0, 0, 0.5)';
+        }
+      }
+    });
+  }, [dragOverPosition, theme, droppedItems]);
+
+  return (
+    <div
+      className={`question-item ${theme}-question-item`}
+      style={{
+        marginBottom: '24px',
+        borderRadius: '16px',
+        padding: '24px',
+        border: '2px solid',
+        borderColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        background: theme === 'sun' 
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+        boxShadow: theme === 'sun' 
+          ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+          : '0 4px 16px rgba(138, 122, 255, 0.12)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      {/* Header */}
+      <div className="question-header" style={{
+        paddingBottom: '14px',
+        marginBottom: '16px',
+        borderBottom: '2px solid',
+        borderBottomColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography.Text strong style={{ 
+          fontSize: '16px', 
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+        }}>
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
+        </Typography.Text>
+        <Typography.Text style={{ 
+          fontSize: '14px', 
+          color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+          fontStyle: 'italic'
+        }}>
+          Drag and Drop
+        </Typography.Text>
+      </div>
+
+      {/* Content Area */}
+      <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+        <Typography.Text style={{ 
+          fontSize: '15px', 
+          fontWeight: 350,
+          marginBottom: '12px',
+          display: 'block',
+          lineHeight: '1.8',
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+        }}>
+          Complete the sentence by dragging words into the blanks:
+        </Typography.Text>
+
+        {/* Two Column Layout */}
+        <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
+          {/* Left Column - Question with drop zones */}
+          <div style={{
+            flex: '1',
+            padding: '20px',
+            background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+            borderRadius: '12px',
+            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+          }}>
+            <div
+              ref={questionContentRef}
+              className="question-text-content"
+              style={{
+                fontSize: '15px',
+                fontWeight: 350,
+                lineHeight: '1.8',
+                color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
+                marginBottom: '16px'
+              }}
+            />
+          </div>
+
+          {/* Right Column - Available words for dragging */}
+          <div style={{
+            flex: '1',
+            padding: '20px',
+            background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '12px',
+            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+          }}>
+            <Typography.Text style={{ 
+              fontSize: '14px', 
+              fontWeight: 350,
+              marginBottom: '16px',
+              display: 'block',
+              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+            }}>
+              Drag these words to complete the sentence:
+            </Typography.Text>
+            
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              alignItems: 'center',
+              minHeight: '120px'
+            }}>
+              {availableItems.map((item, idx) => (
+                <div
+                  key={idx}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, item)}
+                  style={{
+                    padding: '12px 20px',
+                    background: theme === 'sun' 
+                      ? 'rgba(24, 144, 255, 0.08)' 
+                      : 'rgba(138, 122, 255, 0.12)',
+                    border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                    cursor: 'grab',
+                    userSelect: 'none',
+                    transition: 'all 0.2s ease',
+                    minWidth: '80px',
+                    maxWidth: '200px',
+                    textAlign: 'center',
+                    wordBreak: 'break-word',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'break-word',
+                    whiteSpace: 'normal',
+                    overflow: 'hidden',
+                    boxShadow: theme === 'sun' 
+                      ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
+                      : '0 2px 8px rgba(138, 122, 255, 0.15)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                      ? '0 4px 12px rgba(24, 144, 255, 0.25)' 
+                      : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = theme === 'sun' 
+                      ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
+                      : '0 2px 8px rgba(138, 122, 255, 0.15)';
+                  }}
+                  dangerouslySetInnerHTML={{ __html: item || '' }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+// Reorder Container Component
+const ReorderContainer = ({ theme, data, globalQuestionNumber }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const [sourceItems, setSourceItems] = React.useState(() => {
+    const words = (data?.content?.data || [])
+      .map(it => it.value)
+      .filter(Boolean);
+    const defaultWords = words.length ? words : ['I','love','programming','very','much'];
+    // Always shuffle words for REORDER questions
+    const shuffle = (arr) => {
+      const a = Array.isArray(arr) ? [...arr] : [];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    return shuffle(defaultWords);
+  });
+  const [droppedItems, setDroppedItems] = React.useState({});
+  const [dragOverIndex, setDragOverIndex] = React.useState(null);
+  const [draggedItem, setDraggedItem] = React.useState(null);
+  const [isDraggingFromSource, setIsDraggingFromSource] = React.useState(false);
+  const [wasDropped, setWasDropped] = React.useState(false);
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      // Get items in order from droppedItems (support sparse indices)
+      const indexKeys = Object.keys(droppedItems)
+        .map(k => parseInt(k, 10))
+        .filter(i => !Number.isNaN(i))
+        .sort((a, b) => a - b);
+      const orderedItems = indexKeys
+        .map(i => droppedItems[i])
+        .filter(v => v !== undefined && v !== null && String(v).trim() !== '');
+      if (orderedItems.length === 0) return null;
+      const options = (data?.content?.data || []).map((d, idx) => ({ key: d.id || String.fromCharCode(65 + idx), text: d.value }));
+      return { answer: orderedItems, questionType: 'REORDER', options };
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, droppedItems]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (Array.isArray(restored)) {
+        const mapping = {};
+        restored.forEach((val, idx) => { mapping[idx] = val; });
+        setDroppedItems(mapping);
+        // Remove restored items from source list
+        const words = (data?.content?.data || []).map(it => it?.value).filter(Boolean);
+        const pool = words.length ? words : ['I','love','programming','very','much'];
+        const remaining = pool.filter(v => !restored.includes(v));
+        setSourceItems(remaining);
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id, data?.content?.data]);
+  const numSlots = React.useMemo(() => {
+    const countFromData = (data?.content?.data || [])
+      .map(it => it.value)
+      .filter(Boolean).length;
+    const base = countFromData || sourceItems.length || 0;
+    const ensureAtLeastDropped = Math.max(base, Object.keys(droppedItems).length);
+    return ensureAtLeastDropped;
+  }, [data, sourceItems.length, droppedItems]);
+
+  const handleDragStartFromSource = (e, item) => {
+    if (isViewOnly) return;
+    setDraggedItem(item);
+    setIsDraggingFromSource(true);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragStartFromSlot = (e, index) => {
+    if (isViewOnly) return;
+    const item = droppedItems[index];
+    setDraggedItem(item);
+    setIsDraggingFromSource(false);
+    setWasDropped(false);
+    setDragOverIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDropOnSlot = (e, index) => {
+    if (isViewOnly) return;
+    e.preventDefault();
+    setWasDropped(true);
+    setDragOverIndex(null);
+    
+    if (draggedItem) {
+      const currentItem = droppedItems[index];
+      
+      // If there's already an item in this slot, return it to source
+      if (currentItem) {
+        setSourceItems(prev => [...prev, currentItem]);
+      }
+      
+      // If moving from another slot, clear the old slot first
+      if (!isDraggingFromSource) {
+        const oldIndex = Object.keys(droppedItems).find(i => droppedItems[i] === draggedItem && parseInt(i) !== index);
+        if (oldIndex !== undefined) {
+          setDroppedItems(prev => {
+            const newItems = { ...prev };
+            delete newItems[parseInt(oldIndex)];
+            return newItems;
+          });
+        }
+      } else {
+        // Remove only one occurrence from source to preserve duplicates
+        setSourceItems(prev => {
+          const arr = [...prev];
+          const idx = arr.findIndex(item => item === draggedItem);
+          if (idx !== -1) arr.splice(idx, 1);
+          return arr;
+        });
+      }
+      
+      // Place the new item in the slot
+      setDroppedItems(prev => ({
+        ...prev,
+        [index]: draggedItem
+      }));
+    }
+    
+    setDraggedItem(null);
+    setIsDraggingFromSource(false);
+  };
+
+  const handleDragOverSlot = (e, index) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragLeaveSlot = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = (e) => {
+    // If we're dragging from a slot (not from source) and not dropped in a slot or source area,
+    // return the item to source
+    if (draggedItem && !isDraggingFromSource && !wasDropped) {
+      // Return item back to source without deduping to preserve duplicates
+      setSourceItems(prev => [...prev, draggedItem]);
+      
+      // Remove from the slot
+      const oldIndex = Object.keys(droppedItems).find(i => droppedItems[i] === draggedItem);
+      if (oldIndex !== undefined) {
+        setDroppedItems(prev => {
+          const newItems = { ...prev };
+          delete newItems[oldIndex];
+          return newItems;
+        });
+      }
+    }
+    
+    setDraggedItem(null);
+    setIsDraggingFromSource(false);
+    setDragOverIndex(null);
+    setWasDropped(false);
+  };
+
+  return (
+    <div
+      className={`question-item ${theme}-question-item`}
+            style={{
+        marginBottom: '24px',
+        borderRadius: '16px',
+        padding: '24px',
+        border: '2px solid',
+        borderColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+              background: theme === 'sun' 
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+        boxShadow: theme === 'sun' 
+          ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+          : '0 4px 16px rgba(138, 122, 255, 0.12)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      {/* Header */}
+      <div className="question-header" style={{
+        paddingBottom: '14px',
+        marginBottom: '16px',
+        borderBottom: '2px solid',
+        borderBottomColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography.Text strong style={{ 
+          fontSize: '16px', 
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+        }}>
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
+        </Typography.Text>
+        <Typography.Text style={{ 
+          fontSize: '14px', 
+          color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+          fontStyle: 'italic'
+        }}>
+          Reorder
+        </Typography.Text>
+      </div>
+
+      {/* Content Area */}
+      <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+        <Typography.Text style={{ 
+          fontSize: '15px', 
+          fontWeight: 350,
+          marginBottom: '16px',
+          display: 'block',
+          lineHeight: '1.8',
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+        }}>
+          Rearrange the words by dragging them into the correct order:
+        </Typography.Text>
+
+        {/* Slots Row */}
+        <div style={{
+          marginBottom: '24px',
+          padding: '20px',
+          background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)',
+          borderRadius: '12px',
+          border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+        }}>
+          <Typography.Text style={{ 
+            fontSize: '14px', 
+            fontWeight: 350,
+            marginBottom: '16px',
+            display: 'block',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}>
+            Drop the words here in order:
+          </Typography.Text>
+          
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            {Array.from({ length: numSlots }).map((_, index) => (
+              <div
+                key={index}
+                onDrop={(e) => handleDropOnSlot(e, index)}
+                onDragOver={(e) => handleDragOverSlot(e, index)}
+                onDragLeave={handleDragLeaveSlot}
+                onDragEnd={handleDragEnd}
+                style={{
+                  minWidth: '100px',
+                  height: '60px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: droppedItems[index] 
+                    ? `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(138, 122, 255, 0.3)'}` // Lighter border when item is present
+                    : dragOverIndex === index 
+                      ? `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}` // Solid border when dragging over
+                      : `2px dashed rgba(0, 0, 0, 0.5)`, // Dashed border when empty - gray
+                  borderRadius: '8px',
+                  background: droppedItems[index]
+                    ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(138, 122, 255, 0.1)') // Different background when item is present
+                    : dragOverIndex === index
+                      ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.15)')
+                      : '#ffffff', // White background when empty
+                  position: 'relative',
+                  transition: 'all 0.3s ease',
+                  transform: dragOverIndex === index ? 'scale(1.05)' : 'scale(1)',
+                  cursor: 'pointer'
+                }}
+              >
+                {droppedItems[index] ? (
+                  <div
+                    draggable
+                    onDragStart={(e) => handleDragStartFromSlot(e, index)}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '8px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'grab',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <span style={{ 
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                      textAlign: 'center'
+                    }}>
+                      {droppedItems[index]}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
+                  }}>
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: 'rgba(0, 0, 0, 0.5)'
+                    }}>
+                      {index + 1}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Source Words */}
+        <div
+          onDrop={(e) => {
+            e.preventDefault();
+            setWasDropped(true);
+            // If dropping from slot back to source
+            if (draggedItem && !isDraggingFromSource) {
+              // Return item back to source without deduping to preserve duplicates
+              setSourceItems(prev => [...prev, draggedItem]);
+              // Remove from slot
+              const oldIndex = Object.keys(droppedItems).find(i => droppedItems[i] === draggedItem);
+              if (oldIndex) {
+                setDroppedItems(prev => {
+                  const newItems = { ...prev };
+                  delete newItems[oldIndex];
+                  return newItems;
+                });
+              }
+              setDraggedItem(null);
+              setIsDraggingFromSource(false);
+              setDragOverIndex(null);
+            }
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+          }}
+          style={{
+            padding: '20px',
+            background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '12px',
+            border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
+          }}
+        >
+          <Typography.Text style={{ 
+            fontSize: '14px', 
+            fontWeight: 350,
+            marginBottom: '16px',
+            display: 'block',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}>
+            Drag these words to the slots above:
+          </Typography.Text>
+          
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            {sourceItems.map((item, idx) => (
+              <div
+                key={`${item}-${idx}`}
+                draggable
+                onDragStart={(e) => handleDragStartFromSource(e, item)}
+                onDragEnd={handleDragEnd}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '10px 18px',
+                  background: theme === 'sun' 
+                    ? 'rgba(24, 144, 255, 0.08)' 
+                    : 'rgba(138, 122, 255, 0.12)',
+                  border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                  cursor: 'grab',
+                  userSelect: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: theme === 'sun' 
+                    ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
+                    : '0 2px 8px rgba(138, 122, 255, 0.15)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = theme === 'sun' 
+                    ? '0 4px 12px rgba(24, 144, 255, 0.25)' 
+                    : '0 4px 12px rgba(138, 122, 255, 0.25)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = theme === 'sun' 
+                    ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
+                    : '0 2px 8px rgba(138, 122, 255, 0.15)';
+                }}
+              >
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+// Rewrite Container Component
+const RewriteContainer = ({ theme, data, globalQuestionNumber }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const [answer, setAnswer] = React.useState('');
+  // Remove placeholder tokens but keep HTML formatting
+  const questionText = (data?.questionText || data?.question || 'Rewrite the following sentence using different words:')
+    .replace(/\[\[pos_.*?\]\]/g, '');
+
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      return answer ? { answer: answer, questionType: 'REWRITE' } : null;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, answer]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (typeof restored === 'string') {
+        setAnswer(restored);
+      } else if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
+        // Concatenate parts in position order if provided as object
+        const parts = Object.keys(restored)
+          .map(k => ({ k, v: restored[k] }))
+          .sort((a, b) => {
+            const pa = parseInt(String(a.k).split('_').pop(), 10);
+            const pb = parseInt(String(b.k).split('_').pop(), 10);
+            return (isNaN(pa) ? 0 : pa) - (isNaN(pb) ? 0 : pb);
+          })
+          .map(x => x.v)
+          .filter(Boolean);
+        if (parts.length) setAnswer(parts.join(' '));
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id]);
+
+  return (
+    <div
+      className={`question-item ${theme}-question-item`}
+      style={{
+        marginBottom: '24px',
+        borderRadius: '16px',
+        padding: '24px',
+        border: '2px solid',
+        borderColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        background: theme === 'sun' 
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+        boxShadow: theme === 'sun' 
+          ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+          : '0 4px 16px rgba(138, 122, 255, 0.12)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      {/* Header */}
+      <div className="question-header" style={{
+        paddingBottom: '14px',
+        marginBottom: '16px',
+        borderBottom: '2px solid',
+        borderBottomColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography.Text strong style={{ 
+          fontSize: '16px', 
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+        }}>
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
+        </Typography.Text>
+        <Typography.Text style={{ 
+          fontSize: '14px', 
+          color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+          fontStyle: 'italic'
+        }}>
+          Rewrite
+        </Typography.Text>
+      </div>
+
+      {/* Content Area */}
+      <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+        <div 
+          className="question-text-content"
+          style={{ 
+            fontSize: '15px', 
+            fontWeight: 350,
+            marginBottom: '16px',
+            display: 'block',
+            lineHeight: '1.8',
+            color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
+          }}
+          dangerouslySetInnerHTML={{ __html: questionText }}
+        />
+
+        {/* Only show the question sentence for rewrite */}
+
+        {/* Answer textarea */}
+        <div style={{ marginTop: '20px' }}>
+          <textarea
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            readOnly={isViewOnly}
+            disabled={isViewOnly}
+            placeholder="Write your rewritten sentence here..."
+            rows={4}
+            style={{
+              width: '100%',
+              fontSize: '14px',
+              padding: '12px 16px',
+              resize: 'vertical',
+              border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+              borderRadius: '8px',
+              backgroundColor: theme === 'sun' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.85)',
+              color: theme === 'sun' ? '#000000' : '#FFFFFF',
+              fontFamily: 'inherit',
+              outline: 'none',
+              transition: 'border-color 0.3s ease'
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+// Fill in the Blank Container Component
+const FillBlankContainer = ({ theme, data, globalQuestionNumber }) => {
+  const registerAnswerCollector = useContext(AnswerCollectionContext);
+  const registerAnswerRestorer = useContext(AnswerRestorationContext);
+  const isViewOnly = useContext(ViewOnlyContext);
+  const [blankAnswers, setBlankAnswers] = React.useState({});
+  const questionText = data?.questionText || data?.question || 'Fill in the blanks';
+  const contentRef = React.useRef(null);
+  
+  // Register answer collector
+  React.useEffect(() => {
+    if (!registerAnswerCollector || !data?.id) return;
+    
+    const getAnswer = () => {
+      // Format blank answers with positionId keys
+      const formattedAnswers = {};
+      Object.keys(blankAnswers).forEach(posId => {
+        const value = blankAnswers[posId];
+        // Include even empty strings, but trim to check if really empty
+        if (value !== null && value !== undefined && String(value).trim() !== '') {
+          formattedAnswers[`${data.id}_pos_${posId}`] = String(value).trim();
+        }
+      });
+      // Always return answer object, even if empty, so the question is tracked
+      const result = { answer: formattedAnswers, questionType: 'FILL_BLANK' };
+      return result;
+    };
+    
+    const unregister = registerAnswerCollector(data.id, getAnswer);
+    return unregister;
+  }, [registerAnswerCollector, data?.id, blankAnswers]);
+
+  // Register answer restorer (for submittedContent)
+  React.useEffect(() => {
+    if (!registerAnswerRestorer || !data?.id) return;
+
+    const unregister = registerAnswerRestorer(data.id, (restored) => {
+      if (restored && typeof restored === 'object' && !Array.isArray(restored)) {
+        const mapped = {};
+        Object.keys(restored).forEach((key) => {
+          let pos = key;
+          if (key.includes('_pos_')) {
+            const parts = key.split('_pos_');
+            pos = parts[parts.length - 1];
+          }
+          mapped[pos] = restored[key];
+        });
+        setBlankAnswers(mapped);
+      } else if (typeof restored === 'string' && restored) {
+        setBlankAnswers({ default: restored });
+      }
+    });
+    return unregister;
+  }, [registerAnswerRestorer, data?.id]);
+  
+  // Render question HTML with placeholders inside tables preserved,
+  // then hydrate placeholders into real inputs to keep them inside table cells.
+  React.useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+    // Build HTML with placeholder spans
+    const htmlWithSlots = String(questionText || '').replace(/\[\[pos_(.*?)\]\]/g, (_m, posId) => {
+      return `<span class="fib-slot" data-pos="${posId}"></span>`;
+    });
+    // Set innerHTML only when question text changes
+    container.innerHTML = htmlWithSlots;
+    // Mount inputs into slots
+    const slots = container.querySelectorAll('span.fib-slot[data-pos]');
+    slots.forEach((slot) => {
+      const positionId = slot.getAttribute('data-pos');
+      const input = document.createElement('input');
+      input.className = 'paragraph-input';
+      input.value = blankAnswers[positionId] || '';
+      input.readOnly = !!isViewOnly;
+      input.disabled = !!isViewOnly;
+      // Styles to match existing input appearance
+      input.style.display = 'inline-flex';
+      input.style.alignItems = 'center';
+      input.style.justifyContent = 'center';
+      input.style.minWidth = '120px';
+      input.style.maxWidth = '200px';
+      input.style.height = '32px';
+      input.style.padding = '4px 12px';
+      input.style.margin = '0 8px';
+      input.style.background = '#E9EEFF94';
+      input.style.border = `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`;
+      input.style.borderRadius = '8px';
+      input.style.outline = 'none';
+      input.style.verticalAlign = 'middle';
+      input.style.lineHeight = '1.4';
+      input.style.fontSize = '14px';
+      input.style.boxSizing = 'border-box';
+      input.style.textAlign = 'center';
+      const onInput = (e) => {
+        if (isViewOnly) return;
+        const text = e.target.value || '';
+        setBlankAnswers((prev) => ({ ...prev, [positionId]: text }));
+      };
+      const onBlur = (e) => {
+        if (isViewOnly) return;
+        const text = e.target.value || '';
+        setBlankAnswers((prev) => ({ ...prev, [positionId]: text }));
+      };
+      input.addEventListener('input', onInput);
+      input.addEventListener('blur', onBlur);
+      // Replace slot with input
+      slot.replaceWith(input);
+    });
+    // Cleanup listeners if component unmounts or question changes
+    return () => {
+      // No-op: container will be cleared next render
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionText, theme, isViewOnly]);
+  
+  // Keep DOM inputs in sync when blankAnswers updates programmatically (restore)
+  React.useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+    const inputs = container.querySelectorAll('input.paragraph-input');
+    inputs.forEach((input) => {
+      const slot = input.getAttribute('data-pos') || input.getAttribute('name');
+      // We set no data-pos on input; derive from nearest previous comment not reliable.
+      // Instead, map by matching current value if key exists; fallback by order.
+    });
+    // Simple sync by data attributes we control:
+    container.querySelectorAll('span.fib-slot[data-pos]'); // none after hydration
+    // Sync by iterating placeholders defined in text:
+    const posIds = Array.from(String(questionText || '').matchAll(/\[\[pos_(.*?)\]\]/g)).map(m => m[1]);
+    let index = 0;
+    inputs.forEach((input) => {
+      const posId = posIds[index++];
+      if (!posId) return;
+      // Attach a name attribute for later lookups
+      input.setAttribute('name', `pos_${posId}`);
+      if ((blankAnswers[posId] || '') !== input.value) {
+        input.value = blankAnswers[posId] || '';
+      }
+      input.readOnly = !!isViewOnly;
+      input.disabled = !!isViewOnly;
+    });
+  }, [blankAnswers, questionText, isViewOnly]);
+
+  return (
+    <div
+      className={`question-item ${theme}-question-item`}
+      style={{
+        marginBottom: '24px',
+        borderRadius: '16px',
+        padding: '24px',
+        border: '2px solid',
+        borderColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        background: theme === 'sun' 
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+        boxShadow: theme === 'sun' 
+          ? '0 4px 16px rgba(113, 179, 253, 0.1)'
+          : '0 4px 16px rgba(138, 122, 255, 0.12)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      {/* Header */}
+      <div className="question-header" style={{
+        paddingBottom: '14px',
+        marginBottom: '16px',
+        borderBottom: '2px solid',
+        borderBottomColor: theme === 'sun' 
+          ? 'rgba(113, 179, 253, 0.25)' 
+          : 'rgba(138, 122, 255, 0.2)',
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography.Text strong style={{ 
+          fontSize: '16px', 
+          color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
+        }}>
+          Question {globalQuestionNumber || data?.orderNumber || '?'}
+        </Typography.Text>
+        <Typography.Text style={{ 
+          fontSize: '14px', 
+          color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+          fontStyle: 'italic'
+        }}>
+          Fill in the Blank
+        </Typography.Text>
+      </div>
+
+      {/* Content Area - Fill in the blank question */}
+      <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
+        {/* Question Content - render blanks for [[pos_]] tokens (preserving table cells) */}
+        <div
+          ref={contentRef}
+          style={{ marginBottom: '16px', fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}
+        />
+      </div>
+    </div>
+  );
+};
+// Generate fake data based on challenge type
+// Transform API response data to component format
+const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
+  const questions = [];
+  const readingSections = [];
+  const listeningSections = [];
+  const writingSections = [];
+  const speakingSections = [];
+
+  if (!apiResponse || !apiResponse.data || !Array.isArray(apiResponse.data)) {
+    return { questions, readingSections, listeningSections, writingSections, speakingSections };
+  }
+
+  apiResponse.data.forEach((item) => {
+    const section = item.section || {};
+    const sectionQuestions = item.questions || [];
+
+    if (sectionQuestions.length === 0) return;
+
+    // Helper function to transform options from {id, value} to {key, text}
+    const transformOptions = (contentData, questionType) => {
+      if (!Array.isArray(contentData) || contentData.length === 0) return [];
+      
+      // For TRUE_OR_FALSE, convert {id, value} to {key, text} format
+      if (questionType === 'TRUE_OR_FALSE') {
+        return contentData.map(opt => ({
+          key: opt.id || (opt.value === 'True' ? 'A' : 'B'),
+          text: opt.value || ''
+        }));
+      }
+      
+      // For other types, convert {id, value} to {key, text} format
+      return contentData.map(opt => ({
+        key: opt.id || opt.key || String.fromCharCode(65 + contentData.indexOf(opt)),
+        text: opt.value || opt.text || ''
+      }));
+    };
+
+    // Check questionType and resourceType to determine section type
+    const firstQuestionType = sectionQuestions?.[0]?.questionType || '';
+    const resourceType = section.resourceType || '';
+    const sectionTitle = (section.sectionTitle || '').toLowerCase();
+    const hasAudioUrl = section.sectionsUrl && section.sectionsUrl.trim() !== '';
+    const isAudioFile = hasAudioUrl && (section.sectionsUrl.match(/\.(mp3|wav|ogg|m4a|aac)$/i));
+    
+    // Determine if this is a Listening section
+    const isListeningSection = 
+      firstQuestionType === 'LISTENING' || 
+      resourceType === 'AUDIO' || 
+      (resourceType === 'FILE' && isAudioFile) ||
+      sectionTitle.includes('listening');
+    
+    // Determine if this is a Reading section
+    const isReadingSection = 
+      firstQuestionType === 'READING' || 
+      (resourceType === 'DOCUMENT' && !isListeningSection);
+    
+    if (firstQuestionType === 'WRITING') {
+      // Writing section
+      sectionQuestions.forEach((q) => {
+        writingSections.push({
+          id: q.id,
+          type: 'WRITING_SECTION',
+          title: section.sectionTitle || 'Writing Section',
+          prompt: q.questionText || section.sectionsContent || '',
+          questionText: q.questionText || section.sectionsContent || '',
+          wordLimit: null,
+          timeLimit: null,
+          points: null,
+          score: q.score || null,
+          orderNumber: q.orderNumber || section.orderNumber || 0,
+        });
+      });
+    } else if (firstQuestionType === 'SPEAKING') {
+      // Speaking section - ensure id is the real questionId
+      sectionQuestions.forEach((q) => {
+        const hasAudio = section.sectionsUrl && section.sectionsUrl.trim() !== '';
+        speakingSections.push({
+          id: q.id,
+          type: hasAudio ? 'SPEAKING_WITH_AUDIO_SECTION' : 'SPEAKING_SECTION',
+          title: section.sectionTitle || 'Speaking Section',
+          prompt: q.questionText || section.sectionsContent || '',
+          points: null,
+          score: q.score || null,
+          audioUrl: hasAudio ? section.sectionsUrl : null,
+          transcript: section.sectionsContent || '',
+          orderNumber: q.orderNumber || section.orderNumber || 0,
+        });
+      });
+    } else if (isListeningSection) {
+      // Listening section
+      listeningSections.push({
+        id: section.id,
+        type: 'LISTENING_SECTION',
+        title: section.sectionTitle || 'Listening Section',
+        audioUrl: section.sectionsUrl || '',
+        duration: null,
+        transcript: section.sectionsContent || '',
+        questions: sectionQuestions.map(q => ({
+          id: q.id,
+          type: q.questionType,
+          questionText: q.questionText || '',
+          question: q.questionText || '',
+          options: transformOptions(q.content?.data, q.questionType),
+          content: q.content || { data: [] },
+          points: null,
+          orderNumber: q.orderNumber || 0,
+        })),
+        points: null,
+        orderNumber: section.orderNumber || 0,
+      });
+    } else if (isReadingSection) {
+      // Reading section
+      readingSections.push({
+        id: section.id,
+        type: 'SECTION',
+        title: section.sectionTitle || 'Reading Section',
+        passage: section.sectionsContent || '',
+        questions: sectionQuestions.map(q => ({
+          id: q.id,
+          type: q.questionType,
+          questionText: q.questionText || '',
+          question: q.questionText || '',
+          options: transformOptions(q.content?.data, q.questionType),
+          content: q.content || { data: [] },
+          points: null,
+          orderNumber: q.orderNumber || 0,
+        })),
+        points: null,
+        orderNumber: section.orderNumber || 0,
+      });
+    } else {
+      // Individual questions (GV type) - add to questions array
+      sectionQuestions.forEach((q) => {
+        questions.push({
+          id: q.id,
+          type: q.questionType,
+          questionText: q.questionText || '',
+          question: q.questionText || '',
+          options: transformOptions(q.content?.data, q.questionType),
+          content: q.content || { data: [] },
+          points: null,
+          orderNumber: q.orderNumber || 0,
+        });
+      });
+    }
+  });
+
+  // Sort sections and questions by orderNumber
+  const sortByOrder = (a, b) => (a.orderNumber || 0) - (b.orderNumber || 0);
+  readingSections.sort(sortByOrder);
+  listeningSections.sort(sortByOrder);
+  writingSections.sort(sortByOrder);
+  speakingSections.sort(sortByOrder);
+  questions.sort(sortByOrder);
+
+  return { questions, readingSections, listeningSections, writingSections, speakingSections };
+};
+
+const getContentDataArray = (question) => {
+  if (!question) return [];
+  const candidates = [
+    question?.content?.data,
+    question?.content,
+    question?.questionContent?.data,
+    question?.questionContent,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate) && candidate.length > 0) {
+      return candidate;
+    }
+  }
+  return [];
+};
+
+const extractContentItemsForQuestion = (question) => {
+  const contentItems = getContentDataArray(question);
+  if (contentItems.length > 0) {
+    return contentItems;
+  }
+  if (Array.isArray(question?.options) && question.options.length > 0) {
+    return question.options.map((opt, idx) => ({
+      id: opt.id || opt.key || `opt_${idx}`,
+      value: opt.text || opt.value || '',
+      positionId: opt.positionId ?? null
+    }));
+  }
+  return [];
+};
+const StudentDailyChallengeTake = () => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id } = useParams();
+  const { theme } = useTheme();
+  const userRole = useSelector((state) => state.auth?.user?.role);
+  const isTestTaker = userRole === 'test_taker' || userRole === 'TEST_TAKER';
+  const routePrefix = isTestTaker ? '/test-taker' : '/student';
+  const classIdForRedirect = location.state?.classId;
+  
+  const [loading, setLoading] = useState(false);
+  const [questions, setQuestions] = useState([]);
+  const [readingSections, setReadingSections] = useState([]);
+  const [listeningSections, setListeningSections] = useState([]);
+  const [writingSections, setWritingSections] = useState([]);
+  const [speakingSections, setSpeakingSections] = useState([]);
+  const [challengeType, setChallengeType] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [challengeInfo, setChallengeInfo] = useState({
+    challengeName: location.state?.challengeName || 'Daily Challenge',
+    className: location.state?.lessonName || null,
+  });
+  const questionRefs = useRef({});
+  const [submitModalVisible, setSubmitModalVisible] = useState(false);
+  const [submitConfirmLoading, setSubmitConfirmLoading] = useState(false);
+  const [submissionId, setSubmissionId] = useState(null);
+  
+  // Auto-save UI state
+  const [autoSaveStatus, setAutoSaveStatus] = useState('saved'); // 'idle' | 'saving' | 'saved'
+  // Removed immediate localStorage hooks due to input side-effects
+  
+  // Section scores - store scores for each section
+  const [sectionScores, setSectionScores] = useState({});
+  
+  // Track answered questions for sidebar indicators
+  const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
+  
+  // Answer collection system: store answer getter functions from child components
+  const answerCollectorsRef = useRef(new Map());
+  // Answer restoration system: store answer setter functions from child components
+  const answerRestorersRef = useRef(new Map());
+  // Map questionId -> original content.data (for id lookup when formatting answers)
+  const contentDataByQuestionIdRef = useRef(new Map());
+  // Map questionId -> array of positionIds in order of appearance in questionText ([[pos_xxx]]...)
+  const positionIdsByQuestionIdRef = useRef(new Map());
+  
+  // Timer state (only enabled if backend provides challengeDuration)
+  const [isTimedChallenge, setIsTimedChallenge] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const deadlineTsRef = useRef(null); // absolute deadline timestamp (ms)
+  const autoSubmitTriggeredRef = useRef(false);
+  const autoSubmitRetryCountRef = useRef(0);
+  const [timeUpModalVisible, setTimeUpModalVisible] = useState(false);
+
+  // Anti-cheat security state
+  const [violationWarningModalVisible, setViolationWarningModalVisible] = useState(false);
+  const [violationWarningData, setViolationWarningData] = useState(null);
+  const [latestCheatEvent, setLatestCheatEvent] = useState(null);
+  const [deviceMismatchRedirectPath, setDeviceMismatchRedirectPath] = useState(null);
+  const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
+  const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
+  const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
+
+  // Resolve feature flags (shuffle / anti-cheat) from navigation state in a backward-compatible way
+  const resolvedShuffleQuestions = React.useMemo(() => {
+    const state = location.state || {};
+    // Accept multiple possible keys from different navigation flows
+    const value =
+      state.shuffleQuestion ??
+      state.shuffleAnswers ??
+      state.challengeSettings?.shuffleQuestion ??
+      state.challenge?.shuffleQuestion;
+    return !!value;
+  }, [location.state]);
+
+  const resolvedHasAntiCheat = React.useMemo(() => {
+    const state = location.state || {};
+    // Accept multiple possible keys from different navigation flows
+    const value =
+      state.hasAntiCheat ??
+      state.antiCheatModeEnabled ??
+      state.challengeSettings?.antiCheatModeEnabled ??
+      state.challenge?.hasAntiCheat;
+    return !!value;
+  }, [location.state]);
+
+  // Prevent auto-save immediately after manual save
+  const isManualSavingRef = useRef(false);
+  const lastManualSaveTimeRef = useRef(0);
+  
+  // Save queue mechanism to prevent concurrent saves
+  const isAutoSavingRef = useRef(false);
+  const saveQueueRef = useRef(Promise.resolve());
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+
+  // Device fingerprint state
+  const deviceFingerprintHashRef = useRef(null);
+  const ipAddressRef = useRef(null);
+  const sseConnectionRef = useRef(null);
+  const sessionStartSentRef = useRef(false); // Track if session start has been sent
+  const lastMismatchCountRef = useRef(0);
+  const mismatchRedirectTriggeredRef = useRef(false);
+  const sseSessionStartTsRef = useRef(0);
+
+  const parseMismatchCount = useCallback((message) => {
+    if (!message || typeof message !== 'string') return 0;
+    // Try to extract number inside "Cảnh báo thứ: <b>N</b>" or any standalone number
+    const htmlMatch = message.match(/Cảnh báo thứ:\s*<b>(\d+)<\/b>/i);
+    if (htmlMatch && htmlMatch[1]) return parseInt(htmlMatch[1], 10) || 0;
+    const numMatch = message.match(/Cảnh báo\s*thứ[^0-9]*?(\d+)/i) || message.match(/(\d+)/);
+    if (numMatch && numMatch[1]) return parseInt(numMatch[1], 10) || 0;
+    return 0;
+  }, []);
+
+  const extractSubmissionList = useCallback((response) => {
+    if (!response) return [];
+    if (Array.isArray(response)) return response;
+    const dataLayer = response.data !== undefined ? response.data : response;
+    if (Array.isArray(dataLayer)) return dataLayer;
+    if (Array.isArray(dataLayer?.content)) return dataLayer.content;
+    if (Array.isArray(dataLayer?.data?.content)) return dataLayer.data.content;
+    if (Array.isArray(dataLayer?.data)) return dataLayer.data;
+    if (Array.isArray(response?.content)) return response.content;
+    return [];
+  }, []);
+
+  const pickSubmissionMeta = useCallback((submissions, challengeIdParam) => {
+    if (!Array.isArray(submissions) || submissions.length === 0) return null;
+
+    const parsedChallengeId = challengeIdParam != null ? parseInt(challengeIdParam, 10) : NaN;
+    const hasValidChallengeId = !Number.isNaN(parsedChallengeId);
+
+    const targetSubmission = hasValidChallengeId
+      ? submissions.find((entry) => {
+          const entryChallengeId =
+            entry.challengeId ??
+            entry.dailyChallengeId ??
+            entry.challenge?.id ??
+            entry.challengeID ??
+            entry.challenge_id;
+
+          if (entryChallengeId === null || entryChallengeId === undefined) return false;
+          const numericChallengeId = parseInt(entryChallengeId, 10);
+          if (Number.isNaN(numericChallengeId)) return false;
+          return numericChallengeId === parsedChallengeId;
+        }) || submissions[0]
+      : submissions[0];
+
+    if (!targetSubmission) return null;
+
+    const submissionId =
+      targetSubmission.submissionId ??
+      targetSubmission.submissionChallengeId ??
+      targetSubmission.id ??
+      targetSubmission.submission_id ??
+      null;
+
+    if (!submissionId) return null;
+
+    const status =
+      targetSubmission.status ??
+      targetSubmission.submissionStatus ??
+      targetSubmission.state ??
+      null;
+
+    return { id: submissionId, status };
+  }, []);
+
+  // Retry function with exponential backoff
+  const retryWithDelay = async (fn, maxRetries = 3, delay = 1000) => {
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await fn();
+        if (result) {
+          return { result, retried: attempt > 1 };
+        }
+        // If result is null/undefined, wait and retry
+        if (attempt < maxRetries) {
+          const waitTime = delay * attempt; // 1s, 2s, 3s
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      } catch (error) {
+        console.error(`Retry attempt ${attempt}/${maxRetries} failed:`, error);
+        lastError = error;
+        if (attempt < maxRetries) {
+          const waitTime = delay * attempt;
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          throw error;
+        }
+      }
+    }
+    return { result: null, retried: true, lastError };
+  };
+
+  const fetchSubmissionMeta = useCallback(
+    async (challengeIdParam) => {
+      try {
+        const response = await dailyChallengeApi.getChallengeSubmissions(challengeIdParam, { page: 0, size: 1 });
+        const submissions = extractSubmissionList(response);
+        return pickSubmissionMeta(submissions, challengeIdParam) || null;
+      } catch (error) {
+        console.error('Error fetching submission metadata:', error);
+        return null;
+      }
+    },
+    [extractSubmissionList, pickSubmissionMeta]
+  );
+  const [allowTranslateOnScreen, setAllowTranslateOnScreen] = useState(false);
+  
+  usePageTitle('Daily Challenge - Take Challenge');
+  
+  // Transform draft API response (sectionDetails format) to sections format
+  const transformDraftResponseToSectionsFormat = (draftResponse, challengeType) => {
+    if (!draftResponse) {
+      console.warn('⚠️ Draft response is undefined');
+      return null;
+    }
+    
+    if (!draftResponse.data) {
+      console.warn('⚠️ Draft response missing data:', draftResponse);
+      return null;
+    }
+    
+    if (!draftResponse.data.sectionDetails) {
+      console.warn('⚠️ Draft response missing sectionDetails:', draftResponse.data);
+      return null;
+    }
+
+    const sectionDetails = draftResponse.data.sectionDetails;
+    
+    if (!Array.isArray(sectionDetails)) {
+      console.warn('⚠️ sectionDetails is not an array:', sectionDetails);
+      return null;
+    }
+    
+    const transformedSections = [];
+
+    sectionDetails.forEach((sectionDetail) => {
+      if (!sectionDetail) {
+        console.warn('⚠️ Section detail is undefined');
+        return;
+      }
+      
+      const { section, questionResults, questions } = sectionDetail;
+      
+      if (!section) {
+        console.warn('⚠️ Section is undefined in sectionDetail:', sectionDetail);
+        return;
+      }
+      
+      // Draft API returns 'questions', Result API returns 'questionResults'
+      // Handle both formats
+      const questionDataList = questionResults || questions;
+      
+      if (!questionDataList) {
+        console.warn('⚠️ Section missing both questionResults and questions:', sectionDetail);
+        return;
+      }
+      
+      if (!Array.isArray(questionDataList)) {
+        console.warn('⚠️ questionResults/questions is not an array:', questionDataList);
+        return;
+      }
+
+      const transformedQuestions = questionDataList.map((qr) => {
+        // Handle both question object structure and direct question data
+        // For draft API: qr = {question: {...}, submittedContent: {...}}
+        // For result API: qr = {questionId, question: {...}, submittedContent: {...}}
+        const questionData = qr.question || qr;
+        
+        return {
+          id: qr.questionId || questionData.id,
+          questionType: qr.questionType || questionData.questionType,
+          questionText: questionData.questionText || qr.questionText || '',
+          content: questionData.content || qr.content || { data: [] },
+          orderNumber: questionData.orderNumber || qr.orderNumber || 0,
+        };
+      });
+
+      // Ensure section object has all required properties for Reading/Listening sections
+      const enhancedSection = {
+        ...section,
+        // Make sure these properties exist for Reading/Listening sections
+        sectionsUrl: section.sectionsUrl || section.url || section.audioUrl || '',
+        sectionsContent: section.sectionsContent || section.content || section.passage || section.transcript || '',
+        sectionTitle: section.sectionTitle || section.title || 'Section',
+        resourceType: section.resourceType || (section.sectionsUrl ? 'FILE' : 'DOCUMENT'),
+        orderNumber: section.orderNumber || 0,
+      };
+
+      transformedSections.push({
+        section: enhancedSection,
+        questions: transformedQuestions,
+      });
+    });
+
+    // Debug logs removed
+
+    // Create a response object similar to getPublicSectionsByChallenge format
+    return {
+      success: true,
+      data: transformedSections,
+    };
+  };
+
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const allowShuffleQuestions = resolvedShuffleQuestions;
+  // Helper function to find current questionId from active element
+  const getCurrentQuestionId = useCallback(() => {
+    try {
+      const activeElement = document.activeElement;
+      if (!activeElement) return 0;
+
+      // Traverse up the DOM tree to find question container
+      let current = activeElement;
+      while (current && current !== document.body) {
+        // Check if element has data-question-id attribute
+        if (current.dataset?.questionId) {
+          const qId = parseInt(current.dataset.questionId);
+          if (!isNaN(qId)) return qId;
+        }
+
+        // Check if element is inside a question ref
+        for (const [key, ref] of Object.entries(questionRefs.current)) {
+          if (ref && ref.contains && ref.contains(current)) {
+            // Extract questionId from ref key (e.g., "q-123" -> 123)
+            const match = key.match(/q-(\d+)/);
+            if (match) {
+              const qId = parseInt(match[1]);
+              if (!isNaN(qId)) return qId;
+            }
+          }
+        }
+
+        current = current.parentElement;
+      }
+
+      // Fallback: try to find from questionRefs based on scroll position
+      const scrollY = window.scrollY || window.pageYOffset;
+      let closestQuestionId = 0;
+      let minDistance = Infinity;
+
+      for (const [key, ref] of Object.entries(questionRefs.current)) {
+        if (ref && ref.getBoundingClientRect) {
+          const rect = ref.getBoundingClientRect();
+          const distance = Math.abs(rect.top + scrollY - scrollY);
+          if (distance < minDistance && rect.top < window.innerHeight / 2) {
+            minDistance = distance;
+            const match = key.match(/q-(\d+)|(\d+)/);
+            if (match) {
+              const qId = parseInt(match[1] || match[2]);
+              if (!isNaN(qId)) closestQuestionId = qId;
+            }
+          }
+        }
+      }
+
+      return closestQuestionId;
+    } catch (e) {
+      console.error('Error getting current questionId:', e);
+      return 0;
+    }
+  }, []);
+
+  // Helper function to get selected text (for copy)
+  const getSelectedText = useCallback(() => {
+    try {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        return selection.toString().trim();
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }, []);
+
+  // Send session start event with device fingerprint
+  const sendSessionStartEvent = useCallback(async (submissionChallengeId) => {
+    // Chỉ gửi 1 lần mỗi session
+    if (sessionStartSentRef.current) {
+      return;
+    }
+
+    try {
+      // Lấy device fingerprint và hash
+      const deviceData = await getDeviceFingerprint();
+      const currentHash = deviceData.hash;
+      deviceFingerprintHashRef.current = currentHash;
+      // Ghi nhận IP từ fingerprint (kèm fallback tự lấy IP nếu chưa có)
+      const detectedIp = deviceData?.fingerprint?.ipAddress && deviceData.fingerprint.ipAddress !== 'unknown'
+        ? deviceData.fingerprint.ipAddress
+        : await getIPAddress().catch(() => 'unknown');
+      ipAddressRef.current = detectedIp || 'unknown';
+
+      // Tạo session start log
+      const sessionStartLog = {
+        eventId: 0,
+        event: "SESSION_START",
+        timestamp: new Date().toISOString(),
+        oldValue: [],
+        newValue: [currentHash],
+        durationMs: 0,
+        content: "Session started",
+        deviceFingerprint: currentHash,
+        ipAddress: ipAddressRef.current
+      };
+
+      // Gửi log qua API
+      if (submissionChallengeId) {
+        await dailyChallengeApi.appendAntiCheatLogs(submissionChallengeId, [sessionStartLog]);
+        sessionStartSentRef.current = true;
+      }
+    } catch (error) {
+      console.error('❌ Error sending session start event:', error);
+    }
+  }, []);
+
+  const redirectOnDeviceMismatch = useCallback(async (targetFingerprint, warningCount) => {
+    if (!targetFingerprint || mismatchRedirectTriggeredRef.current) {
+      return;
+    }
+
+    let currentFingerprint = deviceFingerprintHashRef.current;
+    if (!currentFingerprint) {
+      try {
+        const deviceData = await getDeviceFingerprint();
+        currentFingerprint = deviceData?.hash || null;
+        if (currentFingerprint) {
+          deviceFingerprintHashRef.current = currentFingerprint;
+        }
+      } catch {
+        currentFingerprint = null;
+      }
+    }
+
+    if (currentFingerprint && currentFingerprint === targetFingerprint) {
+      mismatchRedirectTriggeredRef.current = true;
+      const warningNumberText = warningCount != null ? ` (lần cảnh báo ${warningCount})` : '';
+      spaceToast.error(`Hệ thống phát hiện bạn sử dụng thiết bị khác${warningNumberText}. Phiên làm bài sẽ kết thúc.`);
+      const targetPath = classIdForRedirect
+        ? `${routePrefix}/classes/daily-challenges/${classIdForRedirect}`
+        : `${routePrefix}/daily-challenges`;
+      setDeviceMismatchRedirectPath(targetPath);
+    }
+  }, [classIdForRedirect, navigate, routePrefix]);
+
+  // Helper function to get clipboard content (for paste) - async
+  const getClipboardContent = useCallback(async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        return text.trim();
+      }
+    } catch (e) {
+      // Clipboard API might require permission or be blocked
+      console.warn('Cannot read clipboard:', e);
+    }
+    return '';
+  }, []);
+
+  // Convert log entry from useTestSecurity to API format
+  const convertLogToApiFormat = useCallback(async (logEntry) => {
+    if (!logEntry) return null;
+
+    // Map violation type to event name
+    const eventMap = {
+      'tab_switch': 'TAB_SWITCH',
+      'copy': 'COPY_ATTEMPT',
+      'paste': 'PASTE_ATTEMPT'
+    };
+
+    const event = eventMap[logEntry.type] || logEntry.type?.toUpperCase() || 'UNKNOWN';
+    const timestamp = logEntry.timestamp || new Date().toISOString();
+
+    let oldValue = [];
+    let newValue = [];
+
+    // For copy: capture selected text as oldValue (content being copied)
+    if (logEntry.type === 'copy') {
+      const selectedText = logEntry.selectedText || getSelectedText();
+      if (selectedText) {
+        oldValue = [selectedText];
+      }
+    }
+
+    // For paste: capture clipboard content as newValue (content being pasted)
+    if (logEntry.type === 'paste') {
+      const clipboardText = logEntry.clipboardText || await getClipboardContent();
+      if (clipboardText) {
+        newValue = [clipboardText];
+      }
+    }
+
+    // Ensure we never include questionId inside content either
+    const { questionId: _omitQuestionId, ...sanitizedLog } = logEntry || {};
+
+    return {
+      event,
+      timestamp,
+      oldValue,
+      newValue,
+      durationMs: logEntry.durationMs || 0,
+      content: logEntry.message || JSON.stringify(sanitizedLog),
+      deviceFingerprint: deviceFingerprintHashRef.current || null,
+      ipAddress: ipAddressRef.current || null
+    };
+  }, [getSelectedText, getClipboardContent]);
+
+  // Handle violation callback - first time show warning, second time onwards log and send
+  const handleViolation = useCallback(async (logEntry) => {
+    if (!logEntry || !logEntry.type) return;
+
+    const violationType = logEntry.type;
+    const currentCount = violationCountRef.current.get(violationType) || 0;
+    const newCount = currentCount + 1;
+    const typeText =
+      violationType === 'tab_switch' ? 'Chuyển tab' :
+      violationType === 'copy' ? 'Copy' :
+      violationType === 'paste' ? 'Paste' :
+      violationType === 'device_mismatch' ? 'Thiết bị khác' :
+      violationType;
+    setLatestCheatEvent(`Cảnh báo: ${typeText}`);
+
+    // Capture additional data for copy/paste
+    let selectedText = '';
+    let clipboardText = '';
+    if (violationType === 'copy') {
+      // Use selectedText from logEntry if available (captured in useTestSecurity)
+      // Otherwise try to get it again
+      selectedText = logEntry.selectedText || getSelectedText();
+    } else if (violationType === 'paste') {
+      try {
+        clipboardText = await getClipboardContent();
+      } catch (e) {
+        console.warn('Could not read clipboard:', e);
+      }
+    }
+
+    // Enhance logEntry with captured data
+    const { questionId: _dropQId, ...restLog } = logEntry || {};
+    const enhancedLogEntry = {
+      ...restLog,
+      selectedText,
+      clipboardText
+    };
+
+    // Update violation count
+    violationCountRef.current.set(violationType, newCount);
+
+    if (newCount === 1) {
+      // First time: show warning modal with details, don't log
+      setViolationWarningData({
+        type: violationType,
+        message: logEntry.message || 'Hành động không được phép đã được phát hiện',
+        timestamp: logEntry.timestampDisplay || new Date().toLocaleString('vi-VN'),
+        oldValue: violationType === 'copy' ? (selectedText ? [selectedText] : []) : [],
+        newValue: violationType === 'paste' ? (clipboardText ? [clipboardText] : []) : []
+      });
+      setViolationWarningModalVisible(true);
+    } else {
+      // Second time onwards: add to pending logs to be sent to backend
+      const apiLog = await convertLogToApiFormat(enhancedLogEntry);
+      if (apiLog) {
+        pendingLogsRef.current.push(apiLog);
+      }
+    }
+  }, [getSelectedText, getClipboardContent, convertLogToApiFormat]);
+
+  const handleViolationModalAcknowledge = useCallback(() => {
+    setViolationWarningModalVisible(false);
+    if (deviceMismatchRedirectPath) {
+      const targetPath = deviceMismatchRedirectPath;
+      setDeviceMismatchRedirectPath(null);
+      setTimeout(() => {
+        navigate(targetPath, { replace: true });
+      }, 100);
+    }
+  }, [deviceMismatchRedirectPath, navigate]);
+
+  // Initialize useTestSecurity hook
+  useTestSecurity(
+    isAntiCheatEnabled && !isViewOnly,
+    handleViolation
+  );
+  useEffect(() => {
+    // Get challenge type from location state
+    const type = location.state?.challengeType || location.state?.type || 'GV';
+    const challengeId = id; // Get challengeId from URL params
+    const submissionStatusFromState = location.state?.submissionStatus || null; // Get submission status
+    const viewAnswer = !!location.state?.viewAnswer; // Check if viewing submitted answer
+    
+    if (!challengeId) {
+      spaceToast.error('Challenge ID is missing');
+      setLoading(false);
+      return;
+    }
+
+    setChallengeType(type);
+    // Feature flags from navigation state (support multiple keys, incl. normal mode)
+    const translateOnScreen = !!location.state?.translateOnScreen;
+    setAllowTranslateOnScreen(translateOnScreen);
+    setChallengeInfo({
+      challengeName: location.state?.challengeName || 'Daily Challenge',
+      className: location.state?.lessonName || null,
+    });
+    
+    // Get submissionId from location state (backward compatible)
+    let initialSubmissionId = location.state?.submissionId || location.state?.submissionChallengeId;
+    if (initialSubmissionId) {
+      setSubmissionId(initialSubmissionId);
+    }
+    
+    // Load data from API
+    setLoading(true);
+    
+    // First, try to get submission metadata if not provided via navigation
+    // Use retry logic for fetching submission metadata (job auto may not have finished processing)
+    const getSubmissionMetaPromise = initialSubmissionId
+      ? Promise.resolve({ id: initialSubmissionId, status: submissionStatusFromState || null, retried: false })
+      : retryWithDelay(
+          () => fetchSubmissionMeta(challengeId),
+          3, // max retries
+          3000 // initial delay 3s
+        ).then((response) => {
+          // response is { result, retried, lastError }
+          if (!response.result) {
+            return { ...response, id: null, status: null };
+          }
+          return { ...response.result, retried: response.retried };
+        });
+
+    getSubmissionMetaPromise
+      .then((submissionMeta) => {
+        // If submissionMeta is null after retries, handle the error
+        if (!submissionMeta?.id && !initialSubmissionId) {
+          const submissionError = new Error('SUBMISSION_NOT_FOUND');
+          submissionError.code = 'SUBMISSION_NOT_FOUND';
+          // If retried 3 times, it's likely job auto hasn't finished processing
+          // Otherwise, it's likely unauthorized access (student from different class)
+          if (submissionMeta?.retried) {
+            submissionError.userMessage = 'Submission is being processed. Please try again in a few minutes.';
+            submissionError.isUnauthorized = false;
+          } else {
+            submissionError.userMessage = 'You do not have permission to access this challenge. This challenge belongs to a different class.';
+            submissionError.isUnauthorized = true;
+          }
+          submissionError.details = { challengeId, retried: submissionMeta?.retried || false };
+          throw submissionError;
+        }
+
+        let finalSubmissionId = submissionMeta?.id || initialSubmissionId;
+        const resolvedStatusRaw = submissionMeta?.status || submissionStatusFromState || '';
+        const resolvedStatus = typeof resolvedStatusRaw === 'string' ? resolvedStatusRaw.toUpperCase() : '';
+        const statusRequiresViewOnly = resolvedStatus === 'SUBMITTED' || resolvedStatus === 'GRADED';
+        // If viewAnswer flag is set, always enable view-only mode
+        const effectiveViewOnly = viewAnswer || statusRequiresViewOnly || !!isViewOnly;
+
+        if ((viewAnswer || statusRequiresViewOnly) && !isViewOnly) {
+          setIsViewOnly(true);
+        }
+        
+        if (!finalSubmissionId) {
+          const submissionError = new Error('SUBMISSION_NOT_FOUND');
+          submissionError.code = 'SUBMISSION_NOT_FOUND';
+          // Check if this was after retries or first attempt
+          if (submissionMeta?.retried) {
+            submissionError.userMessage = 'Submission is being processed. Please try again in a few minutes.';
+            submissionError.isUnauthorized = false;
+          } else {
+            submissionError.userMessage = 'You do not have permission to access this challenge. This challenge belongs to a different class.';
+            submissionError.isUnauthorized = true;
+          }
+          submissionError.details = { challengeId, retried: submissionMeta?.retried || false };
+          throw submissionError;
+        }
+
+        // Update submissionId state
+        setSubmissionId(finalSubmissionId);
+
+        // Gửi session start event khi bắt đầu làm bài (chỉ 1 lần)
+        if (finalSubmissionId && !effectiveViewOnly) {
+          sendSessionStartEvent(finalSubmissionId);
+        }
+
+        // Fetch timing info and initialize countdown if applicable
+        // Support challengeDuration as seconds (number/string) or ISO8601 duration (e.g., PT30M, PT1H30M)
+        const parseDurationToSeconds = (value) => {
+          if (value == null) return 0;
+          if (typeof value === 'number') {
+            return isFinite(value) && value > 0 ? value : 0;
+          }
+          if (typeof value === 'string') {
+            const numeric = Number(value);
+            if (!Number.isNaN(numeric) && numeric > 0) return numeric;
+            // ISO8601 duration: PnDTnHnMnS (time part optional, but we'll support H/M/S)
+            const match = value.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/i);
+            if (match) {
+              const days = match[1] ? Number(match[1]) : 0;
+              const hours = match[2] ? Number(match[2]) : 0;
+              const minutes = match[3] ? Number(match[3]) : 0;
+              const seconds = match[4] ? Number(match[4]) : 0;
+              const totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
+              return totalSeconds > 0 ? totalSeconds : 0;
+            }
+          }
+          return 0;
+        };
+        if (finalSubmissionId && !effectiveViewOnly) {
+          dailyChallengeApi.getSubmissionChallengeInfo(finalSubmissionId)
+            .then((infoResp) => {
+              const info = infoResp?.data || infoResp?.data?.data || infoResp?.data; // support different wrappers
+              const payload = infoResp?.data?.data ? infoResp.data.data : info;
+              const rawDuration = payload?.challengeDuration;
+              const challengeDurationSec = parseDurationToSeconds(rawDuration);
+              if (challengeDurationSec > 0) {
+                // Determine start time: use actualStartAt if present; otherwise mark start now
+                let startTs = payload?.actualStartAt ? Date.parse(payload.actualStartAt) : null;
+                const ensureStart = () => {
+                  if (!startTs) {
+                    return dailyChallengeApi.startSubmission(finalSubmissionId)
+                      .catch(() => {})
+                      .finally(() => { startTs = Date.now(); });
+                  }
+                  return Promise.resolve();
+                };
+                return ensureStart().then(() => {
+                  const deadlineTs = startTs + challengeDurationSec * 1000;
+                  deadlineTsRef.current = deadlineTs;
+                  setIsTimedChallenge(true);
+                  setTimeRemaining(Math.max(0, Math.floor((deadlineTs - Date.now()) / 1000)));
+                });
+              } else {
+                setIsTimedChallenge(false);
+                return null;
+              }
+            })
+            .catch(() => {
+              // If timing info fails, do not enable timer
+              setIsTimedChallenge(false);
+            });
+        }
+        
+        // Determine which API to use based on submission status and challenge type
+        // For WR and SP types with SUBMITTED status, use result API instead of draft API
+        // When viewAnswer flag is set, use draft API (not result API) to view submitted answer
+        const shouldUseResultAPI = !viewAnswer && (resolvedStatus === 'SUBMITTED' || resolvedStatus === 'GRADED') && (type === 'WR' || type === 'SP');
+        if (shouldUseResultAPI && !isViewOnly) setIsViewOnly(true);
+        
+        // Always use draft API when viewAnswer flag is set (to view submitted answer)
+        const apiCall = shouldUseResultAPI 
+          ? dailyChallengeApi.getSubmissionResult(finalSubmissionId)
+          : dailyChallengeApi.getDraftSubmission(finalSubmissionId);
+        
+        return apiCall
+          .then((response) => {
+            if (response && response.success) {
+              
+              // Transform response to sections format
+              const sectionsResponse = transformDraftResponseToSectionsFormat(response, type);
+              
+              if (sectionsResponse) {
+                try {
+                  // Load sections/questions from response
+                  const transformedData = transformApiDataToComponentFormat(sectionsResponse, type);
+                  const shuffle = (arr) => {
+                    const a = Array.isArray(arr) ? [...arr] : [];
+                    for (let i = a.length - 1; i > 0; i--) {
+                      const j = Math.floor(Math.random() * (i + 1));
+                      [a[i], a[j]] = [a[j], a[i]];
+                    }
+                    return a;
+                  };
+                  // Renumber questions sequentially after shuffling
+                  const renumberQuestions = (questions) => {
+                    return questions.map((q, index) => ({
+                      ...q,
+                      orderNumber: index + 1
+                    }));
+                  };
+                  // Shuffle options for a question (exclude FILL_IN_THE_BLANK, DROPDOWN, REWRITE)
+                  const shuffleQuestionOptions = (question) => {
+                    const excludedTypes = ['FILL_IN_THE_BLANK', 'FILL_BLANK', 'DROPDOWN', 'REWRITE'];
+                    const questionType = question.type || question.questionType || '';
+                    
+                    // Skip shuffling for excluded types
+                    if (excludedTypes.includes(questionType)) {
+                      return question;
+                    }
+                    
+                    const shuffledQuestion = { ...question };
+                    
+                    // Shuffle options array if it exists and assign display keys while preserving original ids
+                    if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
+                      const shuffled = shuffle([...shuffledQuestion.options]);
+                      shuffledQuestion.options = shuffled.map((opt, idx) => ({
+                        ...opt,
+                        displayKey: opt.displayKey || String.fromCharCode(65 + idx)
+                      }));
+                    }
+                    
+                    // Shuffle content.data array if it exists (used for options in some question types)
+                    // Note: content.data will be mapped to options with A, B, C, D keys during rendering
+                    if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
+                      shuffledQuestion.content = {
+                        ...shuffledQuestion.content,
+                        data: shuffle([...shuffledQuestion.content.data])
+                      };
+                    }
+                    
+                    return shuffledQuestion;
+                  };
+                  const applyShuffle = (data) => {
+                    if (!allowShuffleQuestions || effectiveViewOnly) {
+                      return data;
+                    }
+                    
+                    const snapshotOrder = (questionsArr) => (questionsArr || []).map((q) => q.id);
+                    const snapshotOptionKeys = (question) =>
+                      (question?.options || []).map((opt) => opt.key || opt.id || opt.text);
+                    
+                    const newData = { ...data };
+                    // Shuffle and renumber individual questions, then shuffle their options
+                    newData.questions = renumberQuestions(shuffle(data.questions || [])).map(shuffleQuestionOptions);
+                    // Shuffle and renumber questions within reading sections, then shuffle their options
+                    newData.readingSections = (data.readingSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
+                    // Shuffle and renumber questions within listening sections, then shuffle their options
+                    newData.listeningSections = (data.listeningSections || []).map(sec => ({
+                      ...sec,
+                      questions: renumberQuestions(shuffle(sec.questions || [])).map(shuffleQuestionOptions)
+                    }));
+
+                    return newData;
+                  };
+                  const maybeShuffled = applyShuffle(transformedData);
+                  if (maybeShuffled) {
+                    setQuestions(maybeShuffled.questions || []);
+                    setReadingSections(maybeShuffled.readingSections || []);
+                    setListeningSections(maybeShuffled.listeningSections || []);
+                    setWritingSections(maybeShuffled.writingSections || []);
+                    setSpeakingSections(maybeShuffled.speakingSections || []);
+                    // Build content lookup map for all question types
+                    const map = new Map();
+                    const posMap = new Map();
+                    const collect = (q) => {
+                      const contentItems = extractContentItemsForQuestion(q);
+                      map.set(q.id, contentItems);
+                      const txt = q.questionText || q.question || '';
+                      const ids = [];
+                      const re = /\[\[pos_(.*?)\]\]/g; let m;
+                      while ((m = re.exec(txt)) !== null) ids.push(m[1]);
+                      if (ids.length > 0) posMap.set(q.id, ids);
+                    };
+                    (maybeShuffled.readingSections || []).forEach(sec => (sec.questions || []).forEach(collect));
+                    (maybeShuffled.listeningSections || []).forEach(sec => (sec.questions || []).forEach(collect));
+                    (maybeShuffled.questions || []).forEach(collect);
+                    (maybeShuffled.writingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
+                    (maybeShuffled.speakingSections || []).forEach(sec => { posMap.set(sec.id, []); map.set(sec.id, sec.content?.data || []); });
+                    contentDataByQuestionIdRef.current = map;
+                    positionIdsByQuestionIdRef.current = posMap;
+                  }
+                } catch (error) {
+                  console.error('❌ Error transforming response to sections:', error);
+                  console.error('Response:', response);
+                  console.error('Sections response:', sectionsResponse);
+                }
+              }
+              
+              // Restore saved answers from response
+              if (response.data) {
+                // If API says submitted/graded, enforce view-only
+                const statusFromApi = response.data?.submission?.status || response.data?.status;
+                if (statusFromApi === 'SUBMITTED' || statusFromApi === 'GRADED') setIsViewOnly(true);
+                // Delay restoration slightly to ensure components are mounted
+                // Use requestAnimationFrame to wait for next render cycle
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    try {
+                      restoreAnswersFromResult(response.data);
+                      // LocalStorage overlay removed
+                    } catch (error) {
+                      console.error('❌ Error in restoreAnswersFromResult:', error);
+                      console.error('Data structure:', response.data);
+                    }
+                  }, 300);
+                });
+              }
+            }
+          });
+      })
+      .catch((error) => {
+        console.error('Error loading challenge data:', error);
+        const errorMessage =
+          error?.userMessage ||
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          'Failed to load challenge data';
+        
+        // Show error message with appropriate type based on error
+        // For unauthorized access, show specific permission message
+        if (error?.isUnauthorized) {
+          spaceToast.error('You do not have permission to access this challenge. This challenge belongs to a different class.');
+        } else {
+          // For other errors, show regular error message
+          spaceToast.error(errorMessage);
+        }
+        
+        // Always redirect to daily challenge list after a short delay for any error
+        // Increase delay to ensure message is visible before redirect
+        setTimeout(() => {
+          // Try to get classId from multiple sources
+          let resolvedClassId = location.state?.classId || error?.details?.classId;
+          
+          // Helper function to redirect to DC list
+          const redirectToDCList = (classIdToUse) => {
+            // Preserve state from location.state when redirecting to DC list
+            const savedState = location.state || {};
+            const backState = {
+              ...savedState,
+              // Preserve pagination state if it exists
+              currentPage: savedState.currentPage,
+              pageSize: savedState.pageSize,
+              searchText: savedState.searchText,
+            };
+            
+            if (classIdToUse) {
+              navigate(`${routePrefix}/classes/daily-challenges/${classIdToUse}`, { state: backState });
+            } else {
+              // Last resort: redirect to student's first class DC list or general DC list
+              // Try to get student's classes and redirect to first class
+              classManagementApi.getStudentClasses({ page: 0, size: 1 })
+                .then((response) => {
+                  let studentClasses = [];
+                  if (response?.data) {
+                    if (Array.isArray(response.data)) {
+                      studentClasses = response.data;
+                    } else if (response.data.content && Array.isArray(response.data.content)) {
+                      studentClasses = response.data.content;
+                    } else if (response.data.data && Array.isArray(response.data.data)) {
+                      studentClasses = response.data.data;
+                    }
+                  }
+                  
+                  if (studentClasses.length > 0) {
+                    const firstClassId = studentClasses[0]?.id;
+                    if (firstClassId) {
+                      navigate(`${routePrefix}/classes/daily-challenges/${firstClassId}`, { state: backState });
+                      return;
+                    }
+                  }
+                  // If no classes found, redirect to general DC list
+                  navigate(`${routePrefix}/daily-challenges`, { state: backState });
+                })
+                .catch(() => {
+                  // If fetch fails, redirect to general DC list
+                  navigate(`${routePrefix}/daily-challenges`, { state: backState });
+                });
+            }
+          };
+          
+          // If we have classId, redirect immediately
+          if (resolvedClassId) {
+            redirectToDCList(resolvedClassId);
+            return;
+          }
+          
+          // If still no classId, try to get from challenge info if available
+          if (challengeId) {
+            // Try to fetch challenge info to get classId
+            dailyChallengeApi.getChallengeSubmissions(challengeId, { page: 0, size: 1 })
+              .then((response) => {
+                const submissions = extractSubmissionList(response);
+                if (submissions && submissions.length > 0) {
+                  const firstSubmission = submissions[0];
+                  const challengeClassId = firstSubmission?.challenge?.classId || 
+                                         firstSubmission?.classId || 
+                                         firstSubmission?.challenge?.class?.id;
+                  if (challengeClassId) {
+                    redirectToDCList(challengeClassId);
+                    return;
+                  }
+                }
+                // Fallback: try to get from student's classes
+                redirectToDCList(null);
+              })
+              .catch(() => {
+                // If fetch fails, try to get from student's classes
+                redirectToDCList(null);
+              });
+          } else {
+            // No challengeId, try to get from student's classes
+            redirectToDCList(null);
+          }
+        }, error?.isUnauthorized ? 3000 : 2000); // Longer delay for unauthorized access to ensure message is visible
+      })
+      .finally(() => {
+        setLoading(false);
+        // Enable anti-cheat after data is loaded and not in view-only mode
+        if (!isViewOnly && resolvedHasAntiCheat) {
+          setIsAntiCheatEnabled(true);
+        } else {
+          setIsAntiCheatEnabled(false);
+        }
+      });
+  }, [id, location.state, isViewOnly, sendSessionStartEvent, resolvedShuffleQuestions, resolvedHasAntiCheat]);
+
+  // Kết nối SSE để nhận device_mismatch event
+  useEffect(() => {
+    // Reset session start sent flag khi submissionId thay đổi
+    sessionStartSentRef.current = false;
+    lastMismatchCountRef.current = 0;
+    mismatchRedirectTriggeredRef.current = false;
+    sseSessionStartTsRef.current = 0;
+    setDeviceMismatchRedirectPath(null);
+
+    if (!submissionId || isViewOnly) return;
+
+    const connectSSE = () => {
+      sseSessionStartTsRef.current = Date.now();
+      const connection = notificationApi.connectSSE(
+        // onMessage
+        (message) => {
+          if (message.type === 'device_mismatch') {
+            const warningData = message.data || {};
+            const warningMessage = warningData.content || warningData.message || 'Phát hiện thiết bị khác. Vui lòng sử dụng thiết bị đã đăng ký.';
+            const eventTimestamp = warningData.timestamp ? Date.parse(warningData.timestamp) : null;
+            const sessionStartTs = sseSessionStartTsRef.current || 0;
+            if (sessionStartTs && eventTimestamp && !Number.isNaN(eventTimestamp) && eventTimestamp + 500 < sessionStartTs) {
+              return;
+            }
+
+            // Only show modal if mismatch count increases
+            const lastCount = lastMismatchCountRef.current || 0;
+            const parsedCount = Number.isFinite(Number(warningData.warningCount))
+              ? Number(warningData.warningCount)
+              : parseMismatchCount(warningMessage);
+            const newCount = parsedCount > 0 ? parsedCount : lastCount + 1;
+            const targetFingerprint = warningData?.targetDevice?.deviceFingerprint || warningData?.deviceFingerprint;
+            const shouldShow = newCount > lastCount;
+            
+            if (shouldShow) {
+              lastMismatchCountRef.current = newCount;
+              setViolationWarningData({
+                type: 'device_mismatch',
+                message: warningMessage,
+                timestamp: warningData.timestamp || new Date().toISOString(),
+                deviceFingerprint: warningData.deviceFingerprint,
+                ipAddress: warningData.ipAddress,
+              });
+              setViolationWarningModalVisible(true);
+              setLatestCheatEvent('Cảnh báo: Thiết bị khác');
+            }
+            redirectOnDeviceMismatch(targetFingerprint, newCount);
+          }
+        },
+        // onError
+        (error) => {
+          // Retry connection after 5 seconds
+          setTimeout(() => {
+            if (submissionId && !isViewOnly) {
+              connectSSE();
+            }
+          }, 5000);
+        },
+        // onConnect
+        () => {
+        }
+      );
+
+      sseConnectionRef.current = connection;
+    };
+
+    connectSSE();
+
+    // Cleanup
+    return () => {
+      if (sseConnectionRef.current) {
+        sseConnectionRef.current.disconnect();
+        sseConnectionRef.current = null;
+      }
+    };
+  }, [submissionId, isViewOnly, parseMismatchCount, redirectOnDeviceMismatch]);
+
+  // Start or update countdown based on absolute deadline
+  useEffect(() => {
+    if (loading || isViewOnly || !isTimedChallenge || !deadlineTsRef.current) return;
+    const tick = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((deadlineTsRef.current - now) / 1000));
+      setTimeRemaining(remaining);
+      // Only trigger auto-submit when answers have registered
+      if (remaining === 0 && !autoSubmitTriggeredRef.current && answerCollectorsRef.current.size > 0) {
+        autoSubmitTriggeredRef.current = true;
+        // Auto submit once when time is up
+        handleAutoSubmitOnTimeout();
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [loading, isViewOnly, isTimedChallenge]);
+
+
+
+  // Format time as MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  // Removed localStorage persistence to avoid breaking inputs
+  // Debounced auto-save trigger exposed to children via context
+  const autoSaveDebounceRef = useRef(null);
+  const markProgressDirty = React.useCallback(() => {
+    if (loading || isViewOnly) return;
+    try {
+      setAutoSaveStatus('saving');
+    } catch {}
+    if (autoSaveDebounceRef.current) {
+      clearTimeout(autoSaveDebounceRef.current);
+    }
+    autoSaveDebounceRef.current = setTimeout(() => {
+      autoSaveDraftSilently();
+    }, 1500);
+  }, [loading, isViewOnly]);
+
+  // Silently save draft (no global loading/toast)
+  const autoSaveDraftSilently = async () => {
+    if (isViewOnly) return;
+    
+    // Prevent auto-save if manual save was just executed (within last 3 seconds)
+    const now = Date.now();
+    if (isManualSavingRef.current || (now - lastManualSaveTimeRef.current < 3000)) {
+      return;
+    }
+    
+    // Wait for any pending save operations to complete
+    await saveQueueRef.current;
+    
+    // Check again after waiting
+    if (isManualSavingRef.current || isAutoSavingRef.current) {
+      return;
+    }
+    
+    // Add to queue
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      // Check one more time after waiting
+      if (isManualSavingRef.current || isAutoSavingRef.current) {
+        return;
+      }
+      
+      try {
+        isAutoSavingRef.current = true;
+        setAutoSaveStatus('saving');
+        const questionAnswers = collectAllAnswers();
+
+      // Check if we have any answers with actual data
+      const hasAnswers = questionAnswers.some(qa => 
+        qa?.content?.data && Array.isArray(qa.content.data) && qa.content.data.length > 0
+      );
+
+      if (!hasAnswers) {
+        setAutoSaveStatus('idle');
+        isAutoSavingRef.current = false;
+        return;
+      }
+
+      // Check if there are any blob URLs that need to be uploaded
+      const hasBlobUrls = questionAnswers.some(qa => 
+        qa?.content?.data?.some(item => {
+          const value = item?.value;
+          return typeof value === 'string' && (value.startsWith('blob:') || value.startsWith('data:audio'));
+        })
+      );
+
+      // If there are blob URLs, upload them first (but don't block if upload fails)
+      let processedAnswers = questionAnswers;
+      if (hasBlobUrls) {
+        try {
+          processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
+        } catch (e) {
+          console.warn('⚠️ [Auto-save] Failed to upload blob URLs, saving with original URLs:', e);
+          // Continue with original answers if upload fails
+        }
+      }
+
+      // LocalStorage persistence removed
+
+      // Attempt silent server draft save without toggling global loading
+      let currentSubmissionId = submissionId;
+      if (!currentSubmissionId) {
+        try {
+          const submissionMeta = await fetchSubmissionMeta(id);
+          if (submissionMeta?.id) {
+            currentSubmissionId = submissionMeta.id;
+            setSubmissionId(currentSubmissionId);
+          }
+        } catch (e) {
+          // Silent fail – keep local draft only
+        }
+      }
+
+      if (currentSubmissionId) {
+        try {
+          const submitData = { saveAsDraft: true, questionAnswers: processedAnswers };
+          const resp = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+          
+          if (resp && resp.success) {
+            const responseSubmissionId = resp.data?.submissionId || resp.data?.id || currentSubmissionId;
+            if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
+              setSubmissionId(responseSubmissionId);
+            }
+          }
+        } catch (e) {
+          // Silent network/API failure – localStorage still has the draft
+          console.error('❌ [Auto-save] Failed to save draft:', e);
+        }
+
+        // Send anti-cheat logs if there are any pending logs
+        if (pendingLogsRef.current.length > 0 && currentSubmissionId) {
+          const logsToSend = [...pendingLogsRef.current];
+          pendingLogsRef.current = []; // Clear pending logs before sending
+          
+          try {
+            await dailyChallengeApi.appendAntiCheatLogs(currentSubmissionId, logsToSend);
+          } catch (e) {
+            // If sending fails, put logs back to pending for retry
+            pendingLogsRef.current.unshift(...logsToSend);
+            console.error('Failed to send anti-cheat logs:', e);
+          }
+        }
+      }
+
+        setAutoSaveStatus('saved');
+        // Revert to idle after short delay
+        // Keep showing "Saved" to make status visible next to timer
+        // (do not auto-hide)
+      } catch (e) {
+        setAutoSaveStatus('idle');
+        console.error('❌ [Auto-save] Error in autoSaveDraftSilently:', e);
+      } finally {
+        isAutoSavingRef.current = false;
+      }
+    });
+    
+    // Wait for this save operation to complete
+    await saveQueueRef.current;
+  };
+
+  // Auto-save interval (default from timeconfig)
+  const autoSaveIntervalMs = Number(timeconfig);
+  useEffect(() => {
+    if (loading || isViewOnly) return;
+    const intervalId = setInterval(() => {
+      autoSaveDraftSilently();
+    }, autoSaveIntervalMs);
+    return () => clearInterval(intervalId);
+  }, [loading, isViewOnly, submissionId, autoSaveIntervalMs]);
+  // Upload any blob: or data:audio URLs inside formatted answers and replace with server URLs
+  const replaceBlobUrlsInAnswers = async (questionAnswers) => {
+    const uploadedCache = new Map();
+    const toAbsoluteUrl = (res) => {
+      if (res?.data?.url) return res.data.url;
+      if (typeof res?.data === 'string') return res.data;
+      if (typeof res === 'string') return res;
+      return null;
+    };
+    const uploadFromUrl = async (url) => {
+      if (uploadedCache.has(url)) return uploadedCache.get(url);
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const ext = (blob.type && blob.type.includes('mp3')) ? 'mp3' : (blob.type && blob.type.includes('wav')) ? 'wav' : 'webm';
+      const file = new File([blob], `speaking-${Date.now()}.${ext}`, { type: blob.type || 'audio/webm' });
+      const res = await dailyChallengeApi.uploadFile(file);
+      const finalUrl = toAbsoluteUrl(res);
+      if (!finalUrl) throw new Error('Upload failed: no url');
+      uploadedCache.set(url, finalUrl);
+      return finalUrl;
+    };
+
+    const processed = [];
+    const uploadErrors = [];
+    for (const qa of questionAnswers) {
+      if (!qa?.content?.data) { processed.push(qa); continue; }
+      const newData = [];
+      for (const item of qa.content.data) {
+        let value = item?.value;
+        if (typeof value === 'string' && (value.startsWith('blob:') || value.startsWith('data:audio'))) {
+          try {
+            value = await uploadFromUrl(value);
+          } catch (e) {
+            console.error('❌ Audio upload failed for speaking answer:', e);
+            uploadErrors.push({ questionId: qa.questionId, error: e.message || 'Upload failed' });
+            // Still include the blob URL - backend might handle it, or user will see error
+          }
+        }
+        newData.push({ ...item, id: item?.id === 'text' ? (item.id) : (item.id || 'text'), value });
+      }
+      processed.push({ ...qa, content: { data: newData } });
+    }
+    
+    // If there were upload errors, log them but don't block submission
+    if (uploadErrors.length > 0) {
+      console.warn('⚠️ Some audio uploads failed:', uploadErrors);
+    }
+    
+    return processed;
+  };
+
+  // Register answer collector function from child components
+  const registerAnswerCollector = (questionId, getAnswerFn) => {
+    answerCollectorsRef.current.set(questionId, getAnswerFn);
+    return () => {
+      answerCollectorsRef.current.delete(questionId);
+    };
+  };
+
+  // Register answer restorer function from child components
+  const registerAnswerRestorer = (questionId, setAnswerFn) => {
+    answerRestorersRef.current.set(questionId, setAnswerFn);
+    return () => {
+      answerRestorersRef.current.delete(questionId);
+    };
+  };
+
+  // Helper function to format answers according to API structure
+  const formatAnswerForAPI = (questionId, answer, questionType, options) => {
+    // Normalize equivalent types
+    const normalizedType = (questionType === 'FILL_IN_THE_BLANK') ? 'FILL_BLANK'
+      : (questionType === 'REARRANGE') ? 'REORDER'
+      : questionType;
+    
+    const contentData = [];
+    
+    // For FILL_BLANK and REWRITE, always process even if answer is empty
+    // For other types, if answer is empty, return minimal structure with empty content.data
+    if (normalizedType !== 'FILL_BLANK' && normalizedType !== 'REWRITE') {
+      if (!answer && answer !== 0 && answer !== '') {
+        // Return minimal structure with questionId and empty content.data
+        // This ensures question ID is always sent to backend
+        return {
+          questionId: questionId,
+          content: {
+            data: []
+          }
+        };
+      }
+    }
+
+    // Lookup original content items for this question to preserve IDs
+    const originalItems = contentDataByQuestionIdRef.current.get(questionId) || [];
+    const normalize = (s) => (typeof s === 'string' ? s.trim() : s);
+    const findIdByValue = (val) => {
+      const v = normalize(val);
+      const found = originalItems.find(it => normalize(it?.value) === v);
+      return found?.id || v;
+    };
+    const findIdByPosition = (pos) => {
+      const p = String(pos ?? '').trim();
+      const found = originalItems.find(it => String(it?.positionId ?? '').trim() === p);
+      return found?.id || null; // Don't fallback to first item - return null instead
+    };
+    // Helper to find ID by position and value together
+    const findIdByPositionAndValue = (pos, val) => {
+      const p = String(pos ?? '').trim();
+      const v = normalize(val);
+      // Only try exact match by positionId and value
+      // Don't fallback to value-only match as it ignores position
+      const exactMatch = originalItems.find(it => 
+        String(it?.positionId ?? '').trim() === p && normalize(it?.value) === v
+      );
+      return exactMatch?.id || null;
+    };
+    // Helper to find ID by position index (order of positions in question text)
+    const findIdByPositionIndex = (pos, val) => {
+      const posOrder = positionIdsByQuestionIdRef.current.get(questionId) || [];
+      const posIndex = posOrder.indexOf(String(pos ?? '').trim());
+      if (posIndex >= 0) {
+        const groupKeyFromId = (id) => {
+          if (!id || typeof id !== 'string') return id;
+          const match = id.match(/^([^_]+?\d+)/);
+          return (match && match[1]) || id.split('_')[0] || id;
+        };
+        
+        // Group items by their base key (opt1, opt2, etc.)
+        const groups = new Map();
+        originalItems.forEach(item => {
+          const groupKey = groupKeyFromId(item.id);
+          if (!groups.has(groupKey)) {
+            groups.set(groupKey, []);
+          }
+          groups.get(groupKey).push(item);
+        });
+        
+        // Get groups in order (sorted by their base key)
+        const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+          const numA = parseInt(a[0].match(/\d+/)?.[0] || '0', 10);
+          const numB = parseInt(b[0].match(/\d+/)?.[0] || '0', 10);
+          return numA - numB;
+        });
+        
+        // Get the group for this position index
+        if (posIndex < sortedGroups.length) {
+          const [, groupItems] = sortedGroups[posIndex];
+          // If value is provided, find the item in this group that matches the value
+          if (val) {
+            const valueMatch = groupItems.find(it => normalize(it?.value) === normalize(val));
+            if (valueMatch) return valueMatch.id;
+          }
+          // Otherwise, return the base item (first item without underscore in ID, or first item)
+          const baseItem = groupItems.find(it => !it.id.includes('_')) || groupItems[0];
+          return baseItem?.id || null;
+        }
+      }
+      return null;
+    };
+    const findValueById = (id) => {
+      const found = originalItems.find(it => String(it?.id) === String(id));
+      return found?.value;
+    };
+
+    // Helper to map a choice key/text to display text using provided options
+    const getTextForKey = (keyOrText) => {
+      if (Array.isArray(options)) {
+        const found = options.find(o => o && (o.key === keyOrText || o.text === keyOrText));
+        if (found) return found.text ?? String(keyOrText);
+      }
+      return String(keyOrText);
+    };
+    const stripHtml = (s) => String(s).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // Handle different answer types based on question type
+    if (normalizedType === 'MULTIPLE_CHOICE' || normalizedType === 'TRUE_OR_FALSE') {
+      // Single answer: can be option key like 'A' or text like 'True'
+      if (typeof answer === 'string') {
+        let id = answer;
+        let value = getTextForKey(answer);
+
+        const getOption = (ans) => {
+          const a = String(ans);
+          if (Array.isArray(options)) {
+            return options.find(o => o && (o.key === a || o.id === a || o.text === a || o.value === a));
+          }
+          return originalItems.find(it => String(it?.id) === a || String(it?.value) === a) || null;
+        };
+
+        if (normalizedType === 'TRUE_OR_FALSE') {
+          const normalized = answer.trim().toLowerCase();
+          const opt = getOption(answer);
+          if (opt) {
+            id = opt.key ?? opt.id ?? id;
+            value = opt.text ?? opt.value ?? value;
+          } else if (normalized === 'true' || normalized === 'false') {
+            id = (normalized === 'true') ? 'A' : 'B';
+            value = normalized === 'true' ? 'True' : 'False';
+          } else if (answer === 'A' || answer === 'B') {
+            // Map A/B to True/False when no options provided
+            value = answer === 'A' ? 'True' : 'False';
+          }
+        } else if (Array.isArray(options)) {
+          const match = getOption(answer);
+          if (match) {
+            id = match.key ?? match.id ?? id;
+            value = match.text ?? match.value ?? value;
+          }
+        }
+        // Fallback: if value still equals id, try mapping from original items
+        if (!value || value === id) {
+          const mapped = findValueById(id);
+          if (mapped) value = mapped;
+        }
+        contentData.push({ id, value: stripHtml(value), positionId: null });
+      }
+    } else if (normalizedType === 'MULTIPLE_SELECT') {
+      // Multiple answers: array of option keys/texts
+      if (Array.isArray(answer) && answer.length > 0) {
+        answer.forEach(optKeyOrText => {
+          let id = String(optKeyOrText);
+          let value = getTextForKey(optKeyOrText);
+          if (Array.isArray(options)) {
+            const match = options.find(o => o && (o.key === optKeyOrText || o.text === optKeyOrText));
+            if (match) {
+              id = match.key ?? id;
+              value = match.text ?? value;
+            }
+          }
+          // Fallback map using originalItems when value still equals id
+          if (!value || value === id) {
+            const mapped = findValueById(id);
+            if (mapped) value = mapped;
+          }
+          contentData.push({ id, value: stripHtml(value), positionId: null });
+        });
+      }
+    } else if (normalizedType === 'DROPDOWN') {
+      // Dropdown: answer is an object with positionId keys like { "qId_pos_1": "value", ... }
+      // or a single value if not using positionId
+      if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+        const answerKeys = Object.keys(answer);
+        // Process each answer key and track index for fallback
+        answerKeys.forEach((key, keyIndex) => {
+          // Normalize to take only the suffix after '_pos_' or 'pos_'
+          let positionId = null;
+          if (key.includes('_pos_')) {
+            positionId = key.split('_pos_').pop();
+            if (positionId && String(positionId).startsWith('pos_')) {
+              positionId = String(positionId).substring(4);
+            }
+          } else if (key.startsWith('pos_')) {
+            positionId = key.substring(4);
+          } else {
+            positionId = key;
+          }
+          const value = answer[key];
+          if (value) {
+            // Try multiple strategies to find the correct ID in order of preference:
+            // 1. Match by position index (for grouped items like opt1, opt2) - MOST IMPORTANT for dropdown
+            // 2. Exact match by positionId AND value
+            // 3. Match by positionId only
+            // 4. Fallback to key index if position-based methods fail
+            // 5. Match by value only (only as last resort)
+            let chosenId = null;
+            
+            // For dropdown, position index is the most reliable way to find the correct group
+            if (positionId) {
+              chosenId = findIdByPositionIndex(positionId, value) ||
+                         findIdByPositionAndValue(positionId, value) || 
+                         findIdByPosition(positionId);
+            }
+            
+            // If position-based methods failed, try using key index as position index
+            if (!chosenId && keyIndex >= 0) {
+              // Use keyIndex as position index fallback
+              const groupKeyFromId = (id) => {
+                if (!id || typeof id !== 'string') return id;
+                const match = id.match(/^([^_]+?\d+)/);
+                return (match && match[1]) || id.split('_')[0] || id;
+              };
+              
+              // Group items by their base key (opt1, opt2, etc.)
+              const groups = new Map();
+              originalItems.forEach(item => {
+                const groupKey = groupKeyFromId(item.id);
+                if (!groups.has(groupKey)) {
+                  groups.set(groupKey, []);
+                }
+                groups.get(groupKey).push(item);
+              });
+              
+              // Get groups in order (sorted by their base key)
+              const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+                const numA = parseInt(a[0].match(/\d+/)?.[0] || '0', 10);
+                const numB = parseInt(b[0].match(/\d+/)?.[0] || '0', 10);
+                return numA - numB;
+              });
+              
+              // Use keyIndex as position index
+              if (keyIndex < sortedGroups.length) {
+                const [, groupItems] = sortedGroups[keyIndex];
+                if (value) {
+                  const valueMatch = groupItems.find(it => normalize(it?.value) === normalize(value));
+                  if (valueMatch) chosenId = valueMatch.id;
+                }
+                if (!chosenId) {
+                  const baseItem = groupItems.find(it => !it.id.includes('_')) || groupItems[0];
+                  chosenId = baseItem?.id || null;
+                }
+              }
+            }
+            
+            // Only use value-based matching as absolute last resort
+            if (!chosenId) {
+              chosenId = findIdByValue(value);
+            }
+            
+            // Final fallback: use value as ID if nothing else works
+            if (!chosenId) {
+              chosenId = String(value);
+            }
+            
+            contentData.push({
+              id: chosenId,
+              value: value,
+              positionId: positionId
+            });
+          }
+        });
+      } else if (typeof answer === 'string' && answer) {
+        contentData.push({
+          id: findIdByValue(answer) || originalItems[0]?.id || answer,
+          value: answer,
+          positionId: null
+        });
+      }
+    } else if (normalizedType === 'DRAG_AND_DROP') {
+      // Drag and drop: answer is an object with positionId keys like { "pos_xxxxxx": "value", ... }
+      if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+        Object.keys(answer).forEach(rawPos => {
+          const value = answer[rawPos];
+          if (value) {
+            // Normalize position id to remove prefixes
+            let positionId = rawPos;
+            if (rawPos.includes('_pos_')) {
+              positionId = rawPos.split('_pos_').pop();
+            } else if (rawPos.startsWith('pos_')) {
+              positionId = rawPos.substring(4);
+            }
+            contentData.push({
+              id: findIdByPosition(positionId) || findIdByValue(value),
+              value: value,
+              positionId: positionId
+            });
+          }
+        });
+      }
+    } else if (normalizedType === 'REORDER') {
+      // Reorder: answer is an array of values in order
+      if (Array.isArray(answer) && answer.length > 0) {
+        const posOrder = positionIdsByQuestionIdRef.current.get(questionId) || [];
+        answer.forEach((value, index) => {
+          if (value) {
+            contentData.push({
+              id: findIdByValue(value),
+              value: value,
+              positionId: (originalItems.find(it => normalize(it?.value) === normalize(value))?.positionId)
+                ?? posOrder[index]
+                ?? String(index)
+            });
+          }
+        });
+      }
+    } else if (normalizedType === 'FILL_BLANK' || normalizedType === 'REWRITE') {
+      // Fill blank/Rewrite: answer is a string or object with positionId keys
+      // Formatting fill blank answers
+      if (typeof answer === 'string' && answer) {
+        contentData.push({
+          id: originalItems[0]?.id || 'text',
+          value: answer,
+          positionId: null
+        });
+      } else if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) {
+        const posOrder = positionIdsByQuestionIdRef.current.get(questionId) || [];
+        Object.keys(answer).forEach(key => {
+          // Extract positionId: key format is "questionId_pos_positionId" or just "positionId"
+          let positionId = key;
+          if (key.includes('_pos_')) {
+            const parts = key.split('_pos_');
+            positionId = parts.length > 1 ? parts[parts.length - 1] : key;
+          }
+          const raw = answer[key];
+          // Accept both plain strings and objects with 'value'
+          const value = (raw && typeof raw === 'object' && 'value' in raw) ? raw.value : raw;
+          // Include value even if it's an empty string to mirror RE behavior
+          if (value !== null && value !== undefined) {
+            // Try multiple strategies to find the correct ID
+            let chosenId = findIdByPositionAndValue(positionId, value) || 
+                          findIdByPosition(positionId) || 
+                          findIdByPositionIndex(positionId, value) ||
+                          findIdByValue(value);
+            
+            // If still no match, use position index to find the correct item
+            if (!chosenId && positionId) {
+              const posIndex = posOrder.indexOf(String(positionId).trim());
+              if (posIndex >= 0 && posIndex < originalItems.length) {
+                chosenId = originalItems[posIndex].id;
+              }
+            }
+            
+            // Final fallback: use the item at the position index, or first item, or value as ID
+            if (!chosenId) {
+              chosenId = originalItems[0]?.id || String(value);
+            }
+            
+            contentData.push({ id: chosenId, value: String(value), positionId });
+          }
+        });
+      }
+      // End formatting
+    } else if (questionType === 'WRITING' || questionType === 'SPEAKING') {
+      // Writing/Speaking: answer can be text string or file references
+      if (typeof answer === 'string' && answer) {
+        contentData.push({
+          id: answer, // Use the URL as both id and value
+          value: answer,
+          positionId: '0'
+        });
+      } else if (Array.isArray(answer)) {
+        // File uploads or multiple parts
+        // Use positionId starting from '1' to distinguish from recorded audio (positionId='0')
+        answer.forEach((item, index) => {
+          if (typeof item === 'string') {
+            contentData.push({
+              id: item, // Use URL as id
+              value: item, // Use URL as value
+              positionId: String(index + 1) // Start from '1' to distinguish from recorded audio
+            });
+          } else if (item && item.value) {
+            contentData.push({
+              id: item.id || item.value,
+              value: item.value,
+              positionId: item.positionId || String(index + 1) // Start from '1' to distinguish from recorded audio
+            });
+          }
+        });
+      }
+    }
+
+    // Always return an object with questionId, even if contentData is empty
+    // This ensures question ID is always sent to backend
+    return {
+      questionId: questionId,
+      content: {
+        data: contentData
+      }
+    };
+  };
+  // Restore answers from API result
+  const restoreAnswersFromResult = (resultData, retryCount = 0) => {
+    if (!resultData) {
+      console.warn('⚠️ restoreAnswersFromResult: resultData is undefined');
+      return;
+    }
+    
+    if (!resultData.sectionDetails) {
+      console.warn('⚠️ restoreAnswersFromResult: sectionDetails is missing', resultData);
+      return;
+    }
+    
+    if (!Array.isArray(resultData.sectionDetails)) {
+      console.warn('⚠️ restoreAnswersFromResult: sectionDetails is not an array', resultData.sectionDetails);
+      return;
+    }
+    
+    const { sectionDetails, challengeId, submissionId: resultSubmissionId, submissionChallengeId: legacySubmissionId } = resultData;
+    
+    // Update submissionId if provided
+    const resolvedResultSubmissionId = resultSubmissionId || legacySubmissionId;
+    if (resolvedResultSubmissionId) {
+      setSubmissionId(resolvedResultSubmissionId);
+    }
+    
+    // Calculate section scores
+    const scores = {};
+    const pendingRestorations = [];
+    
+    sectionDetails.forEach((sectionDetail) => {
+      if (!sectionDetail) {
+        console.warn('⚠️ Section detail is undefined');
+        return;
+      }
+      
+      const { section, questionResults, questions } = sectionDetail;
+      
+      if (!section) {
+        console.warn('⚠️ Section is undefined in sectionDetail:', sectionDetail);
+        return;
+      }
+      
+      // Draft API returns 'questions', Result API returns 'questionResults'
+      // Handle both formats
+      const questionDataList = questionResults || questions;
+      
+      if (!questionDataList) {
+        console.warn('⚠️ Section missing both questionResults and questions:', sectionDetail);
+        return;
+      }
+      
+      if (!Array.isArray(questionDataList)) {
+        console.warn('⚠️ questionResults/questions is not an array:', questionDataList);
+        return;
+      }
+      
+      const sectionId = section.id;
+      
+      // Calculate total score for this section
+      let totalScore = 0;
+      let totalReceivedScore = 0;
+      
+      questionDataList.forEach((qr) => {
+        // Handle both formats:
+        // Draft API: {question: {id, ...}, submittedContent: {...}}
+        // Result API: {questionId, question: {...}, submittedContent: {...}}
+        // Also try submissionQuestionId as fallback
+        const questionId = qr.questionId || qr.question?.id || qr.id || qr.submissionQuestionId;
+        const submittedContent = qr.submittedContent;
+        const receivedScore = qr.receivedScore;
+        const questionType = qr.questionType || qr.question?.type || qr.type;
+        const score = qr.score;
+        totalScore += score || 0;
+        totalReceivedScore += receivedScore || 0;
+        
+        
+        // Restore answer from submittedContent
+        // Try both questionId and submissionQuestionId if available
+        let setAnswerFn = answerRestorersRef.current.get(questionId);
+        if (!setAnswerFn && qr.submissionQuestionId) {
+          setAnswerFn = answerRestorersRef.current.get(qr.submissionQuestionId);
+          if (setAnswerFn) {
+          }
+        }
+        
+
+        
+        if (setAnswerFn && submittedContent) {
+          try {
+            // Parse answer data from API format
+            const answerData = submittedContent?.data || [];
+            let restoredAnswer = null;
+            
+            if (answerData.length === 0) return;
+            
+            // Special handling for WRITING and SPEAKING types
+            if (questionType === 'WRITING' || questionType === 'SPEAKING') {
+              // Distinguish between recorded audio (single item with positionId='0') and uploaded files (multiple items or different positionId)
+              // Recorded audio: [{id: url, value: url, positionId: '0'}] → pass as string
+              // Uploaded files: [{id: url, value: url, positionId: '1'}, ...] or multiple items → pass as array
+              if (answerData.length === 1 && answerData[0].positionId === '0' && answerData[0].value) {
+                // Single item with positionId='0' means recorded audio → pass as string
+                restoredAnswer = answerData[0].value;
+              } else {
+                // Multiple items or different positionId means uploaded files → pass as array
+                restoredAnswer = answerData;
+              }
+            } else if (answerData.length === 1 && !answerData[0].positionId) {
+              // Single answer (MULTIPLE_CHOICE, TRUE_OR_FALSE, etc.)
+              restoredAnswer = answerData[0].value;
+            } else if (answerData.some(item => item.positionId)) {
+              // Multiple answers with positionId
+              if (questionType === 'REORDER' || questionType === 'REARRANGE') {
+                // For REARRANGE/REORDER, the array order in submittedContent.data is the correct order
+                // positionId is metadata (for matching question text positions) but not used for slot ordering
+                // Just map the values in the order they appear in the array
+                restoredAnswer = answerData.map(item => item.value).filter(v => v !== undefined && v !== null);
+              } else if (questionType === 'DRAG_AND_DROP') {
+                const answerObj = {};
+                answerData.forEach(item => {
+                  const rawPos = String(item.positionId || '');
+                  const normalizedPos = rawPos.includes('_pos_') ? rawPos.split('_pos_').pop() : rawPos;
+                  if (normalizedPos) answerObj[normalizedPos] = item.value;
+                });
+                restoredAnswer = Object.keys(answerObj).length > 0 ? answerObj : null;
+              } else {
+                // Default for dropdown/fill-like questions: prefix with questionId
+                const answerObj = {};
+                answerData.forEach(item => {
+                  const rawPos = String(item.positionId || '');
+                  const normalizedPos = rawPos.includes('_pos_') ? rawPos.split('_pos_').pop() : rawPos;
+                  const key = `${questionId}_pos_${normalizedPos || 'default'}`;
+                  answerObj[key] = item.value;
+                });
+                restoredAnswer = Object.keys(answerObj).length > 0 ? answerObj : null;
+              }
+            } else {
+              // Multiple answers without positionId (MULTIPLE_SELECT, REORDER, etc.)
+              restoredAnswer = answerData.map(item => item.value);
+            }
+            
+            if (restoredAnswer !== null) {
+              setAnswerFn(restoredAnswer);
+            }
+          } catch (error) {
+            console.error(`Error restoring answer for question ${questionId}:`, error);
+          }
+        } else if (submittedContent && submittedContent.data && submittedContent.data.length > 0) {
+          // If restorer function not found but we have answer data, store for retry
+          pendingRestorations.push({ questionId, qr });
+          if (retryCount === 0) {
+          }
+        }
+      });
+      
+      // Store section score
+      if (sectionId) {
+        scores[sectionId] = {
+          totalScore,
+          receivedScore: totalReceivedScore,
+          percentage: totalScore > 0 ? Math.round((totalReceivedScore / totalScore) * 100) : 0
+        };
+      }
+    });
+    
+    // Update section scores state
+    setSectionScores(scores);
+    
+    // Retry restoration for pending questions if components haven't mounted yet
+    if (pendingRestorations.length > 0 && retryCount < 10) {
+      setTimeout(() => {
+        restoreAnswersFromResult(resultData, retryCount + 1);
+      }, 500);
+    } else if (pendingRestorations.length > 0) {
+      console.warn(`⚠️ Could not restore ${pendingRestorations.length} answers after ${retryCount} retries`);
+    }
+  };
+  // Collect all answers from registered collectors
+  const collectAllAnswers = () => {
+    const questionAnswers = [];
+    const collectedQuestionIds = new Set();
+
+    // First, collect all question IDs from all sections
+    const allQuestionIds = new Set();
+    
+    // Collect from questions array
+    questions.forEach(q => {
+      if (q.id) allQuestionIds.add(q.id);
+    });
+    
+    // Collect from reading sections
+    readingSections.forEach(section => {
+      if (section.questions && Array.isArray(section.questions)) {
+        section.questions.forEach(q => {
+          if (q.id) allQuestionIds.add(q.id);
+        });
+      }
+    });
+    
+    // Collect from listening sections
+    listeningSections.forEach(section => {
+      if (section.questions && Array.isArray(section.questions)) {
+        section.questions.forEach(q => {
+          if (q.id) allQuestionIds.add(q.id);
+        });
+      }
+    });
+    
+    // Collect from writing sections
+    writingSections.forEach(section => {
+      if (section.id) allQuestionIds.add(section.id);
+    });
+    
+    // Collect from speaking sections
+    speakingSections.forEach(section => {
+      if (section.id) allQuestionIds.add(section.id);
+    });
+
+    // Collect from all registered answer collectors
+    answerCollectorsRef.current.forEach((getAnswerFn, questionId) => {
+      try {
+        const answerData = getAnswerFn();
+        
+        if (answerData && typeof answerData === 'object') {
+          const { answer, questionType, options } = answerData;
+          
+          // Format answer even if empty (to ensure question ID is sent)
+          const formattedAnswer = formatAnswerForAPI(questionId, answer, questionType, options);
+          
+          if (formattedAnswer) {
+            // Always add formatted answer, even if content.data is empty
+            // This ensures question ID is always sent to backend
+            questionAnswers.push(formattedAnswer);
+            collectedQuestionIds.add(questionId);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ [Collect Answers] Error collecting answer for question ${questionId}:`, error);
+      }
+    });
+
+    // For questions that don't have registered collectors, create empty answers
+    allQuestionIds.forEach(questionId => {
+      if (!collectedQuestionIds.has(questionId)) {
+        // Find question data to get type and options
+        let questionData = null;
+        let questionType = null;
+        let options = null;
+        
+        // Search in questions array
+        const foundInQuestions = questions.find(q => q.id === questionId);
+        if (foundInQuestions) {
+          questionData = foundInQuestions;
+          questionType = foundInQuestions.type || foundInQuestions.questionType;
+          options = foundInQuestions.options || foundInQuestions.content?.data;
+        } else {
+          // Search in reading sections
+          for (const section of readingSections) {
+            if (section.questions) {
+              const found = section.questions.find(q => q.id === questionId);
+              if (found) {
+                questionData = found;
+                questionType = found.type || found.questionType;
+                options = found.options || found.content?.data;
+                break;
+              }
+            }
+          }
+          
+          // Search in listening sections
+          if (!questionData) {
+            for (const section of listeningSections) {
+              if (section.questions) {
+                const found = section.questions.find(q => q.id === questionId);
+                if (found) {
+                  questionData = found;
+                  questionType = found.type || found.questionType;
+                  options = found.options || found.content?.data;
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Search in writing sections
+          if (!questionData) {
+            const found = writingSections.find(s => s.id === questionId);
+            if (found) {
+              questionData = found;
+              questionType = 'WRITING';
+              options = found.content?.data;
+            }
+          }
+          
+          // Search in speaking sections
+          if (!questionData) {
+            const found = speakingSections.find(s => s.id === questionId);
+            if (found) {
+              questionData = found;
+              questionType = found.type === 'SPEAKING_WITH_AUDIO_SECTION' ? 'SPEAKING_WITH_AUDIO' : 'SPEAKING';
+              options = found.content?.data;
+            }
+          }
+        }
+        
+        // Create empty answer for this question
+        if (questionData) {
+          try {
+            const formattedAnswer = formatAnswerForAPI(questionId, null, questionType, options);
+            if (formattedAnswer) {
+              questionAnswers.push(formattedAnswer);
+            } else {
+              // If formatAnswerForAPI returns null, create minimal structure with question ID
+              questionAnswers.push({
+                questionId: questionId,
+                content: {
+                  data: []
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`❌ [Collect Answers] Error creating empty answer for question ${questionId}:`, error);
+            // Create minimal structure as fallback
+            questionAnswers.push({
+              questionId: questionId,
+              content: {
+                data: []
+              }
+            });
+          }
+        }
+      }
+    });
+
+    return questionAnswers;
+  };
+
+  // Handle save (save as draft)
+  const handleSave = async () => {
+    // Prevent multiple simultaneous saves
+    if (isSavingDraft || isManualSavingRef.current || isAutoSavingRef.current || autoSaveStatus === 'saving' || loading) {
+      return;
+    }
+    
+    setIsSavingDraft(true);
+    
+    // Wait for any pending save operations to complete
+    try {
+      await saveQueueRef.current;
+    } catch (e) {
+      // Ignore errors from previous saves
+    }
+    
+    // Add this save operation to the queue
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      try {
+        // Set flag to prevent auto-save during manual save
+        isManualSavingRef.current = true;
+        lastManualSaveTimeRef.current = Date.now();
+        
+        setAutoSaveStatus('saving');
+        // If submissionId is not available, try to get it first
+        let currentSubmissionId = submissionId;
+        
+        if (!currentSubmissionId) {
+          try {
+            const submissionMeta = await fetchSubmissionMeta(id);
+            if (submissionMeta?.id) {
+              currentSubmissionId = submissionMeta.id;
+              setSubmissionId(currentSubmissionId);
+            }
+          } catch (error) {
+            console.error('Error fetching submission:', error);
+          }
+          
+          // If still no submission ID, show error with more context
+          if (!currentSubmissionId) {
+            isManualSavingRef.current = false;
+            spaceToast.error('Không tìm thấy submission. Vui lòng refresh trang hoặc liên hệ admin nếu vấn đề vẫn tiếp tục.');
+            console.error('No submissionId found after retry. ChallengeId:', id);
+            return;
+          }
+        }
+
+        const questionAnswers = collectAllAnswers();
+        const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
+        
+        const submitData = {
+          saveAsDraft: true,
+          questionAnswers: processedAnswers
+        };
+
+        setLoading(true);
+        const response = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+        
+        if (response && response.success) {
+          spaceToast.success('Progress saved successfully');
+          setAutoSaveStatus('saved');
+          
+          // Get submissionId from response and update state
+          const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
+          if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
+            setSubmissionId(responseSubmissionId);
+            currentSubmissionId = responseSubmissionId;
+          }
+          
+          // Reload draft data from API to ensure sync with server
+          if (currentSubmissionId) {
+            try {
+              const draftResponse = await dailyChallengeApi.getDraftSubmission(currentSubmissionId);
+              if (draftResponse && draftResponse.success && draftResponse.data) {
+                // Restore answers from fresh draft data
+                setTimeout(() => {
+                  restoreAnswersFromResult(draftResponse.data);
+                  // Clear manual saving flag after restore completes
+                  setTimeout(() => {
+                    isManualSavingRef.current = false;
+                  }, 500);
+                }, 300);
+              } else {
+                // Clear flag if reload fails
+                isManualSavingRef.current = false;
+              }
+            } catch (error) {
+              console.error('Error reloading draft data after save:', error);
+              // Clear flag on error
+              isManualSavingRef.current = false;
+              // Don't show error to user - save was successful
+            }
+          } else {
+            isManualSavingRef.current = false;
+          }
+        } else {
+          isManualSavingRef.current = false;
+        }
+      } catch (error) {
+        console.error('Error saving progress:', error);
+        isManualSavingRef.current = false;
+        const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to save progress';
+        spaceToast.error(errorMessage);
+      } finally {
+        setLoading(false);
+        setIsSavingDraft(false);
+        // Clear flag after a delay to ensure restore completes
+        setTimeout(() => {
+          isManualSavingRef.current = false;
+        }, 2000);
+      }
+    });
+    
+    // Wait for this save operation to complete
+    await saveQueueRef.current;
+  };
+
+  // Handle submit - show confirmation modal
+  const handleSubmit = () => {
+    // Prevent submit when saving is in progress
+    if (isSavingDraft || isManualSavingRef.current || isAutoSavingRef.current || autoSaveStatus === 'saving' || loading || submitConfirmLoading) {
+      return;
+    }
+    setSubmitModalVisible(true);
+  };
+
+  // Confirm submit - handle actual submission
+  const handleConfirmSubmit = async () => {
+    setSubmitConfirmLoading(true);
+    
+    // Wait for any pending save operations to complete before submitting
+    try {
+      await saveQueueRef.current;
+    } catch (e) {
+      // Ignore errors from previous saves
+    }
+    
+    // If submissionId is not available, try to get it first
+    let currentSubmissionId = submissionId;
+    
+    if (!currentSubmissionId) {
+      try {
+        const submissionMeta = await fetchSubmissionMeta(id);
+        if (submissionMeta?.id) {
+          currentSubmissionId = submissionMeta.id;
+          setSubmissionId(currentSubmissionId);
+        }
+      } catch (error) {
+        console.error('Error fetching submission:', error);
+      }
+      
+      // If still no submission ID, show error
+      if (!currentSubmissionId) {
+        spaceToast.error('Submission ID is missing. Please refresh and try again.');
+        setSubmitModalVisible(false);
+        setSubmitConfirmLoading(false);
+        return;
+      }
+    }
+
+    try {
+      const questionAnswers = collectAllAnswers();
+      const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
+      
+      const submitData = {
+        saveAsDraft: false,
+        questionAnswers: processedAnswers
+      };
+
+      setLoading(true);
+      const response = await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+    
+    // Close modal
+    setSubmitModalVisible(false);
+    
+      if (response && response.success) {
+    spaceToast.success('Submitted successfully');
+        
+        // Get submissionId from response and update state
+        const responseSubmissionId = response.data?.submissionId || response.data?.id || currentSubmissionId;
+        if (responseSubmissionId && responseSubmissionId !== currentSubmissionId) {
+          setSubmissionId(responseSubmissionId);
+          currentSubmissionId = responseSubmissionId;
+        }
+    
+    // Navigate to class daily challenge list after short delay
+    setTimeout(() => {
+      const resolvedClassId = location.state?.classId;
+      if (resolvedClassId) {
+        // Preserve state from location.state when navigating back after submit
+        const savedState = location.state || {};
+        const backState = {
+          ...savedState,
+          // Preserve pagination state if it exists
+          currentPage: savedState.currentPage,
+          pageSize: savedState.pageSize,
+          searchText: savedState.searchText,
+        };
+        navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`, { state: backState });
+      } else {
+        navigate(`${routePrefix}/classes`);
+      }
+    }, 1500);
+      } 
+    } catch (error) {
+      console.error('Error submitting challenge:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to submit';
+      spaceToast.error(errorMessage);
+      setSubmitModalVisible(false);
+    } finally {
+      setLoading(false);
+      setSubmitConfirmLoading(false);
+    }
+  };
+
+  // Auto submit when time is up: submit without navigation, then show time-up modal
+  const handleAutoSubmitOnTimeout = async () => {
+    try {
+      // Ensure we have a submissionId
+      let currentSubmissionId = submissionId;
+      if (!currentSubmissionId) {
+        try {
+        const submissionMeta = await fetchSubmissionMeta(id);
+        if (submissionMeta?.id) {
+          currentSubmissionId = submissionMeta.id;
+          setSubmissionId(currentSubmissionId);
+        }
+        } catch {}
+      }
+      if (!currentSubmissionId) {
+        setTimeUpModalVisible(true);
+        return;
+      }
+
+      // Avoid empty payloads if child collectors haven't registered yet
+      if (answerCollectorsRef.current.size === 0 && autoSubmitRetryCountRef.current < 5) {
+        autoSubmitRetryCountRef.current += 1;
+        setTimeout(handleAutoSubmitOnTimeout, 500);
+        return;
+      }
+
+      const questionAnswers = collectAllAnswers();
+      const processedAnswers = await replaceBlobUrlsInAnswers(questionAnswers);
+      const submitData = { saveAsDraft: false, questionAnswers: processedAnswers };
+      await dailyChallengeApi.submitDailyChallenge(currentSubmissionId, submitData);
+    } catch (e) {
+      // Even if submit fails, still show time up modal
+    } finally {
+      setTimeUpModalVisible(true);
+    }
+  };
+
+  // Cancel submit
+  const handleCancelSubmit = () => {
+    setSubmitModalVisible(false);
+  };
+
+  const handleBack = () => {
+    // Preserve state from location.state when navigating back to restore pagination/filters
+    const savedState = location.state || {};
+    const backState = {
+      ...savedState,
+      // Preserve pagination state if it exists
+      currentPage: savedState.currentPage,
+      pageSize: savedState.pageSize,
+      searchText: savedState.searchText,
+    };
+    
+    // Try to preserve state when using navigate(-1) by using navigate with state if we have saved state
+    if (savedState.currentPage) {
+      // If we have saved state, try to navigate to the list page with state
+      const resolvedClassId = location.state?.classId || classIdForRedirect;
+      if (resolvedClassId) {
+        navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`, { state: backState });
+      } else {
+        navigate(-1);
+      }
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleTimeUpOk = () => {
+    const resolvedClassId = location.state?.classId;
+    // Preserve state from location.state when navigating back after time up
+    const savedState = location.state || {};
+    const backState = {
+      ...savedState,
+      // Preserve pagination state if it exists
+      currentPage: savedState.currentPage,
+      pageSize: savedState.pageSize,
+      searchText: savedState.searchText,
+    };
+    
+    if (resolvedClassId) {
+      navigate(`${routePrefix}/classes/daily-challenges/${resolvedClassId}`, { state: backState });
+    } else {
+      navigate(`${routePrefix}/classes`);
+    }
+  };
+
+  // Navigate to question
+  const scrollToQuestion = (questionId) => {
+    const element = questionRefs.current[questionId];
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Helper function to check if a question has been answered
+  const isQuestionAnswered = useCallback((questionId) => {
+    if (!questionId) return false;
+    const getAnswerFn = answerCollectorsRef.current.get(questionId);
+    if (!getAnswerFn) return false;
+    
+    try {
+      const answerData = getAnswerFn();
+      if (!answerData || typeof answerData !== 'object') return false;
+      
+      const { answer, questionType } = answerData;
+      
+      // Check if answer exists and is not empty
+      if (answer === null || answer === undefined) return false;
+      
+      // For different question types, check differently
+      if (Array.isArray(answer)) {
+        return answer.length > 0 && answer.some(item => item !== null && item !== undefined && item !== '');
+      }
+      
+      if (typeof answer === 'object') {
+        // For object answers (like FILL_BLANK, DROPDOWN), check if any key has value
+        return Object.keys(answer).length > 0 && Object.values(answer).some(val => 
+          val !== null && val !== undefined && val !== ''
+        );
+      }
+      
+      // For string/number answers
+      if (typeof answer === 'string') {
+        return answer.trim().length > 0;
+      }
+      
+      return answer !== '' && answer !== 0;
+    } catch (error) {
+      return false;
+    }
+  }, []);
+
+  // Update answered questions state periodically
+  useEffect(() => {
+    const updateAnsweredQuestions = () => {
+      const answered = new Set();
+      
+      // Check all registered answer collectors
+      answerCollectorsRef.current.forEach((getAnswerFn, questionId) => {
+        if (isQuestionAnswered(questionId)) {
+          answered.add(questionId);
+        }
+      });
+      
+      setAnsweredQuestions(answered);
+    };
+
+    // Update immediately
+    updateAnsweredQuestions();
+
+    // Update periodically (every 500ms) to catch answer changes
+    const interval = setInterval(updateAnsweredQuestions, 500);
+
+    return () => clearInterval(interval);
+  }, [isQuestionAnswered]);
+
+  // Build question navigation list (only single questions)
+  const getQuestionNavigation = () => {
+    const navigation = [];
+    let questionNumber = 1;
+    // Reading sections
+    if (readingSections.length > 0) {
+      readingSections.forEach((s, idx) => {
+        const count = s.questions?.length || 0;
+        const start = questionNumber;
+        const end = count > 0 ? start + count - 1 : start;
+        navigation.push({ 
+          id: `reading-${idx + 1}`, 
+          type: 'section', 
+          title: `Reading ${idx + 1}: Question ${start}-${end}`,
+          questionIds: s.questions?.map(q => q.id) || []
+        });
+        questionNumber = end + 1;
+      });
+    }
+    // Listening sections
+    if (listeningSections.length > 0) {
+      listeningSections.forEach((s, idx) => {
+        const count = s.questions?.length || 0;
+      const start = questionNumber;
+        const end = count > 0 ? start + count - 1 : start;
+        navigation.push({ 
+          id: `listening-${idx + 1}`, 
+          type: 'section', 
+          title: `Listening ${idx + 1}: Question ${start}-${end}`,
+          questionIds: s.questions?.map(q => q.id) || []
+        });
+      questionNumber = end + 1;
+      });
+    }
+    // Writing sections
+    if (writingSections.length > 0) {
+      writingSections.forEach((s, idx) => {
+        navigation.push({ 
+          id: `writing-${idx + 1}`, 
+          type: 'section', 
+          title: `Writing ${idx + 1}`,
+          questionId: s.id
+        });
+      });
+    }
+    // Speaking sections
+    if (speakingSections.length > 0) {
+      speakingSections.forEach((s, idx) => {
+        navigation.push({ 
+          id: `speaking-${idx + 1}`, 
+          type: 'section', 
+          title: `Speaking ${idx + 1}`,
+          questionId: s.id
+        });
+      });
+    }
+    // Individual questions (GV etc.)
+    if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR')) {
+      [...questions]
+        .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)))
+        .forEach((q) => {
+        navigation.push({ 
+          id: `q-${q.id}`, 
+          type: 'question', 
+          title: `Question ${questionNumber++}`,
+          questionId: q.id
+        });
+        });
+    }
+    return navigation;
+  };
+
+  // Custom Header Component
+  const subtitle = (challengeInfo.className && challengeInfo.challengeName)
+    ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
+    : (challengeInfo.challengeName || 'Daily Challenge');
+  const customHeader = (
+    <header className={`themed-header ${theme}-header`}>
+      <nav className="themed-navbar">
+        <div className="themed-navbar-content" style={{ justifyContent: 'space-between', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Button 
+              icon={<ArrowLeftOutlined />}
+              onClick={handleBack}
+              className={`class-menu-back-button ${theme}-class-menu-back-button`}
+              style={{
+                height: '32px',
+                borderRadius: '8px',
+                fontWeight: '350',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                background: '#ffffff',
+                color: '#000000',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {t('common.back')}
+            </Button>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: 600,
+              color: theme === 'sun' ? '#1E40AF' : '#1F2937',
+              textShadow: theme === 'sun' ? 'none' : '0 0 10px rgba(134, 134, 134, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{ 
+                fontSize: '24px',
+                fontWeight: 350,
+                opacity: 0.5
+              }}>|</span>
+              <span>{subtitle}</span>
+            </div>
+          </div>
+          
+          {/* Timer and Save Button */}
+          {!isViewOnly && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Auto-save status (always show) */}
+            <span style={{
+              fontSize: '12px',
+              color: autoSaveStatus === 'saving' ? '#555' : '#2b8a3e',
+              fontStyle: 'italic',
+            }}>
+              {autoSaveStatus === 'saving' ? 'Saving…' : 'Saved'}
+            </span>
+            
+            {/* Timer (show only if duration exists) */}
+            {isTimedChallenge && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}>
+              {latestCheatEvent && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  color: '#d46b08',
+                  maxWidth: '280px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+                  <span title={latestCheatEvent}>{latestCheatEvent}</span>
+                </span>
+              )}
+              <ClockCircleOutlined style={{
+                fontSize: '24px',
+                color: '#000000',
+              }} />
+              <span style={{
+                fontSize: '20px',
+                fontWeight: 'normal',
+                color: '#000000',
+                fontFamily: 'monospace',
+                minWidth: '70px',
+                textAlign: 'center',
+              }}>
+                {formatTime(timeRemaining)}
+              </span>
+            </div>
+            )}
+            
+            {/* Save Button */}
+            <Button
+              icon={(isSavingDraft || autoSaveStatus === 'saving' || loading) ? <LoadingOutlined /> : <SaveOutlined />}
+              onClick={handleSave}
+              loading={isSavingDraft || autoSaveStatus === 'saving' || loading}
+              disabled={isSavingDraft || autoSaveStatus === 'saving' || loading}
+              style={{
+                height: '36px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: theme === 'sun' 
+                  ? 'rgb(255, 165, 0)' 
+                  : 'linear-gradient(135deg, #FF8C42 19%, #FF7F50 64%, #FF6B35 75%, #FF8C69 97%, #FF6347 100%)',
+                borderColor: theme === 'sun' 
+                  ? 'rgb(255, 165, 0)' 
+                  : '#FF6347',
+                color: '#000',
+                border: 'none',
+                padding: '0 20px',
+                opacity: (isSavingDraft || autoSaveStatus === 'saving' || loading) ? 0.7 : 1,
+                cursor: (isSavingDraft || autoSaveStatus === 'saving' || loading) ? 'not-allowed' : 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading) return;
+                if (theme === 'sun') {
+                  e.currentTarget.style.background = 'rgb(255, 140, 0)';
+                } else {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #FF7A32 19%, #FF6F40 64%, #FF5B25 75%, #FF7C59 97%, #FF5343 100%)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading) return;
+                if (theme === 'sun') {
+                  e.currentTarget.style.background = 'rgb(255, 165, 0)';
+                } else {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #FF8C42 19%, #FF7F50 64%, #FF6B35 75%, #FF8C69 97%, #FF6347 100%)';
+                }
+              }}
+            >
+              Save as draft
+            </Button>
+            
+            {/* Submit Button */}
+            <Button
+              icon={(isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) ? <LoadingOutlined /> : <CheckOutlined />}
+              onClick={handleSubmit}
+              loading={isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading}
+              disabled={isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading}
+              style={{
+                height: '36px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: theme === 'sun' 
+                  ? 'rgb(113, 179, 253)' 
+                  : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                borderColor: theme === 'sun' 
+                  ? 'rgb(113, 179, 253)' 
+                  : '#7228d9',
+                color: '#000',
+                border: 'none',
+                padding: '0 20px',
+                opacity: (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) ? 0.7 : 1,
+                cursor: (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) ? 'not-allowed' : 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) return;
+                if (theme === 'sun') {
+                  e.currentTarget.style.background = 'rgb(93, 159, 233)';
+                } else {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #9C8FB0 19%, #9588AB 64%, #726795 75%, #9A95B0 97%, #5D4F7F 100%)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (isSavingDraft || autoSaveStatus === 'saving' || loading || submitConfirmLoading) return;
+                if (theme === 'sun') {
+                  e.currentTarget.style.background = 'rgb(113, 179, 253)';
+                } else {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)';
+                }
+              }}
+            >
+              Submit
+            </Button>
+          </div>
+          )}
+        </div>
+      </nav>
+    </header>
+  );
+
+  // Ensure GV questions render in ascending orderNumber like the left nav
+  const sortedQuestions = React.useMemo(() => {
+    return [...questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+  }, [questions]);
+  const questionNav = getQuestionNavigation();
+  // Calculate global question numbers based on display order
+  const globalQuestionNumbers = React.useMemo(() => {
+    const questionMap = new Map();
+    let currentNumber = 1;
+    
+    // Reading sections
+    if (challengeType === 'RE' && readingSections.length > 0) {
+      readingSections.forEach((section) => {
+        if (section.questions && section.questions.length > 0) {
+          const sortedQuestions = [...section.questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+          sortedQuestions.forEach((q) => {
+            questionMap.set(q.id, currentNumber++);
+          });
+        }
+      });
+    }
+    
+    // Writing sections
+    if (challengeType === 'WR' && writingSections.length > 0) {
+      writingSections.forEach((section) => {
+        questionMap.set(section.id, currentNumber++);
+      });
+    }
+    
+    // Speaking sections
+    if (challengeType === 'SP' && speakingSections.length > 0) {
+      speakingSections.forEach((section) => {
+        questionMap.set(section.id, currentNumber++);
+      });
+    }
+    
+    // Individual questions (GV etc.)
+    if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR')) {
+      sortedQuestions.forEach((q) => {
+        questionMap.set(q.id, currentNumber++);
+      });
+    }
+    
+    // Listening sections
+    if (challengeType === 'LI' && listeningSections.length > 0) {
+      listeningSections.forEach((section) => {
+        if (section.questions && section.questions.length > 0) {
+          const sortedQuestions = [...section.questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+          sortedQuestions.forEach((q) => {
+            questionMap.set(q.id, currentNumber++);
+          });
+        }
+      });
+    }
+    
+    return questionMap;
+  }, [challengeType, readingSections, writingSections, speakingSections, listeningSections, sortedQuestions]);
+
+  return (
+    <ThemedLayout customHeader={customHeader}>
+      <CustomCursor />
+      <div className={`daily-challenge-content-wrapper ${theme}-daily-challenge-content-wrapper`}>
+        {/* Sidebar Toggle Button */}
+        <button
+          className={`question-sidebar-toggle ${theme}-question-sidebar-toggle ${isSidebarOpen ? 'open' : ''}`}
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          style={{
+            position: 'fixed',
+            left: isSidebarOpen ? '200px' : '0',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 1001,
+            background: theme === 'sun' ? 'rgba(113, 179, 253, 0.9)' : 'rgba(138, 122, 255, 0.9)',
+            border: 'none',
+            borderTopRightRadius: '8px',
+            borderBottomRightRadius: '8px',
+            padding: '10px 8px',
+            cursor: 'pointer',
+            transition: 'left 0.3s ease',
+            color: '#fff',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          {isSidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
+        </button>
+
+        {/* Question Sidebar */}
+        <div className={`question-sidebar ${theme}-question-sidebar ${isSidebarOpen ? 'open' : ''}`}>
+          <div className="question-sidebar-header">
+            <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: '#000000' }}>Questions</h3>
+          </div>
+          <div className="question-sidebar-list">
+            {questionNav.map((item) => {
+              // Check if this item has been answered
+              let isAnswered = false;
+              if (item.questionId) {
+                isAnswered = answeredQuestions.has(item.questionId);
+              } else if (item.questionIds && Array.isArray(item.questionIds)) {
+                // For sections, check if all questions are answered
+                isAnswered = item.questionIds.length > 0 && item.questionIds.every(qId => answeredQuestions.has(qId));
+              }
+              
+              const answeredBackground = theme === 'sun' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(82, 196, 26, 0.25)';
+              const defaultBackground = 'transparent';
+              const answeredTextColor = theme === 'sun' ? '#0f5132' : '#d1fae5';
+              
+              return (
+              <div
+                key={item.id}
+                className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
+                onClick={() => scrollToQuestion(item.id)}
+                  style={{ 
+                    fontWeight: isAnswered ? 600 : 'normal', 
+                    textAlign: 'center', 
+                    color: isAnswered ? answeredTextColor : '#000000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    borderRadius: '6px',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    backgroundColor: isAnswered ? answeredBackground : defaultBackground,
+                    borderLeft: isAnswered ? '4px solid #52c41a' : '4px solid transparent',
+                    boxShadow: isAnswered ? '0 2px 6px rgba(82, 196, 26, 0.15)' : 'none',
+                    marginBottom: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = isAnswered
+                      ? answeredBackground
+                      : (theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.08)' 
+                          : 'rgba(138, 122, 255, 0.15)');
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isAnswered ? answeredBackground : defaultBackground;
+                  }}
+                >
+                  <span style={{ textAlign: 'center', flex: 1 }}>{item.title}</span>
+              </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className={`question-content-container ${isSidebarOpen ? 'with-sidebar' : ''}`} style={{ padding: '24px' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <LoadingWithEffect loading={loading} message="Loading questions...">
+              <AnswerCollectionContext.Provider value={registerAnswerCollector}>
+                <AnswerRestorationContext.Provider value={registerAnswerRestorer}>
+                <AutoSaveTriggerContext.Provider value={markProgressDirty}>
+                <ViewOnlyContext.Provider value={isViewOnly}>
+              <div className="questions-list">
+                {/* Render Reading sections when challenge type is RE */}
+                {challengeType === 'RE' && readingSections.length > 0 && (
+                  readingSections.map((section, index) => (
+                    <div key={`reading-wrap-${section.id || index}`} ref={el => (questionRefs.current[`reading-${index + 1}`] = el)}>
+                      <SectionQuestionItem 
+                        key={section.id || `section_${index}`} 
+                        question={section} 
+                        index={index} 
+                        theme={theme} 
+                        sectionScore={sectionScores[section.id]}
+                        globalQuestionNumbers={globalQuestionNumbers}
+                      />
+                </div>
+                  ))
+                )}
+                {/* Render Writing sections when challenge type is WR */}
+                {challengeType === 'WR' && writingSections.length > 0 && (
+                  writingSections.map((section, index) => (
+                    <div key={`writing-wrap-${section.id || index}`} ref={el => (questionRefs.current[`writing-${index + 1}`] = el)}>
+                      <WritingSectionItem key={section.id || `writing_${index}`} question={section} index={index} theme={theme} />
+                    </div>
+                  ))
+                )}
+                {/* Render Speaking sections when challenge type is SP */}
+                {challengeType === 'SP' && speakingSections.length > 0 && (
+                  speakingSections.map((section, index) => (
+                    <div key={`speaking-wrap-${section.id || index}`} ref={el => (questionRefs.current[`speaking-${index + 1}`] = el)}>
+                      {section.type === 'SPEAKING_WITH_AUDIO_SECTION' ? (
+                        <SpeakingWithAudioSectionItem 
+                          key={section.id || `speaking_audio_${index}`} 
+                          question={section} 
+                          index={index} 
+                          theme={theme} 
+                          isViewOnly={isViewOnly}
+                          sectionScore={sectionScores[section.id]}
+                        />
+                      ) : (
+                        <SpeakingSectionItem key={section.id || `speaking_${index}`} question={section} index={index} theme={theme} isViewOnly={isViewOnly} />
+                      )}
+                    </div>
+                  ))
+                )}
+                {/* Dynamic questions preview (hide complex sections) */}
+                {sortedQuestions.map((q, idx) => (
+                  <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
+                    {q.type === 'MULTIPLE_CHOICE' && (
+                      <MultipleChoiceContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
+                    )}
+                    {q.type === 'MULTIPLE_SELECT' && (
+                      <MultipleSelectContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
+                    )}
+                    {q.type === 'TRUE_OR_FALSE' && (
+                      <TrueFalseContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
+                    )}
+                    {(q.type === 'FILL_IN_THE_BLANK' || q.type === 'FILL_BLANK' || q.questionType === 'FILL_BLANK' || q.questionType === 'FILL_IN_THE_BLANK') && (
+                      <FillBlankContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
+                    )}
+                    {(() => {
+                      const isDropdown = q.type === 'DROPDOWN' || q.questionType === 'DROPDOWN';
+                    
+                      if (isDropdown) {
+                        return <DropdownContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />;
+                      }
+                      return null;
+                    })()}
+                    {q.type === 'DRAG_AND_DROP' && (
+                      <DragDropContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
+                    )}
+                    {q.type === 'REARRANGE' && (
+                      <ReorderContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
+                    )}
+                    {q.type === 'REWRITE' && (
+                      <RewriteContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
+                    )}
+                </div>
+                ))}
+                {challengeType === 'LI' && listeningSections.length > 0 && (
+                  listeningSections.map((section, index) => (
+                    <div key={`listening-wrap-${section.id || index}`} ref={el => (questionRefs.current[`listening-${index + 1}`] = el)}>
+                      <ListeningSectionItem 
+                        key={section.id || `listening_${index}`} 
+                        question={section} 
+                        index={index} 
+                        theme={theme} 
+                        sectionScore={sectionScores[section.id]}
+                        globalQuestionNumbers={globalQuestionNumbers}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+                </ViewOnlyContext.Provider>
+                </AutoSaveTriggerContext.Provider>
+                </AnswerRestorationContext.Provider>
+              </AnswerCollectionContext.Provider>
+            </LoadingWithEffect>
+          </div>
+        </div>
+      </div>
+      
+      {/* Violation Warning Modal */}
+      <Modal
+        open={violationWarningModalVisible}
+        closable={false}
+        maskClosable={false}
+        footer={[
+          <Button
+            key="ok"
+            type="primary"
+            onClick={handleViolationModalAcknowledge}
+            style={{
+              background: theme === 'sun' 
+                ? 'rgb(113, 179, 253)' 
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              borderColor: theme === 'sun' 
+                ? 'rgb(113, 179, 253)' 
+                : '#7228d9',
+              color: '#000',
+              border: 'none',
+              fontWeight: 600,
+              height: '40px',
+              padding: '0 24px',
+              fontSize: '15px',
+              borderRadius: '8px',
+            }}
+          >
+            Đã hiểu
+          </Button>
+        ]}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center',justifyContent: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '24px' }}>Cảnh báo vi phạm</span>
+          </div>
+        }
+        styles={{
+          body: {
+            padding: '24px',
+          }
+        }}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          {violationWarningData && violationWarningData.type === 'device_mismatch' ? (
+            <>
+              <p style={{ marginBottom: '12px', fontSize: '18px', lineHeight: '1.6', color: '#ff4d4f', fontWeight: 'bold' }}>
+                ⚠️ Cảnh báo gian lận: Phát hiện sử dụng thiết bị khác
+              </p>
+              <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
+                Hệ thống đã phát hiện bạn đang sử dụng thiết bị khác với thiết bị đã đăng ký. 
+                Đây là hành vi gian lận và có thể dẫn đến việc bài thi của bạn bị hủy.
+              </p>
+            </>
+          ) : (
+          <p style={{ marginBottom: '12px', fontSize: '16px', lineHeight: '1.6' }}>
+            <strong>Lần đầu cảnh báo:</strong> Hệ thống đã phát hiện hành động không được phép.
+          </p>
+          )}
+          {violationWarningData && (
+            <>
+              <p style={{ marginBottom: '8px', fontSize: '14px' }}>
+                <strong>Loại vi phạm:</strong> {
+                  violationWarningData.type === 'tab_switch' ? '🔄 Chuyển tab' :
+                  violationWarningData.type === 'copy' ? '📋 Copy' :
+                  violationWarningData.type === 'paste' ? '📥 Paste' :
+                  violationWarningData.type === 'device_mismatch' ? '🔐 Thiết bị khác' :
+                  violationWarningData.type
+                }
+              </p>
+              {violationWarningData.timestamp && (() => {
+                const ts = violationWarningData.timestamp;
+                const dateObj = ts instanceof Date ? ts : new Date(ts);
+                const isValid = !Number.isNaN(dateObj.getTime());
+                // Nếu parse được -> hiển thị dạng locale; nếu không -> hiển thị raw string
+                const displayText = isValid ? dateObj.toLocaleString('vi-VN') : String(ts);
+                return (
+                  <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                    <strong>Thời gian:</strong> {displayText}
+                  </p>
+                );
+              })()}
+              {violationWarningData.type === 'copy' && violationWarningData.oldValue && violationWarningData.oldValue.length > 0 && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Nội dung đã copy:</strong> 
+                  <div style={{ 
+                    marginTop: '4px', 
+                    padding: '8px', 
+                    backgroundColor: '#f5f5f5', 
+                    borderRadius: '4px',
+                    maxHeight: '100px',
+                    overflow: 'auto',
+                    wordBreak: 'break-word',
+                    fontSize: '12px'
+                  }}>
+                    {violationWarningData.oldValue[0]}
+                  </div>
+                </p>
+              )}
+              {violationWarningData.type === 'paste' && violationWarningData.newValue && violationWarningData.newValue.length > 0 && (
+                <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Nội dung đã paste:</strong> 
+                  <div style={{ 
+                    marginTop: '4px', 
+                    padding: '8px', 
+                    backgroundColor: '#f5f5f5', 
+                    borderRadius: '4px',
+                    maxHeight: '100px',
+                    overflow: 'auto',
+                    wordBreak: 'break-word',
+                    fontSize: '12px'
+                  }}>
+                    {violationWarningData.newValue[0]}
+                  </div>
+                </p>
+              )}
+              {violationWarningData.message && violationWarningData.type !== 'device_mismatch' && (
+              <p style={{ marginBottom: '8px', fontSize: '14px'}}>
+                  <strong>Chi tiết: </strong> 
+                  <span dangerouslySetInnerHTML={{ __html: violationWarningData.message }} />
+              </p>
+              )}
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Time Up Modal */}
+      <Modal
+        open={timeUpModalVisible}
+        closable={false}
+        maskClosable={false}
+        footer={[
+          <Button
+            key="ok"
+            type="primary"
+            onClick={handleTimeUpOk}
+            style={{
+              background: theme === 'sun' 
+                ? 'rgb(113, 179, 253)' 
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              borderColor: theme === 'sun' 
+                ? 'rgb(113, 179, 253)' 
+                : '#7228d9',
+              color: '#000',
+              border: 'none',
+              fontWeight: 600,
+              height: '40px',
+              padding: '0 24px',
+              fontSize: '15px',
+              borderRadius: '8px',
+            }}
+          >
+            OK
+          </Button>
+        ]}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '24px' }}>Bạn đã hết giờ</span>
+          </div>
+        }
+        styles={{
+          body: {
+            padding: '24px',
+          }
+        }}
+      >
+        <div style={{ marginBottom: '8px', fontSize: '16px', lineHeight: 1.6 }}>
+          Bài làm của bạn đã được tự động nộp. Nhấn OK để quay lại danh sách Daily Challenge.
+        </div>
+      </Modal>
+
+      {/* Submit Confirmation Modal */}
+      <Modal
+        open={submitModalVisible}
+        confirmLoading={submitConfirmLoading}
+        onOk={handleConfirmSubmit}
+        onCancel={handleCancelSubmit}
+        okText="Yes"
+        cancelText="No"
+        okButtonProps={{
+          style: {
+            background: theme === 'sun' 
+              ? 'rgb(113, 179, 253)' 
+              : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+            borderColor: theme === 'sun' 
+              ? 'rgb(113, 179, 253)' 
+              : '#7228d9',
+            color: '#000',
+            border: 'none',
+            fontWeight: 600,
+            height: '40px',
+            padding: '0 24px',
+            fontSize: '15px',
+            borderRadius: '8px',
+          }
+        }}
+        cancelButtonProps={{
+          style: {
+            color: '#000',
+            fontWeight: 600,
+            height: '40px',
+            padding: '0 24px',
+            fontSize: '15px',
+            borderRadius: '8px',
+            border: '1px solid rgba(0, 0, 0, 0.15)',
+          }
+        }}
+        styles={{
+          body: {
+            padding: '32px 24px',
+          },
+          footer: {
+            padding: '16px 24px',
+            borderTop: '1px solid rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+          },
+        }}
+        style={{
+          top: '20%',
+        }}
+        width={520}
+      >
+        <div style={{ textAlign: 'center' }}>
+          {/* Custom Title */}
+          <div style={{
+            marginBottom: '24px',
+          }}>
+            <Typography.Title 
+              level={4} 
+              style={{
+                margin: 0,
+                fontSize: '22px',
+                fontWeight: 700,
+                color: 'rgb(24, 144, 255)',
+                textAlign: 'center',
+              }}
+            >
+              Confirm Submission
+            </Typography.Title>
+          </div>
+          
+          {/* Icon/Visual Element */}
+          <div style={{
+            marginBottom: '20px',
+            display: 'flex',
+            justifyContent: 'center',
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: theme === 'sun'
+                ? 'linear-gradient(135deg, rgba(113, 179, 253, 0.2) 0%, rgba(113, 179, 253, 0.1) 100%)'
+                : 'linear-gradient(135deg, rgba(138, 122, 255, 0.3) 0%, rgba(138, 122, 255, 0.15) 100%)',
+              border: `3px solid ${theme === 'sun' ? 'rgba(113, 179, 253, 0.5)' : 'rgba(138, 122, 255, 0.5)'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: theme === 'sun'
+                ? '0 4px 16px rgba(113, 179, 253, 0.3)'
+                : '0 4px 16px rgba(138, 122, 255, 0.4)',
+            }}>
+              <CheckOutlined style={{
+                fontSize: '32px',
+                color: theme === 'sun' ? 'rgb(113, 179, 253)' : '#8B7AF6',
+              }} />
+            </div>
+          </div>
+          
+          {/* Message */}
+          <p style={{
+            fontSize: '16px',
+            lineHeight: '1.6',
+            color: theme === 'sun' ? '#333' : 'rgba(255, 255, 255, 0.9)',
+            marginBottom: 0,
+            padding: '0 12px',
+          }}>
+            Are you sure you want to submit your answers?<br />
+            <span style={{ color: theme === 'sun' ? '#666' : 'rgba(255, 255, 255, 0.7)' }}>
+              Once submitted, you cannot make any changes.
+            </span>
+          </p>
+        </div>
+      </Modal>
+      {allowTranslateOnScreen && !isViewOnly && (
+        <TextTranslator enabled={true} />
+      )}
+    </ThemedLayout>
+  );
+};
+
+export default StudentDailyChallengeTake;

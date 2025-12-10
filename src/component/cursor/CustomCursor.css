@@ -1,0 +1,408 @@
+.cc-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    pointer-events: none;
+    user-select: none;
+    will-change: transform, opacity;
+    transform: translate3d(-100px, -100px, 0);
+    z-index: 99999 !important; /* Highest z-index to ensure it's always on top */
+    opacity: 0;
+    transition: opacity 180ms ease;
+    isolation: isolate; /* Create new stacking context */
+}
+
+.cc-cursor[data-visible="1"] { opacity: 1; }
+
+/* Helmet sticks to the pointer (scaled up slightly on hover) */
+.cc-cursor-helmet {
+    width: 28px;
+    height: 28px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    z-index: 99999 !important; /* Highest z-index to ensure it's always on top */
+    --cc-scale: 1;
+    isolation: isolate; /* Create new stacking context */
+}
+.cc-cursor-helmet[data-hover="0"] { opacity: 0; }
+.cc-cursor-helmet[data-hover="1"] {
+    /* Drive scale via CSS variable, composed into inline transform */
+    --cc-scale: 1.12;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25));
+}
+
+/* Rocket trails behind and rotates with velocity */
+.cc-cursor-rocket {
+    width: 30px;
+    height: 30px;
+    transform-origin: 50% 50%;
+    mix-blend-mode: normal;
+    opacity: 0.9;
+    transition: opacity 220ms ease;
+    z-index: 99998 !important; /* Slightly lower than helmet but still very high */
+    isolation: isolate; /* Create new stacking context */
+}
+.cc-cursor-rocket[data-hover="1"] { opacity: 0; }
+
+/* Wood pointer - shown by default, hidden on hover */
+.cc-cursor-wood-pointer {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-wood-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-wood-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Wood cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-wood-cursor {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-wood-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-wood-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+/* Cosmic pointer - shown by default, hidden on hover */
+.cc-cursor-cosmic-pointer {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-cosmic-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-cosmic-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Cosmic cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-cosmic-cursor {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-cosmic-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-cosmic-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+/* Celestial pointer - shown by default, hidden on hover */
+.cc-cursor-celestial-pointer {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-celestial-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-celestial-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Celestial cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-celestial-cursor {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-celestial-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-celestial-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+/* Hide native cursor only when the feature is active */
+body.custom-cursor-enabled {
+    cursor: none !important;
+}
+/* Hide native cursor for all descendants by default */
+body.custom-cursor-enabled * {
+    cursor: none !important;
+}
+/* But keep text cursor for text-editable fields for usability */
+body.custom-cursor-enabled input:focus,
+body.custom-cursor-enabled textarea:focus,
+body.custom-cursor-enabled [contenteditable]:focus,
+body.custom-cursor-enabled [contenteditable="true"]:focus {
+    cursor: text !important;
+}
+
+/* Anh7 pointer - shown by default, hidden on hover */
+.cc-cursor-anh7-pointer {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-anh7-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-anh7-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Anh7 cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-anh7-cursor {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-anh7-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-anh7-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+/* Blue Crystal pointer - shown by default, hidden on hover */
+.cc-cursor-blue-crystal-pointer {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-blue-crystal-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-blue-crystal-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Blue Crystal cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-blue-crystal-cursor {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-blue-crystal-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-blue-crystal-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+/* Diamond pointer - shown by default, hidden on hover */
+.cc-cursor-diamond-pointer {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-diamond-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-diamond-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Diamond cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-diamond-cursor {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-diamond-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-diamond-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+/* Icy pointer - shown by default, hidden on hover */
+.cc-cursor-icy-pointer {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-icy-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-icy-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Icy cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-icy-cursor {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-icy-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-icy-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+/* M10 pointer - shown by default, hidden on hover */
+.cc-cursor-m10-pointer {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-m10-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-m10-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* M10 cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-m10-cursor {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-m10-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-m10-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+/* Moon pointer - shown by default, hidden on hover */
+.cc-cursor-moon-pointer {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 99999 !important;
+    isolation: isolate;
+    opacity: 1; /* Visible by default */
+}
+.cc-cursor-moon-pointer[data-hover="0"] { 
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.cc-cursor-moon-pointer[data-hover="1"] {
+    opacity: 0; /* Hide pointer when hovering (show cursor instead) */
+}
+
+/* Moon cursor (hand) - hidden by default, shown on hover */
+.cc-cursor-moon-cursor {
+    width: 24px;
+    height: 24px;
+    transform-origin: 50% 50%;
+    transition: opacity 180ms ease, filter 180ms ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    z-index: 100000 !important; /* Higher than pointer to show on top */
+    isolation: isolate;
+    opacity: 0; /* Hidden by default */
+}
+.cc-cursor-moon-cursor[data-hover="0"] { 
+    opacity: 0; /* Hidden when not hovering */
+}
+.cc-cursor-moon-cursor[data-hover="1"] {
+    opacity: 1; /* Show hand cursor when hovering */
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
+}
+
+

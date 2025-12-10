@@ -1,0 +1,12 @@
+// Export all API modules
+export { default as authApi } from './backend/auth';
+export { default as studentManagementApi } from './backend/StudentManagement';
+export { default as teacherManagementApi } from './backend/teacherManagement';
+export { default as levelManagementApi } from './backend/levelManagement';
+export { default as accountManagementApi } from './backend/accountManagement';
+export { default as classManagementApi } from './backend/classManagement';
+export { default as syllabusManagementApi } from './backend/syllabusManagement';
+export { default as dailyChallengeApi } from './backend/dailyChallengeManagement';
+export { default as adminDashboardApi } from './backend/adminDashboard';
+export { default as notificationApi } from './backend/notificationManagement';
+export { default as managerDashboardApi } from './backend/managerDashboard';

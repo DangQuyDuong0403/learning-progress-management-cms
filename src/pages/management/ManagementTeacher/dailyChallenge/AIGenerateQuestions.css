@@ -1,0 +1,775 @@
+/* Force-visible, themed scrollbar for AI reading preview */
+.ai-preview-scroll {
+  max-height: 40vh;
+  overflow-y: auto;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(24, 144, 255, 0.4) transparent;
+}
+.question-settings-scroll {
+  /* Visible scrollbar for the Question Settings list */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(24, 144, 255, 0.6) transparent;
+}
+.ai-generate-wrapper .question-settings-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.ai-generate-wrapper .question-settings-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+.ai-generate-wrapper .question-settings-scroll::-webkit-scrollbar-thumb {
+  background: rgba(113, 179, 253, 0.6);
+  border-radius: 10px;
+}
+.moon-ai-generate-wrapper .question-settings-scroll::-webkit-scrollbar-thumb {
+  background: rgba(138, 122, 255, 0.6);
+}
+.sun-ai-generate-wrapper .ai-preview-scroll {
+  scrollbar-color: rgba(24, 144, 255, 0.6) transparent;
+}
+.ai-generate-wrapper .ai-preview-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.ai-generate-wrapper .ai-preview-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ai-generate-wrapper .ai-preview-scroll::-webkit-scrollbar-thumb {
+  background: rgba(24, 144, 255, 0.4);
+  border-radius: 8px;
+}
+.sun-ai-generate-wrapper .ai-preview-scroll::-webkit-scrollbar-thumb {
+  background: rgba(24, 144, 255, 0.6);
+}
+/* AI Generate Questions Page Styles */
+
+.ai-generate-wrapper {
+  min-height: 100vh;
+  background: var(--bg-gradient);
+  padding: 24px;
+}
+
+.sun-ai-generate-wrapper {
+  background: transparent;
+}
+
+.moon-ai-generate-wrapper {
+  background: transparent;
+}
+
+/* Step Indicator Card */
+.step-indicator-card {
+  transition: all 0.3s ease;
+}
+
+.sun-step-indicator-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%);
+  border: 2px solid rgba(113, 179, 253, 0.25);
+  box-shadow: 0 4px 16px rgba(113, 179, 253, 0.1);
+}
+
+.moon-step-indicator-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%);
+  border: 2px solid rgba(138, 122, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(138, 122, 255, 0.12);
+}
+
+/* Prompt Description Card */
+.prompt-description-card {
+  transition: all 0.3s ease;
+}
+
+.sun-prompt-description-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%);
+  border: 2px solid rgba(113, 179, 253, 0.25);
+  box-shadow: 0 4px 16px rgba(113, 179, 253, 0.1);
+}
+
+.moon-prompt-description-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%);
+  border: 2px solid rgba(138, 122, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(138, 122, 255, 0.12);
+}
+
+.prompt-description-card .ant-card-body {
+  padding: 32px;
+}
+
+/* Question Types Card */
+.question-types-card {
+  transition: all 0.3s ease;
+}
+
+.sun-question-types-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%);
+  border: 2px solid rgba(113, 179, 253, 0.25);
+  box-shadow: 0 4px 16px rgba(113, 179, 253, 0.1);
+}
+
+.moon-question-types-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%);
+  border: 2px solid rgba(138, 122, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(138, 122, 255, 0.12);
+}
+
+.question-types-card .ant-card-body {
+  padding: 24px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ai-generate-wrapper {
+    padding: 16px;
+  }
+  
+  .prompt-description-card .ant-card-body {
+    padding: 20px;
+  }
+  
+  .question-types-card .ant-card-body {
+    padding: 16px;
+  }
+}
+
+/* Smooth animations - Removed to prevent container jumping on page load */
+/* .ai-generate-wrapper * {
+  transition: all 0.3s ease;
+} */
+
+/* Selection hover effects */
+.sun-prompt-description-card:hover,
+.moon-prompt-description-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(113, 179, 253, 0.2);
+}
+
+.sun-question-types-card:hover,
+.moon-question-types-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(138, 122, 255, 0.2);
+}
+
+/* Button hover effects */
+.ai-generate-wrapper .ant-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Card animations - Removed to prevent container jumping on page load */
+/* .ai-generate-wrapper .ant-card {
+  animation: fadeInUp 0.5s ease-out;
+} */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Input focus effects */
+.ai-generate-wrapper .ant-input:focus,
+.ai-generate-wrapper .ant-input-focused {
+  border-color: rgba(113, 179, 253, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(113, 179, 253, 0.1) !important;
+}
+
+/* Select focus effects */
+.ai-generate-wrapper .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: rgba(113, 179, 253, 0.6) !important;
+}
+
+.ai-generate-wrapper .ant-select-focused:not(.ant-select-disabled).ant-select-single .ant-select-selector {
+  border-color: rgba(113, 179, 253, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(113, 179, 253, 0.1) !important;
+}
+
+/* Select border-radius override for question type dropdown */
+.ai-generate-wrapper .ant-select-selector {
+  border-radius: 5px ;
+}
+
+/* Tag animations */
+.ai-generate-wrapper .ant-tag {
+  transition: all 0.3s ease;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Loading state */
+.ai-generate-wrapper .ant-btn-loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Avatar animations */
+.ai-generate-wrapper .ant-avatar {
+  transition: all 0.3s ease;
+}
+
+.ai-generate-wrapper .ant-avatar:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+/* Tooltip customization */
+.ai-generate-wrapper .ant-tooltip-inner {
+  border-radius: 8px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Divider styling */
+.ai-generate-wrapper .ant-divider {
+  border-color: rgba(113, 179, 253, 0.2);
+}
+
+.moon-ai-generate-wrapper .ant-divider {
+  border-color: rgba(138, 122, 255, 0.2);
+}
+
+/* Text styling */
+.ai-generate-wrapper .ant-typography {
+  color: inherit;
+}
+
+/* Select dropdown styling */
+.ai-generate-wrapper .ant-select-dropdown {
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border: 2px solid rgba(113, 179, 253, 0.2);
+}
+
+.ai-generate-wrapper .ant-select-item {
+  padding: 12px 16px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.ai-generate-wrapper .ant-select-item:hover {
+  background: rgba(113, 179, 253, 0.1);
+}
+
+.ai-generate-wrapper .ant-select-item-option-selected {
+  background: rgba(113, 179, 253, 0.2);
+  font-weight: 600;
+}
+
+/* Summary card animation */
+.ai-generate-wrapper .ant-card-summary {
+  animation: slideInFromBottom 0.5s ease-out;
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar */
+.ai-generate-wrapper ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.ai-generate-wrapper ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+
+.ai-generate-wrapper ::-webkit-scrollbar-thumb {
+  background: rgba(113, 179, 253, 0.3);
+  border-radius: 10px;
+}
+
+.ai-generate-wrapper ::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 179, 253, 0.5);
+}
+
+/* Moon theme scrollbar */
+.moon-ai-generate-wrapper ::-webkit-scrollbar-thumb {
+  background: rgba(138, 122, 255, 0.3);
+}
+
+.moon-ai-generate-wrapper ::-webkit-scrollbar-thumb:hover {
+  background: rgba(138, 122, 255, 0.5);
+}
+
+/* Focus visible for accessibility */
+.ai-generate-wrapper .ant-btn:focus-visible,
+.ai-generate-wrapper .ant-input:focus-visible,
+.ai-generate-wrapper .ant-select:focus-visible {
+  outline: 3px solid rgba(113, 179, 253, 0.5);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .ai-generate-wrapper {
+    background: white;
+    color: black;
+  }
+  
+  .ai-generate-wrapper .ant-btn {
+    display: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .ai-generate-wrapper .ant-card {
+    border-width: 3px;
+  }
+  
+  .ai-generate-wrapper .ant-btn {
+    border-width: 2px;
+  }
+}
+
+/* Loading Animation Styles */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% { 
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% { 
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  50% { 
+    transform: translate(-50%, -50%) translateY(-10px);
+  }
+}
+
+@keyframes fadeInOut {
+  0%, 100% { 
+    opacity: 0.7;
+  }
+  50% { 
+    opacity: 1;
+  }
+}
+
+@keyframes wave {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% { 
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading Card Styles */
+.loading-card {
+  transition: all 0.3s ease;
+}
+
+.sun-loading-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%);
+  border: 2px solid rgba(113, 179, 253, 0.25);
+  box-shadow: 0 4px 16px rgba(113, 179, 253, 0.1);
+}
+
+.moon-loading-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%);
+  border: 2px solid rgba(138, 122, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(138, 122, 255, 0.12);
+}
+
+/* Preview Card Styles */
+.preview-card {
+  transition: all 0.3s ease;
+}
+
+.sun-preview-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%);
+  border: 2px solid rgba(113, 179, 253, 0.25);
+  box-shadow: 0 4px 16px rgba(113, 179, 253, 0.1);
+}
+
+.moon-preview-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%);
+  border: 2px solid rgba(138, 122, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(138, 122, 255, 0.12);
+}
+
+/* Question Preview Animations */
+.preview-card .ant-card-body {
+  animation: slideInFromBottom 0.8s ease-out;
+}
+
+/* Staggered animation for question items */
+.preview-card .question-item {
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.preview-card .question-item:nth-child(1) { animation-delay: 0.1s; }
+.preview-card .question-item:nth-child(2) { animation-delay: 0.2s; }
+.preview-card .question-item:nth-child(3) { animation-delay: 0.3s; }
+.preview-card .question-item:nth-child(4) { animation-delay: 0.4s; }
+.preview-card .question-item:nth-child(5) { animation-delay: 0.5s; }
+
+/* Loading state improvements */
+.ai-generate-wrapper .ant-btn-loading {
+  opacity: 0.8;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.ai-generate-wrapper .ant-btn-loading:hover {
+  transform: none !important;
+}
+
+/* Enhanced hover effects for preview cards */
+.preview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(113, 179, 253, 0.2);
+}
+
+.moon-preview-card:hover {
+  box-shadow: 0 8px 24px rgba(138, 122, 255, 0.2);
+}
+
+/* Question type icons animation */
+.preview-card .question-type-icon {
+  transition: all 0.3s ease;
+}
+
+.preview-card .question-type-icon:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+/* Option hover effects */
+.preview-card .option-item {
+  transition: all 0.2s ease;
+}
+
+.preview-card .option-item:hover {
+  transform: translateX(4px);
+  background: rgba(113, 179, 253, 0.1) !important;
+}
+
+.moon-preview-card .option-item:hover {
+  background: rgba(138, 122, 255, 0.1) !important;
+}
+
+/* Correct answer highlight */
+.preview-card .correct-answer {
+  background: rgba(82, 196, 26, 0.1) !important;
+  border-color: rgba(82, 196, 26, 0.3) !important;
+}
+
+.moon-preview-card .correct-answer {
+  background: rgba(82, 196, 26, 0.2) !important;
+}
+
+/* Explanation box animation */
+.preview-card .explanation-box {
+  animation: fadeInUp 0.4s ease-out 0.3s both;
+}
+
+/* Button animations in preview */
+.preview-card .ant-btn {
+  transition: all 0.3s ease;
+}
+
+.preview-card .ant-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive adjustments for loading and preview */
+@media (max-width: 768px) {
+  .loading-card .ant-card-body {
+    padding: 20px;
+  }
+  
+  .preview-card .ant-card-body {
+    padding: 16px;
+  }
+  
+  .preview-card .question-item {
+    padding: 16px;
+  }
+  
+  .preview-card .option-item {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
+
+/* Reduced motion support
+   Note: allow animations when parent has .allow-motion (for critical spinners) */
+@media (prefers-reduced-motion: reduce) {
+  .ai-generate-wrapper:not(.allow-motion) * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .ai-generate-wrapper:not(.allow-motion) .loading-card,
+  .ai-generate-wrapper:not(.allow-motion) .preview-card {
+    animation: none !important;
+  }
+}
+
+/* Ensure core spinners still animate inside allow-motion containers */
+.ai-generate-wrapper.allow-motion .ant-btn-loading-icon,
+.ai-generate-wrapper.allow-motion .ant-spin-dot,
+.ai-generate-wrapper.allow-motion .spin {
+  animation: spin 1s linear infinite !important;
+}
+
+/* Normalize CKEditor HTML output inside preview */
+.html-content p {
+  margin: 0; /* remove default top/bottom margins that can shift alignment */
+}
+
+/* Ensure option items align contents vertically */
+.preview-card .option-item .html-content {
+  display: block;
+  line-height: 1.6;
+}
+
+/* Tweak vertical centering for option rows */
+.preview-card .option-item {
+  align-items: center;
+}
+
+/* Disable hover lift/highlight for containers in AI Generate pages */
+.ai-generate-wrapper .prompt-description-card:hover,
+.ai-generate-wrapper .sun-prompt-description-card:hover,
+.ai-generate-wrapper .moon-prompt-description-card:hover,
+.ai-generate-wrapper .question-types-card:hover,
+.ai-generate-wrapper .sun-question-types-card:hover,
+.ai-generate-wrapper .moon-question-types-card:hover,
+.ai-generate-wrapper .preview-card:hover,
+.ai-generate-wrapper .sun-preview-card:hover,
+.ai-generate-wrapper .moon-preview-card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure Level dropdown is not clipped by Card body overflow */
+.prompt-description-card .ant-card-body {
+  overflow-x: visible !important;
+  position: relative !important;
+}
+
+/* Allow Level dropdown container to overflow Card body */
+.level-dropdown-container {
+  overflow: visible !important;
+  z-index: 1000 !important;
+}
+
+.level-dropdown-container > div[style*="position: absolute"] {
+  position: absolute !important;
+  z-index: 1001 !important;
+  overflow: visible !important;
+}
+
+/* Allow Lesson Focus dropdown container to overflow Card body */
+.lesson-focus-dropdown-container {
+  overflow: visible !important;
+  z-index: 1000 !important;
+}
+
+.lesson-focus-dropdown-container > div[style*="position: absolute"] {
+  position: absolute !important;
+  z-index: 1001 !important;
+  overflow: visible !important;
+}
+
+/* CKEditor styles for generated passage - Override other CSS */
+.passage-ckeditor-wrapper {
+  min-height: 400px;
+  width: 100%;
+  min-width: 100%;
+}
+
+.passage-ckeditor-wrapper .ck.ck-editor {
+  min-height: 400px;
+  width: 100%;
+  min-width: 100%;
+}
+
+.passage-ckeditor-wrapper .ck.ck-editor__main {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.passage-ckeditor-wrapper .ck.ck-editor__main > .ck-editor__editable {
+  color: #000000;
+  background: #ffffff;
+  min-height: 400px;
+  max-height: none;
+  height: auto;
+  padding: 16px;
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Disable text truncation/ellipsis */
+  text-overflow: clip;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.passage-ckeditor-wrapper .ck-editor__editable p,
+.passage-ckeditor-wrapper .ck-editor__editable div,
+.passage-ckeditor-wrapper .ck-editor__editable span,
+.passage-ckeditor-wrapper .ck-editor__editable li,
+.passage-ckeditor-wrapper .ck-editor__editable h1,
+.passage-ckeditor-wrapper .ck-editor__editable h2,
+.passage-ckeditor-wrapper .ck-editor__editable h3,
+.passage-ckeditor-wrapper .ck-editor__editable h4,
+.passage-ckeditor-wrapper .ck-editor__editable h5,
+.passage-ckeditor-wrapper .ck-editor__editable h6 {
+  color: #000000;
+  /* Disable text truncation/ellipsis for all text elements */
+  text-overflow: clip;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: visible;
+}
+
+.passage-ckeditor-wrapper .ck-editor__editable.ck-focused {
+  color: #000000;
+}
+
+/* Disable toolbar collapse/grouping - Always show all toolbar items */
+.passage-ckeditor-wrapper .ck.ck-toolbar {
+  overflow: visible;
+  flex-wrap: wrap;
+  min-width: 100%;
+  width: 100%;
+  max-width: 100%;
+}
+
+.passage-ckeditor-wrapper .ck.ck-toolbar__items {
+  overflow: visible;
+  flex-wrap: wrap;
+  min-width: 100%;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.passage-ckeditor-wrapper .ck.ck-toolbar__separator {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Prevent toolbar from collapsing into dropdown menu */
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items > * {
+  display: inline-flex;
+  visibility: visible;
+  flex-shrink: 0;
+}
+
+/* Hide the overflow menu button (3 dots) that groups items */
+.passage-ckeditor-wrapper .ck.ck-toolbar__separator.ck-toolbar__separator_grouping,
+.passage-ckeditor-wrapper .ck-toolbar__separator_grouping {
+  display: none;
+}
+
+/* Ensure all toolbar items are visible and not hidden in overflow menu */
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-button,
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items .ck-dropdown {
+  display: inline-flex;
+  visibility: visible;
+  opacity: 1;
+  flex-shrink: 0;
+}
+
+/* Force toolbar to always show all items, even at 125% zoom */
+.passage-ckeditor-wrapper .ck.ck-editor__top {
+  min-width: 100%;
+  width: 100%;
+}
+
+.passage-ckeditor-wrapper .ck.ck-editor__top .ck-toolbar {
+  min-width: 100%;
+  width: 100%;
+}
+
+/* Prevent CKEditor from creating overflow menu at any zoom level */
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-toolbar__items {
+  max-width: none;
+}
+
+/* Ensure toolbar items container doesn't restrict width */
+.passage-ckeditor-wrapper .ck.ck-toolbar__items {
+  max-width: none;
+  width: auto;
+  min-width: 0;
+}
+
+/* Force all toolbar buttons and dropdowns to be visible */
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-button,
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-dropdown,
+.passage-ckeditor-wrapper .ck.ck-toolbar .ck-splitbutton {
+  flex-shrink: 0;
+  min-width: auto;
+}
+
+/* Ensure parent containers don't restrict toolbar width */
+.passage-ckeditor-wrapper .ck.ck-editor__top,
+.passage-ckeditor-wrapper .ck.ck-editor__top > .ck-toolbar {
+  box-sizing: border-box;
+}
+
+/* Allow toolbar to expand and wrap at 125% zoom */
+@media screen {
+  .passage-ckeditor-wrapper .ck.ck-toolbar {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .passage-ckeditor-wrapper .ck.ck-toolbar__items {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}

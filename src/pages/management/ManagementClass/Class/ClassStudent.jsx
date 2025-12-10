@@ -1,0 +1,1434 @@
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import {
+  Button,
+  Table,
+  Space,
+  Input,
+  Modal,
+  Typography,
+  Select,
+} from "antd";
+import {
+  PlusOutlined,
+  SearchOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+  FilterOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
+import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
+import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
+import "./ClassStudent.css";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useSelector } from "react-redux";
+import { spaceToast } from "../../../../component/SpaceToastify";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import { useClassMenu } from "../../../../contexts/ClassMenuContext";
+import classManagementApi from "../../../../apis/backend/classManagement";
+import studentManagementApi from "../../../../apis/backend/StudentManagement";
+import usePageTitle from "../../../../hooks/usePageTitle";
+import ROUTER_PAGE from "../../../../constants/router";
+import { FILE_NAME_PREFIXES, formatDateForFilename } from "../../../../constants/fileNames";
+
+const { Title } = Typography;
+const { Option } = Select;
+
+
+
+const ClassStudent = () => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // State for available students from API
+  const [availableStudents, setAvailableStudents] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [availableStudentsPagination, setAvailableStudentsPagination] = useState({
+    page: 0,
+    size: 10, // Load 10 students per page for better infinite scroll experience
+    total: 0,
+    hasMore: true,
+    currentLoaded: 0, // Track how many students are currently loaded
+  });
+  const [loadingMore, setLoadingMore] = useState(false);
+  const { id } = useParams();
+  const { theme } = useTheme();
+  const { user } = useSelector((state) => state.auth);
+  const { enterClassMenu, exitClassMenu, classData: classMenuData, isViewOnly: contextViewOnly, updateClassStatus } = useClassMenu();
+  const currentPath = useMemo(() => `${location.pathname}${location.search}`, [location.pathname, location.search]);
+  const userRole = useMemo(() => user?.role?.toLowerCase(), [user]);
+  const classMenuBackUrl = useMemo(() => {
+    if (!id) return null;
+    if (userRole === 'manager') {
+      return ROUTER_PAGE.MANAGER_CLASS_MENU.replace(':id', String(id));
+    }
+    if (userRole === 'teacher') {
+      return ROUTER_PAGE.TEACHER_CLASS_MENU.replace(':id', String(id));
+    }
+    if (userRole === 'teaching_assistant') {
+      return ROUTER_PAGE.TEACHING_ASSISTANT_CLASS_MENU.replace(':id', String(id));
+    }
+    return null;
+  }, [userRole, id]);
+  
+  // Determine which layout to use based on user role
+  const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+    ? ThemedLayoutNoSidebar 
+    : ThemedLayoutWithSidebar;
+  
+  // Check if user is read-only (TEACHER or TEACHING_ASSISTANT)
+  const isReadOnly = userRole === 'teacher' || userRole === 'teaching_assistant';
+  
+  // Set page title
+  usePageTitle('Class Students');
+  
+  const [loading, setLoading] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [classData, setClassData] = useState(null);
+  
+  // Check if class is finished (hide add, import, delete buttons)
+  const isClassFinished = contextViewOnly || classMenuData?.status === 'FINISHED' || classData?.status === 'FINISHED';
+  const [searchText, setSearchText] = useState("");
+  const [studentSearchText, setStudentSearchText] = useState(""); // Search text for student modal
+  const [statusFilter, setStatusFilter] = useState(['ACTIVE','INACTIVE']); // Changed to array to support multiple statuses
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const searchTimeoutRef = useRef(null);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+  const [buttonLoading, setButtonLoading] = useState({
+    add: false,
+    delete: false,
+    export: false,
+  });
+  const [exportLoading, setExportLoading] = useState(false);
+  const [filterDropdown, setFilterDropdown] = useState({
+    visible: false,
+    selectedStatuses: [],
+  });
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  
+  // Sort state
+  const [sortConfig, setSortConfig] = useState({
+    sortBy: 'joinedAt',
+    sortDir: 'desc',
+  });
+  
+  // Refs for click outside detection
+  const filterContainerRef = useRef(null);
+  const hasInitialized = useRef(false);
+
+  // Status options for filter
+  const statusOptions = [
+    { key: "ACTIVE", label: t('classDetail.active') },
+    { key: "INACTIVE", label: t('classDetail.inactive') },
+  ];
+
+  // Handle click outside to close filter dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdown.visible && filterContainerRef.current) {
+        // Check if click is outside the filter container
+        if (!filterContainerRef.current.contains(event.target)) {
+          setFilterDropdown(prev => ({
+            ...prev,
+            visible: false,
+          }));
+        }
+      }
+    };
+
+    // Add event listener when dropdown is visible
+    if (filterDropdown.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterDropdown.visible]);
+
+  // Handle filter dropdown toggle
+  const handleFilterToggle = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: !prev.visible,
+      selectedStatuses: prev.visible ? prev.selectedStatuses : statusFilter.length > 0 ? [...statusFilter] : [],
+    }));
+  };
+
+  // Handle filter submission
+  const handleFilterSubmit = () => {
+    // Save all selected statuses as array
+    setStatusFilter(filterDropdown.selectedStatuses.length > 0 ? [...filterDropdown.selectedStatuses] : []);
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: false,
+    }));
+  };
+
+  // Handle filter reset
+  const handleFilterReset = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      selectedStatuses: [],
+    }));
+  };
+
+  const fetchClassData = useCallback(async () => {
+    try {
+      const response = await classManagementApi.getClassDetail(id);
+      const data = response?.data?.data ?? response?.data ?? null;
+      if (data) {
+        const mapped = {
+          id: data.id ?? id,
+          name:
+            data.name ??
+            data.className ??
+            data.classname ??
+            data.class_name ??
+            data.title ??
+            data.classTitle ??
+            '',
+          status: data.status ?? data.classStatus ?? null,
+        };
+        setClassData(mapped);
+        if (mapped.status) {
+          updateClassStatus(mapped.status);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching class data:', error);
+      
+      // Nếu là lỗi 403, redirect về class list
+      if (error.response?.status === 403) {
+        let redirectPath = '/';
+        if (userRole === 'manager') {
+          redirectPath = ROUTER_PAGE.MANAGER_CLASSES;
+        } else if (userRole === 'teacher') {
+          redirectPath = ROUTER_PAGE.TEACHER_CLASSES;
+        } else if (userRole === 'teaching_assistant') {
+          redirectPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+        }
+        spaceToast.error('You do not have permission to access this class');
+        setTimeout(() => {
+          window.location.href = redirectPath;
+        }, 500);
+        return;
+      }
+      
+      spaceToast.error(error.response?.data?.error);
+    }
+  }, [id, userRole, updateClassStatus]);
+
+  const fetchStudents = useCallback(async (params = {}) => {
+    try {
+      // Convert status to array format for API
+      let statusParam = 'all';
+      if (params.status !== undefined) {
+        if (Array.isArray(params.status)) {
+          statusParam = params.status.length > 0 ? params.status : 'all';
+        } else if (params.status !== 'all') {
+          statusParam = [params.status];
+        }
+      }
+      
+      const apiParams = {
+        page: params.page !== undefined ? params.page : 0, // Default to first page
+        size: params.size !== undefined ? params.size : 10, // Default page size
+        text: params.text !== undefined ? params.text : '',
+        status: statusParam,
+        sortBy: params.sortBy !== undefined ? params.sortBy : 'joinedAt',
+        sortDir: params.sortDir !== undefined ? params.sortDir : 'desc',
+      };
+      
+      const response = await classManagementApi.getClassStudents(id, apiParams);
+      
+      if (response.success) {
+        setStudents(response.data || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.totalElements || 0,
+          current: (response.page || 0) + 1, // Convert 0-based to 1-based
+        }));
+      } 
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      
+      // // Nếu là lỗi 403, redirect về class list
+      // if (error.response?.status === 403) {
+      //   const userRole = user?.role?.toLowerCase();
+      //   let redirectPath = '/';
+      //   if (userRole === 'manager') {
+      //     redirectPath = ROUTER_PAGE.MANAGER_CLASSES;
+      //   } else if (userRole === 'teacher') {
+      //     redirectPath = ROUTER_PAGE.TEACHER_CLASSES;
+      //   } else if (userRole === 'teaching_assistant') {
+      //     redirectPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+      //   }
+      //   spaceToast.error('You do not have permission to access this class');
+      //   setTimeout(() => {
+      //     window.location.href = redirectPath;
+      //   }, 500);
+      //   return;
+      // }
+      
+      spaceToast.error(error.response?.data?.error );
+      setStudents([]);
+    }
+  }, [id]);
+
+  // Fetch available students for adding to class
+  const fetchAvailableStudents = useCallback(async (searchText = '', page = 0, append = false) => {
+    try {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setSearchLoading(true);
+      }
+
+      // Add a small delay when loading more items to avoid rapid infinite requests
+      if (append) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      
+      const params = {
+        page: page,
+        size: availableStudentsPagination.size,
+        text: searchText,
+        // Include both ACTIVE và PENDING trong modal add
+        status: ['ACTIVE', 'PENDING'],
+        roleName: ['STUDENT', 'TEST_TAKER'], // Get both students and test takers
+      };
+      
+      const response = await studentManagementApi.getStudents(params);
+      // Check if response structure is correct
+      if (!response) {
+        console.error('❌ Response is null or undefined!');
+        return;
+      }
+      
+      if (!response.success) {
+        console.error('❌ API returned success=false:', response);
+        if (!append) {
+          setAvailableStudents([]);
+        }
+        return;
+      }
+      
+      // Handle different response structures and normalize pagination info
+      let allStudents = [];
+      let totalElements = 0;
+      let responsePage = page ?? 0;
+      let responseSize = availableStudentsPagination.size;
+      
+      // Check if data is directly in response or nested
+      if (Array.isArray(response.data)) {
+        allStudents = response.data;
+        totalElements = response.totalElements || 0;
+        if (response.page !== undefined) responsePage = response.page;
+        if (response.size !== undefined) responseSize = response.size;
+      } else if (Array.isArray(response)) {
+        // Response might be array directly
+        allStudents = response;
+        // totalElements / page / size may not be available in this case
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        allStudents = response.data.data;
+        totalElements = response.data.totalElements || 0;
+        if (response.data.page !== undefined) responsePage = response.data.page;
+        if (response.data.size !== undefined) responseSize = response.data.size;
+      }
+      
+      if (allStudents.length === 0 && totalElements > 0) {
+        console.warn('⚠️ WARNING: API returned 0 students but totalElements > 0!');
+        console.warn('This might indicate a pagination issue or filter problem');
+      }
+      
+      // Filter out students who are already in the class
+      const currentStudentIds = students.map(s => s.userId);
+      
+      const filteredStudents = allStudents.filter(student => 
+        !currentStudentIds.includes(student.userId)
+      );
+      
+      // Map the response to match our expected format
+      const mappedStudents = filteredStudents.map(student => {
+        const userId = student.userId || student.id;
+        if (!userId) {
+          console.warn('Student without userId:', student);
+        }
+        return {
+          id: userId,
+          userId: userId,
+          code: student.studentCode || student.code,
+          name: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+          fullName: student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+          email: student.email,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          status: student.status,
+          // Giữ lại thông tin lớp hiện tại nếu API trả về (để disable chọn nếu đã có lớp)
+          classInfo: student.classInfo || student.currentClass || null,
+        };
+      });
+      
+      if (append) {
+        // Append new students to existing list, but avoid duplicates by userId
+        setAvailableStudents(prev => {
+          const existingIds = new Set(prev.map(s => s.userId));
+          const uniqueNew = mappedStudents.filter(s => !existingIds.has(s.userId));
+          return [...prev, ...uniqueNew];
+        });
+      } else {
+        // Replace with new search results
+        setAvailableStudents(mappedStudents);
+      }
+      
+      // Update pagination state
+      setAvailableStudentsPagination(prev => {
+        const currentLoaded = append 
+          ? prev.currentLoaded + mappedStudents.length 
+          : mappedStudents.length;
+        
+        // Determine if there's more data based on API pagination info
+        const pageIndex = responsePage ?? page ?? 0;
+        const pageSize = responseSize ?? prev.size;
+        const hasMore = totalElements > 0 && (pageIndex + 1) * pageSize < totalElements;
+        
+        return {
+          ...prev,
+          page: pageIndex,
+          size: pageSize,
+          total: totalElements,
+          hasMore,
+          currentLoaded,
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching available students:', error);
+      if (!append) {
+        setAvailableStudents([]);
+      }
+      spaceToast.error(error.response?.data?.error);
+    } finally {
+      setSearchLoading(false);
+      setLoadingMore(false);
+    }
+  }, [students, availableStudentsPagination.size]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Initial data loading
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      fetchClassData(),
+      fetchStudents()
+    ]).finally(() => {
+      setLoading(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only run when id changes
+
+  // Enter class menu mode (single effect to avoid loops)
+  useEffect(() => {
+    if (!id) return;
+    const payload = classData ? {
+      id: classData.id,
+      name: classData.name,
+      description: classData.name,
+      backUrl: classMenuBackUrl,
+      status: classData.status,
+    } : {
+      id,
+      backUrl: classMenuBackUrl,
+    };
+    enterClassMenu(payload);
+    return () => exitClassMenu();
+  }, [id, classMenuBackUrl, classData, enterClassMenu, exitClassMenu]);
+
+  const handleAddStudent = () => {
+    setButtonLoading(prev => ({ ...prev, add: true }));
+    setTimeout(() => {
+      setSelectedStudents([]);
+      setIsModalVisible(true);
+      // Reset pagination when opening modal
+      setAvailableStudentsPagination({
+        page: 0,
+        size: 10,
+        total: 0,
+        hasMore: true,
+        currentLoaded: 0,
+      });
+      // Fetch available students when opening modal
+      fetchAvailableStudents("", 0, false);
+      setButtonLoading(prev => ({ ...prev, add: false }));
+    }, 100);
+  };
+
+
+  const handleStudentSearch = (value) => {
+    setStudentSearchText(value); // Save search text to state
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Set new timeout for debounced search
+    searchTimeoutRef.current = setTimeout(() => {
+      // Reset pagination on new search
+      setAvailableStudentsPagination({
+        page: 0,
+        size: 10,
+        total: 0,
+        hasMore: true,
+        currentLoaded: 0,
+      });
+      
+      if (value.length >= 2) {
+        fetchAvailableStudents(value, 0, false);
+      } else if (value.length === 0) {
+        fetchAvailableStudents("", 0, false);
+      }
+      // Don't call API for single character
+    }, 500);
+  };
+
+  // Handle scroll to load more students using useEffect with MutationObserver
+  useEffect(() => {
+    if (!isModalVisible) return;
+
+    let scrollableElement = null;
+    let observer = null;
+    let scrollHandler = null;
+
+    // Find the dropdown scrollable element with retry
+    const findScrollableElement = () => {
+      // Try multiple selectors for Ant Design Select dropdown
+      const selectors = [
+        '.rc-virtual-list-holder',
+        '.rc-select-list',
+        '.ant-select-dropdown .rc-select-list',
+        '.ant-select-dropdown .rc-virtual-list-holder',
+        '.ant-select-dropdown .rc-select-dropdown',
+        '[class*="rc-select-list"]',
+        '[class*="virtual-list-holder"]'
+      ];
+
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element && element.scrollHeight > element.clientHeight) {
+          return element;
+        }
+      }
+      return null;
+    };
+
+    const attachScrollListener = () => {
+      scrollableElement = findScrollableElement();
+      
+      if (!scrollableElement) {
+        return false;
+      }
+
+      scrollHandler = (e) => {
+        const target = e.target;
+        const scrollTop = target.scrollTop;
+        const scrollHeight = target.scrollHeight;
+        const clientHeight = target.clientHeight;
+        
+        // Load more only when user scrolls to the bottom of the list
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
+        
+        if (isNearBottom) {
+          if (availableStudentsPagination.hasMore && !loadingMore && !searchLoading) {
+            const nextPage = availableStudentsPagination.page + 1;
+            fetchAvailableStudents(studentSearchText, nextPage, true);
+          }
+        }
+      };
+
+      scrollableElement.addEventListener('scroll', scrollHandler, { passive: true });
+      return true;
+    };
+
+    // Try to attach immediately
+    if (!attachScrollListener()) {
+      // Use MutationObserver to watch for dropdown appearance
+      observer = new MutationObserver(() => {
+        if (!scrollableElement && attachScrollListener()) {
+          observer.disconnect();
+        }
+      });
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+
+    // Also try after a delay
+    const timer = setTimeout(() => {
+      if (!scrollableElement) {
+        attachScrollListener();
+      }
+    }, 500);
+
+    return () => {
+      if (scrollableElement && scrollHandler) {
+        scrollableElement.removeEventListener('scroll', scrollHandler);
+      }
+      if (observer) {
+        observer.disconnect();
+      }
+      clearTimeout(timer);
+    };
+  }, [isModalVisible, availableStudentsPagination.hasMore, availableStudentsPagination.page, loadingMore, searchLoading, studentSearchText, fetchAvailableStudents]);
+
+  const handleSelectStudent = (selectedIds) => {
+    
+    // Convert selected IDs to student objects
+    const newSelectedStudents = selectedIds.map(id => 
+      availableStudents.find(s => s.userId === id)
+    ).filter(Boolean); // Remove any undefined values
+    
+    setSelectedStudents(newSelectedStudents);
+  };
+
+
+  const handleDeleteStudent = (student) => {
+    setButtonLoading(prev => ({ ...prev, delete: true }));
+    setTimeout(() => {
+      setStudentToDelete(student);
+      setIsDeleteModalVisible(true);
+      setButtonLoading(prev => ({ ...prev, delete: false }));
+    }, 100);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (studentToDelete) {
+      try {
+        
+        // Call API to remove student from class
+        const response = await classManagementApi.removeStudentFromClass(id, studentToDelete.userId);
+        
+        if (response.success) {
+          const fullName = studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim();
+          spaceToast.success(`${t('classDetail.deleteSuccess')} "${fullName}" ${t('classDetail.fromClass')}`);
+          
+          // Refresh the students list - only show ACTIVE students after removing
+          await fetchStudents({
+            page: pagination.current - 1,
+            size: pagination.pageSize,
+            text: searchText,
+            status: ['ACTIVE'], // Only show ACTIVE students after removing
+            sortBy: sortConfig.sortBy,
+            sortDir: sortConfig.sortDir
+          });
+          
+          // Update statusFilter to ACTIVE only to reflect current view
+          setStatusFilter(['ACTIVE']);
+        }
+      } catch (error) {
+        console.error("Error removing student:", error);
+        spaceToast.error(error.response?.data?.error);
+      } finally {
+        setIsDeleteModalVisible(false);
+        setStudentToDelete(null);
+      }
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteModalVisible(false);
+    setStudentToDelete(null);
+  };
+
+
+  const handleExport = () => {
+    setButtonLoading(prev => ({ ...prev, export: true }));
+    setTimeout(() => {
+      setIsExportModalVisible(true);
+      setButtonLoading(prev => ({ ...prev, export: false }));
+    }, 100);
+  };
+
+  const handleExportModalClose = () => {
+    setIsExportModalVisible(false);
+  };
+
+  const handleExportAll = async () => {
+    // Validate: Check if there is any data to export
+    if (pagination.total === 0 || students.length === 0) {
+      spaceToast.error(t('classDetail.noDataToExport') || 'No data available to export');
+      return;
+    }
+    
+    setExportLoading(true);
+    
+    try {
+      // Prepare export parameters using the new API format
+      const exportParams = {
+        classIds: [id], // Filter by current class ID
+      };
+
+      // Add text search if available
+      if (searchText) {
+        exportParams.text = searchText;
+      }
+
+      // Add status filter if not empty
+      if (statusFilter.length > 0) {
+        exportParams.status = statusFilter;
+      }
+
+      // Add roleName filter for students
+      exportParams.roleName = ['STUDENT', 'TEST_TAKER'];
+
+      
+      const response = await studentManagementApi.exportStudents(exportParams);
+      
+      // response.data is already a Blob from the API
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      const formattedDate = formatDateForFilename();
+      const normalizedClassName = (classData?.name || `class_${id}`)
+        .trim()
+        .replace(/\s+/g, '_');
+      link.download = `${FILE_NAME_PREFIXES.STUDENT_LIST}${normalizedClassName}_${formattedDate}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      spaceToast.success('Export file successfully');
+      setIsExportModalVisible(false);
+    } catch (error) {
+      console.error('Error exporting class students:', error);
+      spaceToast.error(error.response?.data?.error);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleModalOk = async () => {
+    setButtonLoading(prev => ({ ...prev, add: true }));
+    try {
+      
+      if (selectedStudents.length === 0) {
+        spaceToast.error(t('classDetail.selectAtLeastOne'));
+        return;
+      }
+
+      // Extract userIds from selected students
+      const userIds = selectedStudents.map(student => student.userId);
+
+      // Call API to add students to class
+      const response = await classManagementApi.addStudentsToClass(id, userIds);
+
+      if (response.success) {
+        spaceToast.success(`${t('classDetail.addStudentsSuccess')} ${selectedStudents.length} ${t('classDetail.studentsToClass')}`);
+        
+        // Refresh the students list - only show ACTIVE students after adding
+        await fetchStudents({
+          page: pagination.current - 1,
+          size: pagination.pageSize,
+          text: searchText,
+          status: ['ACTIVE'], // Only show ACTIVE students after adding
+          sortBy: sortConfig.sortBy,
+          sortDir: sortConfig.sortDir
+        });
+        
+        // Update statusFilter to ACTIVE only to reflect current view
+        setStatusFilter(['ACTIVE']);
+      } else {
+        spaceToast.error(response.message || t('classDetail.checkInfoError'));
+      }
+
+      setIsModalVisible(false);
+      setSelectedStudents([]);
+    } catch (error) {
+      console.error("Error adding students:", error);
+      spaceToast.error(error.response?.data?.error);
+    } finally {
+      setButtonLoading(prev => ({ ...prev, add: false }));
+    }
+  };
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+    setSelectedStudents([]);
+    setStudentSearchText(""); // Reset search text
+    // Clear any pending search timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+  };
+
+  const getStatusTag = (status) => {
+    const statusConfig = {
+      ACTIVE: { text: t('classDetail.active') },
+      INACTIVE: { text: t('classDetail.inactive') },
+      DROPPED: { text: t('classDetail.dropped') },
+    };
+
+    const config = statusConfig[status] || statusConfig.INACTIVE;
+    return <span style={{ color: '#000000', fontSize: '20px' }}>{config.text}</span>;
+  };
+
+  // Single useEffect to handle all changes with debounce (search, filter, sort, pagination)
+  useEffect(() => {
+    // Skip only the very first render (true initial load handled by initial effect)
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setLoading(true);
+      try {
+        // Convert statusFilter array to API format
+        let statusParam = 'all';
+        if (statusFilter.length > 0) {
+          statusParam = statusFilter;
+        }
+        
+        const apiParams = {
+          page: (pagination.current - 1) < 0 ? 0 : (pagination.current - 1),
+          size: pagination.pageSize,
+          text: searchText,
+          status: statusParam,
+          sortBy: sortConfig.sortBy,
+          sortDir: sortConfig.sortDir,
+        };
+        
+        const response = await classManagementApi.getClassStudents(id, apiParams);
+        
+        if (response.success) {
+          setStudents(response.data || []);
+          setPagination(prev => ({
+            ...prev,
+            total: response.totalElements || 0,
+            current: (apiParams.page || 0) + 1,
+          }));
+        } else {
+          spaceToast.error(response.message || t('classDetail.loadingStudents'));
+          setStudents([]);
+        }
+      } catch (error) {
+        console.error('Error fetching students:', error);
+        
+        // Nếu là lỗi 403, redirect về class list
+        if (error.response?.status === 403) {
+          const userRole = user?.role?.toLowerCase();
+          let redirectPath = '/';
+          if (userRole === 'manager') {
+            redirectPath = ROUTER_PAGE.MANAGER_CLASSES;
+          } else if (userRole === 'teacher') {
+            redirectPath = ROUTER_PAGE.TEACHER_CLASSES;
+          } else if (userRole === 'teaching_assistant') {
+            redirectPath = ROUTER_PAGE.TEACHING_ASSISTANT_CLASSES;
+          }
+          spaceToast.error('You do not have permission to access this class');
+          setTimeout(() => {
+            window.location.href = redirectPath;
+          }, 500);
+          return;
+        }
+        
+        spaceToast.error(error.response?.data?.error);
+        setStudents([]);
+      } finally {
+        setLoading(false);
+      }
+    }, searchText ? 1000 : 0);
+    
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, pagination.current, id]);
+  
+  // Handle pagination change
+  const handleTableChange = (paginationInfo, filters, sorter) => {
+    
+    // Handle pagination - only update state, don't call API here
+    if (paginationInfo.current !== pagination.current || paginationInfo.pageSize !== pagination.pageSize) {
+      setPagination(prev => ({
+        ...prev,
+        current: paginationInfo.current,
+        pageSize: paginationInfo.pageSize,
+      }));
+    }
+    
+    // Handle sorting - this will trigger the main useEffect
+    if (sorter && sorter.field) {
+      const newSortConfig = {
+        sortBy: sorter.field,
+        sortDir: sorter.order === 'ascend' ? 'asc' : 'desc',
+      };
+      setSortConfig(newSortConfig);
+    }
+  };
+
+  const handleViewProfile = (student) => {
+    const studentId = student?.userId || student?.id;
+    if (!studentId) return;
+    // Route based on role
+    let path = ROUTER_PAGE.MANAGER_STUDENT_PROFILE.replace(':id', String(studentId));
+    if (userRole === 'teacher') {
+      path = ROUTER_PAGE.TEACHER_STUDENT_PROFILE.replace(':id', String(studentId));
+    } else if (userRole === 'teaching_assistant') {
+      path = ROUTER_PAGE.TEACHING_ASSISTANT_STUDENT_PROFILE.replace(':id', String(studentId));
+    }
+    if (id) {
+      localStorage.setItem('selectedClassId', String(id));
+    }
+    navigate(path, { state: { classId: id, returnTo: currentPath } });
+  };
+
+  const columns = [
+    {
+      title: t('classDetail.no'),
+      key: 'no',
+      width: 60,
+      render: (_, record, index) => {
+        const no = (pagination.current - 1) * pagination.pageSize + index + 1;
+        return <span style={{ fontSize: "20px", fontWeight: 500 }}>{no}</span>;
+      },
+    },
+    {
+      title: t('classDetail.fullName'),
+      dataIndex: "fullName",
+      key: "fullName",
+      render: (text, record) => (
+        <div
+          className="student-name-text"
+          style={{ fontSize: "20px"}}
+          title={t('classDetail.viewProfile')}
+        >
+          {text || '-'}
+        </div>
+      ),
+    },
+    {
+      title: t('classDetail.email'),
+      dataIndex: 'email',
+      key: 'email',
+      render: (text) => <span style={{ fontSize: "20px" }}>{text}</span>,
+    },
+    {
+      title: t('classDetail.status'),
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => getStatusTag(status),
+    },
+    {
+      title: t('classDetail.joinedAt'),
+      dataIndex: 'joinedAt',
+      key: 'joinedAt',
+      render: (date) => (
+        <span style={{ fontSize: "20px" }}>
+          {new Date(date).toLocaleDateString("vi-VN")}
+        </span>
+      ),
+    },
+    {
+      title: t('classDetail.actions'),
+      key: "actions",
+      width: 140, 
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="text"
+            icon={<EyeOutlined style={{ fontSize: '24px' }} />}
+            onClick={() => handleViewProfile(record)}
+            title={t('classDetail.viewProfile')}
+          />
+          {!isReadOnly && !isClassFinished && (
+            <Button
+              type="text"
+              icon={<DeleteOutlined style={{ fontSize: '24px' }} />}
+              onClick={() => handleDeleteStudent(record)}
+              style={{ color: "#ff4d4f" }}
+              title={t('classDetail.removeFromClass')}
+              loading={buttonLoading.delete}
+            />
+          )}
+        </Space>
+      ),
+    },
+  ];
+
+  if (loading) {
+    return (
+      <ThemedLayout>
+        <div className={`main-content-panel ${theme}-main-panel`}>
+          <LoadingWithEffect loading={true} message={t('classDetail.loadingClassInfo')} />
+        </div>
+      </ThemedLayout>
+    );
+  }
+
+  return (
+    <ThemedLayout>
+        {/* Main Content Panel */}
+        <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Page Title */}
+          <div className="page-title-container">
+            <Typography.Title 
+              level={1} 
+              className="page-title"
+            >
+              {t('classDetail.studentManagement')} <span className="student-count">({pagination.total})</span>
+            </Typography.Title>
+          </div>
+
+          {/* Search and Action Section */}
+          <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
+            <Input
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className={`search-input ${theme}-search-input`}
+              style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
+              allowClear
+            />
+            <div ref={filterContainerRef} style={{ position: 'relative' }}>
+              <Button 
+                icon={<FilterOutlined />}
+                onClick={handleFilterToggle}
+                className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(statusFilter.length > 0) ? 'has-filters' : ''}`}
+              >
+                {t('classDetail.filter')}
+              </Button>
+              
+              {/* Filter Dropdown Panel */}
+              {filterDropdown.visible && (
+                <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+                  <div style={{ padding: '20px' }}>
+                    {/* Status Filter */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
+                        {t('classDetail.status')}
+                      </Title>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {statusOptions.map(option => (
+                          <Button
+                            key={option.key}
+                            onClick={() => {
+                              const newStatus = filterDropdown.selectedStatuses.includes(option.key)
+                                ? filterDropdown.selectedStatuses.filter(status => status !== option.key)
+                                : [...filterDropdown.selectedStatuses, option.key];
+                              setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatus }));
+                            }}
+                            className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      marginTop: '20px',
+                      paddingTop: '16px',
+                      borderTop: '1px solid #f0f0f0'
+                    }}>
+                      <Button
+                        onClick={handleFilterReset}
+                        className="filter-reset-button"
+                      >
+                        {t('classDetail.reset')}
+                      </Button>
+                      <Button
+                        type="primary"
+                        onClick={handleFilterSubmit}
+                        className="filter-submit-button"
+                      >
+                        {t('classDetail.viewResults')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {!isReadOnly && (
+              <div className="action-buttons" style={{ marginLeft: 'auto' }}>
+                <Button 
+                  icon={<UploadOutlined />}
+                  className={`export-button ${theme}-export-button`}
+                  onClick={handleExport}
+                  loading={buttonLoading.export}
+                  disabled={buttonLoading.export}
+                >
+                  {t('classDetail.exportData')}
+                </Button>
+                {!isClassFinished && (
+                  <Button 
+                    icon={<PlusOutlined />}
+                    className={`create-button ${theme}-create-button`}
+                    onClick={handleAddStudent}
+                    loading={buttonLoading.add}
+                    disabled={buttonLoading.add || buttonLoading.export}
+                  >
+                    {t('classDetail.addStudent')}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Table Section */}
+          <div className={`table-section ${theme}-table-section`}>
+            <LoadingWithEffect loading={loading} message={t('classDetail.loadingStudents')}>
+              <Table
+                columns={columns}
+                dataSource={students}
+                rowKey="userId"
+                loading={loading}
+                pagination={{
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  total: pagination.total,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} of ${total} ${t('classDetail.students')}`,
+                  className: `${theme}-pagination`,
+                  pageSizeOptions: ['10', '20', '50', '100'],
+                }}
+                onChange={handleTableChange}
+                scroll={{ x: 800 }}
+                className={`student-table ${theme}-student-table`}
+              />
+            </LoadingWithEffect>
+          </div>
+        </div>
+
+        {/* Add Student Modal */}
+        <Modal
+          title={
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: '600', 
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {`${t('classDetail.addStudentsToClass')} (${selectedStudents.length} ${t('classDetail.selectedStudents')})`}
+            </div>
+          }
+          open={isModalVisible}
+          onOk={handleModalOk}
+          onCancel={handleModalCancel}
+          width={600}
+          okText={`${t('classDetail.addStudents')} ${selectedStudents.length} ${t('classDetail.studentsAdded')}`}
+          cancelText={t('common.cancel')}
+          okButtonProps={{
+            
+            style: {
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              minWidth: '200px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
+            },
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
+            },
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: '500',
+                color: '#1e293b'
+              }}>
+                {t('classDetail.searchAndSelectStudents')}
+              </label>
+              <Select
+                mode="multiple"
+                showSearch
+                placeholder={t('classDetail.typeStudentNameOrCode')}
+                value={selectedStudents.map(s => s.userId)}
+                onChange={handleSelectStudent}
+                onSearch={handleStudentSearch}
+                loading={searchLoading}
+                style={{
+                  width: '100%',
+                  fontSize: "15px",
+                }}
+                optionFilterProp="children"
+                filterOption={false} // Disable client-side filtering since we're using server-side search
+                notFoundContent={
+                  searchLoading 
+                    ? t('common.loading') || 'Loading...' 
+                    : availableStudents.length === 0 
+                      ? t('classDetail.noStudentsFound') || 'No students found'
+                      : loadingMore
+                        ? t('common.loadingMore') || 'Loading more...'
+                        : null
+                }
+                dropdownRender={(menu) => (
+                  <>
+                    {menu}
+                    {loadingMore && (
+                      <div style={{ 
+                        padding: '8px', 
+                        textAlign: 'center', 
+                        borderTop: '1px solid #f0f0f0',
+                        background: '#fafafa'
+                      }}>
+                        {t('common.loadingMore') || 'Loading more...'}
+                      </div>
+                    )}
+                    {!availableStudentsPagination.hasMore && availableStudents.length > 0 && !loadingMore && (
+                      <div style={{ 
+                        padding: '8px', 
+                        textAlign: 'center', 
+                        borderTop: '1px solid #f0f0f0',
+                        color: '#999',
+                        fontSize: '12px'
+                      }}>
+                        {t('classDetail.allStudentsLoaded') || 'All students loaded'}
+                      </div>
+                    )}
+                  </>
+                )}
+                onPopupScroll={(e) => {
+                  // This is a backup method, main scroll handling is in useEffect
+                  const target = e.target || e.currentTarget;
+                  if (!target) return;
+                  
+                  const scrollTop = target.scrollTop;
+                  const scrollHeight = target.scrollHeight;
+                  const clientHeight = target.clientHeight;
+                  
+                  // Load more only when user scrolls to the bottom of the list
+                  const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
+                  
+                  if (isNearBottom) {
+                    if (availableStudentsPagination.hasMore && !loadingMore && !searchLoading) {
+                      const nextPage = availableStudentsPagination.page + 1;
+                      fetchAvailableStudents(studentSearchText, nextPage, true);
+                    }
+                  }
+                }}
+              >
+              {availableStudents
+                .filter(student => student.userId)
+                .map((student) => {
+                  const hasClass =
+                    !!student.classInfo &&
+                    (student.classInfo.className ||
+                      student.classInfo.name ||
+                      student.classInfo.id);
+                  return (
+                    <Option
+                      key={student.userId}
+                      value={student.userId}
+                      disabled={hasClass}
+                    >
+                      <span style={{ color: hasClass ? '#999999' : 'inherit' }}>
+                        {student.code} {student.fullName} ({student.email})
+                      </span>
+                    </Option>
+                  );
+                })}
+              </Select>
+            </div>
+
+          </div>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          title={
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: '600', 
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {t('classDetail.confirmDelete')}
+            </div>
+          }
+          open={isDeleteModalVisible}
+          onOk={handleConfirmDelete}
+          onCancel={handleCancelDelete}
+          okText={t('common.confirm')}
+          cancelText={t('common.cancel')}
+          width={500}
+          centered
+          bodyStyle={{
+            padding: '30px 40px',
+            fontSize: '16px',
+            lineHeight: '1.6',
+            textAlign: 'center'
+          }}
+          okButtonProps={{
+            style: {
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
+            }
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
+            }
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              color: '#ff4d4f',
+              marginBottom: '10px'
+            }}>
+              ⚠️
+            </div>
+					<p style={{
+						fontSize: '18px',
+						color: '#333',
+						margin: 0,
+						fontWeight: '500'
+					}}>
+						{t('classDetail.confirmDeleteMessage')}
+					</p>
+					{studentToDelete && (
+						<p style={{
+							fontSize: '20px',
+							color: '#000',
+							margin: 0,
+							fontWeight: '400'
+						}}>
+							<strong>"{studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim()}"</strong>
+						</p>
+					)}
+          </div>
+        </Modal>
+
+        {/* Export Data Modal */}
+        <Modal
+          title={
+            <div
+              style={{
+                fontSize: '28px',
+                fontWeight: '600',
+                color: 'rgb(24, 144, 255)',
+                textAlign: 'center',
+                padding: '10px 0',
+              }}>
+              {t('classDetail.exportData')}
+            </div>
+          }
+          open={isExportModalVisible}
+          onCancel={handleExportModalClose}
+          width={500}
+          footer={[
+            <Button 
+              key="cancel" 
+              onClick={handleExportModalClose}
+              style={{
+                height: '32px',
+                fontWeight: '500',
+                fontSize: '16px',
+                padding: '4px 15px',
+                width: '100px'
+              }}>
+              {t('common.cancel')}
+            </Button>
+          ]}>
+          <div style={{ padding: '20px 0' }}>
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <UploadOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
+              <Typography.Title level={4} style={{ color: theme === 'dark' ? '#cccccc' : '#666', marginBottom: '8px' }}>
+                {t('classDetail.chooseExportOption')}
+              </Typography.Title>
+              <Typography.Text style={{ color: theme === 'dark' ? '#999999' : '#999' }}>
+                {t('classDetail.exportDescription')}
+              </Typography.Text>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <Button
+                type="primary"
+                icon={<UploadOutlined />}
+                onClick={handleExportAll}
+                loading={exportLoading}
+                disabled={exportLoading}
+                style={{
+                  height: '48px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  background: theme === 'sun' 
+                    ? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
+                    : 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
+                  borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
+                  color: '#000000',
+                  borderRadius: '8px',
+                }}>
+                {t('classDetail.exportAll')} ({pagination.total} {t('classDetail.students')})
+              </Button>
+            </div>
+          </div>
+        </Modal>
+    </ThemedLayout>
+  );
+};
+
+
+export default ClassStudent;
+  

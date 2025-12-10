@@ -1,0 +1,804 @@
+/* MultipleChoiceModal.css */
+
+/* ===============================================
+   ANIMATIONS
+   =============================================== */
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Save Button Hover Effect */
+.save-question-btn:hover {
+  transform: scale(1.05) !important;
+}
+
+.save-question-btn:active {
+  transform: scale(0.98) !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* ===============================================
+   SCROLLBAR CUSTOM STYLING
+   =============================================== */
+
+/* For options grid scrollbar */
+.options-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.options-grid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.options-grid::-webkit-scrollbar-thumb {
+  background: rgba(139, 125, 216, 0.5);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.options-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 125, 216, 0.8);
+}
+
+/* ===============================================
+   PLACEHOLDER STYLES
+   =============================================== */
+
+/* ContentEditable placeholder for Fill Blank Modal */
+[contenteditable][data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: rgba(0, 0, 0, 0.4);
+  font-style: italic;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* Question textarea placeholders */
+.question-textarea textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+}
+
+.question-textarea textarea::-webkit-input-placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+}
+
+.question-textarea textarea::-moz-placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+}
+
+.question-textarea textarea:-ms-input-placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+}
+
+/* Option input placeholders */
+.option-input input::placeholder,
+.option-input textarea::placeholder {
+  color: rgba(0, 0, 0, 0.35) !important;
+  opacity: 1 !important;
+}
+
+.option-input input::-webkit-input-placeholder,
+.option-input textarea::-webkit-input-placeholder {
+  color: rgba(0, 0, 0, 0.35) !important;
+  opacity: 1 !important;
+}
+
+.option-input input::-moz-placeholder,
+.option-input textarea::-moz-placeholder {
+  color: rgba(0, 0, 0, 0.35) !important;
+  opacity: 1 !important;
+}
+
+.option-input input:-ms-input-placeholder,
+.option-input textarea:-ms-input-placeholder {
+  color: rgba(0, 0, 0, 0.35) !important;
+  opacity: 1 !important;
+}
+
+/* ===============================================
+   MODAL OVERLAY
+   =============================================== */
+
+.ant-modal-mask {
+  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ===============================================
+   CKEDITOR CUSTOM STYLING
+   =============================================== */
+
+/* CKEditor container */
+.ck.ck-editor {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* CKEditor top section */
+.ck.ck-editor__top {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+/* CKEditor toolbar */
+.ck.ck-editor__top .ck-sticky-panel .ck-toolbar {
+  background: linear-gradient(135deg, rgba(230, 245, 255, 0.95) 0%, rgba(186, 231, 255, 0.85) 100%) !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(24, 144, 255, 0.2) !important;
+  padding: 8px 12px !important;
+  border-radius: 8px 8px 0 0;
+}
+
+/* CKEditor sticky panel */
+.ck.ck-editor__top .ck-sticky-panel {
+  z-index: 100 !important;
+}
+
+/* CKEditor sticky panel content - remove border */
+.ck.ck-sticky-panel .ck-sticky-panel__content {
+  border: none !important;
+}
+
+/* CKEditor toolbar buttons */
+.ck.ck-toolbar .ck-toolbar__items .ck-button {
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ck.ck-toolbar .ck-toolbar__items .ck-button:hover {
+  background: rgba(24, 144, 255, 0.15) !important;
+}
+
+.ck.ck-toolbar .ck-toolbar__items .ck-button.ck-on {
+  background: rgba(24, 144, 255, 0.25) !important;
+  color: #1890ff !important;
+}
+
+/* CKEditor main area */
+.ck.ck-editor__main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* CKEditor editing area */
+.ck.ck-editor__main > .ck-editor__editable {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: none !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  flex: 1;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Scrollbar for CKEditor content */
+.ck.ck-editor__main > .ck-editor__editable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ck.ck-editor__main > .ck-editor__editable::-webkit-scrollbar-track {
+  background: rgba(24, 144, 255, 0.05);
+  border-radius: 10px;
+}
+
+.ck.ck-editor__main > .ck-editor__editable::-webkit-scrollbar-thumb {
+  background: rgba(24, 144, 255, 0.3);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.ck.ck-editor__main > .ck-editor__editable::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 144, 255, 0.5);
+}
+
+.ck.ck-editor__main > .ck-editor__editable:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* CKEditor placeholder */
+.ck.ck-editor__editable.ck-placeholder::before {
+  color: rgba(0, 0, 0, 0.4) !important;
+  font-style: italic !important;
+}
+
+/* CKEditor content styling */
+.ck-content {
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  overflow-x: hidden !important;
+}
+
+.ck-content h1 {
+  font-size: 2em !important;
+  font-weight: 700 !important;
+  margin: 0.67em 0 !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.ck-content h2 {
+  font-size: 1.5em !important;
+  font-weight: 600 !important;
+  margin: 0.75em 0 !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.ck-content h3 {
+  font-size: 1.17em !important;
+  font-weight: 600 !important;
+  margin: 0.83em 0 !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.ck-content p {
+  margin: 0.5em 0 !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.ck-content ul,
+.ck-content ol {
+  padding-left: 2em !important;
+  margin: 0.5em 0 !important;
+}
+
+.ck-content blockquote {
+  border-left: 4px solid #1890ff !important;
+  padding-left: 1em !important;
+  margin: 1em 0 !important;
+  font-style: italic !important;
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+.ck-content table {
+  border-collapse: collapse !important;
+  margin: 1em 0 !important;
+  width: 100% !important;
+}
+
+.ck-content table td,
+.ck-content table th {
+  border: 1px solid rgba(24, 144, 255, 0.3) !important;
+  padding: 8px !important;
+}
+
+.ck-content table th {
+  background: rgba(24, 144, 255, 0.1) !important;
+  font-weight: 600 !important;
+}
+
+/* Remove CKEditor focus outline */
+.ck.ck-editor__editable_inline[dir="ltr"] {
+  text-align: left !important;
+}
+
+/* Ensure all content in CKEditor wraps properly */
+.ck.ck-editor__editable,
+.ck.ck-editor__editable > *,
+.ck.ck-editor__editable p,
+.ck.ck-editor__editable span,
+.ck.ck-editor__editable div,
+.ck.ck-editor__editable h1,
+.ck.ck-editor__editable h2,
+.ck.ck-editor__editable h3,
+.ck.ck-editor__editable h4,
+.ck.ck-editor__editable h5,
+.ck.ck-editor__editable h6 {
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+/* ===============================================
+   OPTION EDITOR STYLING
+   =============================================== */
+
+/* Option CKEditor container */
+.option-editor .ck.ck-editor {
+  border: none !important;
+}
+
+/* Option CKEditor toolbar - Hidden by default */
+.option-editor .ck.ck-editor__top {
+  max-height: 0;
+  overflow: hidden;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: max-height 0.3s ease;
+}
+
+/* Option CKEditor toolbar - Show on focus */
+.option-editor:has(.ck-focused) .ck.ck-editor__top,
+.option-editor .ck.ck-editor.ck-focused .ck.ck-editor__top {
+  max-height: 100px !important;
+  overflow: visible !important;
+}
+
+/* Option CKEditor sticky panel content - remove border */
+.option-editor .ck.ck-sticky-panel .ck-sticky-panel__content {
+  border: none !important;
+}
+
+/* Option CKEditor toolbar styling */
+.option-editor .ck.ck-editor__top .ck-sticky-panel .ck-toolbar {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.5) !important;
+  padding: 6px 10px !important;
+  border-radius: 0 !important;
+}
+
+/* Option CKEditor toolbar buttons */
+.option-editor .ck.ck-toolbar .ck-toolbar__items .ck-button {
+  border-radius: 4px !important;
+  transition: all 0.2s ease !important;
+}
+
+.option-editor .ck.ck-toolbar .ck-toolbar__items .ck-button:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+.option-editor .ck.ck-toolbar .ck-toolbar__items .ck-button.ck-on {
+  background: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Option CKEditor editing area */
+.option-editor .ck.ck-editor__main > .ck-editor__editable {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: none !important;
+  min-height: 180px !important;
+  max-height: 180px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 12px !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  color: #000000 !important;
+  border-radius: 0 0 10px 10px !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.option-editor .ck.ck-editor__main > .ck-editor__editable:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.3) inset !important;
+  background: rgba(255, 255, 255, 1) !important;
+  border-radius: 0 0 10px 10px !important;
+}
+
+/* Option CKEditor placeholder */
+.option-editor .ck.ck-editor__editable.ck-placeholder::before {
+  color: rgba(0, 0, 0, 0.35) !important;
+  font-style: italic !important;
+}
+
+/* Option CKEditor content */
+.option-editor .ck-content {
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  overflow-x: hidden !important;
+}
+
+.option-editor .ck-content p {
+  margin: 0 !important;
+  color: #000000 !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.option-editor .ck-content strong {
+  font-weight: 700 !important;
+  color: #000000 !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.option-editor .ck-content em {
+  font-style: italic !important;
+  color: #000000 !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.option-editor .ck-content u {
+  text-decoration: underline !important;
+  color: #000000 !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.option-editor .ck-content a {
+  color: #1890ff !important;
+  text-decoration: underline !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Option editor scrollbar */
+.option-editor .ck.ck-editor__main > .ck-editor__editable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.option-editor .ck.ck-editor__main > .ck-editor__editable::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.option-editor .ck.ck-editor__main > .ck-editor__editable::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+}
+
+.option-editor .ck.ck-editor__main > .ck-editor__editable::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* ===============================================
+   FILL BLANK EDITOR FORMATTING STYLES
+   =============================================== */
+
+/* Ensure formatted text displays correctly in contentEditable */
+[contenteditable] b,
+[contenteditable] strong {
+  font-weight: 700 !important;
+}
+
+[contenteditable] i,
+[contenteditable] em {
+  font-style: italic !important;
+}
+
+[contenteditable] u {
+  text-decoration: underline !important;
+}
+
+[contenteditable] a {
+  color: #1890ff !important;
+  text-decoration: underline !important;
+  cursor: pointer;
+}
+
+[contenteditable] a:hover {
+  color: #40a9ff !important;
+}
+
+/* Headings */
+[contenteditable] h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0.67em 0;
+  line-height: 1.2;
+}
+
+[contenteditable] h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0.75em 0;
+  line-height: 1.3;
+}
+
+[contenteditable] h3 {
+  font-size: 1.17em;
+  font-weight: 600;
+  margin: 0.83em 0;
+  line-height: 1.4;
+}
+
+[contenteditable] p {
+  margin: 0.5em 0;
+}
+
+/* Lists */
+[contenteditable] ul,
+[contenteditable] ol {
+  padding-left: 2em;
+  margin: 0.5em 0;
+}
+
+[contenteditable] ul li,
+[contenteditable] ol li {
+  margin: 0.3em 0;
+}
+
+[contenteditable] ul {
+  list-style-type: disc;
+}
+
+[contenteditable] ol {
+  list-style-type: decimal;
+}
+
+/* Tables */
+[contenteditable] table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  background: white;
+  border: 1px solid #000000;
+  table-layout: fixed;
+}
+
+[contenteditable] table td,
+[contenteditable] table th {
+  border: 1px solid #000000;
+  padding: 8px;
+  min-width: 50px;
+  max-width: 200px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+
+[contenteditable] table th {
+  background: rgba(24, 144, 255, 0.1);
+  font-weight: 600;
+  text-align: left;
+}
+
+[contenteditable] table td:focus,
+[contenteditable] table th:focus {
+  outline: 2px solid rgba(24, 144, 255, 0.5);
+  outline-offset: -2px;
+}
+
+/* Images */
+[contenteditable] img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 10px 0;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+[contenteditable] img:hover {
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.3);
+}
+
+[contenteditable] img[data-image-id] {
+  border: 2px solid transparent;
+}
+
+[contenteditable] img[data-image-id]:focus {
+  border: 2px solid #1890ff;
+  outline: none;
+}
+
+/* Image wrapper with resize handles */
+[contenteditable] .image-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin: 10px 0;
+  user-select: none;
+}
+
+[contenteditable] .image-wrapper img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+[contenteditable] .image-wrapper:hover {
+  outline: 2px solid rgba(24, 144, 255, 0.3);
+  outline-offset: 2px;
+}
+
+/* Resize handles */
+.resize-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #1890ff;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  z-index: 1000;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.image-wrapper:hover .resize-handle {
+  opacity: 1;
+}
+
+.resize-handle:hover {
+  transform: scale(1.3);
+  background: #40a9ff;
+}
+
+.resize-handle-nw {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+
+.resize-handle-ne {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.resize-handle-sw {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+.resize-handle-se {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+/* Toolbar button hover effects */
+.ant-btn:hover {
+  opacity: 0.8;
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+.ant-btn:active {
+  transform: translateY(0);
+}
+
+/* Dropdown menu styling for FillBlankModal */
+.ant-dropdown-menu {
+  background: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
+  padding: 4px !important;
+}
+
+.ant-dropdown-menu-item {
+  color: #000000 !important;
+  transition: all 0.2s ease !important;
+}
+
+.ant-dropdown-menu-item:hover {
+  background: rgba(24, 144, 255, 0.1) !important;
+  color: #1890ff !important;
+}
+
+.ant-dropdown-menu-item span {
+  color: #000000 !important;
+}
+
+/* ===============================================
+   CUSTOM SCROLLBAR STYLING
+   =============================================== */
+
+/* Custom scrollbar for contenteditable editor */
+[contenteditable] {
+  scrollbar-width: thin;
+  scrollbar-color: #1890ff rgba(24, 144, 255, 0.1);
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+[contenteditable]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[contenteditable]::-webkit-scrollbar-track {
+  background: rgba(24, 144, 255, 0.05);
+  border-radius: 10px;
+}
+
+[contenteditable]::-webkit-scrollbar-thumb {
+  background: rgba(24, 144, 255, 0.4);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+[contenteditable]::-webkit-scrollbar-thumb:hover {
+  background: #1890ff;
+}
+
+[contenteditable]::-webkit-scrollbar-thumb:active {
+  background: #0c6dcc;
+}
+
+/* Always show scrollbar when content is scrollable */
+[contenteditable]::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* ===============================================
+   BLANK POPUP STYLING
+   =============================================== */
+
+.blank-popup-fade-in {
+  animation: fadeIn 0.2s ease;
+}
+
+/* ===============================================
+   RESPONSIVE ADJUSTMENTS
+   =============================================== */
+
+@media (max-width: 1400px) {
+  .options-grid {
+    grid-template-columns: repeat(1, 1fr) !important;
+  }
+}

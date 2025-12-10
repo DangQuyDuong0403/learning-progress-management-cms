@@ -1,0 +1,1355 @@
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Button,
+  Table,
+  Space,
+  Input,
+  Select,
+  Modal,
+  Form,
+  Upload,
+  Typography,
+} from "antd";
+import {
+  PlusOutlined,
+  SearchOutlined,
+  DeleteOutlined,
+  FilterOutlined,
+} from "@ant-design/icons";
+import ThemedLayoutWithSidebar from "../../../../component/ThemedLayout";
+import ThemedLayoutNoSidebar from "../../../../component/teacherlayout/ThemedLayout";
+import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
+import "./ClassTeacher.css";
+import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useSelector } from "react-redux";
+import { spaceToast } from "../../../../component/SpaceToastify";
+import { useTheme } from "../../../../contexts/ThemeContext";
+import { useClassMenu } from "../../../../contexts/ClassMenuContext";
+import classManagementApi from "../../../../apis/backend/classManagement";
+import teacherManagementApi from "../../../../apis/backend/teacherManagement";
+import usePageTitle from "../../../../hooks/usePageTitle";
+
+const { Option } = Select;
+const { Title } = Typography;
+
+const ClassTeachers = () => {
+  const { t } = useTranslation();
+  const { id } = useParams();
+  const { theme } = useTheme();
+  const { user } = useSelector((state) => state.auth);
+  const { enterClassMenu, exitClassMenu, classData: classMenuData, isViewOnly, updateClassStatus } = useClassMenu();
+  
+  // Prefer backend error message if provided
+  const getBackendErrorMessage = (error, defaultMessage) => (
+    error?.response?.data?.error ||
+    error?.response?.data?.message ||
+    error?.message ||
+    defaultMessage
+  );
+
+  // Deduplicate identical error toasts within a short window
+  const lastErrorRef = useRef({ message: null, time: 0 });
+  const showErrorToast = useCallback((error, defaultMessage) => {
+    const message = getBackendErrorMessage(error, defaultMessage);
+    const now = Date.now();
+    if (lastErrorRef.current.message === message && (now - lastErrorRef.current.time) < 1500) {
+      return;
+    }
+    lastErrorRef.current = { message, time: now };
+    spaceToast.error(message);
+  }, []);
+
+  // Determine which layout to use based on user role
+  const userRole = user?.role?.toLowerCase();
+  const ThemedLayout = (userRole === 'teacher' || userRole === 'teaching_assistant') 
+    ? ThemedLayoutNoSidebar 
+    : ThemedLayoutWithSidebar;
+  
+  // Set page title
+  usePageTitle('Class Teachers');
+  
+  const [loading, setLoading] = useState(false);
+  const [teachers, setTeachers] = useState([]);
+  const [classData, setClassData] = useState(null);
+  const isClassFinished = isViewOnly || classMenuData?.status === 'FINISHED' || classData?.status === 'FINISHED';
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState(["ACTIVE"]); // Changed to array to support multiple statuses
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [filterDropdown, setFilterDropdown] = useState({
+    visible: false,
+    selectedStatuses: [],
+  });
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  
+  // Sort state
+  const [sortConfig, setSortConfig] = useState({
+    sortBy: 'joinedAt',
+    sortDir: 'desc',
+  });
+  const [form] = Form.useForm();
+  // Watch selectedTeacher để trigger re-render khi giá trị thay đổi
+  const selectedTeacherId = Form.useWatch('selectedTeacher', form);
+  // Watch selectedTeachingAssistants để trigger re-render khi giá trị thay đổi
+  const selectedTeachingAssistants = Form.useWatch('selectedTeachingAssistants', form) || [];
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [teacherToDelete, setTeacherToDelete] = useState(null);
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  const [fileList, setFileList] = useState([]);
+  
+  // Available staff (teachers & TAs) state for Add modal with infinite scroll
+  const [availableStaff, setAvailableStaff] = useState([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false); // overall loading for dropdown
+  const [staffSearchLoading, setStaffSearchLoading] = useState(false);
+  const [staffLoadingMore, setStaffLoadingMore] = useState(false);
+  const [staffSearchText, setStaffSearchText] = useState('');
+  const [staffPagination, setStaffPagination] = useState({
+    page: 0,
+    size: 100,
+    total: 0,
+    hasMore: true,
+    currentLoaded: 0,
+  });
+  const [buttonLoading, setButtonLoading] = useState({
+    add: false,
+    delete: false,
+    import: false,
+  });
+  
+  // Refs for click outside detection
+  const filterContainerRef = useRef(null);
+
+  // Status options for filter
+  const statusOptions = [
+    { key: "ACTIVE", label: t('classTeachers.active') },
+    { key: "INACTIVE", label: t('classTeachers.inactive') },
+  ];
+
+  // Handle click outside to close filter dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdown.visible && filterContainerRef.current) {
+        // Check if click is outside the filter container
+        if (!filterContainerRef.current.contains(event.target)) {
+          setFilterDropdown(prev => ({
+            ...prev,
+            visible: false,
+          }));
+        }
+      }
+    };
+
+    // Add event listener when dropdown is visible
+    if (filterDropdown.visible) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterDropdown.visible]);
+
+  // Handle filter dropdown toggle
+  const handleFilterToggle = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: !prev.visible,
+      selectedStatuses: prev.visible ? prev.selectedStatuses : (Array.isArray(statusFilter) ? statusFilter : [statusFilter]).filter(s => s !== 'all'),
+    }));
+  };
+
+  // Handle filter submission
+  const handleFilterSubmit = () => {
+    if (filterDropdown.selectedStatuses.length > 0) {
+      setStatusFilter(filterDropdown.selectedStatuses); // Save all selected statuses as array
+    } else {
+      setStatusFilter(['ACTIVE']); // Default to ACTIVE as array
+    }
+    setFilterDropdown(prev => ({
+      ...prev,
+      visible: false,
+    }));
+  };
+
+  // Handle filter reset
+  const handleFilterReset = () => {
+    setFilterDropdown(prev => ({
+      ...prev,
+      selectedStatuses: [],
+    }));
+  };
+
+  const fetchClassData = useCallback(async () => {
+    try {
+      const response = await classManagementApi.getClassDetail(id);
+      const data = response?.data?.data ?? response?.data ?? null;
+      if (data) {
+        const mapped = {
+          id: data.id ?? id,
+          name:
+            data.name ??
+            data.className ??
+            data.classname ??
+            data.class_name ??
+            data.title ??
+            data.classTitle ??
+            '',
+          status: data.status ?? data.classStatus ?? null,
+        };
+        setClassData(mapped);
+        if (mapped.status) {
+          updateClassStatus(mapped.status);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching class data:', error);
+    showErrorToast(error, t('classTeachers.loadingClassInfo'));
+    }
+  }, [id, t, showErrorToast, updateClassStatus]);
+
+  const fetchTeachers = useCallback(async (params = {}) => {
+    try {
+      const apiParams = {
+        page: params.page !== undefined ? params.page : 0,
+        size: params.size !== undefined ? params.size : 10,
+        text: params.text !== undefined ? params.text : '',
+        status: params.status !== undefined ? params.status : ['ACTIVE'], // Default to array
+        sortBy: params.sortBy !== undefined ? params.sortBy : 'joinedAt',
+        sortDir: params.sortDir !== undefined ? params.sortDir : 'desc',
+      };
+      
+      const response = await classManagementApi.getClassTeachers(id, apiParams);
+      
+      if (response.success) {
+        setTeachers(response.data || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.totalElements || 0,
+          current: (response.page || 0) + 1,
+        }));
+      } else {
+        spaceToast.error(response.message || t('classTeachers.loadingTeachers'));
+        setTeachers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+    showErrorToast(error, t('classTeachers.loadingTeachers'));
+      setTeachers([]);
+    }
+  }, [id, t, showErrorToast]);
+
+  // Fetch available staff (teachers & teaching assistants) for adding to class
+  const fetchAvailableTeachers = useCallback(async (searchText = '', page = 0, append = false) => {
+    try {
+      if (append) {
+        setStaffLoadingMore(true);
+      } else {
+        setStaffSearchLoading(true);
+        setLoadingTeachers(true);
+      }
+
+      // Small delay when loading more items to avoid rapid requests
+      if (append) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
+      const params = {
+        page,
+        size: staffPagination.size,
+        text: searchText,
+        // Chỉ lấy ACTIVE, không lấy PENDING
+        status: ['ACTIVE'],
+        // Fetch cả TEACHER và TEACHING_ASSISTANT,
+        // dropdown Teacher sẽ lọc lại chỉ TEACHER,
+        // dropdown Teaching Assistant sẽ dùng cả TEACHER + TEACHING_ASSISTANT
+        roleName: ['TEACHER', 'TEACHING_ASSISTANT'],
+        sortBy: 'createdAt',
+        sortDir: 'asc',
+      };
+
+      const response = await teacherManagementApi.getTeachers(params);
+
+      if (!response || !response.success) {
+        if (!append) {
+          setAvailableStaff([]);
+        }
+        return;
+      }
+
+      // Normalize response structure
+      let allStaff = [];
+      let totalElements = 0;
+      let responsePage = page ?? 0;
+      let responseSize = staffPagination.size;
+
+      if (Array.isArray(response.data)) {
+        allStaff = response.data;
+        totalElements = response.totalElements || 0;
+        if (response.page !== undefined) responsePage = response.page;
+        if (response.size !== undefined) responseSize = response.size;
+      } else if (Array.isArray(response)) {
+        allStaff = response;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        allStaff = response.data.data;
+        totalElements = response.data.totalElements || 0;
+        if (response.data.page !== undefined) responsePage = response.data.page;
+        if (response.data.size !== undefined) responseSize = response.data.size;
+      }
+
+      const mappedStaff = allStaff.map((staff) => {
+        const userId = staff.userId || staff.id;
+        return {
+          ...staff,
+          id: userId,
+          userId,
+        };
+      });
+
+      if (append) {
+        // Append unique staff by userId
+        setAvailableStaff((prev) => {
+          const existingIds = new Set(prev.map((s) => s.userId));
+          const uniqueNew = mappedStaff.filter((s) => !existingIds.has(s.userId));
+          return [...prev, ...uniqueNew];
+        });
+      } else {
+        setAvailableStaff(mappedStaff);
+      }
+
+      setStaffPagination((prev) => {
+        const currentLoaded = append ? prev.currentLoaded + mappedStaff.length : mappedStaff.length;
+        const pageIndex = responsePage ?? page ?? 0;
+        const pageSize = responseSize ?? prev.size;
+        const hasMore = totalElements > 0 && (pageIndex + 1) * pageSize < totalElements;
+
+        return {
+          ...prev,
+          page: pageIndex,
+          size: pageSize,
+          total: totalElements,
+          hasMore,
+          currentLoaded,
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching available teachers:', error);
+      showErrorToast(error, t('classTeachers.loadingTeachers'));
+      if (!append) {
+        setAvailableStaff([]);
+      }
+    } finally {
+      setStaffSearchLoading(false);
+      setStaffLoadingMore(false);
+      setLoadingTeachers(false);
+    }
+  }, [showErrorToast, t, staffPagination.size]);
+
+  // Initial data loading
+  useEffect(() => {
+    fetchClassData();
+  }, [fetchClassData]);
+
+  // Enter class menu mode (single effect to avoid loops)
+  useEffect(() => {
+    if (!id) return;
+    const payload = classData ? {
+      id: classData.id,
+      name: classData.name,
+      description: classData.name,
+      status: classData.status,
+    } : { id };
+    enterClassMenu(payload);
+    return () => exitClassMenu();
+  }, [id, classData, enterClassMenu, exitClassMenu]);
+
+  // Handle search and filter changes with debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const apiParams = {
+          page: 0,
+          size: pagination.pageSize,
+          text: searchText,
+          status: statusFilter,
+          sortBy: sortConfig.sortBy,
+          sortDir: sortConfig.sortDir,
+        };
+        
+        const response = await classManagementApi.getClassTeachers(id, apiParams);
+        
+        if (response.success) {
+          setTeachers(response.data || []);
+          setPagination(prev => ({
+            ...prev,
+            total: response.totalElements || 0,
+            current: 1,
+          }));
+        } else {
+          spaceToast.error(response.message || t('classTeachers.loadingTeachers'));
+          setTeachers([]);
+        }
+      } catch (error) {
+        console.error('Error fetching teachers:', error);
+        showErrorToast(error, t('classTeachers.loadingTeachers'));
+        setTeachers([]);
+      } finally {
+        setLoading(false);
+      }
+    }, searchText ? 1000 : 0);
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchText, statusFilter, sortConfig.sortBy, sortConfig.sortDir, pagination.pageSize, id, t, showErrorToast]);
+
+  const handleAddTeacher = () => {
+    if (isClassFinished) {
+      spaceToast.info(t('classDetail.viewOnly') || 'Class has finished. View-only mode.');
+      return;
+    }
+    setButtonLoading(prev => ({ ...prev, add: true }));
+    setTimeout(() => {
+      form.resetFields();
+      setIsModalVisible(true);
+      // Reset pagination cho danh sách staff.
+      // Dùng size 100 để mỗi lần call lấy <=100 bản ghi
+      setStaffPagination({
+        page: 0,
+        size: 100,
+        total: 0,
+        hasMore: true,
+        currentLoaded: 0,
+      });
+      setAvailableStaff([]);
+      fetchAvailableTeachers('', 0, false); // Initial load for dropdowns
+      setButtonLoading(prev => ({ ...prev, add: false }));
+    }, 100);
+  };
+
+  const handleImportModalOk = async () => {
+    if (fileList.length === 0) {
+      spaceToast.warning(t('classTeachers.selectFileToImportError'));
+      return;
+    }
+    
+    if (buttonLoading.import) {
+      return; // Prevent multiple clicks
+    }
+    
+    setButtonLoading(prev => ({ ...prev, import: true }));
+    
+    try {
+      // Simulate file processing - replace with actual API call when ready
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API delay
+      
+      spaceToast.success(t('classTeachers.importSuccess'));
+      setIsImportModalVisible(false);
+      setFileList([]);
+      
+      // Refresh the teachers list after import
+      fetchTeachers();
+    } catch (error) {
+      console.error('Error importing teachers:', error);
+      showErrorToast(error, t('classTeachers.importError'));
+    } finally {
+      setButtonLoading(prev => ({ ...prev, import: false }));
+    }
+  };
+
+  const handleImportModalCancel = () => {
+    setIsImportModalVisible(false);
+    setFileList([]);
+  };
+
+  // Search handlers for staff dropdowns (teacher & TA)
+  const handleStaffSearch = (value) => {
+    setStaffSearchText(value);
+
+    if (lastErrorRef.current?.searchTimeout) {
+      clearTimeout(lastErrorRef.current.searchTimeout);
+    }
+
+    const timeoutId = setTimeout(() => {
+      setStaffPagination({
+        page: 0,
+        size: 100,
+        total: 0,
+        hasMore: true,
+        currentLoaded: 0,
+      });
+
+      if (value.length >= 2) {
+        fetchAvailableTeachers(value, 0, false);
+      } else if (value.length === 0) {
+        fetchAvailableTeachers('', 0, false);
+      }
+    }, 500);
+
+    lastErrorRef.current.searchTimeout = timeoutId;
+  };
+
+  const handleFileChange = ({ fileList: newFileList }) => {
+    setFileList(newFileList);
+  };
+
+  const handleDeleteTeacher = (teacher) => {
+    if (isClassFinished) {
+      spaceToast.info(t('classDetail.viewOnly') || 'Class has finished. View-only mode.');
+      return;
+    }
+    setButtonLoading(prev => ({ ...prev, delete: true }));
+    setTimeout(() => {
+      setTeacherToDelete(teacher);
+      setIsDeleteModalVisible(true);
+      setButtonLoading(prev => ({ ...prev, delete: false }));
+    }, 100);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (teacherToDelete && !buttonLoading.delete) {
+      if (isClassFinished) {
+        spaceToast.info(t('classDetail.viewOnly') || 'Class has finished. View-only mode.');
+        setIsDeleteModalVisible(false);
+        setTeacherToDelete(null);
+        return;
+      }
+      
+      setButtonLoading(prev => ({ ...prev, delete: true }));
+      
+      try {
+        const response = await classManagementApi.removeTeacherFromClass(id, teacherToDelete.userId);
+        
+        if (response.success) {
+          const isTeacher = teacherToDelete.role === 'teacher' || teacherToDelete.roleInClass === 'TEACHER' || teacherToDelete.roleName === 'TEACHER';
+          const teacherName = teacherToDelete.fullName || teacherToDelete.userName || teacherToDelete.name;
+          spaceToast.success(`${t('classTeachers.deleteSuccess')} ${isTeacher ? t('classTeachers.teacher') : t('classTeachers.teachingAssistant')} "${teacherName}"`);
+          
+          // Refresh the teachers list
+          fetchTeachers();
+        } else {
+          spaceToast.error(response.message || t('classTeachers.deleteError'));
+        }
+      } catch (error) {
+        console.error('Error removing teacher:', error);
+      showErrorToast(error, t('classTeachers.deleteError'));
+      } finally {
+        setButtonLoading(prev => ({ ...prev, delete: false }));
+        setIsDeleteModalVisible(false);
+        setTeacherToDelete(null);
+      }
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteModalVisible(false);
+    setTeacherToDelete(null);
+  };
+
+  const handleModalOk = async () => {
+    if (buttonLoading.add || isClassFinished) {
+      if (isClassFinished) {
+        spaceToast.info(t('classDetail.viewOnly') || 'Class has finished. View-only mode.');
+      }
+      return; // Prevent multiple clicks
+    }
+    
+    setButtonLoading(prev => ({ ...prev, add: true }));
+    try {
+      const values = await form.validateFields();
+
+      // Prepare teachers data according to API spec
+      const teachersToAdd = [];
+      
+      // Add selected teacher
+      if (values.selectedTeacher) {
+        teachersToAdd.push({
+          userId: values.selectedTeacher,
+          roleInClass: "TEACHER"
+        });
+      }
+      
+      // Add selected teaching assistants
+      if (values.selectedTeachingAssistants && values.selectedTeachingAssistants.length > 0) {
+        values.selectedTeachingAssistants.forEach(taId => {
+          teachersToAdd.push({
+            userId: taId,
+            roleInClass: "TEACHING_ASSISTANT"
+          });
+        });
+      }
+      
+      if (teachersToAdd.length === 0) {
+        spaceToast.warning(t('classTeachers.selectAtLeastOneTeacher'));
+        return;
+      }
+      
+      // Call API to add teachers
+      const response = await classManagementApi.addTeacherToClass(id, {
+        teachers: teachersToAdd
+      });
+      
+      
+      if (response.success) {
+        spaceToast.success(t('classTeachers.addSuccess'));
+        setIsModalVisible(false);
+        form.resetFields();
+        
+        // Refresh the teachers list
+        fetchTeachers();
+      } else {
+        spaceToast.error(response.message || t('classTeachers.addError'));
+      }
+    } catch (error) {
+      console.error("Error adding teachers:", error);
+      showErrorToast(error, t('classTeachers.addError'));
+    } finally {
+      setButtonLoading(prev => ({ ...prev, add: false }));
+    }
+  };
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+    form.resetFields();
+  };
+
+  // Infinite scroll for staff dropdowns (teacher & TA) similar to ClassStudent modal
+  useEffect(() => {
+    if (!isModalVisible) return;
+
+    let scrollableElement = null;
+    let observer = null;
+    let scrollHandler = null;
+
+    const findScrollableElement = () => {
+      const selectors = [
+        '.rc-virtual-list-holder',
+        '.rc-select-list',
+        '.ant-select-dropdown .rc-select-list',
+        '.ant-select-dropdown .rc-virtual-list-holder',
+        '.ant-select-dropdown .rc-select-dropdown',
+        '[class*="rc-select-list"]',
+        '[class*="virtual-list-holder"]',
+      ];
+
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element && element.scrollHeight > element.clientHeight) {
+          return element;
+        }
+      }
+      return null;
+    };
+
+    const attachScrollListener = () => {
+      scrollableElement = findScrollableElement();
+      if (!scrollableElement) return false;
+
+      scrollHandler = (e) => {
+        const target = e.target;
+        const scrollTop = target.scrollTop;
+        const scrollHeight = target.scrollHeight;
+        const clientHeight = target.clientHeight;
+
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
+
+        if (isNearBottom) {
+          if (staffPagination.hasMore && !staffLoadingMore && !staffSearchLoading) {
+            const nextPage = staffPagination.page + 1;
+            fetchAvailableTeachers(staffSearchText, nextPage, true);
+          }
+        }
+      };
+
+      scrollableElement.addEventListener('scroll', scrollHandler, { passive: true });
+      return true;
+    };
+
+    if (!attachScrollListener()) {
+      observer = new MutationObserver(() => {
+        if (!scrollableElement && attachScrollListener()) {
+          observer.disconnect();
+        }
+      });
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    const timer = setTimeout(() => {
+      if (!scrollableElement) {
+        attachScrollListener();
+      }
+    }, 500);
+
+    return () => {
+      if (scrollableElement && scrollHandler) {
+        scrollableElement.removeEventListener('scroll', scrollHandler);
+      }
+      if (observer) {
+        observer.disconnect();
+      }
+      clearTimeout(timer);
+    };
+  }, [isModalVisible, staffPagination.hasMore, staffPagination.page, staffLoadingMore, staffSearchLoading, staffSearchText, fetchAvailableTeachers]);
+
+
+  // Handle table changes (pagination, sorting)
+  const handleTableChange = (paginationInfo, filters, sorter) => {
+    // Handle pagination
+    if (paginationInfo.current !== pagination.current || paginationInfo.pageSize !== pagination.pageSize) {
+      setPagination(prev => ({
+        ...prev,
+        current: paginationInfo.current,
+        pageSize: paginationInfo.pageSize,
+      }));
+    }
+    
+    // Handle sorting
+    if (sorter && sorter.field) {
+      const newSortConfig = {
+        sortBy: sorter.field,
+        sortDir: sorter.order === 'ascend' ? 'asc' : 'desc',
+      };
+      setSortConfig(newSortConfig);
+    }
+  };
+
+  // Define all columns
+  const allColumns = [
+    {
+      title: t('classTeachers.no'),
+      key: 'no',
+      width: 60,
+      render: (_, record, index) => {
+        const no = (pagination.current - 1) * pagination.pageSize + index + 1;
+        return <span style={{ fontSize: "20px", fontWeight: 500 }}>{no}</span>;
+      },
+    },
+    {
+      title: t('classTeachers.username'),
+      dataIndex: "userName",
+      key: "userName",
+      render: (text) => (
+        <div className="teacher-name-text" style={{ fontSize: "20px" }}>{text}</div>
+      ),
+    },
+    {
+      title: t('classTeachers.fullName'),
+      dataIndex: "fullName",
+      key: "fullName",
+      render: (text) => (
+        <div className="teacher-name-text" style={{ fontSize: "20px" }}>
+          {text || '-'}
+        </div>
+      ),
+    },
+    {
+      title: t('classTeachers.email'),
+      dataIndex: "email",
+      key: "email",
+      render: (text) => (
+        <span style={{ fontSize: "20px" }}>{text || 'N/A'}</span>
+      ),
+    },
+    {
+      title: t('classTeachers.roleInClass'),
+      dataIndex: "roleInClass",
+      key: "roleInClass",
+      render: (role) => (
+        <span style={{ fontSize: "20px" }}>
+          {role === 'TEACHER' ? t('classTeachers.teacher') : role === 'TEACHING_ASSISTANT' ? t('classTeachers.teachingAssistant') : role || '-'}
+        </span>
+      ),
+    },
+    {
+      title: t('classTeachers.status'),
+      dataIndex: "status",
+      key: "status",
+      render: (status) => (
+        <span style={{ fontSize: "20px" }}>
+          {status === 'ACTIVE' ? t('classTeachers.active') : status === 'INACTIVE' ? t('classTeachers.inactive') : t('classTeachers.removed')}
+        </span>
+      ),
+    },
+    {
+      title: t('classTeachers.actions'),
+      key: "actions",
+      width: 150,
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="text"
+            icon={<DeleteOutlined style={{ fontSize: '18px' }} />}
+            onClick={() => handleDeleteTeacher(record)}
+            style={{ color: "#ff4d4f" }}
+            title={t('classTeachers.delete')}
+            loading={buttonLoading.delete}
+          />
+        </Space>
+      ),
+    },
+  ];
+
+  // Filter columns based on user role - hide Actions column for TEACHER and TEACHING_ASSISTANT
+  const columns = (userRole === 'teacher' || userRole === 'teaching_assistant' || isClassFinished)
+    ? allColumns.filter(col => col.key !== 'actions')
+    : allColumns;
+
+  if (loading) {
+    return (
+      <ThemedLayout>
+        <div className={`main-content-panel ${theme}-main-panel`}>
+          <LoadingWithEffect loading={true} message={t('classTeachers.loadingClassInfo')} />
+        </div>
+      </ThemedLayout>
+    );
+  }
+
+  return (
+    <ThemedLayout>
+        {/* Main Content Panel */}
+        <div className={`main-content-panel ${theme}-main-panel`}>
+          {/* Page Title */}
+          <div className="page-title-container">
+            <Typography.Title 
+              level={1} 
+              className="page-title"
+            >
+              {t('classTeachers.teacherManagement')} <span className="student-count">({pagination.total})</span>
+            </Typography.Title>
+          </div>
+
+          {/* Search and Action Section */}
+          <div className="search-action-section" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px' }}>
+            <Input
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className={`search-input ${theme}-search-input`}
+              style={{ flex: '1', minWidth: '250px', maxWidth: '400px', width: '350px', height: '40px', fontSize: '16px' }}
+              allowClear
+            />
+            <div ref={filterContainerRef} style={{ position: 'relative' }}>
+              <Button 
+                icon={<FilterOutlined />}
+                onClick={handleFilterToggle}
+                className={`filter-button ${theme}-filter-button ${filterDropdown.visible ? 'active' : ''} ${(Array.isArray(statusFilter) ? statusFilter.length !== 1 || statusFilter[0] !== 'ACTIVE' : statusFilter !== 'ACTIVE') ? 'has-filters' : ''}`}
+              >
+                {t('classTeachers.filter')}
+              </Button>
+              
+              {/* Filter Dropdown Panel */}
+              {filterDropdown.visible && (
+                <div className={`filter-dropdown-panel ${theme}-filter-dropdown`}>
+                  <div style={{ padding: '20px' }}>
+                    {/* Status Filter */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <Title level={5} style={{ marginBottom: '12px', fontSize: '16px' }}>
+                        {t('classTeachers.status')}
+                      </Title>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {statusOptions.map(option => (
+                          <Button
+                            key={option.key}
+                            onClick={() => {
+                              const newStatus = filterDropdown.selectedStatuses.includes(option.key)
+                                ? filterDropdown.selectedStatuses.filter(status => status !== option.key)
+                                : [...filterDropdown.selectedStatuses, option.key];
+                              setFilterDropdown(prev => ({ ...prev, selectedStatuses: newStatus }));
+                            }}
+                            className={`filter-option ${filterDropdown.selectedStatuses.includes(option.key) ? 'selected' : ''}`}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      marginTop: '20px',
+                      paddingTop: '16px',
+                      borderTop: '1px solid #f0f0f0'
+                    }}>
+                      <Button
+                        onClick={handleFilterReset}
+                        className="filter-reset-button"
+                      >
+                        {t('classTeachers.reset')}
+                      </Button>
+                      <Button
+                        type="primary"
+                        onClick={handleFilterSubmit}
+                        className="filter-submit-button"
+                      >
+                        {t('classTeachers.viewResults')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Hide Add button for TEACHER and TEACHING_ASSISTANT - they can only view */}
+            {(userRole !== 'teacher' && userRole !== 'teaching_assistant' && !isClassFinished) && (
+              <div className="action-buttons" style={{ marginLeft: 'auto' }}>
+                <Button 
+                  icon={<PlusOutlined />}
+                  className={`create-button ${theme}-create-button`}
+                  onClick={handleAddTeacher}
+                  loading={buttonLoading.add}
+                >
+                  {t('common.addTeacher')}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Table Section */}
+          <div className={`table-section ${theme}-table-section`}>
+            <LoadingWithEffect loading={loading} message={t('classTeachers.loadingTeachers')}>
+              <Table
+                columns={columns}
+                dataSource={teachers}
+                rowKey="userId"
+                loading={loading}
+                pagination={{
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  total: pagination.total,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} of ${total} ${t('classTeachers.teachers')}`,
+                  className: `${theme}-pagination`,
+                  pageSizeOptions: ['10', '20', '50', '100'],
+                }}
+                onChange={handleTableChange}
+                scroll={{ x: 800 }}
+                className={`teacher-table ${theme}-teacher-table`}
+              />
+            </LoadingWithEffect>
+          </div>
+        </div>
+
+        {/* Add Staff Modal */}
+        <Modal
+          title={
+            <div style={{ 
+              fontSize: '28px', 
+              fontWeight: '600', 
+              color: 'rgb(24, 144, 255)',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              {t('classTeachers.addMembersToClass')}
+            </div>
+          }
+          open={isModalVisible}
+          onOk={handleModalOk}
+          onCancel={handleModalCancel}
+          width={600}
+          okText={t('classTeachers.add')}
+          cancelText={t('common.cancel')}
+          okButtonProps={{
+            loading: buttonLoading.add,
+            disabled: buttonLoading.add,
+            style: {
+              background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+              borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+              color: theme === 'sun' ? '#000' : '#fff',
+              borderRadius: '6px',
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
+            },
+          }}
+          cancelButtonProps={{
+            style: {
+              height: '32px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '4px 15px',
+              width: '100px'
+            },
+          }}
+        >
+          {/* Status Info */}
+          <div style={{ 
+            marginBottom: '16px', 
+            padding: '12px', 
+            backgroundColor: '#f6f8fa', 
+            borderRadius: '6px',
+            border: '1px solid #e1e4e8'
+          }}>
+            <div style={{ fontSize: '14px', color: '#24292e' }}>
+              <strong>{t('classTeachers.currentClassStatus')}</strong>
+            </div>
+          
+            <div style={{ fontSize: '13px', color: '#586069', marginTop: '4px' }}>
+              • {t('classTeachers.teacher')}: {(() => {
+                // Simple logic: if there are teachers in the class, show assigned
+                if (teachers.length > 0) {
+                  // Try to find teacher by role first, then by username pattern, then just take first one
+                  const teacher = teachers.find(t => 
+                    t.role === "teacher" || 
+                    t.roleInClass === "TEACHER" || 
+                    t.roleName === "TEACHER"
+                  ) || teachers.find(t => t.userName?.startsWith('TC')) || teachers[0];
+                  
+                  return `${t('classTeachers.assigned')} (${teacher?.fullName || teacher?.userName || 'Unknown'})`;
+                } else {
+                  return t('classTeachers.notAssigned');
+                }
+              })()}
+            </div>
+            <div style={{ fontSize: '13px', color: '#586069' }}>
+              • {t('classTeachers.teachingAssistant')}: {(() => {
+                // Count teaching assistants (excluding the main teacher)
+                const tas = teachers.filter(t => 
+                  t.role === "teaching_assistant" || 
+                  t.roleInClass === "TEACHING_ASSISTANT" || 
+                  t.roleName === "TEACHING_ASSISTANT" ||
+                  (t.userName?.startsWith('TA') && teachers.length > 1)
+                );
+                return `${tas.length} ${tas.length === 1 ? t('classTeachers.person') : t('classTeachers.people')}`;
+              })()}
+            </div>
+            <div style={{ fontSize: '13px', color: '#586069' }}>
+              • {t('classTeachers.total')} {teachers.length} {teachers.length === 1 ? t('classTeachers.member') : t('classTeachers.members')}
+            </div>
+          </div>
+
+          <Form
+            form={form}
+            layout="vertical"
+          >
+            <Form.Item
+              label={t('classTeachers.teacherCanBeBoth')}
+              name="selectedTeacher"
+            >
+              <Select 
+                placeholder={t('classTeachers.selectTeacher')}
+                style={{
+                  fontSize: "15px",
+                }}
+                allowClear
+                loading={loadingTeachers}
+                showSearch
+                filterOption={false} // server-side search
+                onSearch={handleStaffSearch}
+                onPopupScroll={(e) => {
+                  const target = e.target || e.currentTarget;
+                  if (!target) return;
+
+                  const scrollTop = target.scrollTop;
+                  const scrollHeight = target.scrollHeight;
+                  const clientHeight = target.clientHeight;
+                  const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
+
+                  if (isNearBottom) {
+                    if (staffPagination.hasMore && !staffLoadingMore && !staffSearchLoading) {
+                      const nextPage = staffPagination.page + 1;
+                      fetchAvailableTeachers(staffSearchText, nextPage, true);
+                    }
+                  }
+                }}
+              >
+                {availableStaff
+                  .filter(teacher =>
+                    teacher.roleName === 'TEACHER' ||
+                    teacher.role === 'teacher' ||
+                    teacher.roleCode === 'TEACHER'
+                  )
+                  .map((teacher, index) => {
+                    const isSelectedAsTA = selectedTeachingAssistants.includes(teacher.id);
+                    return (
+                      <Option
+                        key={teacher.id}
+                        value={teacher.id}
+                        disabled={isSelectedAsTA}
+                      >
+                        <span style={{ color: isSelectedAsTA ? '#999999' : 'inherit' }}>
+                          {teacher.fullName || teacher.userName} ({teacher.email})
+                        </span>
+                      </Option>
+                    );
+                  })}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              label={t('classTeachers.teachingAssistantsIncludingBoth')}
+              name="selectedTeachingAssistants"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value || value.length === 0) {
+                      return Promise.resolve();
+                    }
+                    if (value.length > 2) {
+                      return Promise.reject(new Error(t('classTeachers.maxTwoTeachingAssistants')));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+            >
+              <Select 
+                mode="multiple"
+                placeholder={t('classTeachers.selectTeachingAssistants')}
+                style={{
+                  fontSize: "15px",
+                }}
+                allowClear
+                loading={loadingTeachers}
+                showSearch
+                maxTagCount={2}
+                onChange={(value) => {
+                  // Limit to maximum 2 teaching assistants
+                  if (value && value.length > 2) {
+                    const limitedValue = value.slice(0, 2);
+                    form.setFieldsValue({ selectedTeachingAssistants: limitedValue });
+                    spaceToast.warning(t('classTeachers.maxTwoTeachingAssistants'));
+                    return;
+                  }
+                }}
+                filterOption={false}
+                onSearch={handleStaffSearch}
+                onPopupScroll={(e) => {
+                  const target = e.target || e.currentTarget;
+                  if (!target) return;
+
+                  const scrollTop = target.scrollTop;
+                  const scrollHeight = target.scrollHeight;
+                  const clientHeight = target.clientHeight;
+                  const isNearBottom = scrollTop + clientHeight >= scrollHeight - 4;
+
+                  if (isNearBottom) {
+                    if (staffPagination.hasMore && !staffLoadingMore && !staffSearchLoading) {
+                      const nextPage = staffPagination.page + 1;
+                      fetchAvailableTeachers(staffSearchText, nextPage, true);
+                    }
+                  }
+                }}
+              >
+                {availableStaff
+                  .filter(ta =>
+                    ta.roleName === 'TEACHER' ||
+                    ta.roleName === 'TEACHING_ASSISTANT' ||
+                    ta.role === 'teacher' ||
+                    ta.role === 'teaching_assistant' ||
+                    ta.roleCode === 'TEACHER' ||
+                    ta.roleCode === 'TEACHING_ASSISTANT'
+                  )
+                  .map((ta, index) => {
+                    const isSameAsSelectedTeacher = selectedTeacherId && ta.id === selectedTeacherId;
+                    return (
+                      <Option
+                        key={ta.id}
+                        value={ta.id}
+                        disabled={isSameAsSelectedTeacher}
+                      >
+                        <span style={{ color: isSameAsSelectedTeacher ? '#999999' : 'inherit' }}>
+                          {ta.fullName || ta.userName} ({ta.email})
+                        </span>
+                      </Option>
+                    );
+                  })}
+              </Select>
+            </Form.Item>
+           </Form>
+         </Modal>
+
+         {/* Delete Confirmation Modal */}
+         <Modal
+           title={
+             <div style={{ 
+               fontSize: '28px', 
+               fontWeight: '600', 
+               color: 'rgb(24, 144, 255)',
+               textAlign: 'center',
+               padding: '10px 0'
+             }}>
+               {t('classTeachers.confirmDelete')}
+             </div>
+           }
+           open={isDeleteModalVisible}
+           onOk={handleConfirmDelete}
+           onCancel={handleCancelDelete}
+           okText={t('common.confirm')}
+           cancelText={t('common.cancel')}
+           width={500}
+           centered
+           bodyStyle={{
+             padding: '30px 40px',
+             fontSize: '16px',
+             lineHeight: '1.6',
+             textAlign: 'center'
+           }}
+           okButtonProps={{
+             loading: buttonLoading.delete,
+             disabled: buttonLoading.delete,
+             style: {
+               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+               color: theme === 'sun' ? '#000' : '#fff',
+               borderRadius: '6px',
+               height: '32px',
+               fontWeight: '500',
+               fontSize: '16px',
+               padding: '4px 15px',
+               width: '100px',
+               transition: 'all 0.3s ease',
+               boxShadow: 'none'
+             }
+           }}
+           cancelButtonProps={{
+             style: {
+               height: '32px',
+               fontWeight: '500',
+               fontSize: '16px',
+               padding: '4px 15px',
+               width: '100px'
+             }
+           }}
+         >
+           <div style={{
+             display: 'flex',
+             flexDirection: 'column',
+             alignItems: 'center',
+             gap: '20px'
+           }}>
+             <div style={{
+               fontSize: '48px',
+               color: '#ff4d4f',
+               marginBottom: '10px'
+             }}>
+               ⚠️
+             </div>
+			<p style={{
+				fontSize: '18px',
+				color: '#333',
+				margin: 0,
+				fontWeight: '500'
+			}}>
+				{teacherToDelete?.role === 'teacher' || teacherToDelete?.roleInClass === 'TEACHER' || teacherToDelete?.roleName === 'TEACHER' ? t('classTeachers.confirmDeleteTeacher') : t('classTeachers.confirmDeleteTA')}
+			</p>
+			{teacherToDelete && (
+				<p style={{
+					fontSize: '20px',
+					color: '#000',
+					margin: 0,
+					fontWeight: '400'
+				}}>
+					<strong>"{teacherToDelete.fullName || teacherToDelete.userName || teacherToDelete.name}"</strong>
+				</p>
+			)}
+           </div>
+         </Modal>
+
+         {/* Import File Modal */}
+         <Modal
+           title={
+             <div
+               style={{
+                 fontSize: '28px',
+                 fontWeight: '600',
+                 color: 'rgb(24, 144, 255)',
+                 textAlign: 'center',
+                 padding: '10px 0',
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 gap: '10px',
+               }}>
+               <PlusOutlined style={{ color: 'rgb(24, 144, 255)' }} />
+               {t('classTeachers.importTeachersList')}
+             </div>
+           }
+           open={isImportModalVisible}
+           onOk={handleImportModalOk}
+           onCancel={handleImportModalCancel}
+           okText={t('classTeachers.import')}
+           cancelText={t('common.cancel')}
+           width={600}
+           centered
+           okButtonProps={{
+             loading: buttonLoading.import,
+             disabled: fileList.length === 0 || buttonLoading.import,
+             style: {
+               background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+               borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+               color: theme === 'sun' ? '#000' : '#fff',
+               borderRadius: '6px',
+               height: '32px',
+               fontWeight: '500',
+               fontSize: '16px',
+               padding: '4px 15px',
+               width: '100px',
+               transition: 'all 0.3s ease',
+               boxShadow: 'none'
+             },
+           }}
+           cancelButtonProps={{
+             style: {
+               height: '32px',
+               fontWeight: '500',
+               fontSize: '16px',
+               padding: '4px 15px',
+               width: '100px'
+             },
+           }}
+         >
+           <div style={{ marginBottom: '16px' }}>
+             <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
+               {t('classTeachers.selectFileToImport')}
+             </p>
+             <p style={{ fontSize: '13px', color: '#999', marginBottom: '16px' }}>
+               {t('classTeachers.fileFormat')}
+             </p>
+           </div>
+           
+           <Upload
+             fileList={fileList}
+             onChange={handleFileChange}
+             beforeUpload={() => false}
+             accept=".xlsx,.xls,.csv"
+             maxCount={1}
+           >
+             <Button icon={<PlusOutlined style={{ fontSize: '18px' }} />} style={{ width: '100%' }}>
+               {t('classTeachers.selectFileToUpload')}
+             </Button>
+           </Upload>
+           
+           {fileList.length > 0 && (
+             <div style={{ 
+               marginTop: '12px', 
+               padding: '8px 12px', 
+               backgroundColor: '#f6f8fa', 
+               borderRadius: '6px',
+               fontSize: '13px',
+               color: '#586069'
+             }}>
+               <strong>{t('classTeachers.selectedFile')}</strong> {fileList[0].name}
+             </div>
+           )}
+         </Modal>
+     </ThemedLayout>
+   );
+ };
+
+export default ClassTeachers;

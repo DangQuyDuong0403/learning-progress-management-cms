@@ -1,0 +1,513 @@
+/* Class Student Styles - Based on StudentList.css */
+
+/* Hide red asterisks from required form fields */
+.ant-form-item-required::before {
+  display: none !important;
+}
+
+/* ===== PANEL HEADER ===== */
+.panel-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24px;
+	gap: 16px;
+}
+
+.search-section {
+	flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.action-buttons {
+	display: flex;
+	gap: 12px;
+}
+
+/* ===== BUTTON STYLES ===== */
+.export-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.create-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+	font-size: 16px;
+	border: 1px solid rgba(170, 139, 249, 0.3);
+	background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+	color: #fff;
+	backdrop-filter: blur(10px);
+	transition: all 0.3s ease;
+}
+
+.export-button:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+}
+
+.create-button:hover {
+	background: linear-gradient(135deg, #ffffff, #aa8bf9, #1d0161);
+	border-color: rgba(170, 139, 249, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(170, 139, 249, 0.4);
+	filter: brightness(1.1);
+}
+
+.import-button {
+	height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+  font-size: 16px;
+	border: 1px solid rgba(82, 196, 26, 0.3);
+	background: rgba(82, 196, 26, 0.1);
+	color: #52c41a;
+	backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.import-button:hover {
+	background: rgba(82, 196, 26, 0.2);
+	border-color: rgba(82, 196, 26, 0.6);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
+}
+
+/* Sun theme button styles */
+.sun-theme .export-button {
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	color: #333;
+}
+
+.sun-theme .export-button:hover {
+	background: rgba(0, 0, 0, 0.1);
+	border-color: rgba(0, 0, 0, 0.3);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sun-theme .import-button {
+	background: rgba(82, 196, 26, 0.1);
+	border: 1px solid rgba(82, 196, 26, 0.3);
+	color: #52c41a;
+}
+
+.sun-theme .import-button:hover {
+	background: rgba(82, 196, 26, 0.2);
+	border-color: rgba(82, 196, 26, 0.6);
+	box-shadow: 0 4px 12px rgba(82, 196, 26, 0.2);
+}
+
+.sun-theme .create-button {
+	background: linear-gradient(135deg, #1890ff, #52c41a);
+	border: 1px solid rgba(24, 144, 255, 0.3);
+	color: #fff;
+}
+
+.sun-theme .create-button:hover {
+	background: linear-gradient(135deg, #40a9ff, #73d13d);
+	border-color: rgba(24, 144, 255, 0.6);
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+/* ===== BACK BUTTON STYLES ===== */
+.back-button {
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.space-theme .back-button {
+  background: linear-gradient(135deg, #B5B0C0, #A79EBB);
+  border: 1px solid #8377A0;
+  color: #000;
+}
+
+.space-theme .back-button:hover {
+  background: linear-gradient(135deg, #ACA5C0, #6D5F8F);
+  border-color: #8377A0;
+  color: #000;
+}
+
+.sun-theme .back-button {
+  background: rgba(164, 207, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #000;
+}
+
+.sun-theme .back-button:hover {
+  background: rgba(148, 191, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #000;
+}
+
+/* ===== FILTER BUTTON STYLES ===== */
+.filter-button {
+  height: 40px;
+	border-radius: 8px;
+	font-weight: 500;
+  font-size: 16px;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	background: rgba(45, 27, 105, 0.8);
+	color: #fff;
+	backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.filter-button .ant-btn {
+	font-size: 16px !important;
+}
+
+.filter-button:hover {
+	background: rgba(77, 208, 255, 0.2);
+	border-color: rgba(77, 208, 255, 0.6);
+  transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+	filter: brightness(1.1);
+}
+
+/* Space theme filter button */
+.space-theme .filter-button {
+	background:rgb(224 217 255 / 90%) ;
+	border: 1px solid rgba(77, 208, 255, 0.3);
+	color: #000;
+}
+
+.space-theme .filter-button:hover {
+	background:rgb(224 217 255 / 100%) ;
+	border-color: rgba(77, 208, 255, 0.6);
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3);
+	filter: brightness(1.1);
+}
+
+/* Sun theme filter button */
+.sun-theme .filter-button {
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	color: #000;
+}
+
+.sun-theme .filter-button:hover {
+	background: rgba(0, 0, 0, 0.1);
+	border-color: rgba(0, 0, 0, 0.3);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== FILTER DROPDOWN PANEL STYLES ===== */
+.filter-dropdown-panel {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	z-index: 1000;
+	min-width: 500px;
+	margin-top: 8px;
+}
+
+/* Space theme filter dropdown */
+.space-theme .filter-dropdown-panel {
+	background: rgb(224 217 255 / 90%) !important;
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(77, 208, 255, 0.2);
+	box-shadow: 0 8px 32px rgba(77, 208, 255, 0.15);
+	color: #000;
+}
+
+/* Sun theme filter dropdown */
+.sun-theme .filter-dropdown-panel {
+	background: #fff;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Filter action buttons */
+.filter-reset-button {
+	height: 40px !important;
+	font-size: 16px !important;
+	font-weight: 500 !important;
+	min-width: 120px !important;
+	border-radius: 8px !important;
+	border: 1px solid #d9d9d9 !important;
+	background: #fff !important;
+	color: #000 !important;
+}
+
+.filter-reset-button:hover {
+	border-color: #40a9ff !important;
+	color: #40a9ff !important;
+	background: #f0f8ff !important;
+}
+
+
+/* Active filter button (dropdown open) */
+.space-theme .filter-button.active {
+	background: rgb(224 217 255 / 100%) !important;
+	border-color: rgba(77, 208, 255, 0.6) !important;
+	color: #000 !important;
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3) !important;
+	transform: translateY(-1px) !important;
+}
+
+.sun-theme .filter-button.active {
+	background: rgba(77, 208, 255, 0.2) !important;
+	border-color: rgba(77, 208, 255, 0.6) !important;
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.3) !important;
+}
+
+/* Filter button with active filters */
+.filter-button.has-filters {
+	background: rgba(77, 208, 255, 0.3) !important;
+	border-color: rgba(77, 208, 255, 0.8) !important;
+	color: #fff !important;
+	font-weight: 600 !important;
+	box-shadow: 0 2px 8px rgba(77, 208, 255, 0.4) !important;
+}
+
+.filter-button.has-filters:hover {
+	background: rgba(77, 208, 255, 0.4) !important;
+	border-color: rgba(77, 208, 255, 1) !important;
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.5) !important;
+	transform: translateY(-1px) !important;
+}
+
+/* Space theme filter button with active filters */
+.space-theme .filter-button.has-filters {
+	background: rgb(200 190 255 / 100%) !important;
+	border-color: rgba(77, 208, 255, 0.8) !important;
+	color: #000 !important;
+	font-weight: 600 !important;
+	box-shadow: 0 2px 8px rgba(77, 208, 255, 0.5) !important;
+	transform: translateY(-1px) !important;
+}
+
+.space-theme .filter-button.has-filters:hover {
+	background: rgb(180 170 255 / 100%) !important;
+	border-color: rgba(77, 208, 255, 1) !important;
+	color: #000 !important;
+	box-shadow: 0 4px 12px rgba(77, 208, 255, 0.6) !important;
+	transform: translateY(-2px) !important;
+}
+
+/* Sun theme filter button with active filters */
+.sun-theme .filter-button.has-filters {
+	background: rgba(24, 144, 255, 0.2) !important;
+	border-color: rgba(24, 144, 255, 0.6) !important;
+	color: #1890ff !important;
+	font-weight: 600 !important;
+	box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3) !important;
+}
+
+.sun-theme .filter-button.has-filters:hover {
+	background: rgba(24, 144, 255, 0.3) !important;
+	border-color: rgba(24, 144, 255, 0.8) !important;
+	color: #1890ff !important;
+	box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4) !important;
+}
+
+/* ===== CLASS TITLE STYLES ===== */
+.class-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
+  transition: all 0.3s ease;
+}
+
+.space-theme .class-title {
+  color: #000;
+}
+
+.sun-theme .class-title {
+  color: #333;
+}
+
+/* ===== FILTERS SECTION ===== */
+.filters-section {
+  margin-bottom: 24px;
+}
+
+/* ===== TABLE SECTION ===== */
+.table-section {
+	background: rgba(26, 26, 46, 0.6);
+	border-radius: 12px;
+	overflow: hidden;
+	backdrop-filter: blur(10px);
+}
+
+.space-theme .table-section {
+	background: rgba(26, 26, 46, 0.6);
+}
+
+/* Sun theme table section */
+.sun-theme .table-section {
+  position: relative;
+  background: #ffffffb3; /* Rất trong suốt để nhìn xuyên qua */
+  backdrop-filter: blur(1px); /* Blur nhẹ để tạo hiệu ứng glass */
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+/* ===== TABLE STYLES ===== */
+.student-table {
+	background: transparent;
+}
+
+/* Student name text */
+.student-name-text {
+  color: #000;
+}
+
+.space-theme .student-name-text {
+  color: #000 !important;
+}
+
+/* Phone text */
+.phone-text {
+  color: #000;
+}
+
+.space-theme .phone-text {
+  color: #000 !important;
+}
+
+/* Level text */
+.level-text {
+  color: #000;
+}
+
+.space-theme .level-text {
+  color: #000 !important;
+}
+
+/* Class text */
+.class-text {
+  color: #000;
+}
+
+.space-theme .class-text {
+  color: #000 !important;
+}
+
+/* Tag styles */
+.student-table .ant-tag {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Remove Tag Background Colors */
+.ant-tag {
+  background: transparent !important;
+  border: 1px solid #d9d9d9 !important;
+  color: #000 !important;
+}
+
+.ant-tag-green {
+  background: transparent !important;
+  border: 1px solid #52c41a !important;
+  color: #52c41a !important;
+}
+
+.ant-tag-red {
+  background: transparent !important;
+  border: 1px solid #ff4d4f !important;
+  color: #ff4d4f !important;
+}
+
+.ant-tag-blue {
+  background: transparent !important;
+  border: 1px solid #1890ff !important;
+  color: #1890ff !important;
+}
+
+.space-theme .ant-tag {
+  background: transparent !important;
+  border: 1px solid #d9d9d9 !important;
+  color: #000 !important;
+}
+
+.space-theme .ant-tag-green {
+  background: transparent !important;
+  border: 1px solid #52c41a !important;
+  color: #52c41a !important;
+}
+
+.space-theme .ant-tag-red {
+  background: transparent !important;
+  border: 1px solid #ff4d4f !important;
+  color: #ff4d4f !important;
+}
+
+.space-theme .ant-tag-blue {
+  background: transparent !important;
+  border: 1px solid #1890ff !important;
+  color: #1890ff !important;
+}
+
+.sun-theme .ant-tag {
+  background: transparent !important;
+  border: 1px solid #d9d9d9 !important;
+  color: #000 !important;
+}
+
+.sun-theme .ant-tag-green {
+  background: transparent !important;
+  border: 1px solid #52c41a !important;
+  color: #52c41a !important;
+}
+
+.sun-theme .ant-tag-red {
+  background: transparent !important;
+  border: 1px solid #ff4d4f !important;
+  color: #ff4d4f !important;
+}
+
+.sun-theme .ant-tag-blue {
+  background: transparent !important;
+  border: 1px solid #1890ff !important;
+  color: #1890ff !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .panel-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .search-section {
+    max-width: 100%;
+  }
+  
+  .action-buttons {
+    justify-content: center;
+  } 
+  
+  .main-content-panel {
+    margin: 16px;
+    padding: 16px;
+  }
+
+  .class-title {
+    font-size: 20px !important;
+  }
+}
