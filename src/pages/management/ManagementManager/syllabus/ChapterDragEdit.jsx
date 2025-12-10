@@ -709,32 +709,41 @@ const ChapterDragEdit = () => {
 										<SortableContext
 											items={chapterIds}
 											strategy={verticalListSortingStrategy}>
-											{chapters
-												.filter(chapter => !chapter.toBeDeleted)
-												.map((chapter, index) => (
-												<React.Fragment key={chapter.id}>
-													{index > 0 && (
-														<AddChapterButton
-															theme={theme}
-															index={index}
-															onAddAtPosition={handleAddChapterAtPosition}
-														/>
-													)}
+											{(() => {
+												const visibleChapters = chapters.filter(chapter => !chapter.toBeDeleted);
+												const chapterCount = visibleChapters.length;
+												const canAddMore = chapterCount < 100;
+												
+												return visibleChapters.map((chapter, index) => (
+													<React.Fragment key={chapter.id}>
+														{index > 0 && (
+															canAddMore ? (
+																<AddChapterButton
+																	theme={theme}
+																	index={index}
+																	onAddAtPosition={handleAddChapterAtPosition}
+																/>
+															) : (
+																<div className={`add-level-between ${theme}-add-level-between`} style={{ pointerEvents: 'none' }} />
+															)
+														)}
 
-													<SortableChapterItem
-														chapter={chapter}
-														index={index}
-														onDeleteChapter={handleDeleteChapter}
-														onUpdateChapterName={handleUpdateChapterName}
-														onInputChange={handleInputChange}
-														theme={theme}
-														t={t}
-													/>
-												</React.Fragment>
-											))}
+														<SortableChapterItem
+															chapter={chapter}
+															index={index}
+															onDeleteChapter={handleDeleteChapter}
+															onUpdateChapterName={handleUpdateChapterName}
+															onInputChange={handleInputChange}
+															theme={theme}
+															t={t}
+														/>
+													</React.Fragment>
+												));
+											})()}
 											
-											{/* Always show Add button at the end if there are chapters */}
-											{chapters.filter(chapter => !chapter.toBeDeleted).length > 0 && (
+											{/* Always show Add button at the end if there are chapters and can add more */}
+											{chapters.filter(chapter => !chapter.toBeDeleted).length > 0 && 
+											 chapters.filter(chapter => !chapter.toBeDeleted).length < 100 && (
 												<AddChapterButton
 													theme={theme}
 													index={chapters.filter(chapter => !chapter.toBeDeleted).length}
