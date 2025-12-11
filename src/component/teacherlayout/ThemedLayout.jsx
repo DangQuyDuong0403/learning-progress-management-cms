@@ -13,10 +13,9 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
 
   return (
     <AntLayout 
-      className={`themed-layout ${theme}-theme`}
+      className={`themed-layout teacher-layout ${theme}-theme`}
       style={{ 
         minHeight: '100vh',
-        maxHeight: '100vh',
         width: '100vw',
         maxWidth: '100vw',
         overflow: 'hidden',
@@ -36,6 +35,8 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
           maxWidth: '100vw',
           overflow: 'hidden',
           position: 'relative',
+          minHeight: '100vh',          // allow content to grow instead of forcing 100vh
+          height: 'auto',
           zIndex: 1
         }}
       >
@@ -61,8 +62,8 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
             padding: `0px 0px 0px 10px`,
             borderRadius: '8px',
             minHeight: 'calc(100vh - 112px)',
-            maxHeight: 'calc(100vh - 112px)',
-            overflow: 'hidden',
+            height: 'auto',
+            overflow: 'visible',
             width: '100%',
             maxWidth: '100%',
             position: 'relative',
@@ -81,7 +82,8 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
               overflow: { x: 'hidden', y: 'scroll' }
             }}
             style={{ 
-              height: 'calc(100vh - 112px)', 
+              minHeight: 'calc(100vh - 112px)',
+              height: 'auto', 
               width: '100%',
 
             }}
