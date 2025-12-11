@@ -22,7 +22,7 @@ import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 // import CreateDailyChallengeModal from "./CreateDailyChallengeModal"; // Keep old modal (not deleted, just commented)
 import SimpleDailyChallengeModal from "./CreateDailyChallengeModal"; // New simple modal
 import EditDailyChallengeModal from "./EditDailyChallengeModal"; // Edit modal
-import "./DailyChallengeList.css";
+import "./QuestionList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
