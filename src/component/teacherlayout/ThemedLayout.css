@@ -1,3 +1,9 @@
+.teacher-layout .themed-content .ant-table-wrapper {
+	margin: 16px 0 0 16px;
+	padding-right: 16px;
+	width: calc(100%);
+	max-width: 100%;
+}
 /* ===== THEMED LAYOUT BASE STYLES ===== */
 .themed-layout {
 	transition: all 0.3s ease;
@@ -959,13 +965,6 @@
 	border-bottom-right-radius: 12px !important;
 }
 
-/* Table wrapper padding */
-.themed-content .ant-table-wrapper {
-	margin: 16px auto !important;
-	padding: 0 !important;
-	width: calc(100% - 32px) !important;
-	max-width: calc(100% - 32px) !important;
-}
 
 /* Space theme table background */
 .space-theme .themed-content .ant-table {
@@ -1410,13 +1409,6 @@
 	border-bottom-right-radius: 12px !important;
 }
 
-/* Sun theme table wrapper */
-.sun-theme .themed-content .ant-table-wrapper {
-	margin: 16px auto !important;
-	padding: 0 !important;
-	width: calc(100% - 32px) !important;
-	max-width: calc(100% - 32px) !important;
-}
 
 .sun-theme .themed-content .ant-table-thead > tr > th {
 	background: #C2E6FF !important;

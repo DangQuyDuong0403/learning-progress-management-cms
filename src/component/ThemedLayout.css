@@ -1029,12 +1029,12 @@
 	border-bottom-right-radius: 12px !important;
 }
 
-/* Table wrapper padding */
-.themed-content .ant-table-wrapper {
-	margin: 16px auto !important;
-	padding: 0 !important;
-	width: calc(100% - 32px) !important;
-	max-width: calc(100% - 32px) !important;
+/* Table wrapper padding - default layout only */
+.default-layout .themed-content .ant-table-wrapper {
+	margin: 16px auto;
+	padding-right: 0;
+	width: calc(100% - 16px);
+	max-width: calc(100% - 16px) !important;
 }
 
 /* Space theme table background */
@@ -1482,13 +1482,6 @@
 	border-bottom-right-radius: 12px !important;
 }
 
-/* Sun theme table wrapper */
-.sun-theme .themed-content .ant-table-wrapper {
-	margin: 16px auto !important;
-	padding: 0 !important;
-	width: calc(100% - 32px) !important;
-	max-width: calc(100% - 32px) !important;
-}
 
 .sun-theme .themed-content .ant-table-thead > tr > th {
 	background: #C2E6FF !important;
