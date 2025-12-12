@@ -3515,7 +3515,7 @@ useEffect(() => {
               fontSize: '16px', 
               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' 
             }}>
-              {t('dailyChallenge.question')} {questionNumber}
+              {t('common.questions')} {questionNumber}
             </Typography.Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Typography.Text style={{ 
