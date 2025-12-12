@@ -17,7 +17,6 @@ import {
   ThunderboltOutlined,
   CheckOutlined,
   CloudUploadOutlined,
-  FileTextOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -72,12 +71,12 @@ const AIGenerateReading = () => {
 
   // Single prompt input used for both passage generation and question generation
   const [passagePrompt, setPassagePrompt] = useState("");
-  const [numParagraphs, setNumParagraphs] = useState(1);
+  const [numParagraphs] = useState(1);
   const [generatingPassage, setGeneratingPassage] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [passage, setPassage] = useState("");
-  // passage input mode: null (not chosen), 'generate' shows paragraphs and generate button; 'manual' hides them
-  const [passageMode, setPassageMode] = useState(null);
+  // passage input mode: always 'manual' - user must add passage manually
+  const [passageMode, setPassageMode] = useState('manual');
 
   // Configure question generation and preview: list all types, quantities default 0
   const allQuestionTypes = useMemo(() => [
@@ -143,7 +142,7 @@ const AIGenerateReading = () => {
   // State for new API fields
   const [levelType, setLevelType] = useState(null); // 'system', 'academic', 'cefr'
   const [selectedLevel, setSelectedLevel] = useState(null); // Selected level value/id
-  const [vocabularyList, setVocabularyList] = useState(""); // Vocabulary list text (only for passage generation)
+  const [vocabularyList] = useState(""); // Vocabulary list text (only for passage generation)
   const [description, setDescription] = useState(""); // Description field
   const [systemLevels, setSystemLevels] = useState([]); // Fetched Camkey levels (published levels)
   
@@ -248,9 +247,9 @@ const AIGenerateReading = () => {
       setQuestionSettingsMode('manual');
     } else if (source === 'file') {
       setQuestionSettingsMode('upload');
-      // Auto-select "Add passage manually" for file import mode
-      setPassageMode('manual');
     }
+    // Always set passage mode to manual
+    setPassageMode('manual');
   }, [location.state?.aiSource]);
 
   // Helpers (match AIGenerateQuestions behaviors) - unused utilities removed
@@ -955,103 +954,8 @@ const AIGenerateReading = () => {
             }}
           >
             <Title level={3} style={{ textAlign: 'center', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', marginTop: 0, fontSize: '26px', marginBottom: '20px' }}>
-              {passageMode === 'manual'
-                ? t('dailyChallenge.addPassageManually', 'Add passage manually')
-                : t('dailyChallenge.aiGenerationSettings', 'AI Generation Settings')}
+              {t('dailyChallenge.addPassageManually', 'Add passage manually')}
             </Title>
-
-            {/* Initial mode selector centered */}
-            {passageMode === null && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', marginTop: 12, minHeight: '460px', overflow: 'hidden', position: 'relative' }}>
-                <div style={{ width: '100%', overflow: 'hidden', position: 'relative' }}>
-                  {/* Option: Add text & media manually */}
-                  <Card
-                    hoverable
-                    onClick={() => { setPassageMode('manual'); setPassage(''); }}
-                    bodyStyle={{ padding: '16px' }}
-                    style={{
-                      borderRadius: '12px',
-                      border: theme === 'sun'
-                        ? '2px solid rgba(113, 179, 253, 0.3)'
-                        : '2px solid rgba(138, 122, 255, 0.3)',
-                      background: theme === 'sun'
-                        ? 'linear-gradient(135deg, rgba(230, 245, 255, 0.5) 0%, rgba(186, 231, 255, 0.4) 100%)'
-                        : 'rgba(255, 255, 255, 0.5)',
-                      cursor: 'pointer',
-                      marginBottom: challengeInfo.aiSource === 'file' ? 0 : 16,
-                      position: 'relative',
-                      willChange: 'auto',
-                      animation: 'none'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <FileTextOutlined style={{ fontSize: 24, color: '#000000' }} />
-                      <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                        {t('dailyChallenge.addPassageManually', 'Add passage manually')}
-                      </Typography.Text>
-                    </div>
-                  </Card>
-
-                  {/* Option: Generate with AI (Generate passage) - Hide when in file import mode */}
-                  {challengeInfo.aiSource !== 'file' && (
-                    <Card
-                      hoverable
-                      onClick={() => setPassageMode('generate')}
-                      bodyStyle={{ padding: '16px' }}
-                      style={{
-                        borderRadius: '12px',
-                        border: theme === 'sun'
-                          ? '2px solid rgba(250, 173, 20, 0.3)'
-                          : '2px solid rgba(138, 122, 255, 0.3)',
-                        background: theme === 'sun'
-                          ? 'linear-gradient(135deg, rgba(255, 251, 230, 0.5) 0%, rgba(255, 236, 179, 0.4) 100%)'
-                          : 'rgba(255, 255, 255, 0.5)',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        willChange: 'auto',
-                        animation: 'none'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ fontSize: 22 }}>✨</span>
-                        <Typography.Text strong style={{ color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>
-                          {t('dailyChallenge.generatePassageWithAI', 'Generate passage with AI')}
-                        </Typography.Text>
-                      </div>
-                    </Card>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {passageMode !== null && (
-              <>
-            {/* Hide Back button when in file import mode */}
-            {!(challengeInfo.aiSource === 'file' && passageMode === 'manual') && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                <Button
-                  icon={<ArrowLeftOutlined />}
-                  onClick={() => setPassageMode(null)}
-                  className={`class-menu-back-button ${theme}-class-menu-back-button`}
-                  style={{
-                    height: '32px',
-                    borderRadius: '8px',
-                    fontWeight: '500',
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    border: '1px solid rgba(0, 0, 0, 0.1)',
-                    background: '#ffffff',
-                    color: '#000000',
-                    backdropFilter: 'blur(10px)',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  {t('common.back')}
-                </Button>
-              </div>
-            )}
 
             {/* Chapter/Lesson */}
             <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
@@ -1124,344 +1028,306 @@ const AIGenerateReading = () => {
               </div>
             </div>
 
-            {/* Level + Description (hide when manual) */}
-            {passageMode !== 'manual' && (
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                <div style={{ flex: 1 }}>
-                  <div className="level-dropdown-container" style={{ position: 'relative', zIndex: 1000, overflow: 'visible' }}>
-                    <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                      {t('dailyChallenge.level', 'Level')} <span style={{ color: 'red' }}>*</span>
-                    </Typography.Text>
-                    <div
-                      onClick={() => setIsLevelDropdownOpen(!isLevelDropdownOpen)}
-                      style={{
-                        width: '100%',
-                        minHeight: '36px',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: `2px solid ${primaryColor}60`,
-                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.3s ease',
-                        position: 'relative',
-                        zIndex: 10
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = primaryColor;
-                        e.currentTarget.style.boxShadow = `0 0 0 2px ${primaryColor}20`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = `${primaryColor}60`;
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      <span style={{ 
-                        color: selectedLevel 
-                          ? (theme === 'sun' ? '#000' : '#fff') 
-                          : (theme === 'sun' ? '#999' : '#999'),
-                        fontSize: '14px',
-                        fontWeight: selectedLevel ? 600 : 400
-                      }}>
-                        {selectedLevel 
-                          ? (() => {
-                              const allOptions = [
-                                ...systemLevels.map(l => ({ ...l, type: 'system' })),
-                                ...academicLevels.map(l => ({ ...l, type: 'academic' })),
-                                ...cefrLevels.map(l => ({ ...l, type: 'cefr' }))
-                              ];
-                              const found = allOptions.find(o => o.value === selectedLevel);
-                              return found ? found.label : 'Selected';
-                            })()
-                            : t('dailyChallenge.selectLevelTypeAndLevel', 'Select level type and level')}
-                      </span>
-                      <span style={{ 
-                        transform: isLevelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.3s ease',
-                        fontSize: '12px',
-                        color: primaryColor
-                      }}>▼</span>
-                    </div>
-                    {isLevelDropdownOpen && (
-                      <>
-                        <div
-                          onClick={() => {
-                            setIsLevelDropdownOpen(false);
-                            setHoveredLevelType(null);
-                          }}
-                          style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            zIndex: 998
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '100%',
-                            left: 0,
-                            marginTop: '8px',
-                            display: 'flex',
-                            width: '100%',
-                            maxHeight: '300px',
-                            background: theme === 'sun' 
-                              ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
-                              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-                            backdropFilter: 'blur(10px)',
-                            borderRadius: '16px',
-                            border: `2px solid ${primaryColor}40`,
-                            boxShadow: theme === 'sun'
-                              ? '0 8px 32px rgba(24, 144, 255, 0.2)'
-                              : '0 8px 32px rgba(139, 92, 246, 0.2)',
-                            zIndex: 999,
-                            overflow: 'hidden'
-                          }}
-                          onMouseLeave={(e) => {
-                            const relatedTarget = e.relatedTarget;
-                            if (!relatedTarget || (relatedTarget instanceof Node && !e.currentTarget.contains(relatedTarget))) {
-                              if (!levelType) {
-                                setHoveredLevelType(null);
-                              }
-                            }
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: '180px',
-                              borderRight: `2px solid ${primaryColor}20`,
-                              background: theme === 'sun' 
-                                ? 'rgba(240, 249, 255, 0.5)'
-                                : 'rgba(244, 240, 255, 0.5)',
-                              overflowY: 'auto',
-                              maxHeight: '300px',
-                              scrollbarWidth: 'thin',
-                              scrollbarColor: `${primaryColor}40 transparent`
-                            }}
-                          >
-                            {[
-                              { value: 'system', label: t('dailyChallenge.camkeyLevel', 'Camkey Level') },
-                              { value: 'academic', label: t('dailyChallenge.academicLevel', 'Academic Level') },
-                              { value: 'cefr', label: t('dailyChallenge.cefrLevel', 'CEFR Level (A1-C2)') },
-                            ].map((type) => (
-                              <div
-                                key={type.value}
-                                onMouseEnter={() => {
-                                  setHoveredLevelType(type.value);
-                                  setLevelType(type.value);
-                                  setSelectedLevel(null);
-                                }}
-                                style={{
-                                  padding: '12px 8px',
-                                  cursor: 'pointer',
-                                  borderBottom: `1px solid ${primaryColor}10`,
-                                  background: levelType === type.value
-                                    ? primaryColorWithAlpha
-                                    : hoveredLevelType === type.value
-                                      ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(139, 92, 246, 0.12)')
-                                      : 'transparent',
-                                  borderLeft: levelType === type.value
-                                    ? `4px solid ${primaryColor}`
-                                    : hoveredLevelType === type.value
-                                      ? `4px solid ${primaryColor}80`
-                                      : '4px solid transparent',
-                                  transition: 'all 0.2s ease',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px'
-                                }}
-                              >
-                                <span style={{
-                                  fontSize: '13px',
-                                  fontWeight: 600,
-                                  color: levelType === type.value
-                                    ? primaryColor
-                                    : (theme === 'sun' ? '#000' : '#000')
-                                }}>
-                                  {type.label}
-                                </span>
-                                {levelType === type.value && (
-                                  <span style={{ marginLeft: 'auto', color: primaryColor, fontSize: '14px' }}>✓</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          <div
-                            style={{
-                              flex: 1,
-                              padding: '16px',
-                              overflowY: 'auto',
-                              maxHeight: '300px',
-                              background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.5)',
-                              scrollbarWidth: 'thin',
-                              scrollbarColor: `${primaryColor}40 transparent`
-                            }}
-                          >
-                            {(hoveredLevelType || levelType) ? (
-                              <>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                  {(() => {
-                                    const activeType = hoveredLevelType || levelType;
-                                    const options = 
-                                      activeType === 'system' ? systemLevels :
-                                      activeType === 'academic' ? academicLevels :
-                                      activeType === 'cefr' ? cefrLevels :
-                                      [];
-                                    
-                                    if (!options || options.length === 0) {
-                                      return (
-                                        <div style={{
-                                          padding: '20px',
-                                          textAlign: 'center',
-                                          color: theme === 'sun' ? '#999' : '#999',
-                                          fontSize: '14px'
-                                        }}>
-                                          {levelType === 'system' ? t('dailyChallenge.loadingCamkeyLevels', 'Loading Camkey levels...') : t('dailyChallenge.noLevelsAvailable', 'No levels available')}
-                                        </div>
-                                      );
-                                    }
-                                    
-                                    return options.map((option) => (
-                                      <div
-                                        key={option.value}
-                                        onMouseEnter={(e) => {
-                                          if (selectedLevel !== option.value) {
-                                            e.currentTarget.style.background = theme === 'sun'
-                                              ? 'rgba(24, 144, 255, 0.1)'
-                                              : 'rgba(139, 92, 246, 0.15)';
-                                            e.currentTarget.style.borderColor = `${primaryColor}60`;
-                                          }
-                                        }}
-                                        onClick={() => {
-                                          setSelectedLevel(option.value);
-                                          setLevelType(hoveredLevelType || levelType);
-                                          setIsLevelDropdownOpen(false);
-                                          setHoveredLevelType(null);
-                                        }}
-                                        style={{
-                                          padding: '12px 16px',
-                                          borderRadius: '8px',
-                                          cursor: 'pointer',
-                                          background: selectedLevel === option.value
-                                            ? primaryColorWithAlpha
-                                            : (theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)'),
-                                          border: `2px solid ${
-                                            selectedLevel === option.value
-                                              ? primaryColor
-                                              : `${primaryColor}30`
-                                          }`,
-                                          transition: 'all 0.2s ease',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'space-between'
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          if (selectedLevel !== option.value) {
-                                            e.currentTarget.style.background = theme === 'sun'
-                                              ? 'rgba(240, 249, 255, 0.5)'
-                                              : 'rgba(244, 240, 255, 0.3)';
-                                            e.currentTarget.style.borderColor = `${primaryColor}30`;
-                                          }
-                                        }}
-                                      >
-                                        <span style={{
-                                          fontSize: '14px',
-                                          fontWeight: 400,
-                                          color: selectedLevel === option.value
-                                            ? primaryColor
-                                            : (theme === 'sun' ? '#000' : '#000')
-                                        }}>
-                                          {option.label}
-                                        </span>
-                                        {selectedLevel === option.value && (
-                                          <span style={{ color: primaryColor, fontSize: '16px', fontWeight: 400 }}>✓</span>
-                                        )}
-                                      </div>
-                                    ));
-                                  })()}
-                                </div>
-                              </>
-                            ) : (
-                              <div style={{
-                                padding: '40px 20px',
-                                textAlign: 'center',
-                                color: theme === 'sun' ? '#999' : '#999',
-                                fontSize: '14px'
-                              }}>
-                                {t('dailyChallenge.hoverOverLevelType', 'Hover over a level type to see options')}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            {/* Level + Description */}
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <div className="level-dropdown-container" style={{ position: 'relative', zIndex: 1000, overflow: 'visible' }}>
                   <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                    {t('dailyChallenge.additionalDescription', 'Additional Description')}
+                    {t('dailyChallenge.level', 'Level')} <span style={{ color: 'red' }}>*</span>
                   </Typography.Text>
-                  <TextArea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    autoSize={{ minRows: 4, maxRows: 8 }}
-                    placeholder={t('dailyChallenge.optionalAddInstructions', 'Optional: Add any additional instructions or context...')}
+                  <div
+                    onClick={() => setIsLevelDropdownOpen(!isLevelDropdownOpen)}
                     style={{
                       width: '100%',
-                      fontSize: '14px',
+                      minHeight: '36px',
+                      padding: '6px 12px',
                       borderRadius: '8px',
-                      border: `2px solid ${primaryColor}99`,
-                      background: theme === 'sun'
-                        ? 'rgba(240, 249, 255, 0.5)'
-                        : 'rgba(244, 240, 255, 0.3)',
-                      outline: 'none',
-                      boxShadow: 'none',
+                      border: `2px solid ${primaryColor}60`,
+                      background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.3s ease',
+                      position: 'relative',
+                      zIndex: 10
                     }}
-                  />
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = primaryColor;
+                      e.currentTarget.style.boxShadow = `0 0 0 2px ${primaryColor}20`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = `${primaryColor}60`;
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <span style={{ 
+                      color: selectedLevel 
+                        ? (theme === 'sun' ? '#000' : '#fff') 
+                        : (theme === 'sun' ? '#999' : '#999'),
+                      fontSize: '14px',
+                      fontWeight: selectedLevel ? 600 : 400
+                    }}>
+                      {selectedLevel 
+                        ? (() => {
+                            const allOptions = [
+                              ...systemLevels.map(l => ({ ...l, type: 'system' })),
+                              ...academicLevels.map(l => ({ ...l, type: 'academic' })),
+                              ...cefrLevels.map(l => ({ ...l, type: 'cefr' }))
+                            ];
+                            const found = allOptions.find(o => o.value === selectedLevel);
+                            return found ? found.label : 'Selected';
+                          })()
+                          : t('dailyChallenge.selectLevelTypeAndLevel', 'Select level type and level')}
+                    </span>
+                    <span style={{ 
+                      transform: isLevelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.3s ease',
+                      fontSize: '12px',
+                      color: primaryColor
+                    }}>▼</span>
+                  </div>
+                  {isLevelDropdownOpen && (
+                    <>
+                      <div
+                        onClick={() => {
+                          setIsLevelDropdownOpen(false);
+                          setHoveredLevelType(null);
+                        }}
+                        style={{
+                          position: 'fixed',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          zIndex: 998
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          marginTop: '8px',
+                          display: 'flex',
+                          width: '100%',
+                          maxHeight: '300px',
+                          background: theme === 'sun' 
+                            ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.98) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
+                          backdropFilter: 'blur(10px)',
+                          borderRadius: '16px',
+                          border: `2px solid ${primaryColor}40`,
+                          boxShadow: theme === 'sun'
+                            ? '0 8px 32px rgba(24, 144, 255, 0.2)'
+                            : '0 8px 32px rgba(139, 92, 246, 0.2)',
+                          zIndex: 999,
+                          overflow: 'hidden'
+                        }}
+                        onMouseLeave={(e) => {
+                          const relatedTarget = e.relatedTarget;
+                          if (!relatedTarget || (relatedTarget instanceof Node && !e.currentTarget.contains(relatedTarget))) {
+                            if (!levelType) {
+                              setHoveredLevelType(null);
+                            }
+                          }
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '180px',
+                            borderRight: `2px solid ${primaryColor}20`,
+                            background: theme === 'sun' 
+                              ? 'rgba(240, 249, 255, 0.5)'
+                              : 'rgba(244, 240, 255, 0.5)',
+                            overflowY: 'auto',
+                            maxHeight: '300px',
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: `${primaryColor}40 transparent`
+                          }}
+                        >
+                          {[
+                            { value: 'system', label: t('dailyChallenge.camkeyLevel', 'Camkey Level') },
+                            { value: 'academic', label: t('dailyChallenge.academicLevel', 'Academic Level') },
+                            { value: 'cefr', label: t('dailyChallenge.cefrLevel', 'CEFR Level (A1-C2)') },
+                          ].map((type) => (
+                            <div
+                              key={type.value}
+                              onMouseEnter={() => {
+                                setHoveredLevelType(type.value);
+                                setLevelType(type.value);
+                                setSelectedLevel(null);
+                              }}
+                              style={{
+                                padding: '12px 8px',
+                                cursor: 'pointer',
+                                borderBottom: `1px solid ${primaryColor}10`,
+                                background: levelType === type.value
+                                  ? primaryColorWithAlpha
+                                  : hoveredLevelType === type.value
+                                    ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(139, 92, 246, 0.12)')
+                                    : 'transparent',
+                                borderLeft: levelType === type.value
+                                  ? `4px solid ${primaryColor}`
+                                  : hoveredLevelType === type.value
+                                    ? `4px solid ${primaryColor}80`
+                                    : '4px solid transparent',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                              }}
+                            >
+                              <span style={{
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                color: levelType === type.value
+                                  ? primaryColor
+                                  : (theme === 'sun' ? '#000' : '#000')
+                              }}>
+                                {type.label}
+                              </span>
+                              {levelType === type.value && (
+                                <span style={{ marginLeft: 'auto', color: primaryColor, fontSize: '14px' }}>✓</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div
+                          style={{
+                            flex: 1,
+                            padding: '16px',
+                            overflowY: 'auto',
+                            maxHeight: '300px',
+                            background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: `${primaryColor}40 transparent`
+                          }}
+                        >
+                          {(hoveredLevelType || levelType) ? (
+                            <>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {(() => {
+                                  const activeType = hoveredLevelType || levelType;
+                                  const options = 
+                                    activeType === 'system' ? systemLevels :
+                                    activeType === 'academic' ? academicLevels :
+                                    activeType === 'cefr' ? cefrLevels :
+                                    [];
+                                  
+                                  if (!options || options.length === 0) {
+                                    return (
+                                      <div style={{
+                                        padding: '20px',
+                                        textAlign: 'center',
+                                        color: theme === 'sun' ? '#999' : '#999',
+                                        fontSize: '14px'
+                                      }}>
+                                        {levelType === 'system' ? t('dailyChallenge.loadingCamkeyLevels', 'Loading Camkey levels...') : t('dailyChallenge.noLevelsAvailable', 'No levels available')}
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  return options.map((option) => (
+                                    <div
+                                      key={option.value}
+                                      onMouseEnter={(e) => {
+                                        if (selectedLevel !== option.value) {
+                                          e.currentTarget.style.background = theme === 'sun'
+                                            ? 'rgba(24, 144, 255, 0.1)'
+                                            : 'rgba(139, 92, 246, 0.15)';
+                                          e.currentTarget.style.borderColor = `${primaryColor}60`;
+                                        }
+                                      }}
+                                      onClick={() => {
+                                        setSelectedLevel(option.value);
+                                        setLevelType(hoveredLevelType || levelType);
+                                        setIsLevelDropdownOpen(false);
+                                        setHoveredLevelType(null);
+                                      }}
+                                      style={{
+                                        padding: '12px 16px',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        background: selectedLevel === option.value
+                                          ? primaryColorWithAlpha
+                                          : (theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)'),
+                                        border: `2px solid ${
+                                          selectedLevel === option.value
+                                            ? primaryColor
+                                            : `${primaryColor}30`
+                                        }`,
+                                        transition: 'all 0.2s ease',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (selectedLevel !== option.value) {
+                                          e.currentTarget.style.background = theme === 'sun'
+                                            ? 'rgba(240, 249, 255, 0.5)'
+                                            : 'rgba(244, 240, 255, 0.3)';
+                                          e.currentTarget.style.borderColor = `${primaryColor}30`;
+                                        }
+                                      }}
+                                    >
+                                      <span style={{
+                                        fontSize: '14px',
+                                        fontWeight: 400,
+                                        color: selectedLevel === option.value
+                                          ? primaryColor
+                                          : (theme === 'sun' ? '#000' : '#000')
+                                      }}>
+                                        {option.label}
+                                      </span>
+                                      {selectedLevel === option.value && (
+                                        <span style={{ color: primaryColor, fontSize: '16px', fontWeight: 400 }}>✓</span>
+                                      )}
+                                    </div>
+                                  ));
+                                })()}
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{
+                              padding: '40px 20px',
+                              textAlign: 'center',
+                              color: theme === 'sun' ? '#999' : '#999',
+                              fontSize: '14px'
+                            }}>
+                              {t('dailyChallenge.hoverOverLevelType', 'Hover over a level type to see options')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-            )}
 
-                {/* Vocabulary List (only for generate mode) */}
-                {passageMode === 'generate' && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <Typography.Text style={{ display: 'block', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
-                        {t('dailyChallenge.vocabularyList', 'Vocabulary List')}
-                      </Typography.Text>
-                      <span style={{
-                        fontSize: '11px',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(139, 92, 246, 0.2)',
-                        color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                        fontWeight: 600,
-                        border: `1px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.3)' : 'rgba(139, 92, 246, 0.3)'}`
-                      }}>
-                        {t('dailyChallenge.passageOnly', 'Passage Only')}
-                      </span>
-                    </div>
-                    <TextArea
-                      value={vocabularyList}
-                      onChange={(e) => setVocabularyList(e.target.value)}
-                      autoSize={{ minRows: 4, maxRows: 8 }}
-                      placeholder={t('dailyChallenge.newWord', 'new word...')}
-                      style={{
-                        width: '100%',
-                        borderRadius: '8px',
-                        border: `2px solid ${primaryColor}60`,
-                        background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                        fontSize: '14px',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                )}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
+                  {t('dailyChallenge.additionalDescription', 'Additional Description')}
+                </Typography.Text>
+                <TextArea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  autoSize={{ minRows: 4, maxRows: 8 }}
+                  placeholder={t('dailyChallenge.optionalAddInstructions', 'Optional: Add any additional instructions or context...')}
+                  style={{
+                    width: '100%',
+                    fontSize: '14px',
+                    borderRadius: '8px',
+                    border: `2px solid ${primaryColor}99`,
+                    background: theme === 'sun'
+                      ? 'rgba(240, 249, 255, 0.5)'
+                      : 'rgba(244, 240, 255, 0.3)',
+                    outline: 'none',
+                    boxShadow: 'none',
+                  }}
+                />
+              </div>
+            </div>
 
                 {/* Manual mode: show CKEditor for manual input */}
                 {passageMode === 'manual' && (
@@ -1501,121 +1367,6 @@ const AIGenerateReading = () => {
                     />
                   </div>
                 )}
-
-            {passageMode === 'generate' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', marginTop: 16 }}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{
-                    color: theme === 'sun' ? '#000000' : '#FFFFFF',
-                    fontWeight: 600,
-                    marginRight: 8
-                  }}>{t('dailyChallenge.paragraphs', 'Paragraphs:')}</span>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    style={{
-                      width: 100,
-                      borderRadius: '8px',
-                      border: theme === 'sun'
-                        ? '2px solid rgba(113, 179, 253, 0.5)'
-                        : '2px solid rgba(138, 122, 255, 0.5)',
-                      background: theme === 'sun' ? '#fff' : 'rgba(255, 255, 255, 0.1)',
-                      fontSize: '14px',
-                      fontWeight: 600
-                    }}
-                    value={numParagraphs}
-                    onChange={(e) => setNumParagraphs(parseInt(e.target.value) || 1)}
-                  />
-                  <Button
-                    type="primary"
-                    icon={<ThunderboltOutlined />}
-                    loading={generatingPassage}
-                    onClick={handleGeneratePassage}
-                    style={{
-                      height: '40px',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      fontWeight: 500,
-                      padding: '0 24px',
-                      background: theme === 'sun'
-                        ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                        : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                      border: 'none',
-                      color: '#000000',
-                      boxShadow: theme === 'sun'
-                        ? '0 2px 8px rgba(60, 153, 255, 0.3)'
-                        : '0 2px 8px rgba(131, 119, 160, 0.3)',
-                      transition: 'all 0.3s ease'
-                    }}
-                  >
-                    {generatingPassage ? (t('dailyChallenge.generating') || 'Generating...') : t('dailyChallenge.generatePassage', 'Generate Passage')}
-                  </Button>
-                </div>
-                <Typography.Text
-                  style={{
-                    fontSize: '12px',
-                    fontStyle: 'italic',
-                    color: theme === 'sun' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.6)',
-                    textAlign: 'right'
-                  }}
-                >
-                  {t('dailyChallenge.generatedContentForReference', 'The generated content is for reference only.')}
-                </Typography.Text>
-              </div>
-            )}
-
-            {/* Generated passage display - Only show after generation, below Generate Passage button */}
-            {passageMode === 'generate' && passage && passage.trim() && (
-              <>
-                <div 
-                  ref={passageRef}
-                  className={`passage-ckeditor-wrapper ${theme}-passage-ckeditor-wrapper`} 
-                  style={{
-                  marginTop: 0,
-                  borderRadius: '12px',
-                  border: theme === 'sun'
-                    ? '2px solid rgba(113, 179, 253, 0.25)'
-                    : '2px solid rgba(138, 122, 255, 0.2)',
-                  background: theme === 'sun'
-                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(240, 249, 255, 0.95) 100%)'
-                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
-                  padding: '12px',
-                  overflow: 'visible'
-                }}>
-                  <CKEditor
-                  editor={ClassicEditor}
-                  data={passage}
-                  onChange={(event, editor) => {
-                    const data = editor.getData();
-                    setPassage(data);
-                  }}
-                  config={passageEditorConfig}
-                  onReady={(editor) => {
-                    try {
-                      const el = editor.ui?.getEditableElement?.();
-                      if (el) {
-                        el.style.minHeight = '400px';
-                        el.style.height = 'auto';
-                        el.style.color = '#000000';
-                        el.style.fontSize = '15px';
-                        el.style.lineHeight = '1.6';
-                      }
-                      // Also set for the main container
-                      const mainEl = editor.ui?.getEditableElement?.()?.closest('.ck-editor__main');
-                      if (mainEl) {
-                        mainEl.style.minHeight = '400px';
-                      }
-                        } catch (e) {
-                      console.error('CKEditor onReady error:', e);
-                        }
-                      }}
-                    />
-                </div>
-              </>
-            )}
-            </>
-            )}
           </Card>
 
           {/* Right: Question Type Configuration */}
