@@ -21,7 +21,7 @@ import {
 import dayjs from "dayjs";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
-import "./DailyChallengeList.css";
+import "./QuestionList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";

@@ -22,7 +22,7 @@ import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 // import CreateDailyChallengeModal from "./CreateDailyChallengeModal"; // Keep old modal (not deleted, just commented)
 import SimpleDailyChallengeModal from "./CreateDailyChallengeModal"; // New simple modal
 import EditDailyChallengeModal from "./EditDailyChallengeModal"; // Edit modal
-import "./DailyChallengeList.css";
+import "./QuestionList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -1175,9 +1175,13 @@ const DailyChallengeList = ({ readOnly = false }) => {
         if (!startDate) return '';
         const d = new Date(startDate);
         return (
-          <div style={{ lineHeight: 1.2 }}>
-            <div>{d.toLocaleDateString()}</div>
-            <div style={{ fontSize: 12, color: '#666' }}>{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+          <div style={{ lineHeight: 1.2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: '#1f2937' }}>
+              {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+            </div>
+            <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+              {d.toLocaleDateString()}
+            </div>
           </div>
         );
       },
@@ -1198,9 +1202,13 @@ const DailyChallengeList = ({ readOnly = false }) => {
         if (!endDate) return '';
         const d = new Date(endDate);
         return (
-          <div style={{ lineHeight: 1.2 }}>
-            <div>{d.toLocaleDateString()}</div>
-            <div style={{ fontSize: 12, color: '#666' }}>{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+          <div style={{ lineHeight: 1.2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: '#1f2937' }}>
+              {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+            </div>
+            <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+              {d.toLocaleDateString()}
+            </div>
           </div>
         );
       },
@@ -1530,6 +1538,9 @@ const DailyChallengeList = ({ readOnly = false }) => {
                 current: currentPage,
                 pageSize: pageSize,
                 total: totalItems,
+                style: {
+                  marginRight: '16px',
+                },
                 onChange: (page, size) => {
                   setCurrentPage(page);
                   if (size !== pageSize) {
