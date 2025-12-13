@@ -12,7 +12,6 @@ import {
   PlusOutlined,
   SearchOutlined,
   DeleteOutlined,
-  UploadOutlined,
   FilterOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
@@ -30,7 +29,6 @@ import classManagementApi from "../../../../apis/backend/classManagement";
 import studentManagementApi from "../../../../apis/backend/StudentManagement";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import ROUTER_PAGE from "../../../../constants/router";
-import { FILE_NAME_PREFIXES, formatDateForFilename } from "../../../../constants/fileNames";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -97,13 +95,10 @@ const ClassStudent = () => {
   const searchTimeoutRef = useRef(null);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
-  const [isExportModalVisible, setIsExportModalVisible] = useState(false);
   const [buttonLoading, setButtonLoading] = useState({
     add: false,
     delete: false,
-    export: false,
   });
-  const [exportLoading, setExportLoading] = useState(false);
   const [filterDropdown, setFilterDropdown] = useState({
     visible: false,
     selectedStatuses: [],
@@ -661,74 +656,6 @@ const ClassStudent = () => {
     setStudentToDelete(null);
   };
 
-
-  const handleExport = () => {
-    setButtonLoading(prev => ({ ...prev, export: true }));
-    setTimeout(() => {
-      setIsExportModalVisible(true);
-      setButtonLoading(prev => ({ ...prev, export: false }));
-    }, 100);
-  };
-
-  const handleExportModalClose = () => {
-    setIsExportModalVisible(false);
-  };
-
-  const handleExportAll = async () => {
-    // Validate: Check if there is any data to export
-    if (pagination.total === 0 || students.length === 0) {
-      spaceToast.error(t('classDetail.noDataToExport') || 'No data available to export');
-      return;
-    }
-    
-    setExportLoading(true);
-    
-    try {
-      // Prepare export parameters using the new API format
-      const exportParams = {
-        classIds: [id], // Filter by current class ID
-      };
-
-      // Add text search if available
-      if (searchText) {
-        exportParams.text = searchText;
-      }
-
-      // Add status filter if not empty
-      if (statusFilter.length > 0) {
-        exportParams.status = statusFilter;
-      }
-
-      // Add roleName filter for students
-      exportParams.roleName = ['STUDENT', 'TEST_TAKER'];
-
-      
-      const response = await studentManagementApi.exportStudents(exportParams);
-      
-      // response.data is already a Blob from the API
-      const url = window.URL.createObjectURL(response.data);
-      const link = document.createElement('a');
-      link.href = url;
-      const formattedDate = formatDateForFilename();
-      const normalizedClassName = (classData?.name || `class_${id}`)
-        .trim()
-        .replace(/\s+/g, '_');
-      link.download = `${FILE_NAME_PREFIXES.STUDENT_LIST}${normalizedClassName}_${formattedDate}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      spaceToast.success('Export file successfully');
-      setIsExportModalVisible(false);
-    } catch (error) {
-      console.error('Error exporting class students:', error);
-      spaceToast.error(error.response?.data?.error);
-    } finally {
-      setExportLoading(false);
-    }
-  };
-
   const handleModalOk = async () => {
     setButtonLoading(prev => ({ ...prev, add: true }));
     try {
@@ -1074,22 +1001,13 @@ const ClassStudent = () => {
             </div>
             {!isReadOnly && (
               <div className="action-buttons" style={{ marginLeft: 'auto' }}>
-                <Button 
-                  icon={<UploadOutlined />}
-                  className={`export-button ${theme}-export-button`}
-                  onClick={handleExport}
-                  loading={buttonLoading.export}
-                  disabled={buttonLoading.export}
-                >
-                  {t('classDetail.exportData')}
-                </Button>
                 {!isClassFinished && (
                   <Button 
                     icon={<PlusOutlined />}
                     className={`create-button ${theme}-create-button`}
                     onClick={handleAddStudent}
                     loading={buttonLoading.add}
-                    disabled={buttonLoading.add || buttonLoading.export}
+                    disabled={buttonLoading.add}
                   >
                     {t('classDetail.addStudent')}
                   </Button>
@@ -1357,72 +1275,6 @@ const ClassStudent = () => {
 							<strong>"{studentToDelete.fullName || `${studentToDelete.firstName || ''} ${studentToDelete.lastName || ''}`.trim()}"</strong>
 						</p>
 					)}
-          </div>
-        </Modal>
-
-        {/* Export Data Modal */}
-        <Modal
-          title={
-            <div
-              style={{
-                fontSize: '28px',
-                fontWeight: '600',
-                color: 'rgb(24, 144, 255)',
-                textAlign: 'center',
-                padding: '10px 0',
-              }}>
-              {t('classDetail.exportData')}
-            </div>
-          }
-          open={isExportModalVisible}
-          onCancel={handleExportModalClose}
-          width={500}
-          footer={[
-            <Button 
-              key="cancel" 
-              onClick={handleExportModalClose}
-              style={{
-                height: '32px',
-                fontWeight: '500',
-                fontSize: '16px',
-                padding: '4px 15px',
-                width: '100px'
-              }}>
-              {t('common.cancel')}
-            </Button>
-          ]}>
-          <div style={{ padding: '20px 0' }}>
-            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-              <UploadOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
-              <Typography.Title level={4} style={{ color: theme === 'dark' ? '#cccccc' : '#666', marginBottom: '8px' }}>
-                {t('classDetail.chooseExportOption')}
-              </Typography.Title>
-              <Typography.Text style={{ color: theme === 'dark' ? '#999999' : '#999' }}>
-                {t('classDetail.exportDescription')}
-              </Typography.Text>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                onClick={handleExportAll}
-                loading={exportLoading}
-                disabled={exportLoading}
-                style={{
-                  height: '48px',
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  background: theme === 'sun' 
-                    ? 'linear-gradient(135deg, #FFFFFF, #B6D8FE 77%, #94C2F5)'
-                    : 'linear-gradient(135deg, #FFFFFF 0%, #9F96B6 46%, #A79EBB 64%, #ACA5C0 75%, #6D5F8F 100%)',
-                  borderColor: theme === 'sun' ? '#B6D8FE' : '#9F96B6',
-                  color: '#000000',
-                  borderRadius: '8px',
-                }}>
-                {t('classDetail.exportAll')} ({pagination.total} {t('classDetail.students')})
-              </Button>
-            </div>
           </div>
         </Modal>
     </ThemedLayout>
