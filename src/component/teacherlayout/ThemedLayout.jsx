@@ -40,11 +40,6 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
           zIndex: 1
         }}
       >
-        {/* Themed Header */}
-        <div style={{ position: 'relative', zIndex: 10000 }}>
-          {customHeader || <ThemedHeader hideThemeToggle hideLanguageToggle />}
-        </div>
-
         {/* Background Elements */}
         <div className="bg-element-1"></div>
         {/* <div className="bg-element-2"></div> */}
@@ -89,7 +84,19 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
             }}
             className={`themed-sidebar-scrollbar themed-content-scrollbar ${theme}-content-scrollbar`}
           >
-            {children}
+            {/* Themed Header */}
+            {customHeader ? (
+              <div style={{ position: 'fixed', top: 0, zIndex: 10000, width: '100%' }}>
+                {customHeader}
+              </div>
+            ) : (
+              <div style={{ position: 'fixed', top: 0, zIndex: 10000, width: '100%' }}>
+                <ThemedHeader hideThemeToggle hideLanguageToggle />
+              </div>
+            )}
+            <div style={{ paddingTop: '80px' }}>
+              {children}
+            </div>
           </OverlayScrollbarsComponent>
           
           {/* Sun Theme Background Decorations - Only for Sun Theme */}
