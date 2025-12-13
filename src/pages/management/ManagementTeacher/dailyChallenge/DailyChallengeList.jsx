@@ -61,6 +61,9 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
   const [classData, setClassData] = useState(null); // Store class data
+  
+  // Check if class is finished (view-only mode)
+  const isClassFinished = classData?.status === 'FINISHED';
   const [searchText, setSearchText] = useState("");
   const [typeFilter, setTypeFilter] = useState([]);
   const [statusFilter, setStatusFilter] = useState([]);
@@ -196,6 +199,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
             data.title ??
             data.classTitle ??
             `Class ${classId}`, // Fallback name
+          status: data.status ?? data.classStatus ?? data.class_status ?? null,
         };
         setClassData(mapped);
       } else {
@@ -1019,7 +1023,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                 <span className="lesson-text" style={{ transition: 'opacity 0.3s ease', display: 'block', whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: '100%', lineHeight: '1.4' }}>
                   {text}
                 </span>
-                {!readOnly && !isTeachingAssistant && !isManager && (
+                {!readOnly && !isTeachingAssistant && !isManager && !isClassFinished && (
                   <Button
                     className="lesson-create-btn"
                     icon={<PlusOutlined />}
@@ -1300,36 +1304,38 @@ const DailyChallengeList = ({ readOnly = false }) => {
               <span className="status-text" style={{ transition: 'opacity 0.3s ease' }}>
                 {getStatusLabel(status)}
               </span>
-              <Button
-                className="status-publish-btn"
-                style={{
-                  fontSize: '16px',
-                  height: '40px',
-                  padding: '0 20px',
-                  borderRadius: '8px',
-                  background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                  borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-                  color: theme === 'sun' ? '#000' : '#000',
-                  fontWeight: '500',
-                  border: 'none',
-                  minWidth: '120px',
-                  margin: '0',
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%) scale(0.9)',
-                  opacity: 0,
-                  transition: 'all 0.2s ease',
-                  pointerEvents: 'none'
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleStatus(record.id);
-                }}
-                title={t('dailyChallenge.publishNow') || 'Publish'}
-              >
-                {t('dailyChallenge.publishNow') || 'Publish'}
-              </Button>
+              {!isClassFinished && (
+                <Button
+                  className="status-publish-btn"
+                  style={{
+                    fontSize: '16px',
+                    height: '40px',
+                    padding: '0 20px',
+                    borderRadius: '8px',
+                    background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                    color: theme === 'sun' ? '#000' : '#000',
+                    fontWeight: '500',
+                    border: 'none',
+                    minWidth: '120px',
+                    margin: '0',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%) scale(0.9)',
+                    opacity: 0,
+                    transition: 'all 0.2s ease',
+                    pointerEvents: 'none'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleStatus(record.id);
+                  }}
+                  title={t('dailyChallenge.publishNow') || 'Publish'}
+                >
+                  {t('dailyChallenge.publishNow') || 'Publish'}
+                </Button>
+              )}
             </div>
           );
         }
@@ -1368,7 +1374,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               title={t('dailyChallenge.viewDetails')}
               className="action-btn-view"
             />
-            {!readOnly && !isTeachingAssistant && !isManager && (
+            {!readOnly && !isTeachingAssistant && !isManager && !isClassFinished && (
               <>
                 <Button
                   type="text"
@@ -1514,7 +1520,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               </div>
             )}
           </div>
-          {!readOnly && !isTeachingAssistant && !isManager && (
+          {!readOnly && !isTeachingAssistant && !isManager && !isClassFinished && (
             <div className="action-buttons" style={{ marginLeft: 'auto' }}>
               <Button 
                 icon={<PlusOutlined />}

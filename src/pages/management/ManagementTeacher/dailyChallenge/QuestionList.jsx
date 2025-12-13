@@ -153,7 +153,7 @@ const processPassageContent = (content, theme, challengeType) => {
 
 // Sortable Passage Item Component
 const SortablePassageItem = memo(
-  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType, activeId, isManager, status }) => {
+  ({ passage, index, onDeletePassage, onEditPassage, onDuplicatePassage, onPointsChange, theme, t, challengeType, activeId, isManager, status, isClassFinished }) => {
     const [showTranscript, setShowTranscript] = useState(false);
     const [showMore, setShowMore] = useState(false);
     const passageContentRef = useRef(null);
@@ -338,7 +338,7 @@ const SortablePassageItem = memo(
             >
               {passage.weight} weight
             </div>
-            {!isManager && (status === 'draft' || status === 'published') && (
+            {!isManager && (status === 'draft' || status === 'published') && !isClassFinished && (
               <Space size="small">
                 <Tooltip title="Update">
                   <Button
@@ -1346,7 +1346,7 @@ const renderRearrangeQuestionInline = (question, theme) => {
 
 // Sortable Question Item Component
 const SortableQuestionItem = memo(
-  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t, challengeType, activeId, isManager, status }) => {
+  ({ question, index, onDeleteQuestion, onEditQuestion, onDuplicateQuestion, onPointsChange, theme, t, challengeType, activeId, isManager, status, isClassFinished }) => {
     // Disable all layout animations when any item is being dragged to prevent snap-back
     const animateLayoutChanges = useCallback(() => {
       // If any item is being dragged, disable all animations to prevent snap-back
@@ -2288,7 +2288,7 @@ const SortableQuestionItem = memo(
             <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
               {question.weight} weight
             </div>
-            {!isManager && (status === 'draft' || status === 'published') && (
+            {!isManager && (status === 'draft' || status === 'published') && !isClassFinished && (
               <Space size="small">
                 <Tooltip title="Update">
                   <Button
@@ -3076,6 +3076,12 @@ const DailyChallengeContent = () => {
   const [status, setStatus] = useState('draft'); // 'draft' or 'published'
   const [isCollapsed, setIsCollapsed] = useState(false); // Sidebar collapse state
   
+  // Class data state for view-only mode
+  const [classData, setClassData] = useState(null);
+  
+  // Check if class is finished (view-only mode)
+  const isClassFinished = classData?.status === 'FINISHED';
+  
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
   const [currentModalType, setCurrentModalType] = useState(null);
@@ -3113,6 +3119,41 @@ const DailyChallengeContent = () => {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Fetch class data if classId exists
+  const fetchClassData = useCallback(async () => {
+    const classIdToFetch = challengeInfo.classId;
+    if (!classIdToFetch) {
+      setClassData(null);
+      return;
+    }
+    
+    try {
+      const { classManagementApi } = require('../../../../apis/apis');
+      const response = await classManagementApi.getClassDetail(classIdToFetch);
+      const data = response?.data?.data ?? response?.data ?? null;
+      if (data) {
+        setClassData({
+          id: data.id ?? classIdToFetch,
+          name: data.name ?? data.className ?? data.classname ?? data.class_name ?? data.title ?? data.classTitle ?? `Class ${classIdToFetch}`,
+          status: data.status ?? data.classStatus ?? data.class_status ?? null,
+        });
+      } else {
+        setClassData({
+          id: classIdToFetch,
+          name: `Class ${classIdToFetch}`,
+          status: null,
+        });
+      }
+    } catch (error) {
+      console.error('QuestionList - Error fetching class data:', error);
+      setClassData({
+        id: classIdToFetch,
+        name: `Class ${classIdToFetch}`,
+        status: null,
+      });
+    }
+  }, [challengeInfo.classId]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchChallengeDetails = useCallback(async () => {
@@ -3323,6 +3364,11 @@ const DailyChallengeContent = () => {
     fetchChallengeDetails();
     fetchQuestions();
   }, [fetchChallengeDetails, fetchQuestions]);
+
+  // Fetch class data when classId is available
+  useEffect(() => {
+    fetchClassData();
+  }, [fetchClassData]);
 
   // Enter/exit daily challenge menu mode
   // Fetch challenge info from API if not available in state
@@ -3921,16 +3967,48 @@ const DailyChallengeContent = () => {
   }, []);
 
   const handleDeleteQuestion = useCallback((questionId) => {
-    const questionIndex = questions.findIndex(q => q.id === questionId);
+    // Filter questions and passages to match the displayed order (same logic as filteredQuestions/filteredPassages)
+    const filteredQuestions = questions.filter((question) => {
+      // Exclude deleted questions
+      if (question.toBeDeleted) {
+        return false;
+      }
+      
+      // Apply search filter
+      const matchesSearch =
+        searchText === "" ||
+        question.question.toLowerCase().includes(searchText.toLowerCase());
+      return matchesSearch;
+    });
+    const filteredPassages = passages.filter((passage) => {
+      // Exclude deleted passages
+      if (passage.toBeDeleted) {
+        return false;
+      }
+      
+      // Apply search filter
+      const matchesSearch =
+        searchText === "" ||
+        passage.content.toLowerCase().includes(searchText.toLowerCase()) ||
+        (passage.questions && passage.questions.some(q => 
+          q.question.toLowerCase().includes(searchText.toLowerCase())
+        ));
+      return matchesSearch;
+    });
+    
+    // Find question in filteredQuestions to match the displayed order
+    const questionIndex = filteredQuestions.findIndex(q => q.id === questionId);
     if (questionIndex !== -1) {
       const question = {
-        ...questions[questionIndex],
-        questionNumber: questionIndex + 1
+        ...filteredQuestions[questionIndex],
+        // Calculate question number based on filteredQuestions index + filteredPassages length
+        // This matches how questions are displayed in the UI (index + filteredPassages.length)
+        questionNumber: questionIndex + filteredPassages.length + 1
       };
       setDeleteQuestion(question);
       setIsDeleteModalVisible(true);
     }
-  }, [questions]);
+  }, [questions, passages, searchText]);
 
   const handleDeleteConfirm = useCallback(async () => {
     try {
@@ -4848,8 +4926,8 @@ const DailyChallengeContent = () => {
               </Button>
             )}
 
-            {/* Add Question/Passage Button - only visible in draft */}
-            {status === 'draft' && !isManager && (
+            {/* Add Question/Passage Button - only visible in draft and when class is not finished */}
+            {status === 'draft' && !isManager && !isClassFinished && (
               <Button 
                 icon={<PlusOutlined />}
                 className={`create-button ${theme}-create-button`}
@@ -4871,8 +4949,8 @@ const DailyChallengeContent = () => {
               </Button>
             )}
             
-            {/* Save Dropdown - hidden when IN_PROGRESS, FINISHED, or PUBLISHED */}
-            {status !== 'finished' && status !== 'in-progress' && status !== 'published' && !isManager && (
+            {/* Save Dropdown - hidden when IN_PROGRESS, FINISHED, or PUBLISHED, or when class is finished */}
+            {status !== 'finished' && status !== 'in-progress' && status !== 'published' && !isManager && !isClassFinished && (
             <Dropdown
               menu={{ 
                 items: (
@@ -5355,6 +5433,7 @@ const DailyChallengeContent = () => {
                       activeId={activeId}
                       isManager={isManager}
                       status={status}
+                      isClassFinished={isClassFinished}
                     />
                   ))}
 
@@ -5375,6 +5454,7 @@ const DailyChallengeContent = () => {
                       activeId={activeId}
                       isManager={isManager}
                       status={status}
+                      isClassFinished={isClassFinished}
                     />
                   ))}
                 </SortableContext>

@@ -31,8 +31,8 @@ import usePageTitle from "../../../../hooks/usePageTitle";
 import { dailyChallengeApi } from "../../../../apis/apis";
 import { useSelector } from "react-redux";
 
-const EXTEND_ELIGIBLE_STATUSES = new Set(["PENDING", "DRAFT"]);
-const RESET_ELIGIBLE_STATUSES = new Set(["SUBMITTED", "GRADED", "MISSED"]);
+const EXTEND_ELIGIBLE_STATUSES = new Set(["PENDING", "DRAFT", "MISSED"]);
+const RESET_ELIGIBLE_STATUSES = new Set(["SUBMITTED", "GRADED"]);
 
 const DailyChallengeSubmissionList = () => {
   const { RangePicker } = DatePicker;
@@ -444,7 +444,7 @@ const DailyChallengeSubmissionList = () => {
   const toggleExtendSelection = (submissionId, forceValue = null) => {
     if (!submissionId) return;
     if (!extendEligibleIdSet.has(submissionId)) {
-      spaceToast.error(t('dailyChallenge.onlyPendingOrDraftCanBeExtended', 'Only submissions in Pending or Draft can be extended.'));
+      spaceToast.error(t('dailyChallenge.onlyPendingOrDraftCanBeExtended', 'Only submissions in Pending, Draft, or Missed can be extended.'));
       return;
     }
     setExtendSelectedSubmissionIds((prev) => {
@@ -907,7 +907,7 @@ const DailyChallengeSubmissionList = () => {
                 </Space>
               </div>
               <Typography.Text type="secondary" style={{ display: 'block' }}>
-                {t('dailyChallenge.onlyPendingOrDraftCanBeExtendedNewDeadlineMustBeFuture', 'Only submissions in Pending or Draft can be extended. The new deadline must be in the future.')}
+                {t('dailyChallenge.onlyPendingOrDraftCanBeExtendedNewDeadlineMustBeFuture', 'Only submissions in Pending, Draft, or Missed can be extended. The new deadline must be in the future.')}
               </Typography.Text>
             </div>
 
@@ -972,7 +972,7 @@ const DailyChallengeSubmissionList = () => {
                     <Alert
                       type="info"
                       showIcon
-                      message={t('dailyChallenge.noSubmissionsCurrentlyPendingOrDraft', 'No submissions are currently pending or in draft.')}
+                      message={t('dailyChallenge.noSubmissionsCurrentlyPendingOrDraft', 'No submissions are currently pending, in draft, or missed.')}
                       style={{ gridColumn: '1 / -1' }}
                     />
                   )}
