@@ -49,7 +49,7 @@ import DailyChallengeList from '../pages/management/ManagementTeacher/dailyChall
 import DailyChallengePerformance from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengePerformance.jsx';
 import DailyChallengeSubmissionList from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionList.jsx';
 import DailyChallengeSubmissionDetail from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeSubmissionDetail.jsx';
-import DailyChallengeContent from '../pages/management/ManagementTeacher/dailyChallenge/DailyChallengeContent.jsx';
+import DailyChallengeContent from '../pages/management/ManagementTeacher/dailyChallenge/QuestionList.jsx';
 import StudentPreview from '../pages/management/ManagementTeacher/dailyChallenge/StudentPreview.jsx';
 import CreateReadingChallenge from '../pages/management/ManagementTeacher/dailyChallenge/CreateReadingChallenge.jsx';
 import AIGenerateQuestions from '../pages/management/ManagementTeacher/dailyChallenge/AIGenerateQuestions.jsx';

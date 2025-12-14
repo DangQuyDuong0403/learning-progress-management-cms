@@ -9,14 +9,13 @@ body {
 
 /* Allow default scrollbars globally; component-specific styling can override if needed */
 
-/* Prevent horizontal and vertical scrolling on body */
+/* Prevent horizontal overflow; allow vertical scroll */
 html, body {
   overflow-x: hidden;
-  overflow-y: hidden;
+  overflow-y: auto;
   width: 100%;
   max-width: 100vw;
-  height: 100vh;
-  max-height: 100vh;
+  min-height: 100vh;
 }
 
 /* Hide scrollbar for html and body */
@@ -35,9 +34,8 @@ body {
 #root {
   width: 100vw;
   max-width: 100vw;
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* Hide scrollbar for #root */

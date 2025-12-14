@@ -22,7 +22,7 @@ import LoadingWithEffect from "../../../../component/spinner/LoadingWithEffect";
 // import CreateDailyChallengeModal from "./CreateDailyChallengeModal"; // Keep old modal (not deleted, just commented)
 import SimpleDailyChallengeModal from "./CreateDailyChallengeModal"; // New simple modal
 import EditDailyChallengeModal from "./EditDailyChallengeModal"; // Edit modal
-import "./DailyChallengeList.css";
+import "./QuestionList.css";
 import { spaceToast } from "../../../../component/SpaceToastify";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -61,6 +61,8 @@ const DailyChallengeList = ({ readOnly = false }) => {
   
   // Set page title with class name if available
   usePageTitle(classData?.name ? ['Daily Challenge Management', classData.name] : 'Daily Challenge Management');
+  // Check if class is finished (view-only mode)
+  const isClassFinished = classData?.status === 'FINISHED';
   const [searchText, setSearchText] = useState("");
   const [typeFilter, setTypeFilter] = useState([]);
   const [statusFilter, setStatusFilter] = useState([]);
@@ -196,6 +198,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
             data.title ??
             data.classTitle ??
             `Class ${classId}`, // Fallback name
+          status: data.status ?? data.classStatus ?? data.class_status ?? null,
         };
         setClassData(mapped);
       } else {
@@ -1019,7 +1022,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
                 <span className="lesson-text" style={{ transition: 'opacity 0.3s ease', display: 'block', whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: '100%', lineHeight: '1.4' }}>
                   {text}
                 </span>
-                {!readOnly && !isTeachingAssistant && !isManager && (
+                {!readOnly && !isTeachingAssistant && !isManager && !isClassFinished && (
                   <Button
                     className="lesson-create-btn"
                     icon={<PlusOutlined />}
@@ -1175,9 +1178,13 @@ const DailyChallengeList = ({ readOnly = false }) => {
         if (!startDate) return '';
         const d = new Date(startDate);
         return (
-          <div style={{ lineHeight: 1.2 }}>
-            <div>{d.toLocaleDateString()}</div>
-            <div style={{ fontSize: 12, color: '#666' }}>{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+          <div style={{ lineHeight: 1.2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: '#1f2937' }}>
+              {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+            </div>
+            <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+              {d.toLocaleDateString()}
+            </div>
           </div>
         );
       },
@@ -1198,9 +1205,13 @@ const DailyChallengeList = ({ readOnly = false }) => {
         if (!endDate) return '';
         const d = new Date(endDate);
         return (
-          <div style={{ lineHeight: 1.2 }}>
-            <div>{d.toLocaleDateString()}</div>
-            <div style={{ fontSize: 12, color: '#666' }}>{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+          <div style={{ lineHeight: 1.2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: '#1f2937' }}>
+              {d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+            </div>
+            <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+              {d.toLocaleDateString()}
+            </div>
           </div>
         );
       },
@@ -1292,36 +1303,38 @@ const DailyChallengeList = ({ readOnly = false }) => {
               <span className="status-text" style={{ transition: 'opacity 0.3s ease' }}>
                 {getStatusLabel(status)}
               </span>
-              <Button
-                className="status-publish-btn"
-                style={{
-                  fontSize: '16px',
-                  height: '40px',
-                  padding: '0 20px',
-                  borderRadius: '8px',
-                  background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                  borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
-                  color: theme === 'sun' ? '#000' : '#000',
-                  fontWeight: '500',
-                  border: 'none',
-                  minWidth: '120px',
-                  margin: '0',
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%) scale(0.9)',
-                  opacity: 0,
-                  transition: 'all 0.2s ease',
-                  pointerEvents: 'none'
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleStatus(record.id);
-                }}
-                title={t('dailyChallenge.publishNow') || 'Publish'}
-              >
-                {t('dailyChallenge.publishNow') || 'Publish'}
-              </Button>
+              {!isClassFinished && (
+                <Button
+                  className="status-publish-btn"
+                  style={{
+                    fontSize: '16px',
+                    height: '40px',
+                    padding: '0 20px',
+                    borderRadius: '8px',
+                    background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                    borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+                    color: theme === 'sun' ? '#000' : '#000',
+                    fontWeight: '500',
+                    border: 'none',
+                    minWidth: '120px',
+                    margin: '0',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%) scale(0.9)',
+                    opacity: 0,
+                    transition: 'all 0.2s ease',
+                    pointerEvents: 'none'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleStatus(record.id);
+                  }}
+                  title={t('dailyChallenge.publishNow') || 'Publish'}
+                >
+                  {t('dailyChallenge.publishNow') || 'Publish'}
+                </Button>
+              )}
             </div>
           );
         }
@@ -1360,7 +1373,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               title={t('dailyChallenge.viewDetails')}
               className="action-btn-view"
             />
-            {!readOnly && !isTeachingAssistant && !isManager && (
+            {!readOnly && !isTeachingAssistant && !isManager && !isClassFinished && (
               <>
                 <Button
                   type="text"
@@ -1506,7 +1519,7 @@ const DailyChallengeList = ({ readOnly = false }) => {
               </div>
             )}
           </div>
-          {!readOnly && !isTeachingAssistant && !isManager && (
+          {!readOnly && !isTeachingAssistant && !isManager && !isClassFinished && (
             <div className="action-buttons" style={{ marginLeft: 'auto' }}>
               <Button 
                 icon={<PlusOutlined />}
@@ -1530,6 +1543,9 @@ const DailyChallengeList = ({ readOnly = false }) => {
                 current: currentPage,
                 pageSize: pageSize,
                 total: totalItems,
+                style: {
+                  marginRight: '16px',
+                },
                 onChange: (page, size) => {
                   setCurrentPage(page);
                   if (size !== pageSize) {

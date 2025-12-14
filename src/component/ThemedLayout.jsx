@@ -89,10 +89,10 @@ const ThemedLayout = ({ children, hideSidebar = false }) => {
 
   return (
     <AntLayout 
-      className={`themed-layout ${theme}-theme`}
+      className={`themed-layout default-layout ${theme}-theme`}
       style={{ 
         minHeight: '100vh',
-        height: '100vh',
+        height: 'auto',
         width: '100vw',
         maxWidth: '100vw',
         overflow: 'hidden',
@@ -201,8 +201,8 @@ const ThemedLayout = ({ children, hideSidebar = false }) => {
           maxWidth: mainWidth,
           boxSizing: 'border-box',
           minWidth: 0,
-          height: '100vh',
-          maxHeight: '100vh',
+        minHeight: '100vh',
+        height: 'auto',
           overflow: 'hidden',
           position: 'relative',
           zIndex: 1
@@ -229,8 +229,8 @@ const ThemedLayout = ({ children, hideSidebar = false }) => {
           style={{
             padding: '20px 0',
             borderRadius: '8px',
-            height: 'calc(100vh - 112px)',
-            maxHeight: 'calc(100vh - 112px)',
+            minHeight: 'calc(100vh - 112px)',
+            height: 'auto',
             width: '100%',
             maxWidth: '100%',
             overflowY: 'auto',

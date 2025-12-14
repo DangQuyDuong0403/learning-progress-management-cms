@@ -14,7 +14,7 @@ import {
 } from "@ant-design/icons";
 import ThemedLayout from "../../../component/teacherlayout/ThemedLayout";
 import LoadingWithEffect from "../../../component/spinner/LoadingWithEffect";
-import "../ManagementTeacher/dailyChallenge/DailyChallengeList.css";
+import "../ManagementTeacher/dailyChallenge/QuestionList.css";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../../contexts/ThemeContext";
