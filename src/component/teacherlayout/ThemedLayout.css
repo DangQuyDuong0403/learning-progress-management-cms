@@ -12,6 +12,19 @@
 /* Make content custom scrollbar fill the content height */
 .themed-content-scrollbar {
 	height: 100%;
+	position: relative;
+}
+
+/* Ensure OverlayScrollbars viewport has proper height */
+.themed-content-scrollbar .os-viewport {
+	height: 100% !important;
+	overflow: hidden !important;
+}
+
+.themed-content-scrollbar .os-content {
+	height: auto;
+	min-height: 100%;
+	box-sizing: border-box;
 }
 
 /* Ensure themed-content padding and borderRadius work correctly */
@@ -21,17 +34,18 @@
 }
 
 /* Ensure OverlayScrollbarsComponent wrapper respects padding */
+/* Note: padding-bottom is now in JSX to ensure proper scrollbar detection */
 .themed-content > .themed-content-scrollbar {
-	padding-bottom: 20px;
 	box-sizing: border-box;
 }
 
 /* Hide native scrollbars for nested scrollables inside content, keep custom page scrollbar */
-.themed-content * {
+/* Exclude OverlayScrollbars elements from hiding */
+.themed-content *:not(.os-viewport):not(.os-content):not(.os-scrollbar):not(.os-scrollbar-track):not(.os-scrollbar-handle):not(.os-scrollbar-corner) {
 	-ms-overflow-style: none; /* IE/Edge */
 	scrollbar-width: none;    /* Firefox */
 }
-.themed-content *::-webkit-scrollbar {
+.themed-content *:not(.os-viewport):not(.os-content):not(.os-scrollbar):not(.os-scrollbar-track):not(.os-scrollbar-handle):not(.os-scrollbar-corner)::-webkit-scrollbar {
 	width: 0;
 	height: 0;               /* Chrome/Safari */
 }
@@ -587,6 +601,147 @@
 }
 
 .space-theme .themed-sidebar-scrollbar .os-scrollbar-track:hover {
+	background: rgba(109, 95, 143, 0.12);
+}
+
+/* ===== CONTENT SCROLLBAR STYLES (OverlayScrollbars) ===== */
+.themed-content-scrollbar {
+	border-right: none;
+	background: transparent;
+	position: relative;
+	z-index: 2;
+	overflow: hidden !important;
+}
+
+/* Force OverlayScrollbars to show */
+.themed-content-scrollbar.os-host {
+	overflow: hidden !important;
+}
+
+.themed-content-scrollbar.os-host-overflow {
+	overflow: hidden !important;
+}
+
+/* OverlayScrollbars custom styling for content */
+.themed-content-scrollbar .os-scrollbar {
+	--os-size: 8px;
+	--os-padding-perpendicular: 0px;
+	--os-padding-axis: 0px;
+	padding: 6px 0;
+	transition: opacity 0.6s ease-in-out;
+	opacity: 1 !important;
+	display: block !important;
+}
+
+/* Fade out effect when auto-hiding */
+.themed-content-scrollbar .os-scrollbar.os-scrollbar-auto-hide {
+	transition: opacity 0.8s ease-in-out;
+}
+
+/* When scrollbar is hiding */
+.themed-content-scrollbar .os-scrollbar.os-scrollbar-auto-hide-hidden {
+	opacity: 0;
+	transition: opacity 0.8s ease-in-out;
+}
+
+/* When scrollbar is visible */
+.themed-content-scrollbar .os-scrollbar:not(.os-scrollbar-auto-hide-hidden) {
+	opacity: 1;
+	transition: opacity 0.4s ease-in-out;
+}
+
+.themed-content-scrollbar .os-scrollbar-vertical {
+	right: 4px;
+	width: var(--os-size);
+	top: 0;
+}
+
+/* Position scrollbar track to start below header (80px) */
+.themed-content-scrollbar .os-scrollbar-vertical {
+	top: 80px !important;
+	bottom: 0;
+	height: calc(100% - 1px) !important;
+}
+
+/* Scrollbar track */
+.themed-content-scrollbar .os-scrollbar-track {
+	background: rgba(0, 0, 0, 0.05);
+	border-radius: 4px;
+	transition: all 0.4s ease-in-out;
+	opacity: 1;
+}
+
+.themed-content-scrollbar .os-scrollbar-track:hover {
+	background: rgba(0, 0, 0, 0.08);
+}
+
+/* Track fade out with scrollbar */
+.themed-content-scrollbar .os-scrollbar.os-scrollbar-auto-hide-hidden .os-scrollbar-track {
+	opacity: 0;
+	transition: opacity 0.8s ease-in-out;
+}
+
+/* Scrollbar handle - Space theme (default) */
+.themed-content-scrollbar .os-scrollbar-handle {
+	background: rgba(255, 255, 255, 0.35);
+	border-radius: 4px;
+	transition: all 0.4s ease-in-out;
+	min-height: 50px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	opacity: 1;
+}
+
+.themed-content-scrollbar .os-scrollbar-handle:hover {
+	background: rgba(255, 255, 255, 0.55);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+	transform: scaleX(1.1);
+}
+
+.themed-content-scrollbar .os-scrollbar-handle:active {
+	background: rgba(255, 255, 255, 0.65);
+	transform: scaleX(1.2);
+}
+
+/* Handle fade out with scrollbar */
+.themed-content-scrollbar .os-scrollbar.os-scrollbar-auto-hide-hidden .os-scrollbar-handle {
+	opacity: 0;
+	transition: opacity 0.8s ease-in-out;
+}
+
+/* Sun theme content scrollbar */
+.sun-theme .themed-content-scrollbar .os-scrollbar-track {
+	background: rgba(67, 152, 248, 0.08);
+	transition: all 0.4s ease-in-out;
+}
+
+.sun-theme .themed-content-scrollbar .os-scrollbar-track:hover {
+	background: rgba(67, 152, 248, 0.12);
+}
+
+.sun-theme .themed-content-scrollbar .os-scrollbar-handle {
+	background: rgba(67, 152, 248, 0.45);
+	box-shadow: 0 2px 4px rgba(67, 152, 248, 0.2);
+	transition: all 0.4s ease-in-out;
+}
+
+.sun-theme .themed-content-scrollbar .os-scrollbar-handle:hover {
+	background: rgba(67, 152, 248, 0.65);
+	box-shadow: 0 2px 6px rgba(67, 152, 248, 0.3);
+	transform: scaleX(1.1);
+}
+
+.sun-theme .themed-content-scrollbar .os-scrollbar-handle:active {
+	background: rgba(67, 152, 248, 0.75);
+	transform: scaleX(1.2);
+}
+
+/* Space theme content scrollbar track */
+.space-theme .themed-content-scrollbar .os-scrollbar-track {
+	background: rgba(109, 95, 143, 0.08);
+	transition: all 0.4s ease-in-out;
+}
+
+.space-theme .themed-content-scrollbar .os-scrollbar-track:hover {
 	background: rgba(109, 95, 143, 0.12);
 }
 

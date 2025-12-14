@@ -56,7 +56,7 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
           style={{
             padding: `0px 0px 0px 10px`,
             borderRadius: '8px',
-            minHeight: 'calc(100vh - 112px)',
+            minHeight: 'calc(100vh - 1px)',
             height: 'auto',
             overflow: 'visible',
             width: '100%',
@@ -68,21 +68,25 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
           <OverlayScrollbarsComponent
             options={{
               scrollbars: {
-                autoHide: 'leave',
+                autoHide: 'never',
                 autoHideSuspend: false,
                 theme: 'os-theme-custom',
-                visibility: 'auto',
+                visibility: 'visible',
                 pointers: ['mouse', 'touch', 'pen']
               },
-              overflow: { x: 'hidden', y: 'scroll' }
+              overflow: { 
+                x: 'hidden', 
+                y: 'scroll'  // Use 'scroll' instead of 'auto' to always show scrollbar
+              }
             }}
             style={{ 
-              minHeight: 'calc(100vh - 112px)',
-              height: 'auto', 
+              height: 'calc(100vh - 1px)',
+              maxHeight: 'calc(100vh - 1px)',
               width: '100%',
-
+              overflow: 'auto',
+              position: 'relative'
             }}
-            className={`themed-sidebar-scrollbar themed-content-scrollbar ${theme}-content-scrollbar`}
+            className={`themed-content-scrollbar ${theme}-content-scrollbar`}
           >
             {/* Themed Header */}
             {customHeader ? (
