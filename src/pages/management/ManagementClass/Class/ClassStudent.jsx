@@ -80,12 +80,12 @@ const ClassStudent = () => {
   // Check if user is read-only (TEACHER or TEACHING_ASSISTANT)
   const isReadOnly = userRole === 'teacher' || userRole === 'teaching_assistant';
   
-  // Set page title
-  usePageTitle('Class Students');
-  
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState([]);
   const [classData, setClassData] = useState(null);
+  
+  // Set page title with class name if available
+  usePageTitle(classData?.name ? ['Class Students', classData.name] : 'Class Students');
   
   // Check if class is finished (hide add, import, delete buttons)
   const isClassFinished = contextViewOnly || classMenuData?.status === 'FINISHED' || classData?.status === 'FINISHED';

@@ -79,12 +79,12 @@ const ClassReport = () => {
     ? ThemedLayoutNoSidebar
     : ThemedLayoutWithSidebar;
 
-  // Set page title
-  usePageTitle('Class Report');
-
   // State management
   const [loading, setLoading] = useState(true);
   const [classData, setClassData] = useState(null);
+  
+  // Set page title with class name if available
+  usePageTitle(classData?.name ? ['Class Report', classData.name] : 'Class Report');
   const [overviewData, setOverviewData] = useState(null);
   const [roleDistributionData, setRoleDistributionData] = useState([]);
   const [teacherActivityData, setTeacherActivityData] = useState([]);

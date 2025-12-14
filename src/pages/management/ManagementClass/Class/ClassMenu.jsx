@@ -42,11 +42,11 @@ const ClassMenu = () => {
     ? ThemedLayoutNoSidebar
     : ThemedLayoutWithSidebar;
   
-  // Set page title
-  usePageTitle('Class Menu');
-  
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
+  
+  // Set page title with class name if available
+  usePageTitle(classData?.name ? ['Class Detail', classData.name] : 'Class Detail');
 
   // Determine route prefix based on user role
   const getRoutePrefix = () => {

@@ -68,12 +68,12 @@ const ClassActivities = () => {
     ? ThemedLayoutNoSidebar 
     : ThemedLayoutWithSidebar;
   
-  // Set page title
-  usePageTitle('Class Activities');
-  
   const [loading, setLoading] = useState(false);
   const [activities, setActivities] = useState([]);
   const [classData, setClassData] = useState(null);
+  
+  // Set page title with class name if available
+  usePageTitle(classData?.name ? ['Class Activities', classData.name] : 'Class Activities');
   
   // Pagination state
   const [pagination, setPagination] = useState({

@@ -37,11 +37,11 @@ const ClassOverview = () => {
   // Use ThemedLayout from teacherlayout (no sidebar) for students, test takers, teachers, and teaching assistants
   const LayoutComponent = (isStudent || isTestTaker || isTeacher || isTeachingAssistant) ? ThemedLayoutNoSidebar : ThemedLayout;
   
-  // Set page title
-  usePageTitle('Class Overview');
-  
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
+  
+  // Set page title with class name if available
+  usePageTitle(classData?.name ? ['Class Overview', classData.name] : 'Class Overview');
 
   const fetchClassData = useCallback(async () => {
     try {
