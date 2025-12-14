@@ -19,6 +19,7 @@ import TableSpinner from '../../../../component/spinner/TableSpinner';
 import teacherManagementApi from '../../../../apis/backend/teacherManagement';
 import ChapterForm from '../../ManagementManager/syllabus/ChapterForm';
 import { useSelector } from 'react-redux';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import {
 	DndContext,
 	closestCenter,
@@ -224,6 +225,9 @@ const TeacherClassChapterDragEdit = () => {
 	const [insertAtIndex, setInsertAtIndex] = useState(null);
 	const [classInfo, setClassInfo] = useState(null);
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
+	
+	// Set page title with class name if available
+	usePageTitle(classInfo?.name ? ['Edit Chapter Order', classInfo.name] : 'Edit Chapter Order');
 
 	// Determine route prefix based on user role
 	const getRoutePrefix = () => {
