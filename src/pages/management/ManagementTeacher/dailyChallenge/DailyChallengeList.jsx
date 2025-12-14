@@ -55,13 +55,12 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const isTeachingAssistant = (user?.role || '').toUpperCase() === 'TEACHING_ASSISTANT';
   const isManager = (user?.role || '').toLowerCase() === 'manager';
   
-  // Set page title based on whether it's class-specific or general
-  usePageTitle(classId ? `Class ${classId} Daily Challenges` : 'Daily Challenge Management');
-  
   const [loading, setLoading] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
   const [classData, setClassData] = useState(null); // Store class data
   
+  // Set page title with class name if available
+  usePageTitle(classData?.name ? ['Daily Challenge Management', classData.name] : 'Daily Challenge Management');
   // Check if class is finished (view-only mode)
   const isClassFinished = classData?.status === 'FINISHED';
   const [searchText, setSearchText] = useState("");
