@@ -200,7 +200,13 @@ const AIGenerateReading = () => {
       removeItems: [] // Don't remove any items
     },
     removePlugins: ['StickyToolbar'],
-    extraPlugins: [CustomUploadAdapterPlugin]
+    extraPlugins: [CustomUploadAdapterPlugin],
+    // Disable floating toolbar behavior
+    ui: {
+      viewportOffset: {
+        top: 0
+      }
+    }
   }), []);
 
   const availableQuestionTypes = useMemo(() => [
@@ -892,6 +898,46 @@ const AIGenerateReading = () => {
               transform: translateY(-50%) translateY(-8px);
             }
           }
+          
+          /* Fix CKEditor toolbar position - prevent floating/sticky behavior */
+          .passage-ckeditor-wrapper .ck-editor {
+            position: relative !important;
+          }
+          
+          .passage-ckeditor-wrapper .ck-editor__top {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            transform: none !important;
+            transition: none !important;
+            z-index: auto !important;
+            width: 100% !important;
+          }
+          
+          .passage-ckeditor-wrapper .ck-toolbar {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            transform: none !important;
+            transition: none !important;
+            z-index: auto !important;
+            width: 100% !important;
+          }
+          
+          .passage-ckeditor-wrapper .ck-sticky-panel {
+            position: relative !important;
+          }
+          
+          .passage-ckeditor-wrapper .ck-sticky-panel__content {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            transform: none !important;
+            transition: none !important;
+          }
         `}
       </style>
       <div
@@ -1339,7 +1385,8 @@ const AIGenerateReading = () => {
                       ? 'rgba(240, 249, 255, 0.5)'
                       : 'rgba(244, 240, 255, 0.3)',
                     padding: '12px',
-                    overflow: 'visible'
+                    overflow: 'visible',
+                    position: 'relative'
                   }}>
                     <CKEditor
                       editor={ClassicEditor}
@@ -1359,6 +1406,23 @@ const AIGenerateReading = () => {
                             el.style.minHeight = '300px';
                             el.style.color = '#000000';
                             el.style.fontSize = '15px';
+                          }
+                          // Fix toolbar position - prevent floating/sticky behavior
+                          const toolbar = editor.ui?.view?.toolbar?.element;
+                          if (toolbar) {
+                            toolbar.style.position = 'relative';
+                            toolbar.style.top = 'auto';
+                            toolbar.style.zIndex = 'auto';
+                            toolbar.style.transform = 'none';
+                            toolbar.style.transition = 'none';
+                          }
+                          // Also fix the editor container
+                          const editorElement = editor.sourceElement?.parentElement;
+                          if (editorElement) {
+                            const ckeditorElement = editorElement.closest('.ck-editor');
+                            if (ckeditorElement) {
+                              ckeditorElement.style.position = 'relative';
+                            }
                           }
                         } catch (e) {
                           console.error('CKEditor onReady error:', e);
