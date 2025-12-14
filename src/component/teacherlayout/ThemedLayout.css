@@ -660,7 +660,7 @@
 .themed-content-scrollbar .os-scrollbar-vertical {
 	top: 80px !important;
 	bottom: 0;
-	height: calc(100% - 80px) !important;
+	height: calc(100% - 1px) !important;
 }
 
 /* Scrollbar track */

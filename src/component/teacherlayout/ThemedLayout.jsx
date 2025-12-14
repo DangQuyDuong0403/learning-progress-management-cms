@@ -56,7 +56,7 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
           style={{
             padding: `0px 0px 0px 10px`,
             borderRadius: '8px',
-            minHeight: 'calc(100vh - 112px)',
+            minHeight: 'calc(100vh - 1px)',
             height: 'auto',
             overflow: 'visible',
             width: '100%',
@@ -80,8 +80,8 @@ const ThemedLayout = ({ children, customHeader, contentMargin = 20, contentPaddi
               }
             }}
             style={{ 
-              height: 'calc(100vh - 80px)',
-              maxHeight: 'calc(100vh - 80px)',
+              height: 'calc(100vh - 1px)',
+              maxHeight: 'calc(100vh - 1px)',
               width: '100%',
               overflow: 'auto',
               position: 'relative'
