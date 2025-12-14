@@ -2295,10 +2295,31 @@ const AIGenerateReading = () => {
                                   return parts.map((part, idx) => {
                                     const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                                     if (!m) {
-                                      const cleanPart = part
-                                        .replace(/[a-zA-Z0-9]{6,}/g, '')
-                                        .replace(/[a-zA-Z]{3,}[0-9]{3,}/g, '')
-                                        .replace(/[0-9]{3,}[a-zA-Z]{3,}/g, '')
+                                      // Remove alphanumeric codes that are not valid words
+                                      // These patterns appear after placeholders like g7h8i9, j1k213, m4n506, p7q8r9
+                                      let cleanPart = part
+                                        // Remove patterns that mix letters and numbers (2-10 chars) - these are codes, not words
+                                        // Match alphanumeric strings that have both letters and numbers
+                                        .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
+                                          // Only remove if it contains BOTH letters and numbers (mixed pattern)
+                                          // Don't remove pure words (only letters) or pure numbers
+                                          const hasLetter = /[a-zA-Z]/.test(match);
+                                          const hasNumber = /[0-9]/.test(match);
+                                          
+                                          // Remove if it's a mix of letters and numbers (like g7h8i9, j1k213)
+                                          if (hasLetter && hasNumber) {
+                                            // Additional check: if it looks like a valid word (e.g., "2nd", "3rd", "1st")
+                                            // Keep common ordinal patterns
+                                            if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
+                                              return match;
+                                            }
+                                            // Remove the mixed alphanumeric code
+                                            return '';
+                                          }
+                                          return match;
+                                        })
+                                        // Clean up multiple spaces that might result from removals
+                                        .replace(/\s+/g, ' ')
                                         .trim();
                                       return <React.Fragment key={idx}>{cleanPart}</React.Fragment>;
                                     }
@@ -2325,7 +2346,29 @@ const AIGenerateReading = () => {
                                     );
                                   });
                                 }
-                                const cleanText = text.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '___');
+                                // Also clean the text when no placeholders
+                                let cleanText = text.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '___');
+                                // Remove alphanumeric codes that mix letters and numbers
+                                cleanText = cleanText
+                                  .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
+                                    // Only remove if it contains BOTH letters and numbers (mixed pattern)
+                                    const hasLetter = /[a-zA-Z]/.test(match);
+                                    const hasNumber = /[0-9]/.test(match);
+                                    
+                                    // Remove if it's a mix of letters and numbers (like g7h8i9, j1k213)
+                                    if (hasLetter && hasNumber) {
+                                      // Keep common ordinal patterns
+                                      if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
+                                        return match;
+                                      }
+                                      // Remove the mixed alphanumeric code
+                                      return '';
+                                    }
+                                    return match;
+                                  })
+                                  // Clean up multiple spaces
+                                  .replace(/\s+/g, ' ')
+                                  .trim();
                                 return cleanText;
                               })()}
                             </div>
