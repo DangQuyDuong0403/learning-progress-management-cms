@@ -726,8 +726,18 @@ const AIGenerateQuestions = () => {
             // Use questionText
             const text = q?.questionText || q?.question || '';
             const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
-            // For REARRANGE: Keep both sourceItems and correctOrder in original order from backend (no shuffle, no sort)
+            // For REARRANGE:
+            // - correctOrder: giữ nguyên thứ tự từ backend (đây là thứ tự đúng)
+            // - sourceItems: shuffle để hiển thị ở "available words"
             const words = contentItems.map(it => it.value);
+            const shuffledWords = (() => {
+              const copy = [...words];
+              for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+              }
+              return copy;
+            })();
             return {
               id: nextId(),
               type: 'REARRANGE',
@@ -735,8 +745,8 @@ const AIGenerateQuestions = () => {
               // Show human-friendly instruction; keep placeholders only in questionText
               question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
               questionText: text || '',
-              sourceItems: words, // Keep original order from backend (no shuffle)
-              correctOrder: words, // Keep original order from backend (no shuffle, no sort)
+              sourceItems: shuffledWords, // Available words (được shuffle)
+              correctOrder: words,        // Thứ tự đúng theo backend (không sort lại)
               content: { data: contentItems },
               points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };

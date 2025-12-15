@@ -311,12 +311,42 @@ const AIGenerateListening = () => {
           return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', questionText: q?.questionText || q?.question || '', content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         case 'REARRANGE': {
           const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
+          // Map positionId -> value (giữ đúng mapping từ backend)
           const posToVal = new Map();
-          contentItems.forEach(it => { if (it && it.positionId) posToVal.set(String(it.positionId).replace(/^pos_/, ''), it.value); });
+          contentItems.forEach(it => {
+            if (it && it.positionId) {
+              posToVal.set(String(it.positionId).replace(/^pos_/, ''), it.value);
+            }
+          });
           const text = q?.questionText || q?.question || '';
-          const ids = []; const re = /\[\[pos_([a-zA-Z0-9]+)\]\]/g; let m; while ((m = re.exec(text)) !== null) { ids.push(m[1]); }
+          // Lấy thứ tự đúng theo placeholder trong questionText ([[pos_x]])
+          const ids = [];
+          const re = /\[\[pos_([a-zA-Z0-9]+)\]\]/g;
+          let m;
+          while ((m = re.exec(text)) !== null) {
+            ids.push(m[1]);
+          }
           const words = ids.map(id => posToVal.get(id)).filter(Boolean);
-          return { id: nextId(), type: 'REARRANGE', title: `Question ${counter}`, question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'), questionText: text, sourceItems: words, correctOrder: words, content: { data: contentItems }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
+          // Shuffle chỉ phần available words hiển thị cho học sinh
+          const shuffled = (() => {
+            const copy = [...words];
+            for (let i = copy.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+          })();
+          return {
+            id: nextId(),
+            type: 'REARRANGE',
+            title: `Question ${counter}`,
+            question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
+            questionText: text,
+            sourceItems: shuffled,   // availableWords: bị shuffle
+            correctOrder: words,     // thứ tự đúng: y nguyên backend
+            content: { data: contentItems },
+            points: q?.points ?? q?.weight ?? q?.score ?? 1,
+          };
         }
         default:
           return null;
