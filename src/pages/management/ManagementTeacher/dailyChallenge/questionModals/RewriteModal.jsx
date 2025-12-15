@@ -429,19 +429,19 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
     // Generate unique positionId for REWRITE question
     const positionId = `a1b2c3${Date.now()}`;
     
-    // Convert HTML to plain text
-    const plainTextQuestion = getPlainText(editorData);
+    // Keep HTML format for question and answers (don't convert to plain text)
+    const questionHtml = editorData || '';
     
-    // Create content.data array with correct answers (using plain text for answers)
+    // Create content.data array with correct answers (keep HTML format)
     const contentData = correctAnswers.map((ans, index) => ({
       id: `item${index + 1}`,
-      value: getPlainText(ans.answer), // Store plain text instead of HTML
+      value: ans.answer || '', // Keep HTML format instead of converting to plain text
       positionId: positionId,
       correct: true
     }));
 
-    // Add positionId marker to questionText if not already present (using plain text)
-    let questionTextWithPosition = plainTextQuestion;
+    // Add positionId marker to questionText if not already present (keep HTML format)
+    let questionTextWithPosition = questionHtml;
     if (!questionTextWithPosition.includes(`[[pos_${positionId}]]`)) {
       questionTextWithPosition += `\n[[pos_${positionId}]]`;
     }
@@ -454,9 +454,9 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
       question: questionTextWithPosition, // For backward compatibility
       correctAnswers: correctAnswers.map(ans => ({
         ...ans,
-        answer: getPlainText(ans.answer) // Store plain text
+        answer: ans.answer || '' // Keep HTML format
       })),
-      correctAnswer: correctAnswers.map(ans => getPlainText(ans.answer)).join(', '), // Use plain text
+      correctAnswer: correctAnswers.map(ans => ans.answer || '').join(', '), // Keep HTML format
       weight: weight,
       content: {
         data: contentData
