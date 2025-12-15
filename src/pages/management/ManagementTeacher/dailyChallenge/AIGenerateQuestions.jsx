@@ -628,16 +628,20 @@ const AIGenerateQuestions = () => {
             };
           }
           case 'TRUE_OR_FALSE': {
-            // If backend gives correctAnswer: 'True'|'False'
+            // Check both q?.options and q?.content?.data (backend may use either)
+            const backendOptionsFromOptions = Array.isArray(q?.options) ? q.options : [];
+            const backendOptionsFromContent = Array.isArray(q?.content?.data) ? q.content.data : [];
+            const backendOptions = backendOptionsFromOptions.length > 0 ? backendOptionsFromOptions : backendOptionsFromContent;
+            const hasBackend = backendOptions.length > 0;
+            
+            // If backend gives correctAnswer: 'True'|'False' (fallback)
             const correct = String(q?.correctAnswer ?? q?.answer ?? '').toLowerCase();
             const isTrue = correct === 'true' || correct === 't' || correct === '1';
-            const options = [
+            const fallbackOptions = [
               { key: 'A', text: 'True', isCorrect: isTrue === true },
               { key: 'B', text: 'False', isCorrect: isTrue === false },
             ];
-            // Or if backend already includes options
-            const backendOptions = Array.isArray(q?.options) ? q.options : [];
-            const hasBackend = backendOptions.length > 0;
+            
             const rawQuestion = q?.question || q?.questionText || '';
             const sanitizedQuestion = typeof rawQuestion === 'string' ? rawQuestion.replace(/\[\[pos_[^\]]+\]\]/g, '') : rawQuestion;
             return {
@@ -647,7 +651,7 @@ const AIGenerateQuestions = () => {
               question: sanitizedQuestion,
               options: hasBackend
                 ? backendOptions.map((o, i) => ({ key: toOptionKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }))
-                : options,
+                : fallbackOptions,
               points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
           }
@@ -3180,13 +3184,23 @@ const AIGenerateQuestions = () => {
                           {(() => {
                             const text = question.questionText || question.question || '';
                             const blanks = question.blanks || [];
-                            // Support both legacy underscores and [[pos_X]] placeholders
+                            // Support both legacy underscores và [[pos_X]] placeholders
                             if (text.includes('[[pos_')) {
                               // Build lookup map from content.data by positionId
                               const contentItems = Array.isArray(question.content?.data) ? question.content.data : [];
                               const positionIdToValue = new Map();
+                              // Group all items by positionId so we can PREFER the correct answer
+                              const groupedByPos = new Map();
                               contentItems.forEach(item => {
-                                if (item && item.positionId) positionIdToValue.set(String(item.positionId), item.value || '');
+                                if (!item || !item.positionId) return;
+                                const key = String(item.positionId);
+                                if (!groupedByPos.has(key)) groupedByPos.set(key, []);
+                                groupedByPos.get(key).push(item);
+                              });
+                              // For each position, choose the item with correct === true, fallback to first
+                              groupedByPos.forEach((items, key) => {
+                                const correctItem = items.find(it => it.correct === true) || items[0];
+                                positionIdToValue.set(key, correctItem?.value || '');
                               });
 
                               const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
@@ -3194,11 +3208,17 @@ const AIGenerateQuestions = () => {
                               return parts.map((part, idx) => {
                                 const isPlaceholder = /^\[\[pos_[a-zA-Z0-9]+\]\]$/.test(part);
                                 if (!isPlaceholder) {
-                                  return <React.Fragment key={idx}>{part}</React.Fragment>;
+                                  return (
+                                    <span
+                                      key={idx}
+                                      className="html-content"
+                                      dangerouslySetInnerHTML={{ __html: part }}
+                                    />
+                                  );
                                 }
                                 const match = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                                 const posId = match ? match[1] : undefined;
-                                // Prefer exact match via content map; fallback to blanks by order
+                                // Prefer exact match via content map (which now prefers correct=true); fallback to blanks by order
                                 const mappedValue = (posId && positionIdToValue.get(String(posId))) || undefined;
                                 const displayText = mappedValue
                                   || blanks[blankRenderIndex]?.answer
@@ -3229,7 +3249,7 @@ const AIGenerateQuestions = () => {
                                       textAlign: 'center'
                                     }}
                                   >
-                                    {displayText}
+                                    <span className="html-content" dangerouslySetInnerHTML={{ __html: displayText }} />
                                   </span>
                                 );
                               });
@@ -3237,7 +3257,10 @@ const AIGenerateQuestions = () => {
                             // Legacy rendering using underscores
                             return text.split('______').map((part, idx) => (
                               <React.Fragment key={idx}>
-                                {part}
+                                <span
+                                  className="html-content"
+                                  dangerouslySetInnerHTML={{ __html: part }}
+                                />
                                 {idx < blanks.length && (
                                   <span
                                     style={{
@@ -3260,7 +3283,10 @@ const AIGenerateQuestions = () => {
                                       textAlign: 'center'
                                     }}
                                   >
-                                    {blanks[idx]?.placeholder || ''}
+                                    <span
+                                      className="html-content"
+                                      dangerouslySetInnerHTML={{ __html: blanks[idx]?.placeholder || '' }}
+                                    />
                                   </span>
                                 )}
                               </React.Fragment>
@@ -3293,7 +3319,13 @@ const AIGenerateQuestions = () => {
                           const rendered = parts.map((part, idx) => {
                             const match = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                             if (!match) {
-                              return <React.Fragment key={idx}>{part}</React.Fragment>;
+                              return (
+                                <span
+                                  key={idx}
+                                  className="html-content"
+                                  dangerouslySetInnerHTML={{ __html: part }}
+                                />
+                              );
                             }
                             const posId = match[1];
                             // Build options: correct first, then incorrects
@@ -3345,7 +3377,10 @@ const AIGenerateQuestions = () => {
                             const sentenceParts = question.sentence.split('___');
                             return sentenceParts.map((part, idx) => (
                               <React.Fragment key={`s-${idx}`}>
-                                {part}
+                                <span
+                                  className="html-content"
+                                  dangerouslySetInnerHTML={{ __html: part }}
+                                />
                                 {idx < question.blanks.length && (() => {
                                   const blank = question.blanks[idx] || {};
                                   const correct = blank.correctAnswer;
@@ -3387,7 +3422,12 @@ const AIGenerateQuestions = () => {
                             ));
                           }
                           // Default: just show text
-                          return text;
+                          return (
+                            <span
+                              className="html-content"
+                              dangerouslySetInnerHTML={{ __html: text }}
+                            />
+                          );
                         })()}
                       </div>
                     )}
@@ -3421,116 +3461,118 @@ const AIGenerateQuestions = () => {
                               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                               marginBottom: '16px'
                             }}>
-                              {(() => {
-                                const text = question.questionText || question.sentence || '';
-                                const items = Array.isArray(question.content?.data) ? question.content.data : [];
-                                const posToCorrect = new Map();
-                                items.filter(it => it.positionId && it.correct === true).forEach((it) => {
-                                  posToCorrect.set(String(it.positionId), it.value);
-                                });
-                                // Render by placeholder if exists, else fallback to underscores
-                                if (/\[\[pos_/.test(text)) {
-                                  const parts = text.split(/(\[\[pos_([a-zA-Z0-9]+)\]\])/g);
-                                  return parts.map((part, idx) => {
-                                    const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
-                                    if (!m) {
-                                      // Remove alphanumeric codes that are not valid words
-                                      // These patterns appear after placeholders like g7h8i9, j1k213, m4n506, p7q8r9
-                                      let cleanPart = part
-                                        // Remove patterns that mix letters and numbers (2-10 chars) - these are codes, not words
-                                        // Match alphanumeric strings that have both letters and numbers
-                                        .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
-                                          // Only remove if it contains BOTH letters and numbers (mixed pattern)
-                                          // Don't remove pure words (only letters) or pure numbers
-                                          const hasLetter = /[a-zA-Z]/.test(match);
-                                          const hasNumber = /[0-9]/.test(match);
-                                          
-                                          // Remove if it's a mix of letters and numbers (like g7h8i9, j1k213)
-                                          if (hasLetter && hasNumber) {
-                                            // Additional check: if it looks like a valid word (e.g., "2nd", "3rd", "1st")
-                                            // Keep common ordinal patterns
-                                            if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
-                                              return match;
-                                            }
-                                            // Remove the mixed alphanumeric code
-                                            return '';
-                                          }
-                                          return match;
-                                        })
-                                        // Clean up multiple spaces that might result from removals
-                                        .replace(/\s+/g, ' ')
-                                        .trim();
-                                      return <React.Fragment key={idx}>{cleanPart}</React.Fragment>;
-                                    }
-                                    const val = posToCorrect.get(m[1]) || '';
-                                    return (
-                                      <div key={`ddp-${idx}`}
-                                        style={{
-                                          display: 'inline-block',
-                                          minWidth: '120px',
-                                          height: '32px',
-                                          margin: '0 8px',
-                                          background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
-                                          border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                                          borderRadius: '8px',
-                                          padding: '4px 12px',
-                                          fontSize: '15px',
-                                          color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                          verticalAlign: 'top',
-                                          lineHeight: '1.4',
-                                          boxSizing: 'border-box',
-                                          textAlign: 'center',
-                                          fontWeight: 600,
-                                        }}
-                                      >{val}</div>
-                                    );
-                                  });
-                                }
-                                // Fallback legacy underscores rendering
-                                // Clean text by removing position markers first
-                                let cleanText = text.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '___');
-                                // Remove alphanumeric codes that mix letters and numbers
-                                cleanText = cleanText
-                                  .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
-                                    const hasLetter = /[a-zA-Z]/.test(match);
-                                    const hasNumber = /[0-9]/.test(match);
-                                    if (hasLetter && hasNumber) {
-                                      if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
-                                        return match;
-                                      }
-                                      return '';
-                                    }
-                                    return match;
-                                  })
-                                  .replace(/\s+/g, ' ')
-                                  .trim();
-                                return cleanText.split('___').map((part, idx) => (
-                                  <React.Fragment key={`us-${idx}`}>
-                                    {part}
-                                    {idx < 2 && (
-                                      <div
-                                        style={{
-                                          minWidth: '120px',
-                                          height: '32px',
-                                          margin: '0 8px',
-                                          background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
-                                          border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                                          borderRadius: '8px',
-                                          display: 'inline-block',
-                                          padding: '4px 12px',
-                                          fontSize: '15px',
-                                          color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                          verticalAlign: 'top',
-                                          lineHeight: '1.4',
-                                          boxSizing: 'border-box',
-                                          textAlign: 'center',
-                                          fontWeight: 600,
-                                        }}
-                                      >{idx === 0 ? 'love' : 'enjoy'}</div>
-                                    )}
-                                  </React.Fragment>
-                                ));
-                              })()}
+                               {(() => {
+                                 const text = question.questionText || question.sentence || '';
+                                 const items = Array.isArray(question.content?.data) ? question.content.data : [];
+                                 const posToCorrect = new Map();
+                                 items.filter(it => it.positionId && it.correct === true).forEach((it) => {
+                                   posToCorrect.set(String(it.positionId), it.value);
+                                 });
+                                 // Render by placeholder if exists, else fallback to underscores
+                                 if (/\[\[pos_/.test(text)) {
+                                   const parts = text.split(/(\[\[pos_([a-zA-Z0-9]+)\]\])/g);
+                                   return parts.map((part, idx) => {
+                                     const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
+                                     if (!m) {
+                                       // Keep HTML tags for formatting; still strip mixed codes
+                                       let cleanPart = part
+                                         .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
+                                           const hasLetter = /[a-zA-Z]/.test(match);
+                                           const hasNumber = /[0-9]/.test(match);
+                                           if (hasLetter && hasNumber) {
+                                             if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
+                                               return match;
+                                             }
+                                             return '';
+                                           }
+                                           return match;
+                                         });
+                                       return (
+                                         <span
+                                           key={idx}
+                                           className="html-content"
+                                           dangerouslySetInnerHTML={{ __html: cleanPart }}
+                                         />
+                                       );
+                                     }
+                                     const val = posToCorrect.get(m[1]) || '';
+                                     return (
+                                       <div key={`ddp-${idx}`}
+                                         style={{
+                                           display: 'inline-block',
+                                           minWidth: '120px',
+                                           height: '32px',
+                                           margin: '0 8px',
+                                           background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
+                                           border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                           borderRadius: '8px',
+                                           padding: '4px 12px',
+                                           fontSize: '15px',
+                                           color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                           verticalAlign: 'top',
+                                           lineHeight: '1.4',
+                                           boxSizing: 'border-box',
+                                           textAlign: 'center',
+                                           fontWeight: 600,
+                                         }}
+                                       >
+                                         <span
+                                           className="html-content"
+                                           dangerouslySetInnerHTML={{ __html: val }}
+                                         />
+                                       </div>
+                                     );
+                                   });
+                                 }
+                                 // Fallback legacy underscores rendering
+                                 let cleanText = text.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '___');
+                                 cleanText = cleanText
+                                   .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
+                                     const hasLetter = /[a-zA-Z]/.test(match);
+                                     const hasNumber = /[0-9]/.test(match);
+                                     if (hasLetter && hasNumber) {
+                                       if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
+                                         return match;
+                                       }
+                                       return '';
+                                     }
+                                     return match;
+                                   });
+                                 return cleanText.split('___').map((part, idx) => (
+                                   <React.Fragment key={`us-${idx}`}>
+                                     <span
+                                       className="html-content"
+                                       dangerouslySetInnerHTML={{ __html: part }}
+                                     />
+                                     {idx < 2 && (
+                                       <div
+                                         style={{
+                                           minWidth: '120px',
+                                           height: '32px',
+                                           margin: '0 8px',
+                                           background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)',
+                                           border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                           borderRadius: '8px',
+                                           display: 'inline-block',
+                                           padding: '4px 12px',
+                                           fontSize: '15px',
+                                           color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                           verticalAlign: 'top',
+                                           lineHeight: '1.4',
+                                           boxSizing: 'border-box',
+                                           textAlign: 'center',
+                                           fontWeight: 600,
+                                         }}
+                                       >
+                                         <span
+                                           className="html-content"
+                                           dangerouslySetInnerHTML={{ __html: idx === 0 ? 'love' : 'enjoy' }}
+                                         />
+                                       </div>
+                                     )}
+                                   </React.Fragment>
+                                 ));
+                               })()}
                             </div>
                           </div>
 
@@ -3565,31 +3607,34 @@ const AIGenerateQuestions = () => {
                                 const incorrect = items.length > 0
                                   ? items.filter(it => !it.positionId || it.correct === false).map(it => it.value)
                                   : (question.availableWords || []).filter(w => w !== (question.correctAnswers?.blank_1) && w !== (question.correctAnswers?.blank_2));
-                                return incorrect.map((word, wordIdx) => (
-                                  <div
-                                    key={wordIdx}
-                                    style={{
-                                      padding: '12px 20px',
-                                      background: theme === 'sun' 
-                                        ? 'rgba(24, 144, 255, 0.08)' 
-                                        : 'rgba(138, 122, 255, 0.12)',
-                                      border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
-                                      borderRadius: '12px',
-                                      fontSize: '16px',
-                                      fontWeight: '600',
-                                      color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
-                                      userSelect: 'none',
-                                      transition: 'all 0.2s ease',
-                                      minWidth: '80px',
-                                      textAlign: 'center',
-                                      boxShadow: theme === 'sun' 
-                                        ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
-                                        : '0 2px 8px rgba(138, 122, 255, 0.15)'
-                                    }}
-                                  >
-                                    {word}
-                                  </div>
-                                ));
+                                 return incorrect.map((word, wordIdx) => (
+                                   <div
+                                     key={wordIdx}
+                                     style={{
+                                       padding: '12px 20px',
+                                       background: theme === 'sun' 
+                                         ? 'rgba(24, 144, 255, 0.08)' 
+                                         : 'rgba(138, 122, 255, 0.12)',
+                                       border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                       borderRadius: '12px',
+                                       fontSize: '16px',
+                                       fontWeight: '600',
+                                       color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                       userSelect: 'none',
+                                       transition: 'all 0.2s ease',
+                                       minWidth: '80px',
+                                       textAlign: 'center',
+                                       boxShadow: theme === 'sun' 
+                                         ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
+                                         : '0 2px 8px rgba(138, 122, 255, 0.15)'
+                                     }}
+                                   >
+                                     <span
+                                       className="html-content"
+                                       dangerouslySetInnerHTML={{ __html: word || '' }}
+                                     />
+                                   </div>
+                                 ));
                               })()}
                             </div>
                           </div>
@@ -3871,9 +3916,12 @@ const AIGenerateQuestions = () => {
                             display: 'block',
                             color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                           }}>
-                            {Array.isArray(question.content?.data) && question.content.data.length > 1 
-                              ? t('dailyChallenge.correctAnswers', 'Correct Answers') 
-                              : t('dailyChallenge.correctAnswer', 'Correct Answer')}:
+                            {(() => {
+                              const label = Array.isArray(question.content?.data) && question.content.data.length > 1 
+                                ? t('dailyChallenge.correctAnswers', 'Correct Answers') 
+                                : t('dailyChallenge.correctAnswer', 'Correct Answer');
+                              return label.endsWith(':') ? label : `${label}:`;
+                            })()}
                           </Typography.Text>
                           <div style={{
                             display: 'flex',
