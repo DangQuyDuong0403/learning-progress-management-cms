@@ -1383,14 +1383,16 @@ const AIGenerateQuestions = () => {
         const normalizedAnswers = Array.isArray(updatedQuestion?.content?.data)
           ? updatedQuestion.content.data.map(it => it?.value).filter(Boolean)
           : (Array.isArray(updatedQuestion?.correctAnswers) ? updatedQuestion.correctAnswers.map(a => a?.answer).filter(Boolean) : []);
+        // Get instruction from updatedQuestion, removing position markers but keeping HTML format
+        const instructionText = removePosMarkers(updatedQuestion.question || updatedQuestion.questionText || '');
         const plainPrompt = removePosMarkers(stripHtml(updatedQuestion.question || updatedQuestion.questionText || ''));
         return {
           ...q,
           type: 'REWRITE',
           title: q.title,
-          // Show only one prompt (instruction or edited text without markers)
-            question: t('dailyChallenge.rewriteFollowingSentence', 'Rewrite the following sentence using different words:'),
-          questionText: removePosMarkers(updatedQuestion.questionText || updatedQuestion.question || ''),
+          // Keep the instruction from modal (without position markers, with HTML format preserved)
+          question: instructionText || t('dailyChallenge.rewriteFollowingSentence', 'Rewrite the following sentence using different words:'),
+          questionText: instructionText || '',
           content: { data: Array.isArray(updatedQuestion?.content?.data) ? updatedQuestion.content.data : [] },
           points: updatedQuestion.points ?? q.points,
           correctAnswer: normalizedAnswers[0] || '',
@@ -3886,7 +3888,7 @@ const AIGenerateQuestions = () => {
                     {/* Rewrite */}
                     {question.type === 'REWRITE' && (
                       <>
-                        <Typography.Text style={{ 
+                        <div style={{ 
                           fontSize: '15px', 
                           fontWeight: 350,
                           marginBottom: '16px',
@@ -3895,14 +3897,17 @@ const AIGenerateQuestions = () => {
                           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
                         }}>
                           {(() => {
-                            // Show instruction if present; otherwise fallback to stripped questionText/question
-                            const instruction = question.question ? stripHtml(question.question) : '';
-                            if (instruction) return instruction;
+                            // Show instruction with HTML format preserved
+                            const instruction = question.question || '';
+                            if (instruction) {
+                              const withoutMarkers = instruction.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '');
+                              return <span className="html-content" dangerouslySetInnerHTML={{ __html: withoutMarkers }} />;
+                            }
                             const raw = question.questionText || '';
                             const withoutMarkers = raw.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '');
-                            return stripHtml(withoutMarkers).trim();
+                            return <span className="html-content" dangerouslySetInnerHTML={{ __html: withoutMarkers }} />;
                           })()}
-                        </Typography.Text>
+                        </div>
                         {/* Original sentence preview intentionally hidden for REWRITE */}
 
                         {/* Remove original sentence preview to avoid duplicated text */}
@@ -3957,9 +3962,7 @@ const AIGenerateQuestions = () => {
                                     top: '16px',
                                     left: '16px'
                                   }} />
-                                  <div style={{ paddingLeft: '32px' }}>
-                                    {removePosMarkers(stripHtml(val))}
-                                  </div>
+                                  <div style={{ paddingLeft: '32px' }} className="html-content" dangerouslySetInnerHTML={{ __html: removePosMarkers(val || '') }} />
                                 </div>
                               ));
                             })()}
