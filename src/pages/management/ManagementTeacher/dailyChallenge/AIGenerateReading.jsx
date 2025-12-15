@@ -278,9 +278,13 @@ const AIGenerateReading = () => {
           return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', options: opts, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         }
         case 'TRUE_OR_FALSE': {
-          // Prefer backend-provided options if present; otherwise synthesize both True/False
-          const backendOptions = Array.isArray(q?.options) ? q.options : [];
+          // Check both q?.options and q?.content?.data (backend may use either)
+          const backendOptionsFromOptions = Array.isArray(q?.options) ? q.options : [];
+          const backendOptionsFromContent = Array.isArray(q?.content?.data) ? q.content.data : [];
+          const backendOptions = backendOptionsFromOptions.length > 0 ? backendOptionsFromOptions : backendOptionsFromContent;
           const hasBackend = backendOptions.length > 0;
+          
+          // If backend gives correctAnswer: 'True'|'False' (fallback)
           const correct = String(q?.correctAnswer ?? q?.answer ?? '').toLowerCase();
           const isTrue = correct === 'true' || correct === 't' || correct === '1';
           const fallback = [
@@ -2097,12 +2101,11 @@ const AIGenerateReading = () => {
                     {/* Fill in the Blank (match AIGenerateQuestions rendering) */}
                     {question.type === 'FILL_IN_THE_BLANK' && (Array.isArray(question.blanks) || Array.isArray(question.content?.data)) && (
                       <div style={{ marginBottom: '16px' }}>
-                        <Typography.Text style={{ 
+                        <div style={{ 
                           fontSize: '15px', 
                           fontWeight: 350,
                           lineHeight: '1.8',
                           color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
-                          whiteSpace: 'pre-wrap'
                         }}>
                           {(() => {
                             const text = question.questionText || question.question || '';
@@ -2112,8 +2115,18 @@ const AIGenerateReading = () => {
                               // Build lookup map from content.data by positionId
                               const contentItems = Array.isArray(question.content?.data) ? question.content.data : [];
                               const positionIdToValue = new Map();
+                              // Group items theo positionId để ưu tiên đáp án correct=true
+                              const groupedByPos = new Map();
                               contentItems.forEach(item => {
-                                if (item && item.positionId) positionIdToValue.set(String(item.positionId), item.value || '');
+                                if (!item || !item.positionId) return;
+                                const key = String(item.positionId);
+                                if (!groupedByPos.has(key)) groupedByPos.set(key, []);
+                                groupedByPos.get(key).push(item);
+                              });
+                              // Với mỗi positionId, chọn item correct=true nếu có, nếu không thì lấy item đầu tiên
+                              groupedByPos.forEach((items, key) => {
+                                const correctItem = items.find(it => it.correct === true) || items[0];
+                                positionIdToValue.set(key, correctItem?.value || '');
                               });
 
                               const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
@@ -2121,11 +2134,11 @@ const AIGenerateReading = () => {
                               return parts.map((part, idx) => {
                                 const isPlaceholder = /^\[\[pos_[a-zA-Z0-9]+\]\]$/.test(part);
                                 if (!isPlaceholder) {
-                                  return <React.Fragment key={idx}>{part}</React.Fragment>;
+                                  return <span key={idx} className="html-content" dangerouslySetInnerHTML={{ __html: part }} />;
                                 }
                                 const match = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                                 const posId = match ? match[1] : undefined;
-                                // Prefer exact match via content map; fallback to blanks by order
+                                // Prefer exact match via content map (ưu tiên correct=true); fallback to blanks by order
                                 const mappedValue = (posId && positionIdToValue.get(String(posId))) || undefined;
                                 const displayText = mappedValue
                                   || blanks[blankRenderIndex]?.answer
@@ -2155,16 +2168,16 @@ const AIGenerateReading = () => {
                                       color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                                       textAlign: 'center'
                                     }}
-                                  >
-                                    {displayText}
-                                  </span>
+                                    className="html-content"
+                                    dangerouslySetInnerHTML={{ __html: displayText }}
+                                  />
                                 );
                               });
                             }
                             // Legacy rendering using underscores
                             return text.split('______').map((part, idx) => (
                               <React.Fragment key={idx}>
-                                {part}
+                                <span className="html-content" dangerouslySetInnerHTML={{ __html: part }} />
                                 {idx < blanks.length && (
                                   <span
                                     style={{
@@ -2186,14 +2199,14 @@ const AIGenerateReading = () => {
                                       color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                                       textAlign: 'center'
                                     }}
-                                  >
-                                    {blanks[idx]?.placeholder || ''}
-                                  </span>
+                                    className="html-content"
+                                    dangerouslySetInnerHTML={{ __html: blanks[idx]?.placeholder || '' }}
+                                  />
                                 )}
                               </React.Fragment>
                             ));
                           })()}
-                        </Typography.Text>
+                        </div>
                       </div>
                     )}
 
@@ -2220,7 +2233,7 @@ const AIGenerateReading = () => {
                           const rendered = parts.map((part, idx) => {
                             const match = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                             if (!match) {
-                              return <React.Fragment key={idx}>{part}</React.Fragment>;
+                              return <span key={idx} className="html-content" dangerouslySetInnerHTML={{ __html: part }} />;
                             }
                             const posId = match[1];
                             const group = positionIdToGroup.get(String(posId)) || [];
@@ -2266,7 +2279,7 @@ const AIGenerateReading = () => {
                             );
                           });
                           if (renderedAny) return rendered;
-                          return text;
+                          return <span className="html-content" dangerouslySetInnerHTML={{ __html: text }} />;
                         })()}
                       </div>
                     )}
@@ -2337,7 +2350,7 @@ const AIGenerateReading = () => {
                                         // Clean up multiple spaces that might result from removals
                                         .replace(/\s+/g, ' ')
                                         .trim();
-                                      return <React.Fragment key={idx}>{cleanPart}</React.Fragment>;
+                                      return <span key={idx} className="html-content" dangerouslySetInnerHTML={{ __html: cleanPart }} />;
                                     }
                                     const val = posToCorrect.get(m[1]) || '';
                                     return (
@@ -2358,7 +2371,9 @@ const AIGenerateReading = () => {
                                           textAlign: 'center',
                                           fontWeight: 600,
                                         }}
-                                      >{val}</div>
+                                        className="html-content"
+                                        dangerouslySetInnerHTML={{ __html: val }}
+                                      />
                                     );
                                   });
                                 }
@@ -2385,7 +2400,7 @@ const AIGenerateReading = () => {
                                   // Clean up multiple spaces
                                   .replace(/\s+/g, ' ')
                                   .trim();
-                                return cleanText;
+                                return <span className="html-content" dangerouslySetInnerHTML={{ __html: cleanText }} />;
                               })()}
                             </div>
                           </div>
@@ -2437,9 +2452,9 @@ const AIGenerateReading = () => {
                                       minWidth: '80px',
                                       textAlign: 'center',
                                     }}
-                                  >
-                                    {word}
-                                  </div>
+                                    className="html-content"
+                                    dangerouslySetInnerHTML={{ __html: word }}
+                                  />
                                 ));
                               })()}
                             </div>

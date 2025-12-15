@@ -299,10 +299,23 @@ const AIGenerateListening = () => {
           return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', options: opts, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         }
         case 'TRUE_OR_FALSE': {
-          const optionsSource = Array.isArray(q?.options) ? q.options : Array.isArray(q?.content?.data) ? q.content.data : [];
-          const options = optionsSource.length
-            ? optionsSource.map((o, i) => ({ key: toKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }))
-            : [ { key: 'A', text: 'True', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'true' }, { key: 'B', text: 'False', isCorrect: String(q?.correctAnswer || '').toLowerCase() === 'false' } ];
+          // Check both q?.options and q?.content?.data (backend may use either)
+          const backendOptionsFromOptions = Array.isArray(q?.options) ? q.options : [];
+          const backendOptionsFromContent = Array.isArray(q?.content?.data) ? q.content.data : [];
+          const backendOptions = backendOptionsFromOptions.length > 0 ? backendOptionsFromOptions : backendOptionsFromContent;
+          const hasBackend = backendOptions.length > 0;
+          
+          // Fallback if no backend options
+          const correct = String(q?.correctAnswer ?? q?.answer ?? '').toLowerCase();
+          const isTrue = correct === 'true' || correct === 't' || correct === '1';
+          const fallbackOptions = [
+            { key: 'A', text: 'True', isCorrect: isTrue === true },
+            { key: 'B', text: 'False', isCorrect: isTrue === false },
+          ];
+          
+          const options = hasBackend
+            ? backendOptions.map((o, i) => ({ key: toKey(i), text: o?.text ?? o?.value ?? '', isCorrect: Boolean(o?.isCorrect || o?.correct) }))
+            : fallbackOptions;
           return { id: nextId(), type: 'TRUE_OR_FALSE', title: `Question ${counter}`, question: q?.question || q?.questionText || '', options, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
         }
         case 'FILL_IN_THE_BLANK':
@@ -1814,44 +1827,53 @@ const AIGenerateListening = () => {
                   <div className="question-content" style={{ paddingLeft: '36px', marginTop: '16px' }}>
                     {(question.type === 'FILL_IN_THE_BLANK' && (Array.isArray(question.blanks) || Array.isArray(question.content?.data))) && (
                       <div style={{ marginBottom: '16px' }}>
-                        <Typography.Text style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', whiteSpace: 'pre-wrap' }}>
+                        <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '1.8', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
                           {(() => {
                             const text = question.questionText || question.question || '';
                             const blanks = question.blanks || [];
                             if (text.includes('[[pos_')) {
                               const contentItems = Array.isArray(question.content?.data) ? question.content.data : [];
                               const positionIdToValue = new Map();
-                              contentItems.forEach(item => { if (item && item.positionId) positionIdToValue.set(String(item.positionId), item.value || ''); });
+                              // Group các option theo positionId để ưu tiên đáp án correct=true
+                              const groupedByPos = new Map();
+                              contentItems.forEach(item => {
+                                if (!item || !item.positionId) return;
+                                const key = String(item.positionId);
+                                if (!groupedByPos.has(key)) groupedByPos.set(key, []);
+                                groupedByPos.get(key).push(item);
+                              });
+                              // Chọn item correct=true cho mỗi positionId, nếu không có thì lấy item đầu tiên
+                              groupedByPos.forEach((items, key) => {
+                                const correctItem = items.find(it => it.correct === true) || items[0];
+                                positionIdToValue.set(key, correctItem?.value || '');
+                              });
                               const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
                               let blankRenderIndex = 0;
                               return parts.map((part, idx) => {
                                 const isPlaceholder = /^\[\[pos_[a-zA-Z0-9]+\]\]$/.test(part);
-                                if (!isPlaceholder) { return <React.Fragment key={idx}>{part}</React.Fragment>; }
+                                if (!isPlaceholder) { return <span key={idx} className="html-content" dangerouslySetInnerHTML={{ __html: part }} />; }
                                 const match = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                                 const posId = match ? match[1] : undefined;
+                                // Map theo positionId, đã ưu tiên đáp án đúng
                                 const mappedValue = (posId && positionIdToValue.get(String(posId))) || undefined;
                                 const displayText = mappedValue || blanks[blankRenderIndex]?.answer || blanks[blankRenderIndex]?.placeholder || '';
                                 const key = `blank-${idx}`;
                                 blankRenderIndex += 1;
                                 return (
-                                  <span key={key} style={{ display: 'inline-block', minWidth: '120px', maxWidth: '200px', minHeight: '32px', padding: '4px 12px', margin: '0 8px', background: '#E9EEFF94', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`, borderRadius: '8px', cursor: 'default', verticalAlign: 'middle', lineHeight: '1.4', fontSize: '14px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', textAlign: 'center' }}>
-                                    {displayText}
-                                  </span>
+                                  <span key={key} style={{ display: 'inline-block', minWidth: '120px', maxWidth: '200px', minHeight: '32px', padding: '4px 12px', margin: '0 8px', background: '#E9EEFF94', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`, borderRadius: '8px', cursor: 'default', verticalAlign: 'middle', lineHeight: '1.4', fontSize: '14px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', textAlign: 'center' }} className="html-content" dangerouslySetInnerHTML={{ __html: displayText }} />
                                 );
                               });
                             }
                             return text.split('______').map((part, idx) => (
                               <React.Fragment key={idx}>
-                                {part}
+                                <span className="html-content" dangerouslySetInnerHTML={{ __html: part }} />
                                 {idx < blanks.length && (
-                                  <span style={{ display: 'inline-block', minWidth: '120px', maxWidth: '200px', minHeight: '32px', padding: '4px 12px', margin: '0 8px', background: '#E9EEFF94', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`, borderRadius: '8px', verticalAlign: 'middle', lineHeight: '1.4', fontSize: '14px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', textAlign: 'center' }}>
-                                    {blanks[idx]?.placeholder || ''}
-                                  </span>
+                                  <span style={{ display: 'inline-block', minWidth: '120px', maxWidth: '200px', minHeight: '32px', padding: '4px 12px', margin: '0 8px', background: '#E9EEFF94', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`, borderRadius: '8px', verticalAlign: 'middle', lineHeight: '1.4', fontSize: '14px', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', textAlign: 'center' }} className="html-content" dangerouslySetInnerHTML={{ __html: blanks[idx]?.placeholder || '' }} />
                                 )}
                               </React.Fragment>
                             ));
                           })()}
-                        </Typography.Text>
+                        </div>
                       </div>
                     )}
 
@@ -1866,7 +1888,7 @@ const AIGenerateListening = () => {
                           let encounteredIndex = 0; let renderedAny = false;
                           const rendered = parts.map((part, idx) => {
                             const match = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
-                            if (!match) { return <React.Fragment key={idx}>{part}</React.Fragment>; }
+                            if (!match) { return <span key={idx} className="html-content" dangerouslySetInnerHTML={{ __html: part }} />; }
                             const posId = match[1];
                             const group = positionIdToGroup.get(String(posId)) || [];
                             const correct = group.find(opt => opt.correct === true)?.value || '';
@@ -1890,7 +1912,7 @@ const AIGenerateListening = () => {
                               </select>
                             );
                           });
-                          if (renderedAny) return rendered; return text;
+                          if (renderedAny) return rendered; return <span className="html-content" dangerouslySetInnerHTML={{ __html: text }} />;
                         })()}
                       </div>
                     )}
@@ -1939,13 +1961,11 @@ const AIGenerateListening = () => {
                                         // Clean up multiple spaces that might result from removals
                                         .replace(/\s+/g, ' ')
                                         .trim();
-                                      return <React.Fragment key={idx}>{cleanPart}</React.Fragment>;
+                                      return <span key={idx} className="html-content" dangerouslySetInnerHTML={{ __html: cleanPart }} />;
                                     }
                                     const val = posToCorrect.get(m[1]) || '';
                                     return (
-                                      <div key={`ddp-${idx}`} style={{ display: 'inline-block', minWidth: '120px', height: '32px', margin: '0 8px', background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`, borderRadius: '8px', padding: '4px 12px', fontSize: '15px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', verticalAlign: 'top', lineHeight: '1.4', textAlign: 'center', fontWeight: 600 }}>
-                                        {val}
-                                      </div>
+                                      <div key={`ddp-${idx}`} style={{ display: 'inline-block', minWidth: '120px', height: '32px', margin: '0 8px', background: theme === 'sun' ? 'rgba(24, 144, 255, 0.15)' : 'rgba(138, 122, 255, 0.18)', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`, borderRadius: '8px', padding: '4px 12px', fontSize: '15px', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', verticalAlign: 'top', lineHeight: '1.4', textAlign: 'center', fontWeight: 600 }} className="html-content" dangerouslySetInnerHTML={{ __html: val }} />
                                     );
                                   });
                                 }
@@ -1972,7 +1992,7 @@ const AIGenerateListening = () => {
                                   // Clean up multiple spaces
                                   .replace(/\s+/g, ' ')
                                   .trim();
-                                return cleanText;
+                                return <span className="html-content" dangerouslySetInnerHTML={{ __html: cleanText }} />;
                               })()}
                             </div>
                           </div>
@@ -1985,9 +2005,7 @@ const AIGenerateListening = () => {
                                 const items = Array.isArray(question.content?.data) ? question.content.data : [];
                                 const incorrect = items.length > 0 ? items.filter(it => !it.positionId || it.correct === false).map(it => it.value) : (question.availableWords || []);
                                 return incorrect.map((word, wordIdx) => (
-                                  <div key={wordIdx} style={{ padding: '12px 20px', background: theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`, borderRadius: '12px', fontSize: '16px', fontWeight: '600', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', userSelect: 'none', minWidth: '80px', textAlign: 'center' }}>
-                                    {word}
-                                  </div>
+                                  <div key={wordIdx} style={{ padding: '12px 20px', background: theme === 'sun' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(138, 122, 255, 0.12)', border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`, borderRadius: '12px', fontSize: '16px', fontWeight: '600', color: theme === 'sun' ? '#1890ff' : '#8B5CF6', userSelect: 'none', minWidth: '80px', textAlign: 'center' }} className="html-content" dangerouslySetInnerHTML={{ __html: word }} />
                                 ));
                               })()}
                             </div>
