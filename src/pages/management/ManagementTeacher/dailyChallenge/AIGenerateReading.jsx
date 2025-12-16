@@ -54,20 +54,33 @@ const AIGenerateReading = () => {
   // Page title same as AI Questions page
   usePageTitle('AI Question Generation');
 
+  const initialAiSource = useMemo(() => {
+    try {
+      const search = new URLSearchParams(location.search || '');
+      const fromQuery = search.get('source');
+      if (fromQuery === 'settings' || fromQuery === 'file') {
+        return fromQuery;
+      }
+    } catch {
+      // ignore
+    }
+    return location.state?.aiSource || null;
+  }, [location.search, location.state?.aiSource]);
+
   const challengeInfo = useMemo(() => ({
     classId: location.state?.classId || null,
     className: location.state?.className || null,
     challengeId: location.state?.challengeId || id,
     challengeName: location.state?.challengeName || null,
     challengeType: 'READING',
-    aiSource: location.state?.aiSource || null, // 'settings' or 'file'
+    aiSource: initialAiSource, // 'settings' or 'file'
   }), [
     id,
     location.state?.classId,
     location.state?.className,
     location.state?.challengeId,
     location.state?.challengeName,
-    location.state?.aiSource,
+    initialAiSource,
   ]);
 
   // Single prompt input used for both passage generation and question generation
@@ -250,9 +263,11 @@ const AIGenerateReading = () => {
   ], []);
 
 
-  // Initialize right panel (settings/upload) from navigation state
+  // Initialize right panel (settings/upload) from aiSource (URL query or navigation state)
   useEffect(() => {
-    const source = location.state?.aiSource;
+    const search = new URLSearchParams(location.search || '');
+    const sourceFromQuery = search.get('source');
+    const source = sourceFromQuery || location.state?.aiSource || null;
     if (source === 'settings') {
       setQuestionSettingsMode('manual');
     } else if (source === 'file') {
@@ -260,7 +275,7 @@ const AIGenerateReading = () => {
     }
     // Always set passage mode to manual
     setPassageMode('manual');
-  }, [location.state?.aiSource]);
+  }, [location.search, location.state?.aiSource]);
 
   // Helpers (match AIGenerateQuestions behaviors) - unused utilities removed
 
@@ -523,7 +538,10 @@ const AIGenerateReading = () => {
     // Enforce total questions limit <= 100
     const totalRequested = (questionTypeConfigs || []).reduce((sum, c) => sum + (Number(c.numberOfQuestions) || 0), 0);
     if (totalRequested > 100) {
-      spaceToast.error(t('dailyChallenge.max100Questions') || 'You can request at most 100 questions in total');
+      const maxQuestionsMsg = t('dailyChallenge.max100Questions', {
+        defaultValue: 'You can request at most 100 questions in total',
+      });
+      spaceToast.error(maxQuestionsMsg);
       return;
     }
     const mappedConfigs = selectedConfigs.map((c) => ({
@@ -612,7 +630,10 @@ const AIGenerateReading = () => {
         } else {
           setQuestions(normalized);
           setShowPreview(true);
-          spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
+          const successMsg = t('dailyChallenge.aiQuestionsGenerated', {
+            defaultValue: 'AI questions generated successfully!',
+          });
+          spaceToast.success(successMsg);
         }
         setIsGenerating(false);
         setGenerationProgress(0);
@@ -671,8 +692,22 @@ const AIGenerateReading = () => {
       }, 0);
 
       // Transform preview questions -> API schema (reuse simplified mapping)
+      const sanitizeFillContent = (data) => {
+        const items = Array.isArray(data) ? data : [];
+        const correctItems = items.filter((it) => it && it.correct === true);
+        if (correctItems.length > 0) {
+          // Keep only the first correct answer; drop incorrect/extra
+          return [correctItems[0]];
+        }
+        return items;
+      };
+
       const toApiQuestion = (q, orderNumber) => {
-        const toData = (d) => Array.isArray(d) ? d : [];
+        const toData = (d, { forFill } = {}) => {
+          const items = Array.isArray(d) ? d : [];
+          if (forFill) return sanitizeFillContent(items);
+          return items;
+        };
         switch (q.type) {
           case 'MULTIPLE_CHOICE':
           case 'MULTIPLE_SELECT':
@@ -695,7 +730,7 @@ const AIGenerateReading = () => {
               orderNumber,
               weight: q.points || 1,
               questionType: q.type,
-              content: { data: toData(q.content?.data) },
+              content: { data: toData(q.content?.data, { forFill: q.type === 'FILL_IN_THE_BLANK' }) },
               toBeDeleted: false,
             };
           default:
@@ -886,9 +921,32 @@ const AIGenerateReading = () => {
     spaceToast.success(t('dailyChallenge.questionUpdatedSuccessfully', 'Question updated successfully'));
   }, [t]);
 
-  const headerSubtitle = (challengeInfo.className && challengeInfo.challengeName)
-    ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
-    : (challengeInfo.challengeName || null);
+  const headerSubtitle = useMemo(() => {
+    const classNameFromState = challengeInfo.className;
+    const challengeNameFromState = challengeInfo.challengeName;
+
+    const classNameFromHierarchy =
+      hierarchy?.className ||
+      hierarchy?.class?.name ||
+      hierarchy?.clazz?.name ||
+      null;
+    const challengeNameFromHierarchy =
+      hierarchy?.challengeName ||
+      hierarchy?.challenge?.challengeName ||
+      hierarchy?.challenge?.name ||
+      null;
+
+    const finalClassName = classNameFromState || classNameFromHierarchy;
+    const finalChallengeName = challengeNameFromState || challengeNameFromHierarchy;
+
+    if (finalClassName && finalChallengeName) {
+      return `${finalClassName} / ${finalChallengeName}`;
+    }
+    if (finalChallengeName) {
+      return finalChallengeName;
+    }
+    return null;
+  }, [challengeInfo.className, challengeInfo.challengeName, hierarchy]);
 
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>
@@ -928,9 +986,7 @@ const AIGenerateReading = () => {
             }}>
               <span style={{ fontSize: '24px', fontWeight: 300, opacity: 0.5 }}>|</span>
               <span>
-                {headerSubtitle
-                  || (t('dailyChallenge.dailyChallengeManagement') + ' / ' + (t('dailyChallenge.content') || 'Content'))
-                }
+                {headerSubtitle || t('dailyChallenge.aiQuestionGeneration', 'AI Question Generation')}
               </span>
             </div>
           </div>
@@ -974,12 +1030,70 @@ const AIGenerateReading = () => {
   return (
     <>
       <Modal
+        title={
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 0',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '30px',
+                lineHeight: 1,
+              }}
+            >
+              ⚠️
+            </span>
+            <span
+              style={{
+                fontSize: '28px',
+                fontWeight: 600,
+                color: 'rgb(24, 144, 255)',
+              }}
+            >
+              {t('dailyChallenge.warning', 'Warning')}
+            </span>
+          </div>
+        }
         open={warningVisible}
-        title={t('dailyChallenge.warning', 'Warning')}
         centered
         maskClosable={false}
-        okText={t('dailyChallenge.processed', 'Processed')}
+        okText={t('dailyChallenge.continue', 'Continue')}
         cancelText={t('dailyChallenge.cancel', 'Cancel')}
+        width={500}
+        bodyStyle={{
+          padding: '30px 40px',
+          fontSize: '16px',
+          lineHeight: '1.6',
+          textAlign: 'center'
+        }}
+        okButtonProps={{
+          style: {
+            background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+            borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+            color: theme === 'sun' ? '#000' : '#fff',
+            borderRadius: '6px',
+            height: '40px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '0 30px',
+            transition: 'all 0.3s ease',
+            boxShadow: 'none'
+          }
+        }}
+        cancelButtonProps={{
+          style: {
+            height: '40px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '0 30px',
+            borderRadius: '6px'
+          }
+        }}
         onOk={async () => {
           try {
             if (typeof warningActionRef.current === 'function') {
@@ -995,7 +1109,14 @@ const AIGenerateReading = () => {
           setGenerationProgress(0);
         }}
       >
-        {warningMessage}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            {warningMessage}
+          </Typography.Paragraph>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            Are you sure you want to continue?
+          </Typography.Paragraph>
+        </div>
       </Modal>
     <ThemedLayout customHeader={customHeader} contentMargin={10}>
       {showSpinner && (

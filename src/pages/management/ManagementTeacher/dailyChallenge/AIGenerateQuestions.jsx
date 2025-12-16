@@ -53,14 +53,28 @@ const AIGenerateQuestions = () => {
   // Set page title
   usePageTitle('AI Question Generation');
   
-  // Get data from navigation state
+  // Parse aiSource from URL query first (so copy-paste link keeps mode), then from navigation state
+  const initialAiSource = useMemo(() => {
+    try {
+      const search = new URLSearchParams(location.search || '');
+      const fromQuery = search.get('source');
+      if (fromQuery === 'settings' || fromQuery === 'file') {
+        return fromQuery;
+      }
+    } catch {
+      // ignore parse errors, fall back to location.state
+    }
+    return location.state?.aiSource || null;
+  }, [location.search, location.state?.aiSource]);
+
+  // Get data from navigation state (fallback to query / id). This is mostly for header display.
   const [challengeInfo] = useState({
     classId: location.state?.classId || null,
     className: location.state?.className || null,
     challengeId: location.state?.challengeId || id,
     challengeName: location.state?.challengeName || null,
     challengeType: location.state?.challengeType || null,
-    aiSource: location.state?.aiSource || null, // 'settings' or 'file'
+    aiSource: initialAiSource, // 'settings' or 'file'
   });
   
   // State for prompt input
@@ -85,12 +99,12 @@ const AIGenerateQuestions = () => {
   const [lessonFocusSearchTerm, setLessonFocusSearchTerm] = useState(""); // Search term for lesson focus
   
   // Question settings mode on the right: null (choose), 'manual', 'upload'
-  // Auto-set based on aiSource from navigation state
+  // Auto-set based on aiSource (URL query or navigation state)
   const [questionSettingsMode, setQuestionSettingsMode] = useState(() => {
-    const aiSource = location.state?.aiSource;
-    if (aiSource === 'settings') {
+    if (initialAiSource === 'settings') {
       return 'manual';
-    } else if (aiSource === 'file') {
+    }
+    if (initialAiSource === 'file') {
       return 'upload';
     }
     return null;
@@ -1006,7 +1020,10 @@ const AIGenerateQuestions = () => {
   const handleSave = useCallback(async () => {
     // Client-side validation: if no questions, show friendly message instead of backend error
     if (!Array.isArray(questions) || questions.length === 0) {
-      spaceToast.warning(t('dailyChallenge.noQuestionsToSave') || 'No questions to save');
+      const noQuestionsMsg = t('dailyChallenge.noQuestionsToSave', {
+        defaultValue: 'No questions to save',
+      });
+      spaceToast.warning(noQuestionsMsg);
       return;
     }
 
@@ -1027,8 +1044,22 @@ const AIGenerateQuestions = () => {
       }, 0);
 
       // Transform current preview questions -> API schema
+      const sanitizeFillContent = (data) => {
+        const items = Array.isArray(data) ? data : [];
+        const correctItems = items.filter((it) => it && it.correct === true);
+        if (correctItems.length > 0) {
+          // Only keep the first correct answer, drop all incorrect
+          return [correctItems[0]];
+        }
+        return items;
+      };
+
       const transformQuestionToApiFormat = (q, orderNumber) => {
-        const toContentData = (data) => Array.isArray(data) ? data : [];
+        const toContentData = (data, { forFill } = {}) => {
+          const items = Array.isArray(data) ? data : [];
+          if (forFill) return sanitizeFillContent(items);
+          return items;
+        };
         switch (q.type) {
           case 'MULTIPLE_CHOICE':
           case 'MULTIPLE_SELECT':
@@ -1067,7 +1098,8 @@ const AIGenerateQuestions = () => {
               orderNumber,
               weight: q.points || 1,
               questionType: 'FILL_IN_THE_BLANK',
-              content: { data: toContentData(q.content?.data) },
+              // Keep only one correct answer; if multiple corrects, take first; if correct exists, drop incorrects
+              content: { data: toContentData(q.content?.data, { forFill: true }) },
               toBeDeleted: false,
             };
           case 'DROPDOWN':
@@ -1511,10 +1543,34 @@ const AIGenerateQuestions = () => {
     });
   }, [navigate, id, challengeInfo, user]);
   
-  // Custom Header Component
-  const headerSubtitle = (challengeInfo.className && challengeInfo.challengeName)
-    ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
-    : (challengeInfo.challengeName || null);
+  // Header subtitle: prefer data passed from previous page; if not available (e.g., direct URL open),
+  // fall back to hierarchy info fetched from backend.
+  const headerSubtitle = useMemo(() => {
+    const classNameFromState = challengeInfo.className;
+    const challengeNameFromState = challengeInfo.challengeName;
+
+    const classNameFromHierarchy =
+      hierarchy?.className ||
+      hierarchy?.class?.name ||
+      hierarchy?.clazz?.name ||
+      null;
+    const challengeNameFromHierarchy =
+      hierarchy?.challengeName ||
+      hierarchy?.challenge?.challengeName ||
+      hierarchy?.challenge?.name ||
+      null;
+
+    const finalClassName = classNameFromState || classNameFromHierarchy;
+    const finalChallengeName = challengeNameFromState || challengeNameFromHierarchy;
+
+    if (finalClassName && finalChallengeName) {
+      return `${finalClassName} / ${finalChallengeName}`;
+    }
+    if (finalChallengeName) {
+      return finalChallengeName;
+    }
+    return null;
+  }, [challengeInfo.className, challengeInfo.challengeName, hierarchy]);
 
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>
@@ -1558,9 +1614,7 @@ const AIGenerateQuestions = () => {
                 opacity: 0.5
               }}>|</span>
               <span>
-                {headerSubtitle
-                  || (t('dailyChallenge.dailyChallengeManagement') + ' / ' + (t('dailyChallenge.content') || 'Content'))
-                }
+                {headerSubtitle || t('dailyChallenge.aiQuestionGeneration', 'AI Question Generation')}
               </span>
             </div>
           </div>
@@ -1604,12 +1658,70 @@ const AIGenerateQuestions = () => {
   return (
     <>
       <Modal
+        title={
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 0',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '30px',
+                lineHeight: 1,
+              }}
+            >
+              ⚠️
+            </span>
+            <span
+              style={{
+                fontSize: '28px',
+                fontWeight: 600,
+                color: 'rgb(24, 144, 255)',
+              }}
+            >
+              {t('dailyChallenge.warning', 'Warning')}
+            </span>
+          </div>
+        }
         open={warningVisible}
-        title={t('dailyChallenge.warning', 'Warning')}
         centered
         maskClosable={false}
         okText={t('dailyChallenge.continue', 'Continue')}
         cancelText={t('dailyChallenge.cancel', 'Cancel')}
+        width={500}
+        bodyStyle={{
+          padding: '30px 40px',
+          fontSize: '16px',
+          lineHeight: '1.6',
+          textAlign: 'center'
+        }}
+        okButtonProps={{
+          style: {
+            background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+            borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+            color: theme === 'sun' ? '#000' : '#fff',
+            borderRadius: '6px',
+            height: '40px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '0 30px',
+            transition: 'all 0.3s ease',
+            boxShadow: 'none'
+          }
+        }}
+        cancelButtonProps={{
+          style: {
+            height: '40px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '0 30px',
+            borderRadius: '6px'
+          }
+        }}
         onOk={async () => {
           try {
             if (typeof warningActionRef.current === 'function') {
@@ -1625,7 +1737,14 @@ const AIGenerateQuestions = () => {
           setGenerationProgress(0);
         }}
       >
-        {warningMessage}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            {warningMessage}
+          </Typography.Paragraph>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            Are you sure you want to continue?
+          </Typography.Paragraph>
+        </div>
       </Modal>
       <ThemedLayout customHeader={customHeader}>
       {showSpinner && (
@@ -3311,6 +3430,7 @@ const AIGenerateQuestions = () => {
                                 positionIdToValue.set(key, correctItem?.value || '');
                               });
 
+                              // Lưu ý: dùng 1 group duy nhất để tránh sinh thêm phần tử 'a1' riêng lẻ trong mảng parts
                               const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
                               let blankRenderIndex = 0; // Fallback ordering
                               return parts.map((part, idx) => {
@@ -3421,7 +3541,7 @@ const AIGenerateQuestions = () => {
                             if (!positionIdToGroup.has(String(item.positionId))) positionIdToGroup.set(String(item.positionId), []);
                             positionIdToGroup.get(String(item.positionId)).push(item);
                           });
-                          const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
+                              const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
                           let encounteredIndex = 0;
                           let renderedAny = false;
                           const rendered = parts.map((part, idx) => {
@@ -3577,33 +3697,28 @@ const AIGenerateQuestions = () => {
                                    posToCorrect.set(String(it.positionId), it.value);
                                  });
                                  // Render by placeholder if exists, else fallback to underscores
-                                 if (/\[\[pos_/.test(text)) {
-                                   const parts = text.split(/(\[\[pos_([a-zA-Z0-9]+)\]\])/g);
+                                if (/\[\[pos_/.test(text)) {
+                                  const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
                                    return parts.map((part, idx) => {
                                      const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
-                                     if (!m) {
-                                       // Keep HTML tags for formatting; still strip mixed codes
-                                       let cleanPart = part
-                                         .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
-                                           const hasLetter = /[a-zA-Z]/.test(match);
-                                           const hasNumber = /[0-9]/.test(match);
-                                           if (hasLetter && hasNumber) {
-                                             if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
-                                               return match;
-                                             }
-                                             return '';
-                                           }
-                                           return match;
-                                         });
-                                       return (
-                                         <span
-                                           key={idx}
-                                           className="html-content"
-                                           dangerouslySetInnerHTML={{ __html: cleanPart }}
-                                         />
-                                       );
-                                     }
-                                     const val = posToCorrect.get(m[1]) || '';
+                                    if (!m) {
+                                      // Hiển thị nguyên văn phần text (không cố gắng xoá code/gibberish để tránh xoá nhầm)
+                                      return (
+                                        <span
+                                          key={idx}
+                                          className="html-content"
+                                          dangerouslySetInnerHTML={{ __html: part }}
+                                        />
+                                      );
+                                    }
+                                    const rawVal = posToCorrect.get(m[1]) || '';
+                                    let val = rawVal;
+                                    // Nếu value bắt đầu bằng positionId (vd: "a1 coding"), thì ẩn phần positionId, chỉ hiển thị phần còn lại
+                                    if (typeof rawVal === 'string') {
+                                      const posId = m[1];
+                                      const prefixRegex = new RegExp(`^\\s*${posId}\\s+`, 'i');
+                                      val = rawVal.replace(prefixRegex, '').trim() || rawVal;
+                                    }
                                      return (
                                        <div key={`ddp-${idx}`}
                                          style={{
@@ -3632,21 +3747,9 @@ const AIGenerateQuestions = () => {
                                      );
                                    });
                                  }
-                                 // Fallback legacy underscores rendering
-                                 let cleanText = text.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '___');
-                                 cleanText = cleanText
-                                   .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
-                                     const hasLetter = /[a-zA-Z]/.test(match);
-                                     const hasNumber = /[0-9]/.test(match);
-                                     if (hasLetter && hasNumber) {
-                                       if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
-                                         return match;
-                                       }
-                                       return '';
-                                     }
-                                     return match;
-                                   });
-                                 return cleanText.split('___').map((part, idx) => (
+                                // Fallback legacy underscores rendering: chỉ thay placeholder bằng ___, giữ nguyên text
+                                const cleanText = text.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '___');
+                                return cleanText.split('___').map((part, idx) => (
                                    <React.Fragment key={`us-${idx}`}>
                                      <span
                                        className="html-content"
