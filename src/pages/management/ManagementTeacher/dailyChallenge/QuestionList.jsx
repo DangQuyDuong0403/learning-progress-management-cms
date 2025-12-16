@@ -3520,9 +3520,10 @@ const DailyChallengeContent = () => {
   // Handler for GV AI Generate from Settings
   const handleGvAiGenerateFromSettings = useCallback(() => {
     const userRole = user?.role?.toLowerCase();
-    const aiPath = userRole === 'teaching_assistant'
+    const basePath = userRole === 'teaching_assistant'
       ? `/teaching-assistant/daily-challenges/create/ai/${id}`
       : `/teacher/daily-challenges/create/ai/${id}`;
+    const aiPath = `${basePath}?source=settings`;
     
     navigate(aiPath, {
       state: {
@@ -3541,9 +3542,10 @@ const DailyChallengeContent = () => {
   // Handler for GV AI Generate from File
   const handleGvAiGenerateFromFile = useCallback(() => {
     const userRole = user?.role?.toLowerCase();
-    const aiPath = userRole === 'teaching_assistant'
+    const basePath = userRole === 'teaching_assistant'
       ? `/teaching-assistant/daily-challenges/create/ai/${id}`
       : `/teacher/daily-challenges/create/ai/${id}`;
+    const aiPath = `${basePath}?source=file`;
     
     navigate(aiPath, {
       state: {
@@ -3864,7 +3866,7 @@ const DailyChallengeContent = () => {
     // Route based on challenge type:
     // - RE (Reading) → /ai-reading/:id → AIGenerateReading.jsx
     // - LI (Listening) → /ai-listening/:id → AIGenerateListening.jsx
-    const aiPath = challengeType === 'LI' ? (
+    const basePath = challengeType === 'LI' ? (
       userRole === 'teaching_assistant'
         ? `/teaching-assistant/daily-challenges/create/ai-listening/${id}`
         : `/teacher/daily-challenges/create/ai-listening/${id}`
@@ -3873,6 +3875,7 @@ const DailyChallengeContent = () => {
         ? `/teaching-assistant/daily-challenges/create/ai-reading/${id}`
         : `/teacher/daily-challenges/create/ai-reading/${id}`
     );
+    const aiPath = `${basePath}?source=settings`;
     
     navigate(aiPath, {
       state: {
@@ -3894,7 +3897,7 @@ const DailyChallengeContent = () => {
     // Route based on challenge type:
     // - RE (Reading) → /ai-reading/:id → AIGenerateReading.jsx
     // - LI (Listening) → /ai-listening/:id → AIGenerateListening.jsx
-    const aiPath = challengeType === 'LI' ? (
+    const basePath = challengeType === 'LI' ? (
       userRole === 'teaching_assistant'
         ? `/teaching-assistant/daily-challenges/create/ai-listening/${id}`
         : `/teacher/daily-challenges/create/ai-listening/${id}`
@@ -3903,6 +3906,7 @@ const DailyChallengeContent = () => {
         ? `/teaching-assistant/daily-challenges/create/ai-reading/${id}`
         : `/teacher/daily-challenges/create/ai-reading/${id}`
     );
+    const aiPath = `${basePath}?source=file`;
     
     navigate(aiPath, {
       state: {
