@@ -34,14 +34,27 @@ const AIGenerateListening = () => {
 
   usePageTitle('AI Question Generation');
 
+  const initialAiSource = useMemo(() => {
+    try {
+      const search = new URLSearchParams(location.search || '');
+      const fromQuery = search.get('source');
+      if (fromQuery === 'settings' || fromQuery === 'file') {
+        return fromQuery;
+      }
+    } catch {
+      // ignore
+    }
+    return location.state?.aiSource || null;
+  }, [location.search, location.state?.aiSource]);
+
   const challengeInfo = useMemo(() => ({
     classId: location.state?.classId || null,
     className: location.state?.className || null,
     challengeId: location.state?.challengeId || id,
     challengeName: location.state?.challengeName || null,
     challengeType: 'LISTENING',
-    aiSource: location.state?.aiSource || null, // 'settings' or 'file'
-  }), [id, location.state?.classId, location.state?.className, location.state?.challengeId, location.state?.challengeName, location.state?.aiSource]);
+    aiSource: initialAiSource, // 'settings' or 'file'
+  }), [id, location.state?.classId, location.state?.className, location.state?.challengeId, location.state?.challengeName, initialAiSource]);
 
   const [prompt, setPrompt] = useState(""); // Transcript content
   const [description, setDescription] = useState(""); // Description field
@@ -164,15 +177,17 @@ const warningActionRef = useRef(null);
     setQuestionTypeConfigs(prev => prev.map((item, i) => (i === index ? { ...item, numberOfQuestions: value } : item)));
   }, []);
 
-  // Initialize right panel (settings/upload) from navigation state
+  // Initialize right panel (settings/upload) from aiSource (URL query or navigation state)
   useEffect(() => {
-    const source = location.state?.aiSource;
+    const search = new URLSearchParams(location.search || '');
+    const sourceFromQuery = search.get('source');
+    const source = sourceFromQuery || location.state?.aiSource || null;
     if (source === 'settings') {
       setQuestionSettingsMode('manual');
     } else if (source === 'file') {
       setQuestionSettingsMode('upload');
     }
-  }, [location.state?.aiSource]);
+  }, [location.search, location.state?.aiSource]);
 
   // Fetch hierarchy info (level/chapter/lesson) for the header info bar
   useEffect(() => {
@@ -413,7 +428,10 @@ const warningActionRef = useRef(null);
     }
     
     if (!prompt.trim()) {
-      spaceToast.error(t('dailyChallenge.pleaseEnterPrompt') || 'Please enter a prompt');
+      const enterPromptMsg = t('dailyChallenge.pleaseEnterPrompt', {
+        defaultValue: 'Please enter a prompt',
+      });
+      spaceToast.error(enterPromptMsg);
       return;
     }
     try {
@@ -504,7 +522,10 @@ const warningActionRef = useRef(null);
         } else {
           setQuestions(normalized);
           setShowPreview(true);
-          spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
+          const successMsg = t('dailyChallenge.aiQuestionsGenerated', {
+            defaultValue: 'AI questions generated successfully!',
+          });
+          spaceToast.success(successMsg);
         }
         setIsGenerating(false);
         setGenerationProgress(0);
@@ -690,8 +711,22 @@ const warningActionRef = useRef(null);
         return Number.isFinite(ord) && ord > max ? ord : max;
       }, 0);
 
+      const sanitizeFillContent = (data) => {
+        const items = Array.isArray(data) ? data : [];
+        const correctItems = items.filter((it) => it && it.correct === true);
+        if (correctItems.length > 0) {
+          // Keep only the first correct answer; drop incorrect/extra
+          return [correctItems[0]];
+        }
+        return items;
+      };
+
       const toApiQuestion = (q, orderNumber) => {
-        const toData = (d) => Array.isArray(d) ? d : [];
+        const toData = (d, { forFill } = {}) => {
+          const items = Array.isArray(d) ? d : [];
+          if (forFill) return sanitizeFillContent(items);
+          return items;
+        };
         switch (q.type) {
           case 'MULTIPLE_CHOICE':
           case 'MULTIPLE_SELECT':
@@ -701,7 +736,7 @@ const warningActionRef = useRef(null);
           case 'DROPDOWN':
           case 'DRAG_AND_DROP':
           case 'REARRANGE':
-            return { questionText: q.questionText || q.question || '', orderNumber, weight: q.points || 1, questionType: q.type, content: { data: toData(q.content?.data) }, toBeDeleted: false };
+            return { questionText: q.questionText || q.question || '', orderNumber, weight: q.points || 1, questionType: q.type, content: { data: toData(q.content?.data, { forFill: q.type === 'FILL_IN_THE_BLANK' }) }, toBeDeleted: false };
           default:
             return { questionText: q.question || '', orderNumber, weight: 1, questionType: 'MULTIPLE_CHOICE', content: { data: [] }, toBeDeleted: false };
         }
@@ -729,9 +764,32 @@ const warningActionRef = useRef(null);
     } finally { setSaving(false); }
   }, [id, prompt, questions, navigate, user, challengeInfo, t, audioUrl, getBackendMessage]);
 
-  const headerSubtitle = (challengeInfo.className && challengeInfo.challengeName)
-    ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
-    : (challengeInfo.challengeName || null);
+  const headerSubtitle = useMemo(() => {
+    const classNameFromState = challengeInfo.className;
+    const challengeNameFromState = challengeInfo.challengeName;
+
+    const classNameFromHierarchy =
+      hierarchy?.className ||
+      hierarchy?.class?.name ||
+      hierarchy?.clazz?.name ||
+      null;
+    const challengeNameFromHierarchy =
+      hierarchy?.challengeName ||
+      hierarchy?.challenge?.challengeName ||
+      hierarchy?.challenge?.name ||
+      null;
+
+    const finalClassName = classNameFromState || classNameFromHierarchy;
+    const finalChallengeName = challengeNameFromState || challengeNameFromHierarchy;
+
+    if (finalClassName && finalChallengeName) {
+      return `${finalClassName} / ${finalChallengeName}`;
+    }
+    if (finalChallengeName) {
+      return finalChallengeName;
+    }
+    return null;
+  }, [challengeInfo.className, challengeInfo.challengeName, hierarchy]);
 
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>
@@ -749,7 +807,7 @@ const warningActionRef = useRef(null);
             <div style={{ fontSize: '18px', fontWeight: 600, color: theme === 'sun' ? '#1E40AF' : '#FFFFFF', textShadow: theme === 'sun' ? 'none' : '0 0 10px rgba(134, 134, 134, 0.5)', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '24px', fontWeight: 300, opacity: 0.5 }}>|</span>
               <span>
-                {headerSubtitle || (t('dailyChallenge.dailyChallengeManagement') + ' / ' + (t('dailyChallenge.content') || 'Content'))}
+                {headerSubtitle || t('dailyChallenge.aiQuestionGeneration', 'AI Question Generation')}
               </span>
             </div>
           </div>
@@ -778,12 +836,70 @@ const warningActionRef = useRef(null);
   return (
     <>
       <Modal
+        title={
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 0',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '30px',
+                lineHeight: 1,
+              }}
+            >
+              ⚠️
+            </span>
+            <span
+              style={{
+                fontSize: '28px',
+                fontWeight: 600,
+                color: 'rgb(24, 144, 255)',
+              }}
+            >
+              {t('dailyChallenge.warning', 'Warning')}
+            </span>
+          </div>
+        }
         open={warningVisible}
-        title={t('dailyChallenge.warning', 'Warning')}
         centered
         maskClosable={false}
-        okText={t('dailyChallenge.processed', 'Processed')}
+        okText={t('dailyChallenge.continue', 'Continue')}
         cancelText={t('dailyChallenge.cancel', 'Cancel')}
+        width={500}
+        bodyStyle={{
+          padding: '30px 40px',
+          fontSize: '16px',
+          lineHeight: '1.6',
+          textAlign: 'center'
+        }}
+        okButtonProps={{
+          style: {
+            background: theme === 'sun' ? 'rgb(113, 179, 253)' : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+            borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+            color: theme === 'sun' ? '#000' : '#fff',
+            borderRadius: '6px',
+            height: '40px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '0 30px',
+            transition: 'all 0.3s ease',
+            boxShadow: 'none'
+          }
+        }}
+        cancelButtonProps={{
+          style: {
+            height: '40px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '0 30px',
+            borderRadius: '6px'
+          }
+        }}
         onOk={async () => {
           try {
             if (typeof warningActionRef.current === 'function') {
@@ -799,7 +915,14 @@ const warningActionRef = useRef(null);
           setGenerationProgress(0);
         }}
       >
-        {warningMessage}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            {warningMessage}
+          </Typography.Paragraph>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            Are you sure you want to continue?
+          </Typography.Paragraph>
+        </div>
       </Modal>
     <ThemedLayout customHeader={customHeader} contentMargin={10}>
       {showSpinner && (
