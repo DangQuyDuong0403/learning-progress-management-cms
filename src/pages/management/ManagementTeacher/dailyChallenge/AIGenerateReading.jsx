@@ -116,6 +116,8 @@ const AIGenerateReading = () => {
   const [warningVisible, setWarningVisible] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
   const warningActionRef = useRef(null);
+  const [errorVisible, setErrorVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   // Question settings mode on the right: null (choose), 'manual', 'upload'
   const [questionSettingsMode, setQuestionSettingsMode] = useState(null);
   const uploadInputRef = useRef(null);
@@ -576,12 +578,13 @@ const AIGenerateReading = () => {
       // axiosClient already unwraps response.data, so res is already the data object
       const responseData = res?.data || res;
       
-      // Handle error field: if error is not null, show error toast
+      // Handle error field: if error is not null, show error modal
       if (responseData?.error != null) {
-        const errorMessage = typeof responseData.error === 'string' 
+        const errorMsg = typeof responseData.error === 'string' 
           ? responseData.error 
           : (responseData.error?.message || JSON.stringify(responseData.error));
-        spaceToast.error(errorMessage);
+        setErrorMessage(errorMsg);
+        setErrorVisible(true);
         setGenerationProgress(0);
         setIsGenerating(false);
         return;
@@ -1115,6 +1118,83 @@ const AIGenerateReading = () => {
           </Typography.Paragraph>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
             Are you sure you want to continue?
+          </Typography.Paragraph>
+        </div>
+      </Modal>
+      <Modal
+        title={
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 0',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '30px',
+                lineHeight: 1,
+              }}
+            >
+              ❌
+            </span>
+            <span
+              style={{
+                fontSize: '28px',
+                fontWeight: 600,
+                color: '#ff4d4f',
+              }}
+            >
+              {t('dailyChallenge.error', 'Error')}
+            </span>
+          </div>
+        }
+        open={errorVisible}
+        centered
+        maskClosable={false}
+        footer={[
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => {
+              setErrorVisible(false);
+              setIsGenerating(false);
+              setGenerationProgress(0);
+            }}
+            style={{
+              background: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+              borderColor: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+              color: '#fff',
+              borderRadius: '6px',
+              height: '40px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '0 30px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none'
+            }}
+          >
+            {t('common.close', 'Close')}
+          </Button>
+        ]}
+        width={500}
+        bodyStyle={{
+          padding: '30px 40px',
+          fontSize: '16px',
+          lineHeight: '1.6',
+          textAlign: 'center'
+        }}
+        onCancel={() => {
+          setErrorVisible(false);
+          setIsGenerating(false);
+          setGenerationProgress(0);
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            {errorMessage}
           </Typography.Paragraph>
         </div>
       </Modal>
