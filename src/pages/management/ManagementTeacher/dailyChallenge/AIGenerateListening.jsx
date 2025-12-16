@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, Input, Tooltip, Typography, Upload, Space } from "antd";
+import { Button, Card, Input, Tooltip, Typography, Upload, Space, Modal } from "antd";
 import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, SaveOutlined, ThunderboltOutlined, CheckOutlined, CloudUploadOutlined, CloseOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -54,6 +54,9 @@ const AIGenerateListening = () => {
   const [dropdownSelections, setDropdownSelections] = useState({});
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
+const [warningVisible, setWarningVisible] = useState(false);
+const [warningMessage, setWarningMessage] = useState('');
+const warningActionRef = useRef(null);
   const uploadInputRef = useRef(null);
   // Match AIGenerateReading behavior: null (chooser), 'manual', 'upload'
   const [questionSettingsMode, setQuestionSettingsMode] = useState(null);
@@ -365,7 +368,7 @@ const AIGenerateListening = () => {
           return null;
       }
     }).filter(Boolean).map((q, idx) => ({ ...q, id: idx + 1, title: `Question ${idx + 1}` }));
-  }, []);
+  }, [t]);
 
   const handleUploadAudio = useCallback(async (file) => {
     try {
@@ -397,7 +400,7 @@ const AIGenerateListening = () => {
       setIsProcessingAudio(false);
     }
     return false;
-  }, [getBackendMessage]);
+  }, [getBackendMessage, t]);
 
   const handleGenerateWithAI = useCallback(async () => {
     // Validate: Check if at least one question type is selected
@@ -444,24 +447,67 @@ const AIGenerateListening = () => {
       };
       // Note: backend API for generation currently accepts description only; audio is required by UI but not sent
       const res = await dailyChallengeApi.generateContentBasedQuestions(payload);
-      let rawList = [];
-      if (Array.isArray(res)) rawList = res;
-      else if (Array.isArray(res?.questions)) rawList = res.questions;
-      else if (Array.isArray(res?.data)) rawList = res.data;
-      else if (Array.isArray(res?.data?.questions)) rawList = res.data.questions;
-      else if (Array.isArray(res?.result?.questions)) rawList = res.result.questions;
-      const normalized = normalizeQuestionsFromAI(rawList);
-      setGenerationProgress(100);
-      // Small delay to show 100% before closing
-      await new Promise(resolve => setTimeout(resolve, 300));
-      if (!normalized.length) {
-        spaceToast.warning(t('dailyChallenge.aiDidNotReturnQuestions', 'AI did not return any questions'));
-        setQuestions([]);
-        setShowPreview(false);
-      } else {
-        setQuestions(normalized);
-        setShowPreview(true);
-        spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
+      // axiosClient already unwraps response.data, so res is already the data object
+      const responseData = res?.data || res;
+      
+      // Handle error field: if error is not null, show error toast
+      if (responseData?.error != null) {
+        const errorMessage = typeof responseData.error === 'string' 
+          ? responseData.error 
+          : (responseData.error?.message || JSON.stringify(responseData.error));
+        spaceToast.error(errorMessage);
+        setGenerationProgress(0);
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Handle warning field: if error is null and warning exists, show confirmation modal
+      // Check if error is null/undefined and warning has a value
+      if (responseData?.error == null && responseData?.warning) {
+        const warningMsg = typeof responseData.warning === 'string' 
+          ? responseData.warning 
+          : (responseData.warning?.message || JSON.stringify(responseData.warning));
+        warningActionRef.current = () => processQuestionsResponse(responseData);
+        setWarningMessage(warningMsg);
+        setWarningVisible(true);
+        return;
+      }
+      
+      // No error and no warning, process normally
+      await processQuestionsResponse(responseData);
+      
+      async function processQuestionsResponse(data) {
+        // Extract sections/questions from response
+        let rawList = [];
+        if (Array.isArray(data?.sections)) {
+          rawList = data.sections;
+        } else if (Array.isArray(data)) {
+          rawList = data;
+        } else if (Array.isArray(data?.questions)) {
+          rawList = data.questions;
+        } else if (Array.isArray(data?.data)) {
+          rawList = data.data;
+        } else if (Array.isArray(data?.data?.questions)) {
+          rawList = data.data.questions;
+        } else if (Array.isArray(data?.result?.questions)) {
+          rawList = data.result.questions;
+        }
+        
+        const normalized = normalizeQuestionsFromAI(rawList);
+        setGenerationProgress(100);
+        // Small delay to show 100% before closing
+        await new Promise(resolve => setTimeout(resolve, 300));
+        if (!normalized.length) {
+          spaceToast.warning(t('dailyChallenge.aiDidNotReturnQuestions', 'AI did not return any questions'));
+          setQuestions([]);
+          setShowPreview(false);
+        } else {
+          setQuestions(normalized);
+          setShowPreview(true);
+          spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
+        }
+        setIsGenerating(false);
+        setGenerationProgress(0);
       }
     } catch (err) {
       console.error('Generate listening AI questions error:', err);
@@ -483,34 +529,79 @@ const AIGenerateListening = () => {
       setGenerationProgress(0);
       setShowPreview(false);
       const res = await dailyChallengeApi.parseQuestionsFromFile(uploadedFile, prompt || '');
-      // Extract transcript/content returned by backend so the section can be saved
-      const detectedTranscript =
-        res?.data?.transcript ||
-        res?.data?.content ||
-        res?.transcript ||
-        res?.content ||
-        res?.data?.sectionsContent ||
-        res?.sectionsContent ||
-        '';
-      const fallbackTranscript = prompt || '';
-      const finalTranscript = (detectedTranscript && String(detectedTranscript).trim()) || fallbackTranscript;
-      if (finalTranscript) {
-        setPrompt(finalTranscript);
+      // axiosClient already unwraps response.data, so res is already the data object
+      const responseData = res?.data || res;
+      
+      // Handle error field: if error is not null, show error toast
+      if (responseData?.error != null) {
+        const errorMessage = typeof responseData.error === 'string' 
+          ? responseData.error 
+          : (responseData.error?.message || JSON.stringify(responseData.error));
+        spaceToast.error(errorMessage);
+        setGenerationProgress(0);
+        setIsGenerating(false);
+        return;
       }
-      let rawList = [];
-      if (Array.isArray(res)) rawList = res; else if (Array.isArray(res?.questions)) rawList = res.questions; else if (Array.isArray(res?.data?.questions)) rawList = res.data.questions; else if (Array.isArray(res?.data)) rawList = res.data; else if (Array.isArray(res?.result?.questions)) rawList = res.result.questions;
-      const normalized = normalizeQuestionsFromAI(rawList);
-      setGenerationProgress(100);
-      // Small delay to show 100% before closing
-      await new Promise(resolve => setTimeout(resolve, 300));
-      if (!normalized.length) {
-        spaceToast.warning(t('dailyChallenge.noQuestionsParsedFromFile', 'No questions parsed from file'));
-        setQuestions([]);
-        setShowPreview(false);
-      } else {
-        setQuestions(normalized);
-        setShowPreview(true);
-        spaceToast.success(t('dailyChallenge.questionsGeneratedFromFile', 'Questions generated from file'));
+      
+      // Handle warning field: if error is null and warning exists, show confirmation modal
+      // Check if error is null/undefined and warning has a value
+      if (responseData?.error == null && responseData?.warning) {
+        const warningMsg = typeof responseData.warning === 'string' 
+          ? responseData.warning 
+          : (responseData.warning?.message || JSON.stringify(responseData.warning));
+        warningActionRef.current = () => processFileQuestionsResponse(responseData);
+        setWarningMessage(warningMsg);
+        setWarningVisible(true);
+        return;
+      }
+      
+      // No error and no warning, process normally
+      await processFileQuestionsResponse(responseData);
+      
+      async function processFileQuestionsResponse(data) {
+        // Extract transcript/content returned by backend so the section can be saved
+        const detectedTranscript =
+          data?.transcript ||
+          data?.content ||
+          data?.sectionsContent ||
+          '';
+        const fallbackTranscript = prompt || '';
+        const finalTranscript = (detectedTranscript && String(detectedTranscript).trim()) || fallbackTranscript;
+        if (finalTranscript) {
+          setPrompt(finalTranscript);
+        }
+        
+        // Extract sections/questions from response
+        let rawList = [];
+        if (Array.isArray(data?.sections)) {
+          rawList = data.sections;
+        } else if (Array.isArray(data)) {
+          rawList = data;
+        } else if (Array.isArray(data?.questions)) {
+          rawList = data.questions;
+        } else if (Array.isArray(data?.data?.questions)) {
+          rawList = data.data.questions;
+        } else if (Array.isArray(data?.data)) {
+          rawList = data.data;
+        } else if (Array.isArray(data?.result?.questions)) {
+          rawList = data.result.questions;
+        }
+        
+        const normalized = normalizeQuestionsFromAI(rawList);
+        setGenerationProgress(100);
+        // Small delay to show 100% before closing
+        await new Promise(resolve => setTimeout(resolve, 300));
+        if (!normalized.length) {
+          spaceToast.warning(t('dailyChallenge.noQuestionsParsedFromFile', 'No questions parsed from file'));
+          setQuestions([]);
+          setShowPreview(false);
+        } else {
+          setQuestions(normalized);
+          setShowPreview(true);
+          spaceToast.success(t('dailyChallenge.questionsGeneratedFromFile', 'Questions generated from file'));
+        }
+        setIsGenerating(false);
+        setGenerationProgress(0);
       }
     } catch (err) {
       console.error('Generate listening from file error:', err);
@@ -570,13 +661,13 @@ const AIGenerateListening = () => {
       }));
     });
     spaceToast.success(t('dailyChallenge.questionDeletedSuccessfully', 'Question deleted successfully'));
-  }, []);
+  }, [t]);
   const handleSaveFromModal = useCallback((updated) => {
     setQuestions(prev => prev.map(q => q.id === updated.id ? { ...q, ...updated, title: q.title } : q));
     setIsEditModalVisible(false);
     setEditingQuestion(null);
     spaceToast.success(t('dailyChallenge.questionUpdatedSuccessfully', 'Question updated successfully'));
-  }, []);
+  }, [t]);
 
   const handleSave = useCallback(async () => {
     if (!audioUrl) {
@@ -685,6 +776,31 @@ const AIGenerateListening = () => {
   };
 
   return (
+    <>
+      <Modal
+        open={warningVisible}
+        title={t('dailyChallenge.warning', 'Warning')}
+        centered
+        maskClosable={false}
+        okText={t('dailyChallenge.processed', 'Processed')}
+        cancelText={t('dailyChallenge.cancel', 'Cancel')}
+        onOk={async () => {
+          try {
+            if (typeof warningActionRef.current === 'function') {
+              await warningActionRef.current();
+            }
+          } finally {
+            setWarningVisible(false);
+          }
+        }}
+        onCancel={() => {
+          setWarningVisible(false);
+          setIsGenerating(false);
+          setGenerationProgress(0);
+        }}
+      >
+        {warningMessage}
+      </Modal>
     <ThemedLayout customHeader={customHeader} contentMargin={10}>
       {showSpinner && (
         <div
@@ -2106,6 +2222,7 @@ const AIGenerateListening = () => {
         <ReorderModal visible={isEditModalVisible} onCancel={() => { setIsEditModalVisible(false); setEditingQuestion(null); }} onSave={handleSaveFromModal} questionData={editingQuestion} />
       )}
     </ThemedLayout>
+    </>
   );
 };
 

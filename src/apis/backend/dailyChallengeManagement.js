@@ -92,7 +92,7 @@ const dailyChallengeApi = {
 		const baseApi = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api')
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
-		const absoluteUrl = `${baseApi}/ai-feedback/grade-writing`;
+		const absoluteUrl = `${baseApi}/openai/grade-writing`;
 		return axiosClient.post(absoluteUrl, payload, {
 			headers: {
 				'Content-Type': 'application/json',
@@ -102,22 +102,25 @@ const dailyChallengeApi = {
 	},
 
 	// Assess pronunciation for speaking using OpenAI service proxy
-	// Endpoint (swagger image): POST /api/ai-feedback/pronunciation-assessment with query params
+	// Endpoint (swagger image): POST /api/openai/pronunciation-assessment accepts @RequestPart
 	// Params: { audioUrl, questionText?, referenceText?, age? }
 	assessPronunciation: async ({ audioUrl, questionText, referenceText, age } = {}) => {
 		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
 		const baseApi = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api')
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
-		const url = `${baseApi}/ai-feedback/pronunciation-assessment`;
-		const params = new URLSearchParams();
-		if (audioUrl) params.append('audioUrl', audioUrl);
-		if (questionText) params.append('questionText', questionText);
-		if (referenceText) params.append('referenceText', referenceText);
-		if (age !== undefined && age !== null && age !== '') params.append('age', age);
-		const absoluteUrl = params.toString() ? `${url}?${params.toString()}` : url;
-		return axiosClient.post(absoluteUrl, null, {
+		const url = `${baseApi}/openai/pronunciation-assessment`;
+
+		// Backend expects multipart/form-data parts instead of query params
+		const formData = new FormData();
+		if (audioUrl) formData.append('audioUrl', audioUrl);
+		if (questionText) formData.append('questionText', questionText);
+		if (referenceText) formData.append('referenceText', referenceText);
+		if (age !== undefined && age !== null && age !== '') formData.append('age', age);
+
+		return axiosClient.post(url, formData, {
 			headers: {
+				'Content-Type': 'multipart/form-data',
 				'accept': '*/*',
 			},
 		});
@@ -130,10 +133,12 @@ const dailyChallengeApi = {
 		const baseApi = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api')
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
-		const absoluteUrl = `${baseApi}/openai/parse-questions-from-file` + (description && description.trim() ? `?description=${encodeURIComponent(description.trim())}` : '');
+		const absoluteUrl = `${baseApi}/openai/parse-questions-from-file`;
 
+		// Backend expects both file and description as multipart parts (avoid querystring length issues)
 		const formData = new FormData();
 		if (file) formData.append('file', file);
+		if (description && description.trim()) formData.append('description', description.trim());
 
 		return axiosClient.post(absoluteUrl, formData, {
 			headers: {
