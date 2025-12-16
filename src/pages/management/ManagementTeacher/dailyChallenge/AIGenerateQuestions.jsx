@@ -5,6 +5,7 @@ import {
   Typography,
   Card,
   Tooltip,
+  Modal,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -97,6 +98,9 @@ const AIGenerateQuestions = () => {
   const uploadInputRef = useRef(null);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [warningVisible, setWarningVisible] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
+  const warningActionRef = useRef(null);
 
   // Helper function to extract backend error messages
   const getBackendMessage = useCallback((resOrErr) => {
@@ -816,38 +820,72 @@ const AIGenerateQuestions = () => {
         vocabularyList: vocabularyList || '',
       };
       const res = await dailyChallengeApi.generateAIQuestions(payload);
-      // Try common shapes:
-      // - [ ... ]
-      // - { questions: [ ... ] }
-      // - { data: [ ... ] }
-      // - { data: { questions: [ ... ] } }
-      // - { result: { questions: [ ... ] } }
-      let rawList = [];
-      if (Array.isArray(res)) {
-        rawList = res;
-      } else if (Array.isArray(res?.questions)) {
-        rawList = res.questions;
-      } else if (Array.isArray(res?.data)) {
-        rawList = res.data;
-      } else if (Array.isArray(res?.data?.questions)) {
-        rawList = res.data.questions;
-      } else if (Array.isArray(res?.result?.questions)) {
-        rawList = res.result.questions;
-      } else if (Array.isArray(res?.payload?.questions)) {
-        rawList = res.payload.questions;
+      // axiosClient already unwraps response.data, so res is already the data object
+      const responseData = res?.data || res;
+      
+      // Handle error field: if error is not null, show error toast
+      if (responseData?.error != null) {
+        const errorMessage = typeof responseData.error === 'string' 
+          ? responseData.error 
+          : (responseData.error?.message || JSON.stringify(responseData.error));
+        spaceToast.error(errorMessage);
+        setGenerationProgress(0);
+        setIsGenerating(false);
+        return;
       }
-      const normalized = normalizeQuestionsFromAI(rawList);
-      setGenerationProgress(100);
-      // Small delay to show 100% before closing
-      await new Promise(resolve => setTimeout(resolve, 300));
-      if (!normalized.length) {
-        spaceToast.warning(t('dailyChallenge.aiDidNotReturnQuestions', 'AI did not return any questions'));
-        setQuestions([]);
-        setShowPreview(false);
-      } else {
-        setQuestions(normalized);
-        setShowPreview(true);
-        spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
+      
+      // Handle warning field: if error is null and warning exists, show confirmation modal
+      // Check if error is null/undefined and warning has a value
+      if (responseData?.error == null && responseData?.warning) {
+        const warningMsg = typeof responseData.warning === 'string' 
+          ? responseData.warning 
+          : (responseData.warning?.message || JSON.stringify(responseData.warning));
+        warningActionRef.current = () => processQuestionsResponse(responseData);
+        setWarningMessage(warningMsg);
+        setWarningVisible(true);
+        return;
+      }
+      
+      // No error and no warning, process normally
+      await processQuestionsResponse(responseData);
+      
+      async function processQuestionsResponse(data) {
+        // Extract sections/questions from response
+        // New structure: { sections: [...], error: null, warning: null }
+        // Old structure: various formats for backward compatibility
+        let rawList = [];
+        if (Array.isArray(data?.sections)) {
+          // New structure: sections array
+          rawList = data.sections;
+        } else if (Array.isArray(data)) {
+          rawList = data;
+        } else if (Array.isArray(data?.questions)) {
+          rawList = data.questions;
+        } else if (Array.isArray(data?.data)) {
+          rawList = data.data;
+        } else if (Array.isArray(data?.data?.questions)) {
+          rawList = data.data.questions;
+        } else if (Array.isArray(data?.result?.questions)) {
+          rawList = data.result.questions;
+        } else if (Array.isArray(data?.payload?.questions)) {
+          rawList = data.payload.questions;
+        }
+        
+        const normalized = normalizeQuestionsFromAI(rawList);
+        setGenerationProgress(100);
+        // Small delay to show 100% before closing
+        await new Promise(resolve => setTimeout(resolve, 300));
+        if (!normalized.length) {
+          spaceToast.warning(t('dailyChallenge.aiDidNotReturnQuestions', 'AI did not return any questions'));
+          setQuestions([]);
+          setShowPreview(false);
+        } else {
+          setQuestions(normalized);
+          setShowPreview(true);
+          spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
+        }
+        setIsGenerating(false);
+        setGenerationProgress(0);
       }
       
     } catch (error) {
@@ -871,24 +909,67 @@ const AIGenerateQuestions = () => {
       setGenerationProgress(0);
       setShowPreview(false);
       const res = await dailyChallengeApi.parseQuestionsFromFile(uploadedFile, promptDescription || '');
-      let rawList = [];
-      if (Array.isArray(res)) rawList = res;
-      else if (Array.isArray(res?.questions)) rawList = res.questions;
-      else if (Array.isArray(res?.data?.questions)) rawList = res.data.questions;
-      else if (Array.isArray(res?.data)) rawList = res.data;
-      else if (Array.isArray(res?.result?.questions)) rawList = res.result.questions;
-      const normalized = normalizeQuestionsFromAI(rawList);
-      setGenerationProgress(100);
-      // Small delay to show 100% before closing
-      await new Promise(resolve => setTimeout(resolve, 300));
-      if (!normalized.length) {
-        spaceToast.warning(t('dailyChallenge.noQuestionsParsedFromFile', 'No questions parsed from file'));
-        setQuestions([]);
-        setShowPreview(false);
-      } else {
-        setQuestions(normalized);
-        setShowPreview(true);
-        spaceToast.success(t('dailyChallenge.questionsGeneratedFromFile', 'Questions generated from file'));
+      // axiosClient already unwraps response.data, so res is already the data object
+      const responseData = res?.data || res;
+      
+      // Handle error field: if error is not null, show error toast
+      if (responseData?.error != null) {
+        const errorMessage = typeof responseData.error === 'string' 
+          ? responseData.error 
+          : (responseData.error?.message || JSON.stringify(responseData.error));
+        spaceToast.error(errorMessage);
+        setGenerationProgress(0);
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Handle warning field: if error is null and warning exists, show confirmation modal
+      // Check if error is null/undefined and warning has a value
+      if (responseData?.error == null && responseData?.warning) {
+        const warningMsg = typeof responseData.warning === 'string' 
+          ? responseData.warning 
+          : (responseData.warning?.message || JSON.stringify(responseData.warning));
+        warningActionRef.current = () => processFileQuestionsResponse(responseData);
+        setWarningMessage(warningMsg);
+        setWarningVisible(true);
+        return;
+      }
+      
+      // No error and no warning, process normally
+      await processFileQuestionsResponse(responseData);
+      
+      async function processFileQuestionsResponse(data) {
+        // Extract sections/questions from response
+        let rawList = [];
+        if (Array.isArray(data?.sections)) {
+          rawList = data.sections;
+        } else if (Array.isArray(data)) {
+          rawList = data;
+        } else if (Array.isArray(data?.questions)) {
+          rawList = data.questions;
+        } else if (Array.isArray(data?.data?.questions)) {
+          rawList = data.data.questions;
+        } else if (Array.isArray(data?.data)) {
+          rawList = data.data;
+        } else if (Array.isArray(data?.result?.questions)) {
+          rawList = data.result.questions;
+        }
+        
+        const normalized = normalizeQuestionsFromAI(rawList);
+        setGenerationProgress(100);
+        // Small delay to show 100% before closing
+        await new Promise(resolve => setTimeout(resolve, 300));
+        if (!normalized.length) {
+          spaceToast.warning(t('dailyChallenge.noQuestionsParsedFromFile', 'No questions parsed from file'));
+          setQuestions([]);
+          setShowPreview(false);
+        } else {
+          setQuestions(normalized);
+          setShowPreview(true);
+          spaceToast.success(t('dailyChallenge.questionsGeneratedFromFile', 'Questions generated from file'));
+        }
+        setIsGenerating(false);
+        setGenerationProgress(0);
       }
     } catch (err) {
       console.error('Generate from file error:', err);
@@ -1092,7 +1173,7 @@ const AIGenerateQuestions = () => {
         existingOrdered.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
         newOnes.forEach(x => finalBulk.push({ id: x.id, orderNumber: ++seq }));
         if (finalBulk.length > 0) {
-          const reorderResp = await dailyChallengeApi.bulkUpdateSections(id, finalBulk);
+          await dailyChallengeApi.bulkUpdateSections(id, finalBulk);
         }
       } catch (reorderError) {
         console.warn('Reorder after save failed, continuing:', reorderError);
@@ -1521,7 +1602,32 @@ const AIGenerateQuestions = () => {
   };
 
   return (
-    <ThemedLayout customHeader={customHeader}>
+    <>
+      <Modal
+        open={warningVisible}
+        title={t('dailyChallenge.warning', 'Warning')}
+        centered
+        maskClosable={false}
+        okText={t('dailyChallenge.continue', 'Continue')}
+        cancelText={t('dailyChallenge.cancel', 'Cancel')}
+        onOk={async () => {
+          try {
+            if (typeof warningActionRef.current === 'function') {
+              await warningActionRef.current();
+            }
+          } finally {
+            setWarningVisible(false);
+          }
+        }}
+        onCancel={() => {
+          setWarningVisible(false);
+          setIsGenerating(false);
+          setGenerationProgress(0);
+        }}
+      >
+        {warningMessage}
+      </Modal>
+      <ThemedLayout customHeader={customHeader}>
       {showSpinner && (
         <div
           style={{
@@ -4047,7 +4153,9 @@ const AIGenerateQuestions = () => {
         />
       )}
     </ThemedLayout>
+    </>
   );
 };
 
 export default AIGenerateQuestions;
+
