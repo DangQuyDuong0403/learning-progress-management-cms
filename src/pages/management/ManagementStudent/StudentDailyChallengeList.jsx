@@ -319,24 +319,50 @@ const StudentDailyChallengeList = () => {
     return result;
   }, []);
 
-  // Build filtered full list (type/search) - only PUBLISHED challenges shown
+  // Build filtered full list (type/search) - only PUBLISHED challenges shown that have reached startDate
   const filteredAllChallenges = useMemo(() => {
-    // If no search text, return all challenges immediately
+    const now = new Date();
+    
+    // First filter: only PUBLISHED challenges that have reached startDate
+    const publishedAndStarted = allChallenges.filter((challenge) => {
+      // Empty lessons (lessons without challenges) should always be shown
+      if (challenge.isEmptyLesson) {
+        return true;
+      }
+
+      // Must be PUBLISHED status
+      if (challenge.status !== 'PUBLISHED') {
+        return false;
+      }
+
+      // Must have reached startDate (startDate <= currentDate)
+      if (challenge.startDate) {
+        const startDate = new Date(challenge.startDate);
+        if (startDate > now) {
+          // startDate hasn't arrived yet, hide this challenge
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Second filter: apply search text if provided
     if (!searchDebounce || searchDebounce.trim() === "") {
-      return allChallenges;
+      return publishedAndStarted;
     }
 
     // Pre-compute lowercase search text for better performance
     const searchLower = searchDebounce.toLowerCase();
 
-    return allChallenges.filter((challenge) => {
+    return publishedAndStarted.filter((challenge) => {
       // Empty lessons (lessons without challenges) should always be shown
       if (challenge.isEmptyLesson) {
         const matchesSearch = challenge.lessonName?.toLowerCase().includes(searchLower);
         return matchesSearch;
       }
 
-      // Only apply search filter now (type filter removed)
+      // Apply search filter
       const matchesSearch = 
         challenge.title?.toLowerCase().includes(searchLower) ||
         challenge.lessonName?.toLowerCase().includes(searchLower);
