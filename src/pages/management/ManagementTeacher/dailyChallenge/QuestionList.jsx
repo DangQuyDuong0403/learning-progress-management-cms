@@ -3688,20 +3688,37 @@ const DailyChallengeContent = () => {
       setSavingQuestion(true);
 
       // Transform question to API format
-      // Compute next section orderNumber from existing sections:
-      // - passages contain DOCUMENT/FILE sections
-      // - GV sections come through questions with their own orderNumber
+      // Compute next section orderNumber from existing sections based on challenge type:
+      // - GV: Each question is a separate section, count questions only
+      // - RE/LI: Questions are inside passages, count passages only
+      // - WR/SP: Each passage is a separate section, count passages only (filter by type for SP)
       // Use filtered arrays to exclude deleted items
       const visiblePassages = passages.filter(p => !p.toBeDeleted);
       const visibleQuestions = questions.filter(q => !q.toBeDeleted);
+      const challengeType = challengeDetails?.challengeType;
       
-      // Calculate nextOrder based on total visible items + 1
-      // This ensures correct ordering even when state hasn't updated yet
-      const totalVisibleItems = visiblePassages.length + visibleQuestions.length;
-      const nextOrder = totalVisibleItems + 1;
+      // Calculate nextOrder based on challenge type
+      let nextOrder = 1;
+      if (challengeType === 'GV') {
+        // GV: Count questions only (each question is a section)
+        nextOrder = visibleQuestions.length + 1;
+      } else if (challengeType === 'RE' || challengeType === 'LI') {
+        // RE/LI: Count passages only (questions are inside passages)
+        nextOrder = visiblePassages.length + 1;
+      } else if (challengeType === 'WR') {
+        // WR: Count passages only (each passage is a section)
+        nextOrder = visiblePassages.length + 1;
+      } else if (challengeType === 'SP') {
+        // SP: Count speaking passages only (filter by type)
+        const speakingPassages = visiblePassages.filter(p => p.type === 'SPEAKING_PASSAGE');
+        nextOrder = speakingPassages.length + 1;
+      } else {
+        // Fallback: Count both (for backward compatibility)
+        nextOrder = visiblePassages.length + visibleQuestions.length + 1;
+      }
 
       // For GV, let question start at order 1 inside its section; section.orderNumber controls placement
-      const questionOrder = (challengeDetails?.challengeType === 'GV') ? 1 : nextOrder;
+      const questionOrder = (challengeType === 'GV') ? 1 : nextOrder;
       const apiQuestion = transformQuestionToApiFormat(questionData, questionOrder, questionData.type);
       // Use question as is
       const sanitizedApiQuestion = {
@@ -4391,17 +4408,36 @@ const DailyChallengeContent = () => {
       // Persist duplicate through API for all challenge types to avoid errors
       setLoading(true);
 
-      // Compute next section orderNumber from existing sections
+      // Compute next section orderNumber from existing sections based on challenge type:
+      // - GV: Each question is a separate section, count questions only
+      // - RE/LI: Questions are inside passages, count passages only
+      // - WR/SP: Each passage is a separate section, count passages only (filter by type for SP)
       // Use filtered arrays to exclude deleted items
       const visiblePassages = passages.filter(p => !p.toBeDeleted);
       const visibleQuestions = questions.filter(q => !q.toBeDeleted);
+      const challengeType = challengeDetails?.challengeType;
       
-      // Calculate nextOrder based on total visible items + 1
-      // This ensures correct ordering even when state hasn't updated yet
-      const totalVisibleItems = visiblePassages.length + visibleQuestions.length;
-      const nextOrder = totalVisibleItems + 1;
+      // Calculate nextOrder based on challenge type
+      let nextOrder = 1;
+      if (challengeType === 'GV') {
+        // GV: Count questions only (each question is a section)
+        nextOrder = visibleQuestions.length + 1;
+      } else if (challengeType === 'RE' || challengeType === 'LI') {
+        // RE/LI: Count passages only (questions are inside passages)
+        nextOrder = visiblePassages.length + 1;
+      } else if (challengeType === 'WR') {
+        // WR: Count passages only (each passage is a section)
+        nextOrder = visiblePassages.length + 1;
+      } else if (challengeType === 'SP') {
+        // SP: Count speaking passages only (filter by type)
+        const speakingPassages = visiblePassages.filter(p => p.type === 'SPEAKING_PASSAGE');
+        nextOrder = speakingPassages.length + 1;
+      } else {
+        // Fallback: Count both (for backward compatibility)
+        nextOrder = visiblePassages.length + visibleQuestions.length + 1;
+      }
 
-      const questionOrderDup = (challengeDetails?.challengeType === 'GV') ? 1 : nextOrder;
+      const questionOrderDup = (challengeType === 'GV') ? 1 : nextOrder;
       const apiQuestion = transformQuestionToApiFormat(
         {
           ...source,
@@ -4509,11 +4545,33 @@ const DailyChallengeContent = () => {
       const isFilePassage = passageToDuplicate.type === 'LISTENING_PASSAGE' || passageToDuplicate.type === 'SPEAKING_PASSAGE';
       const resourceType = isFilePassage ? 'FILE' : 'DOCUMENT';
 
-      // Next order number for sections
-      const sectionOrderNumbers = passages
-        .map(p => p?.orderNumber)
-        .filter(n => typeof n === 'number');
-      const nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
+      // Compute next section orderNumber from existing sections based on challenge type:
+      // - RE/LI: Count passages only (questions are inside passages)
+      // - WR: Count passages only (each passage is a section)
+      // - SP: Count speaking passages only (filter by type)
+      // Use filtered arrays to exclude deleted items
+      const visiblePassages = passages.filter(p => !p.toBeDeleted);
+      const challengeType = challengeDetails?.challengeType;
+      
+      // Calculate nextOrder based on challenge type
+      let nextOrder = 1;
+      if (challengeType === 'RE' || challengeType === 'LI') {
+        // RE/LI: Count passages only
+        nextOrder = visiblePassages.length + 1;
+      } else if (challengeType === 'WR') {
+        // WR: Count passages only
+        nextOrder = visiblePassages.length + 1;
+      } else if (challengeType === 'SP') {
+        // SP: Count speaking passages only (filter by type)
+        const speakingPassages = visiblePassages.filter(p => p.type === 'SPEAKING_PASSAGE');
+        nextOrder = speakingPassages.length + 1;
+      } else {
+        // Fallback: Use max orderNumber + 1 (for backward compatibility)
+        const sectionOrderNumbers = visiblePassages
+          .map(p => p?.orderNumber)
+          .filter(n => typeof n === 'number');
+        nextOrder = (sectionOrderNumbers.length ? Math.max(...sectionOrderNumbers) : 0) + 1;
+      }
 
       // Transform questions inside this passage to API format
       const apiQuestions = Array.isArray(passageToDuplicate.questions)
@@ -4550,7 +4608,7 @@ const DailyChallengeContent = () => {
     } finally {
       setLoading(false);
     }
-  }, [passages, id, fetchQuestions, transformQuestionToApiFormat]);
+  }, [passages, id, fetchQuestions, transformQuestionToApiFormat, challengeDetails?.challengeType]);
 
   const handlePassagePointsChange = useCallback((passageId, value) => {
     setPassages(prev => prev.map(p => 
