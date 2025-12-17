@@ -332,11 +332,37 @@ const AIGenerateReading = () => {
         case 'DROPDOWN':
         case 'DRAG_AND_DROP': {
           const textRaw = q?.questionText || q?.question || '';
-          const cleanArtifacts = (val) => String(val || '')
-            .replace(/\bpositionId\b/gi, '')
-            .replace(/\b(?!\d+(st|nd|rd|th)\b)(?=[a-zA-Z]*\d)(?=\d*[a-zA-Z])[a-zA-Z0-9]{2,12}\b/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
+          const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
+          // Collect all positionIds from content.data to remove stray tokens
+          const positionIds = new Set();
+          contentItems.forEach(it => {
+            if (it?.positionId) {
+              // Add both with and without "pos_" prefix
+              const posId = String(it.positionId);
+              positionIds.add(posId);
+              positionIds.add(posId.replace(/^pos_/, ''));
+            }
+          });
+          // Clean rare backend artifacts like literal "positionId" tokens or positionId tokens appearing as standalone words
+          const cleanArtifacts = (val) => {
+            let cleaned = String(val || '')
+              // drop the literal word positionId
+              .replace(/\bpositionId\b/gi, '');
+            
+            // Remove positionId tokens that appear as standalone words (not in [[pos_xxx]] placeholders)
+            if (positionIds.size > 0) {
+              positionIds.forEach(posId => {
+                // Escape special regex characters
+                const escaped = posId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                // Remove as whole word only (not part of placeholder)
+                cleaned = cleaned.replace(new RegExp(`\\b${escaped}\\b`, 'g'), '');
+              });
+            }
+            
+            return cleaned
+              .replace(/\s+/g, ' ')
+              .trim();
+          };
           const text = cleanArtifacts(textRaw);
           return {
             id: nextId(),
@@ -344,7 +370,7 @@ const AIGenerateReading = () => {
             title: `Question ${counter}`,
             question: text,
             questionText: text,
-            content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] },
+            content: { data: contentItems },
             points: q?.points ?? q?.weight ?? q?.score ?? 1
           };
         }
@@ -2634,7 +2660,8 @@ const AIGenerateReading = () => {
                                   posToCorrect.set(String(it.positionId), it.value);
                                 });
                                 if (/\[\[pos_/.test(text)) {
-                                  const parts = text.split(/(\[\[pos_([a-zA-Z0-9]+)\]\])/g);
+                                  // Use non-capturing group to avoid including capturing groups in split result
+                                  const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
                                   return parts.map((part, idx) => {
                                     const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                                     if (!m) {
