@@ -64,7 +64,7 @@ export default function App() {
             <SpaceToastify />
           </Router>
           <CustomCursor />
-          <TextTranslator enabled={true} />
+          <TextTranslator enabled={false} />
           </DailyChallengeMenuProvider>
         </SyllabusMenuProvider>
       </ClassMenuProvider>
