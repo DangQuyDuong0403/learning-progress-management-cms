@@ -841,6 +841,14 @@ const ClassStudent = () => {
       },
     },
     {
+      title: t('classDetail.username') || 'Username',
+      dataIndex: 'userName',
+      key: 'username',
+      render: (text, record) => (
+        <span style={{ fontSize: "20px" }}>{record.userName || record.code || '-'}</span>
+      ),
+    },
+    {
       title: t('classDetail.fullName'),
       dataIndex: "fullName",
       key: "fullName",

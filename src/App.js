@@ -1,15 +1,15 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ClassMenuProvider } from "./contexts/ClassMenuContext";
 import { SyllabusMenuProvider } from "./contexts/SyllabusMenuContext";
 import { DailyChallengeMenuProvider } from "./contexts/DailyChallengeMenuContext";
 import CONFIG_ROUTER from "./routers/configRouter";
 import PrivateRoute from "./routers/PrivateRoute";
-// import EnhancedPrivateRoute from "./routers/EnhancedPrivateRoute";
 import RoleBasedPrivateRoute from "./routers/RoleBasedPrivateRoute";
+import HomeRedirect from "./routers/HomeRedirect";
 import SpaceToastify from "../src/component/SpaceToastify";
-// import CustomCursor from "./component/cursor/CustomCursor";
-// import TextTranslator from "./component/TextTranslator";
+import CustomCursor from "./component/cursor/CustomCursor";
+import TextTranslator from "./component/TextTranslator";
 import { useAuthMonitor } from "./utils/useAuthMonitor";
 
 export default function App() {
@@ -23,8 +23,8 @@ export default function App() {
           <DailyChallengeMenuProvider>
             <Router>
             <Routes>
-              {/* redirect "/" -> "/login" */}
-              <Route path="/" element={<Navigate to="/choose-login" replace />} />
+              {/* redirect "/" -> dashboard based on role or "/choose-login" */}
+              <Route path="/" element={<HomeRedirect />} />
 
             {CONFIG_ROUTER.map(({ path, component: Component, key, private: isPrivate, role, roleBased }) => {
               // Xác định loại route protection cần sử dụng
@@ -63,6 +63,8 @@ export default function App() {
             </Routes>
             <SpaceToastify />
           </Router>
+          <CustomCursor />
+          <TextTranslator enabled={true} />
           </DailyChallengeMenuProvider>
         </SyllabusMenuProvider>
       </ClassMenuProvider>
