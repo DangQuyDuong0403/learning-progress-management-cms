@@ -330,27 +330,28 @@ const AIGenerateReading = () => {
         }
         case 'FILL_IN_THE_BLANK':
         case 'DROPDOWN':
-        case 'DRAG_AND_DROP':
-          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', questionText: q?.questionText || q?.question || '', content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
+        case 'DRAG_AND_DROP': {
+          const textRaw = q?.questionText || q?.question || '';
+          const cleanArtifacts = (val) => String(val || '')
+            .replace(/\bpositionId\b/gi, '')
+            .replace(/\b(?!\d+(st|nd|rd|th)\b)(?=[a-zA-Z]*\d)(?=\d*[a-zA-Z])[a-zA-Z0-9]{2,12}\b/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const text = cleanArtifacts(textRaw);
+          return {
+            id: nextId(),
+            type,
+            title: `Question ${counter}`,
+            question: text,
+            questionText: text,
+            content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] },
+            points: q?.points ?? q?.weight ?? q?.score ?? 1
+          };
+        }
         case 'REARRANGE': {
           const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
-          // Map positionId -> value (giữ đúng mapping từ backend)
-          const posToVal = new Map();
-          contentItems.forEach(it => {
-            if (it && it.positionId) {
-              posToVal.set(String(it.positionId).replace(/^pos_/, ''), it.value);
-            }
-          });
-          // Lấy thứ tự đúng từ placeholder trong questionText
-          const text = q?.questionText || q?.question || '';
-          const ids = [];
-          const re = /\[\[pos_([a-zA-Z0-9]+)\]\]/g;
-          let m;
-          while ((m = re.exec(text)) !== null) {
-            ids.push(m[1]);
-          }
-          const words = ids.map(id => posToVal.get(id)).filter(Boolean);
-          // Shuffle chỉ available words, không đổi correctOrder
+          // Đáp án đúng = thứ tự words trong content.data
+          const words = contentItems.map(it => it?.value ?? '').filter(Boolean);
           const shuffled = (() => {
             const copy = [...words];
             for (let i = copy.length - 1; i > 0; i--) {
@@ -359,6 +360,7 @@ const AIGenerateReading = () => {
             }
             return copy;
           })();
+          const text = q?.questionText || q?.question || '';
           return {
             id: nextId(),
             type: 'REARRANGE',
@@ -366,8 +368,8 @@ const AIGenerateReading = () => {
             // Human-friendly instruction (không hiện placeholder)
             question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
             questionText: text,
-            sourceItems: shuffled,   // availableWords: đã shuffle
-            correctOrder: words,     // thứ tự đúng: backend trả sao giữ vậy
+            sourceItems: shuffled,   // available words (đã shuffle)
+            correctOrder: words,     // đáp án đúng
             content: { data: contentItems },
             points: q?.points ?? q?.weight ?? q?.score ?? 1,
           };
@@ -2914,11 +2916,42 @@ const AIGenerateReading = () => {
                             gap: '12px'
                           }}>
                             {(() => {
-                              // Build posId → value map
+                              // Ưu tiên sử dụng correctOrder (đáp án đúng) nếu có
+                              if (Array.isArray(question.correctOrder) && question.correctOrder.length > 0) {
+                                return question.correctOrder.map((word, index) => (
+                                  <div
+                                    key={index}
+                                    style={{
+                                      padding: '12px 20px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: `2px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`,
+                                      borderRadius: '12px',
+                                      background: theme === 'sun' 
+                                        ? 'rgba(24, 144, 255, 0.08)' 
+                                        : 'rgba(138, 122, 255, 0.12)',
+                                      fontSize: '16px',
+                                      fontWeight: '600',
+                                      color: theme === 'sun' ? '#1890ff' : '#8B5CF6',
+                                      cursor: 'not-allowed',
+                                      userSelect: 'none',
+                                      minWidth: '80px',
+                                      textAlign: 'center',
+                                      boxShadow: theme === 'sun' 
+                                        ? '0 2px 8px rgba(24, 144, 255, 0.15)' 
+                                        : '0 2px 8px rgba(138, 122, 255, 0.15)'
+                                    }}
+                                  >
+                                    {word}
+                                  </div>
+                                ));
+                              }
+
+                              // Fallback cũ: suy luận theo placeholder [[pos_x]] trong questionText
                               const items = Array.isArray(question.content?.data) ? question.content.data : [];
                               const posToVal = new Map();
                               items.forEach(it => { if (it && it.positionId) posToVal.set(String(it.positionId), it.value); });
-                              // Extract placeholder order from questionText
                               const text = question.questionText || '';
                               const placeholderOrder = [];
                               const re = /\[\[pos_([a-zA-Z0-9]+)\]\]/g;
@@ -2926,7 +2959,6 @@ const AIGenerateReading = () => {
                               while ((m = re.exec(text)) !== null) {
                                 placeholderOrder.push(m[1]);
                               }
-                              // Render each value as chip in correct order
                               return placeholderOrder.map((posId, index) => (
                                 <div
                                   key={index}

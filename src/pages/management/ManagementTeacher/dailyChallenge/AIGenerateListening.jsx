@@ -340,27 +340,29 @@ const [errorMessage, setErrorMessage] = useState('');
         }
         case 'FILL_IN_THE_BLANK':
         case 'DROPDOWN':
-        case 'DRAG_AND_DROP':
-          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', questionText: q?.questionText || q?.question || '', content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
+        case 'DRAG_AND_DROP': {
+          const textRaw = q?.questionText || q?.question || '';
+          const cleanArtifacts = (val) => String(val || '')
+            .replace(/\bpositionId\b/gi, '')
+            .replace(/\b(?!\d+(st|nd|rd|th)\b)(?=[a-zA-Z]*\d)(?=\d*[a-zA-Z])[a-zA-Z0-9]{2,12}\b/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const text = cleanArtifacts(textRaw);
+          return {
+            id: nextId(),
+            type,
+            title: `Question ${counter}`,
+            question: text,
+            questionText: text,
+            content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] },
+            points: q?.points ?? q?.weight ?? q?.score ?? 1
+          };
+        }
         case 'REARRANGE': {
           const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
-          // Map positionId -> value (giữ đúng mapping từ backend)
-          const posToVal = new Map();
-          contentItems.forEach(it => {
-            if (it && it.positionId) {
-              posToVal.set(String(it.positionId).replace(/^pos_/, ''), it.value);
-            }
-          });
-          const text = q?.questionText || q?.question || '';
-          // Lấy thứ tự đúng theo placeholder trong questionText ([[pos_x]])
-          const ids = [];
-          const re = /\[\[pos_([a-zA-Z0-9]+)\]\]/g;
-          let m;
-          while ((m = re.exec(text)) !== null) {
-            ids.push(m[1]);
-          }
-          const words = ids.map(id => posToVal.get(id)).filter(Boolean);
-          // Shuffle chỉ phần available words hiển thị cho học sinh
+          // Đáp án đúng = thứ tự words trong content.data
+          const words = contentItems.map(it => it?.value ?? '').filter(Boolean);
+          // Học sinh sẽ thấy bản shuffle ở khu vực "Available words"
           const shuffled = (() => {
             const copy = [...words];
             for (let i = copy.length - 1; i > 0; i--) {
@@ -369,14 +371,15 @@ const [errorMessage, setErrorMessage] = useState('');
             }
             return copy;
           })();
+          const text = q?.questionText || q?.question || '';
           return {
             id: nextId(),
             type: 'REARRANGE',
             title: `Question ${counter}`,
             question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
             questionText: text,
-            sourceItems: shuffled,   // availableWords: bị shuffle
-            correctOrder: words,     // thứ tự đúng: y nguyên backend
+            sourceItems: shuffled,
+            correctOrder: words,
             content: { data: contentItems },
             points: q?.points ?? q?.weight ?? q?.score ?? 1,
           };

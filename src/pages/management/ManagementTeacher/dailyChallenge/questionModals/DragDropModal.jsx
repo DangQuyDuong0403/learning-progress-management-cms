@@ -304,17 +304,35 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Initialize editor content from questionData
 	useEffect(() => {
 		if (visible) {
-			// Check if we need to extract incorrect options from content.data
+			// Ensure we always have incorrectOptions populated when editing
+			// 1) MCQ-style questions (fallback from legacy use)
 			if (questionData?.options && (!questionData.incorrectOptions || questionData.incorrectOptions.length === 0)) {
 				const extractedIncorrect = questionData.options
 					.filter(opt => !opt.isCorrect)
 					.map(opt => ({
 						id: opt.key || Date.now(),
-						text: opt.text
+						text: opt.text,
 					}));
 				questionData.incorrectOptions = extractedIncorrect;
 			}
-			
+			// 2) DRAG_AND_DROP questions from AI preview:
+			//    incorrect options are stored inside content.data as items
+			//    without positionId or with correct === false (used to build "Available words")
+			if (
+				questionData?.type === 'DRAG_AND_DROP' &&
+				Array.isArray(questionData?.content?.data) &&
+				(!questionData.incorrectOptions || questionData.incorrectOptions.length === 0)
+			) {
+				const extractedIncorrect = questionData.content.data
+					.filter((item) => !item.positionId || item.correct === false)
+					.map((item, index) => ({
+						id: item.id || `opt${index + 1}`,
+						text: item.value || '',
+					}))
+					.filter((opt) => opt.text);
+				questionData.incorrectOptions = extractedIncorrect;
+			}
+
 			// Reset initialization flag when modal opens
 			editorInitializedRef.current = false;
 			

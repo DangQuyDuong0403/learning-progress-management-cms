@@ -92,7 +92,7 @@ const dailyChallengeApi = {
 		const baseApi = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api')
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
-		const absoluteUrl = `${baseApi}/openai/grade-writing`;
+		const absoluteUrl = `${baseApi}/ai-feedback/grade-writing`;
 		return axiosClient.post(absoluteUrl, payload, {
 			headers: {
 				'Content-Type': 'application/json',

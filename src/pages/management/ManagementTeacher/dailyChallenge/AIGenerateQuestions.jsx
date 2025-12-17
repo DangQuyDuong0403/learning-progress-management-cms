@@ -716,7 +716,18 @@ const AIGenerateQuestions = () => {
             };
           }
           case 'DRAG_AND_DROP': {
-            const text = q?.questionText || q?.question || '';
+            const textRaw = q?.questionText || q?.question || '';
+            // Clean rare backend artifacts like literal "positionId" tokens or mixed id codes
+            const cleanArtifacts = (val) => {
+              return String(val || '')
+                // drop the literal word positionId
+                .replace(/\bpositionId\b/gi, '')
+                // drop short mixed letter+digit tokens (skip ordinals)
+                .replace(/\b(?!\d+(st|nd|rd|th)\b)(?=[a-zA-Z]*\d)(?=\d*[a-zA-Z])[a-zA-Z0-9]{2,12}\b/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            };
+            const text = cleanArtifacts(textRaw);
             const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
             // correct values mapped to their position
             const correctMap = {};
