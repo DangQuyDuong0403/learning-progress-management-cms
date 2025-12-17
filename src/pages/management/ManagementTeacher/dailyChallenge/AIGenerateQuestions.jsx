@@ -3794,7 +3794,7 @@ const AIGenerateQuestions = () => {
                                    return parts.map((part, idx) => {
                                      const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                                     if (!m) {
-                                      // Hiển thị nguyên văn phần text (không cố gắng xoá code/gibberish để tránh xoá nhầm)
+                                      // Hiển thị nguyên văn phần text (giống như DROPDOWN và FILL_IN_THE_BLANK)
                                       return (
                                         <span
                                           key={idx}
