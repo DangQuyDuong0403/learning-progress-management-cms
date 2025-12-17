@@ -101,15 +101,15 @@ const dailyChallengeApi = {
 		});
 	},
 
-	// Assess pronunciation for speaking using OpenAI service proxy
-	// Endpoint (swagger image): POST /api/openai/pronunciation-assessment accepts @RequestPart
+	// Assess pronunciation for speaking using AI feedback service
+	// Endpoint: POST /api/ai-feedback/pronunciation-assessment accepts @RequestPart
 	// Params: { audioUrl, questionText?, referenceText?, age? }
 	assessPronunciation: async ({ audioUrl, questionText, referenceText, age } = {}) => {
 		const base = (typeof axiosClient?.defaults?.baseURL === 'string') ? axiosClient.defaults.baseURL : '';
 		const baseApi = base.includes('/api/v1')
 			? base.replace('/api/v1', '/api')
 			: (base.endsWith('/api') ? base : (base.replace(/\/$/, '') + '/api'));
-		const url = `${baseApi}/openai/pronunciation-assessment`;
+		const url = `${baseApi}/ai-feedback/pronunciation-assessment`;
 
 		// Backend expects multipart/form-data parts instead of query params
 		const formData = new FormData();
@@ -145,6 +145,7 @@ const dailyChallengeApi = {
 				'Content-Type': 'multipart/form-data',
 				'accept': '*/*',
 			},
+			timeout: 600000, // 10 minutes
 		});
 	},
 
