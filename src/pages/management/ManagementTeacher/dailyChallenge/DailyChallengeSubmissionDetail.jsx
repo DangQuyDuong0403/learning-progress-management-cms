@@ -4749,12 +4749,9 @@ useEffect(() => {
                 if (!isStudent && location?.state?.studentName) {
                   parts.push(location.state.studentName);
                 }
-                const base = parts.length > 0
+                return parts.length > 0
                   ? parts.join(' / ')
                   : (dailyChallengeData?.subtitle || t('dailyChallenge.dailyChallengeManagement'));
-                
-                const student = location?.state?.studentName || submissionData?.student?.name || '';
-                return student ? `${base} / ${student}` : base;
               })()}
             </h2>
           </div>
