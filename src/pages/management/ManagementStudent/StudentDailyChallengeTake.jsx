@@ -3885,6 +3885,7 @@ const detectMediaKindFromFile = (file) => {
 };
 
 const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
+  const { t } = useTranslation();
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
@@ -3895,6 +3896,11 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const [livePreviewStream, setLivePreviewStream] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const liveVideoRef = useRef(null);
+  const [recordingTime, setRecordingTime] = useState(0); // Track recording time in seconds
+  const [showTimeLimitModal, setShowTimeLimitModal] = useState(false);
+  const recordingTimerRef = useRef(null);
+  const isMountedRef = useRef(true); // Track if component is still mounted
+  const MAX_RECORDING_TIME = 180; // 3 minutes in seconds
 
   // Helper function to extract URL from upload response
   const extractUrlFromResponse = (uploadRes) => {
@@ -4016,10 +4022,10 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
               URL.revokeObjectURL(tempUrl);
               setAudioUrl(serverUrl);
             } else {
-              console.warn('⚠️ [Speaking] Server did not return valid URL, keeping blob URL. Response:', uploadRes);
+              console.warn(' [Speaking] Server did not return valid URL, keeping blob URL. Response:', uploadRes);
             }
           } catch (error) {
-            console.error('❌ [Speaking] Failed to upload recorded audio:', error);
+            console.error(' [Speaking] Failed to upload recorded audio:', error);
             // Keep blob URL as fallback
           }
           setIsRecording(false);
@@ -4029,6 +4035,108 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
 
         mediaRecorder.start();
         setIsRecording(true);
+        setRecordingTime(0);
+        
+        // Start timer to track recording time
+        recordingTimerRef.current = setInterval(() => {
+          // Check if component is still mounted before updating state
+          if (!isMountedRef.current) {
+            if (recordingTimerRef.current) {
+              clearInterval(recordingTimerRef.current);
+              recordingTimerRef.current = null;
+            }
+            return;
+          }
+          
+          setRecordingTime(prev => {
+            const newTime = prev + 1;
+            // Auto-stop and save when reaching 3 minutes
+            if (newTime >= MAX_RECORDING_TIME) {
+              // Clear timer first to prevent multiple triggers
+              if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+                recordingTimerRef.current = null;
+              }
+              
+              // Check if component is still mounted before state updates
+              if (!isMountedRef.current) {
+                return MAX_RECORDING_TIME;
+              }
+              
+              // Stop recording automatically - check if still recording
+              const currentRecorder = mediaRecorderRef.current;
+              if (currentRecorder && currentRecorder.state !== 'inactive' && currentRecorder.state !== 'stopped') {
+                try {
+                  currentRecorder.stop();
+                  if (currentRecorder.stream && currentRecorder.stream.getTracks) {
+                    const tracks = currentRecorder.stream.getTracks();
+                    if (Array.isArray(tracks)) {
+                      tracks.forEach(track => {
+                        try {
+                          if (track && typeof track.stop === 'function') {
+                            track.stop();
+                          }
+                        } catch (trackError) {
+                          console.error('Error stopping track:', trackError);
+                        }
+                      });
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error stopping recorder:', error);
+                }
+              }
+              
+              // Safe state updates - only if component is still mounted
+              if (isMountedRef.current) {
+                setIsRecording(false);
+                setRecordingMode(null);
+                
+                // Cleanup live preview stream
+                setLivePreviewStream(prevStream => {
+                  if (prevStream && prevStream.getTracks) {
+                    try {
+                      const tracks = prevStream.getTracks();
+                      if (Array.isArray(tracks)) {
+                        tracks.forEach(track => {
+                          try {
+                            if (track && typeof track.stop === 'function') {
+                              track.stop();
+                            }
+                          } catch (trackError) {
+                            console.error('Error stopping preview track:', trackError);
+                          }
+                        });
+                      }
+                    } catch (streamError) {
+                      console.error('Error cleaning up preview stream:', streamError);
+                    }
+                  }
+                  return null;
+                });
+                
+                // Show modal notification
+                setShowTimeLimitModal(true);
+              }
+              
+              // Trigger auto save after a delay to ensure recording is fully processed
+              if (triggerAutoSave && isMountedRef.current) {
+                setTimeout(() => {
+                  if (isMountedRef.current && triggerAutoSave) {
+                    try {
+                      triggerAutoSave();
+                    } catch (saveError) {
+                      console.error('Error triggering auto save:', saveError);
+                    }
+                  }
+                }, 500); // Small delay to ensure recording is fully stopped
+              }
+              
+              return MAX_RECORDING_TIME;
+            }
+            return newTime;
+          });
+        }, 1000); // Update every second
       })
       .catch(err => {
         console.error('Error accessing media devices:', err);
@@ -4044,11 +4152,39 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
           message = 'Trình duyệt yêu cầu truy cập qua HTTPS để bật micro/camera. Hãy mở bài thi bằng kết nối HTTPS.';
         }
         spaceToast.error(message);
-        setIsRecording(false);
-        setRecordingMode(null);
-        if (livePreviewStream) {
-          livePreviewStream.getTracks().forEach(track => track.stop());
+        
+        // Safe state updates
+        if (isMountedRef.current) {
+          setIsRecording(false);
+          setRecordingMode(null);
+          
+          // Safely cleanup live preview stream
+          if (livePreviewStream && livePreviewStream.getTracks) {
+            try {
+              const tracks = livePreviewStream.getTracks();
+              if (Array.isArray(tracks)) {
+                tracks.forEach(track => {
+                  try {
+                    if (track && typeof track.stop === 'function') {
+                      track.stop();
+                    }
+                  } catch (trackError) {
+                    console.error('Error stopping track:', trackError);
+                  }
+                });
+              }
+            } catch (streamError) {
+              console.error('Error cleaning up stream:', streamError);
+            }
+          }
           setLivePreviewStream(null);
+          setRecordingTime(0);
+        }
+        
+        // Clear timer on error
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
         }
       });
   };
@@ -4056,13 +4192,82 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const stopRecording = () => {
     if (isViewOnly) return;
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
-      setRecordingMode(null);
-      setLivePreviewStream(null);
+      try {
+        const recorder = mediaRecorderRef.current;
+        if (recorder.state !== 'inactive' && recorder.state !== 'stopped') {
+          recorder.stop();
+        }
+        
+        // Safely cleanup stream
+        if (recorder.stream && recorder.stream.getTracks) {
+          try {
+            const tracks = recorder.stream.getTracks();
+            if (Array.isArray(tracks)) {
+              tracks.forEach(track => {
+                try {
+                  if (track && typeof track.stop === 'function') {
+                    track.stop();
+                  }
+                } catch (trackError) {
+                  console.error('Error stopping track:', trackError);
+                }
+              });
+            }
+          } catch (streamError) {
+            console.error('Error cleaning up stream:', streamError);
+          }
+        }
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+      }
+      
+      // Safe state updates
+      if (isMountedRef.current) {
+        setIsRecording(false);
+        setRecordingMode(null);
+        setLivePreviewStream(prevStream => {
+          if (prevStream && prevStream.getTracks) {
+            try {
+              const tracks = prevStream.getTracks();
+              if (Array.isArray(tracks)) {
+                tracks.forEach(track => {
+                  try {
+                    if (track && typeof track.stop === 'function') {
+                      track.stop();
+                    }
+                  } catch (trackError) {
+                    console.error('Error stopping preview track:', trackError);
+                  }
+                });
+              }
+            } catch (streamError) {
+              console.error('Error cleaning up preview stream:', streamError);
+            }
+          }
+          return null;
+        });
+        setRecordingTime(0);
+      }
+      
+      // Clear recording timer
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
     }
   };
+  
+  // Cleanup timer on unmount and track mount status
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleFileUpload = async (event) => {
     if (isViewOnly) return;
@@ -4723,11 +4928,81 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
           </div>
         </div>
       </div>
+      
+      {/* Time Limit Modal */}
+      <Modal
+        open={showTimeLimitModal}
+        onCancel={() => setShowTimeLimitModal(false)}
+        footer={[
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setShowTimeLimitModal(false)}
+            style={{
+              background: theme === 'sun' 
+                ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              border: 'none',
+              color: '#000',
+              fontWeight: 600
+            }}
+          >
+            {t('common.ok', 'OK')}
+          </Button>
+        ]}
+        closable={false}
+        centered
+        style={{
+          top: 0
+        }}
+        bodyStyle={{
+          padding: '24px'
+        }}
+      >
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '20px 0',
+          color: theme === 'sun' ? '#333' : '#1F2937'
+        }}>
+          <div style={{ 
+            fontSize: '48px', 
+            marginBottom: '16px' 
+          }}>
+            
+          </div>
+          <Typography.Title 
+            level={4} 
+            style={{ 
+              marginBottom: '12px',
+              color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
+              fontWeight: 600
+            }}
+          >
+            {t('dailyChallenge.recordingTimeLimitReached', 'Đã đạt giới hạn thời gian ghi âm/quay video')}
+          </Typography.Title>
+          <Typography.Text style={{ 
+            fontSize: '16px',
+            color: theme === 'sun' ? '#666' : '#999',
+            display: 'block',
+            marginBottom: '8px'
+          }}>
+            {t('dailyChallenge.recordingAutoSaved', 'Bài làm của bạn đã được tự động lưu sau 3 phút ghi âm/quay video.')}
+          </Typography.Text>
+          <Typography.Text style={{ 
+            fontSize: '14px',
+            color: theme === 'sun' ? '#999' : '#888',
+            fontStyle: 'italic'
+          }}>
+            {t('dailyChallenge.recordingContinueMessage', 'Bạn có thể tiếp tục làm bài hoặc nộp bài khi hoàn thành.')}
+          </Typography.Text>
+        </div>
+      </Modal>
     </>
   );
 };
 // Speaking With Audio Section Component
 const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, isViewOnly }) => {
+  const { t } = useTranslation();
   const registerAnswerCollector = useContext(AnswerCollectionContext);
   const registerAnswerRestorer = useContext(AnswerRestorationContext);
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
@@ -4741,6 +5016,11 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [recordingTime, setRecordingTime] = useState(0); // Track recording time in seconds
+  const [showTimeLimitModal, setShowTimeLimitModal] = useState(false);
+  const recordingTimerRef = useRef(null);
+  const isMountedRef = useRef(true); // Track if component is still mounted
+  const MAX_RECORDING_TIME = 180; // 3 minutes in seconds
 
   // Helper function to extract URL from upload response
   const extractUrlFromResponse = (uploadRes) => {
@@ -4879,6 +5159,108 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
 
         mediaRecorder.start();
         setIsRecording(true);
+        setRecordingTime(0);
+        
+        // Start timer to track recording time
+        recordingTimerRef.current = setInterval(() => {
+          // Check if component is still mounted before updating state
+          if (!isMountedRef.current) {
+            if (recordingTimerRef.current) {
+              clearInterval(recordingTimerRef.current);
+              recordingTimerRef.current = null;
+            }
+            return;
+          }
+          
+          setRecordingTime(prev => {
+            const newTime = prev + 1;
+            // Auto-stop and save when reaching 3 minutes
+            if (newTime >= MAX_RECORDING_TIME) {
+              // Clear timer first to prevent multiple triggers
+              if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+                recordingTimerRef.current = null;
+              }
+              
+              // Check if component is still mounted before state updates
+              if (!isMountedRef.current) {
+                return MAX_RECORDING_TIME;
+              }
+              
+              // Stop recording automatically - check if still recording
+              const currentRecorder = mediaRecorderRef.current;
+              if (currentRecorder && currentRecorder.state !== 'inactive' && currentRecorder.state !== 'stopped') {
+                try {
+                  currentRecorder.stop();
+                  if (currentRecorder.stream && currentRecorder.stream.getTracks) {
+                    const tracks = currentRecorder.stream.getTracks();
+                    if (Array.isArray(tracks)) {
+                      tracks.forEach(track => {
+                        try {
+                          if (track && typeof track.stop === 'function') {
+                            track.stop();
+                          }
+                        } catch (trackError) {
+                          console.error('Error stopping track:', trackError);
+                        }
+                      });
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error stopping recorder:', error);
+                }
+              }
+              
+              // Safe state updates - only if component is still mounted
+              if (isMountedRef.current) {
+                setIsRecording(false);
+                setRecordingMode(null);
+                
+                // Cleanup live preview stream
+                setLivePreviewStream(prevStream => {
+                  if (prevStream && prevStream.getTracks) {
+                    try {
+                      const tracks = prevStream.getTracks();
+                      if (Array.isArray(tracks)) {
+                        tracks.forEach(track => {
+                          try {
+                            if (track && typeof track.stop === 'function') {
+                              track.stop();
+                            }
+                          } catch (trackError) {
+                            console.error('Error stopping preview track:', trackError);
+                          }
+                        });
+                      }
+                    } catch (streamError) {
+                      console.error('Error cleaning up preview stream:', streamError);
+                    }
+                  }
+                  return null;
+                });
+                
+                // Show modal notification
+                setShowTimeLimitModal(true);
+              }
+              
+              // Trigger auto save after a delay to ensure recording is fully processed
+              if (triggerAutoSave && isMountedRef.current) {
+                setTimeout(() => {
+                  if (isMountedRef.current && triggerAutoSave) {
+                    try {
+                      triggerAutoSave();
+                    } catch (saveError) {
+                      console.error('Error triggering auto save:', saveError);
+                    }
+                  }
+                }, 500); // Small delay to ensure recording is fully stopped
+              }
+              
+              return MAX_RECORDING_TIME;
+            }
+            return newTime;
+          });
+        }, 1000); // Update every second
       })
       .catch(err => {
         console.error('Error accessing media devices:', err);
@@ -4894,11 +5276,39 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           message = 'Trình duyệt yêu cầu truy cập qua HTTPS để bật micro/camera. Hãy mở bài thi bằng kết nối HTTPS.';
         }
         spaceToast.error(message);
-        setIsRecording(false);
-        setRecordingMode(null);
-        if (livePreviewStream) {
-          livePreviewStream.getTracks().forEach(track => track.stop());
+        
+        // Safe state updates
+        if (isMountedRef.current) {
+          setIsRecording(false);
+          setRecordingMode(null);
+          
+          // Safely cleanup live preview stream
+          if (livePreviewStream && livePreviewStream.getTracks) {
+            try {
+              const tracks = livePreviewStream.getTracks();
+              if (Array.isArray(tracks)) {
+                tracks.forEach(track => {
+                  try {
+                    if (track && typeof track.stop === 'function') {
+                      track.stop();
+                    }
+                  } catch (trackError) {
+                    console.error('Error stopping track:', trackError);
+                  }
+                });
+              }
+            } catch (streamError) {
+              console.error('Error cleaning up stream:', streamError);
+            }
+          }
           setLivePreviewStream(null);
+          setRecordingTime(0);
+        }
+        
+        // Clear timer on error
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
         }
       });
   };
@@ -4906,13 +5316,82 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
   const stopRecording = () => {
     if (isViewOnly) return;
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
-      setRecordingMode(null);
-      setLivePreviewStream(null);
+      try {
+        const recorder = mediaRecorderRef.current;
+        if (recorder.state !== 'inactive' && recorder.state !== 'stopped') {
+          recorder.stop();
+        }
+        
+        // Safely cleanup stream
+        if (recorder.stream && recorder.stream.getTracks) {
+          try {
+            const tracks = recorder.stream.getTracks();
+            if (Array.isArray(tracks)) {
+              tracks.forEach(track => {
+                try {
+                  if (track && typeof track.stop === 'function') {
+                    track.stop();
+                  }
+                } catch (trackError) {
+                  console.error('Error stopping track:', trackError);
+                }
+              });
+            }
+          } catch (streamError) {
+            console.error('Error cleaning up stream:', streamError);
+          }
+        }
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+      }
+      
+      // Safe state updates
+      if (isMountedRef.current) {
+        setIsRecording(false);
+        setRecordingMode(null);
+        setLivePreviewStream(prevStream => {
+          if (prevStream && prevStream.getTracks) {
+            try {
+              const tracks = prevStream.getTracks();
+              if (Array.isArray(tracks)) {
+                tracks.forEach(track => {
+                  try {
+                    if (track && typeof track.stop === 'function') {
+                      track.stop();
+                    }
+                  } catch (trackError) {
+                    console.error('Error stopping preview track:', trackError);
+                  }
+                });
+              }
+            } catch (streamError) {
+              console.error('Error cleaning up preview stream:', streamError);
+            }
+          }
+          return null;
+        });
+        setRecordingTime(0);
+      }
+      
+      // Clear recording timer
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
     }
   };
+  
+  // Cleanup timer on unmount and track mount status
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleFileUpload = async (event) => {
     if (isViewOnly) return;
@@ -5676,7 +6155,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                           marginBottom: '8px'
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span>{isVideo ? '🎥' : '🎵'}</span>
+                            <span>{isVideo ? 'Video' : 'Voice'}</span>
                             <span style={{ 
                               color: theme === 'sun' ? '#333' : '#1F2937',
                               fontSize: '13px',
@@ -5756,6 +6235,75 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           </div>
         </div>
       </div>
+      
+      {/* Time Limit Modal */}
+      <Modal
+        open={showTimeLimitModal}
+        onCancel={() => setShowTimeLimitModal(false)}
+        footer={[
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setShowTimeLimitModal(false)}
+            style={{
+              background: theme === 'sun' 
+                ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+              border: 'none',
+              color: '#000',
+              fontWeight: 600
+            }}
+          >
+            {t('common.ok', 'OK')}
+          </Button>
+        ]}
+        closable={false}
+        centered
+        style={{
+          top: 0
+        }}
+        bodyStyle={{
+          padding: '24px'
+        }}
+      >
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '20px 0',
+          color: theme === 'sun' ? '#333' : '#1F2937'
+        }}>
+          <div style={{ 
+            fontSize: '48px', 
+            marginBottom: '16px' 
+          }}>
+          
+          </div>
+          <Typography.Title 
+            level={4} 
+            style={{ 
+              marginBottom: '12px',
+              color: theme === 'sun' ? '#1E40AF' : '#8B5CF6',
+              fontWeight: 600
+            }}
+          >
+            {t('dailyChallenge.recordingTimeLimitReached', 'Đã đạt giới hạn thời gian ghi âm/quay video')}
+          </Typography.Title>
+          <Typography.Text style={{ 
+            fontSize: '16px',
+            color: theme === 'sun' ? '#666' : '#999',
+            display: 'block',
+            marginBottom: '8px'
+          }}>
+            {t('dailyChallenge.recordingAutoSaved', 'Bài làm của bạn đã được tự động lưu sau 3 phút ghi âm/quay video.')}
+          </Typography.Text>
+          <Typography.Text style={{ 
+            fontSize: '14px',
+            color: theme === 'sun' ? '#999' : '#888',
+            fontStyle: 'italic'
+          }}>
+            {t('dailyChallenge.recordingContinueMessage', 'Bạn có thể tiếp tục làm bài hoặc nộp bài khi hoàn thành.')}
+          </Typography.Text>
+        </div>
+      </Modal>
     </>
   );
 };

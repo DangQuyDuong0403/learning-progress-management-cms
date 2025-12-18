@@ -312,7 +312,19 @@ const AIGenerateFeedback = () => {
                   key={`${keyPrefix}-img-${elements.length}`}
                   src={src}
                   alt="speaking-img"
-                  style={{ maxWidth: '100%', width: 120, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', margin: '6px 8px' }}
+                  className="speaking-content-image"
+                  style={{ 
+                    maxWidth: '100%', 
+                    width: 'auto',
+                    height: 'auto',
+                    maxHeight: '300px',
+                    objectFit: 'contain', 
+                    borderRadius: 8, 
+                    border: '1px solid rgba(0,0,0,0.06)', 
+                    margin: '6px auto',
+                    display: 'block',
+                    boxSizing: 'border-box'
+                  }}
                 />
               );
             }
@@ -378,6 +390,8 @@ const AIGenerateFeedback = () => {
     pronunciationScore: null,
     accuracyScore: null,
     fluencyScore: null,
+    completenessScore: null,
+    prosodyScore: null,
   });
   // Determine section type early (used by multiple hooks below and callbacks defined afterwards)
   const sectionType = useMemo(() => {
@@ -449,6 +463,8 @@ const AIGenerateFeedback = () => {
           pronunciationScore: null,
           accuracyScore: null,
           fluencyScore: null,
+          completenessScore: null,
+          prosodyScore: null,
         });
         const secId = section?.id || prefill?.section?.id;
         if (secId) {
@@ -544,6 +560,9 @@ const AIGenerateFeedback = () => {
           setSpeakingResult(savedData.speakingResult);
         }
         // Don't restore score - pronunciationScore is just for reference, user must input Weight manually
+        // if (savedData.score !== null && savedData.score !== undefined) {
+        //   setScore(savedData.score);
+        // }
       }
 
       // Set hasAIGenerated flag
@@ -665,15 +684,16 @@ const AIGenerateFeedback = () => {
       // Combine all speaking data into overallFeedback as JSON string
       // Include metrics from speakingResult (AI generated) or manualSpeakingScores (manual input)
       const metrics = speakingResult || {};
-      // Only keep three speaking dimensions on this screen
       const manualMetrics = {
         pronunciationScore: manualSpeakingScores.pronunciationScore ?? metrics.pronunciationScore,
         accuracyScore: manualSpeakingScores.accuracyScore ?? metrics.accuracyScore,
         fluencyScore: manualSpeakingScores.fluencyScore ?? metrics.fluencyScore,
+        completenessScore: manualSpeakingScores.completenessScore ?? metrics.completenessScore,
+        prosodyScore: manualSpeakingScores.prosodyScore ?? metrics.prosodyScore,
       };
       
       // Build combined data object
-        const speakingData = {
+      const speakingData = {
         feedback: baseHtml,
         pronunciationScores: manualMetrics,
         referenceText: speakingReferenceText || metrics.referenceText || null,
@@ -828,7 +848,8 @@ const AIGenerateFeedback = () => {
         pronunciationScore: normalize(source?.pronunciationScore),
         accuracyScore: normalize(source?.accuracyScore),
         fluencyScore: normalize(source?.fluencyScore),
-        // completenessScore & prosodyScore are ignored on this UI
+        completenessScore: normalize(source?.completenessScore),
+        prosodyScore: normalize(source?.prosodyScore),
       };
       const hasAny = Object.values(result).some((v) => v !== undefined);
       return hasAny ? result : null;
@@ -858,7 +879,8 @@ const AIGenerateFeedback = () => {
         pronunciationScore: pick('Pronunciation'),
         accuracyScore: pick('Accuracy'),
         fluencyScore: pick('Fluency'),
-        // completenessScore & prosodyScore are ignored on this UI
+        completenessScore: pick('Completeness'),
+        prosodyScore: pick('Prosody'),
       };
       const hasAny = Object.values(result).some((v) => typeof v === 'number' && Number.isFinite(v));
       return hasAny ? result : null;
@@ -1125,13 +1147,18 @@ const AIGenerateFeedback = () => {
             key="img-only"
             src={trimmed} 
             alt="Student uploaded"
+            className="student-submission-image"
             style={{
               maxWidth: '100%',
+              width: 'auto',
               height: 'auto',
+              maxHeight: '400px',
               display: 'block',
-              margin: '12px 0',
+              margin: '12px auto',
               borderRadius: '8px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              objectFit: 'contain',
+              boxSizing: 'border-box'
             }}
             onError={(e) => {
               // If image fails to load, just hide it completely for image-only answers
@@ -1164,13 +1191,18 @@ const AIGenerateFeedback = () => {
             key={`img-${match.index}`}
             src={url} 
             alt="Student uploaded"
+            className="student-submission-image"
             style={{
               maxWidth: '100%',
+              width: 'auto',
               height: 'auto',
+              maxHeight: '400px',
               display: 'block',
-              margin: '12px 0',
+              margin: '12px auto',
               borderRadius: '8px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              objectFit: 'contain',
+              boxSizing: 'border-box'
             }}
             onError={(e) => {
               // If image fails to load and it's image-only answer, just hide it
@@ -1925,19 +1957,48 @@ const AIGenerateFeedback = () => {
       }
     }
     
-    // For speaking type, always set to 'speaking' mode (combined manual + AI interface)
-    if (sectionType === 'speaking') {
-      setRightMode('speaking');
-      setHasAutoSetMode(true);
-      // Check if there's existing data to load
+    // For speaking type, check if there's existing data (should auto-set to 'ai' mode)
+    if (sectionType === 'speaking' && currentSubmissionQuestionId) {
       const hasPrefillData = prefill?.feedback && (
         (typeof prefill.feedback === 'string' && prefill.feedback.trim() !== '') ||
         (typeof prefill.feedback === 'object' && prefill.feedback !== null)
       );
+      
       if (hasPrefillData) {
-        setIsEditMode(true);
+        // Check if feedback contains speaking data (pronunciation scores, etc.)
+        const fb = prefill.feedback;
+        let hasSpeakingData = false;
+        
+        // Try to parse from overallFeedback (new JSON format)
+        if (typeof fb === 'object' && fb.overallFeedback) {
+          const parsedData = parseSpeakingFromOverallFeedback(fb.overallFeedback);
+          if (parsedData && (parsedData.pronunciationScores || parsedData.feedback || parsedData.referenceText || parsedData.recognizedText)) {
+            hasSpeakingData = true;
+          }
+        } else if (typeof fb === 'string') {
+          // Try to parse as JSON string (new format)
+          const parsedData = parseSpeakingFromOverallFeedback(fb);
+          if (parsedData && (parsedData.pronunciationScores || parsedData.feedback || parsedData.referenceText || parsedData.recognizedText)) {
+            hasSpeakingData = true;
+          } else {
+            // Check legacy format
+            const sp = parseSpeakingFromFeedback(fb);
+            if (sp) {
+              hasSpeakingData = true;
+            }
+          }
+        } else if (typeof fb === 'object' && (fb.metrics || fb.pronunciationScore || fb.accuracyScore)) {
+          hasSpeakingData = true;
+        }
+        
+        if (hasSpeakingData) {
+          // This is speaking with existing data, set to 'ai' mode
+          setRightMode('ai');
+          setHasAutoSetMode(true);
+          setIsEditMode(true); // Mark as edit mode since we have existing data
+          return;
+        }
       }
-      return;
     }
     
     // For non-writing or when no AI data exists, check for existing score/feedback
@@ -2073,7 +2134,7 @@ const AIGenerateFeedback = () => {
         await new Promise(resolve => setTimeout(resolve, 300));
         spaceToast.success(getBackendMessage(res) || t('dailyChallenge.aiFeedbackGenerated'));
       } else if (sectionType === 'speaking') {
-        // Speaking pronunciation assessment - chỉ generate pronunciation scores, không generate feedback
+        // Speaking pronunciation assessment
         const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio;
         if (!audioUrl) {
           spaceToast.error('Không tìm thấy audio của học sinh để chấm phát âm');
@@ -2091,22 +2152,23 @@ const AIGenerateFeedback = () => {
         
         const data = res?.data?.data || res?.data || {};
         
-        // Chỉ update pronunciation scores vào manualSpeakingScores và speakingResult
-        // KHÔNG set feedback từ AI - người dùng tự input feedback
         setSpeakingResult(data || null);
-        setManualSpeakingScores({
-          pronunciationScore: typeof data?.pronunciationScore === 'number' ? data.pronunciationScore : null,
-          accuracyScore: typeof data?.accuracyScore === 'number' ? data.accuracyScore : null,
-          fluencyScore: typeof data?.fluencyScore === 'number' ? data.fluencyScore : null,
-        });
+        // Map to right panel
+        // Note: pronunciationScore is NOT automatically set to score - user must input Weight manually
+        const pronunciationScore = typeof data?.pronunciationScore === 'number' ? data.pronunciationScore : null;
+        // Parse feedback from response (handle JSON string, object, or plain string)
+        const speakingFeedback = parseFeedbackFromResponse(data?.feedback);
+        // Don't auto-set score from pronunciationScore - let user input Weight manually
+        // if (pronunciationScore !== null) setScore(pronunciationScore);
+        if (speakingFeedback) setFeedback(speakingFeedback);
         setHasAIGenerated(true);
-        
-        // Save generated pronunciation scores to sessionStorage for persistence
-        // Note: Don't save feedback - user inputs feedback manually
+        // Save generated data to sessionStorage for persistence
+        // Note: Don't save score - Weight is user input, not AI generated
         const speakingSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
         if (speakingSubmissionQuestionId) {
           saveAIGeneratedData(speakingSubmissionQuestionId, {
-            // Don't save feedback - user inputs it manually
+            feedback: speakingFeedback,
+            // Don't save score - pronunciationScore is just for reference, user must input Weight manually
             speakingResult: data,
             hasAIGenerated: true,
             sectionType: 'speaking',
@@ -2231,32 +2293,11 @@ const AIGenerateFeedback = () => {
       };
 
       const res = await dailyChallengeApi.gradeSubmissionQuestion(writingSubmissionQuestionId, payload);
-      // Extract message from backend response
-      // Backend response structure: { success: true, message: "Updated successful", ... }
-      // Message is at top level: res.message
-      let beMsg = null;
-      // Check res.message first (top level)
-      if (typeof res?.message === 'string' && res.message.trim()) {
-        beMsg = res.message.trim();
-      }
-      // Check res.data.message (nested in data)
-      else if (res?.data && typeof res.data.message === 'string' && res.data.message.trim()) {
-        beMsg = res.data.message.trim();
-      }
-      // Check res.data.data.message (double nested)
-      else if (res?.data?.data && typeof res.data.data.message === 'string' && res.data.data.message.trim()) {
-        beMsg = res.data.data.message.trim();
-      }
-      // Try getBackendMessage as fallback
-      else {
-        beMsg = getBackendMessage(res);
-      }
-      
+      const beMsg = getBackendMessage(res);
       // Clear saved AI data after successful save
       clearAIGeneratedData(writingSubmissionQuestionId);
       // Reset hasClearedData flag after successful save
       setHasClearedData(false);
-      // Use backend message if available, otherwise fallback to translation
       spaceToast.success(beMsg || t('dailyChallenge.saved'));
       handleBack();
     } catch (e) {
@@ -2348,7 +2389,7 @@ const AIGenerateFeedback = () => {
         </header>
       )}
     >
-      <div style={{ padding: 24, maxWidth: 1500, margin: '0 auto' }}>
+      <div className="feedback-main-container" style={{ padding: 24, maxWidth: 1500, margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
         {/* Editor sizing and text color (strong override) */}
         <style>{`
           .feedback-editor-wrap .ck-editor__editable_inline { 
@@ -2423,6 +2464,104 @@ const AIGenerateFeedback = () => {
             scrollbar-width: thin;
             scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
           }
+          /* Force image size limits to prevent layout breaking */
+          .html-content img,
+          .student-submission-image,
+          .speaking-content-image {
+            max-width: 100% !important;
+            width: auto !important;
+            height: auto !important;
+            max-height: 400px !important;
+            object-fit: contain !important;
+            display: block !important;
+            margin: 12px auto !important;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box !important;
+          }
+          .html-content {
+            overflow-x: hidden !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            max-width: 100% !important;
+          }
+          @media (max-width: 1024px) {
+            .html-content img,
+            .student-submission-image,
+            .speaking-content-image {
+              max-height: 350px !important;
+            }
+          }
+          @media (max-width: 768px) {
+            .html-content img,
+            .student-submission-image,
+            .speaking-content-image {
+              max-height: 280px !important;
+              margin: 8px auto !important;
+            }
+          }
+          @media (max-width: 480px) {
+            .html-content img,
+            .student-submission-image,
+            .speaking-content-image {
+              max-height: 220px !important;
+              margin: 6px auto !important;
+            }
+          }
+          /* Responsive grid layout */
+          .feedback-main-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 20px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          @media (max-width: 1200px) {
+            .feedback-main-grid {
+              grid-template-columns: 1fr !important;
+              gap: 16px !important;
+            }
+          }
+          @media (max-width: 768px) {
+            .feedback-main-grid {
+              gap: 12px !important;
+            }
+          }
+          /* Ensure containers don't overflow */
+          .feedback-main-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+          }
+          /* Responsive for speaking scores grid */
+          .speaking-scores-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 12px !important;
+          }
+          @media (max-width: 768px) {
+            .speaking-scores-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+          }
+          @media (max-width: 480px) {
+            .speaking-scores-grid {
+              grid-template-columns: 1fr !important;
+            }
+          }
+          /* Responsive for writing criteria grid */
+          .writing-criteria-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 16px !important;
+          }
+          @media (max-width: 768px) {
+            .writing-criteria-grid {
+              grid-template-columns: 1fr !important;
+              gap: 12px !important;
+            }
+          }
         `}</style>
         <Card
           style={{
@@ -2440,7 +2579,7 @@ const AIGenerateFeedback = () => {
           }}
           bodyStyle={{ padding: 16 }}
         >
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div className="feedback-main-grid">
             {/* Left: Student submission */}
             <Card
               style={{
@@ -2456,10 +2595,14 @@ const AIGenerateFeedback = () => {
                   : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
                 backdropFilter: 'blur(10px)',
                 minHeight: 540,
+                width: '100%',
+                maxWidth: '100%',
+                overflowX: 'hidden',
+                boxSizing: 'border-box',
               }}
             >
               <Title level={3} style={{ textAlign: 'center', color: primaryColor, marginTop: 0 }}>{t('dailyChallenge.studentSubmission')}</Title>
-              <div ref={leftContainerRef} style={{ marginTop: 12, fontSize: 15, lineHeight: 1.8, position: 'relative' }}>
+              <div ref={leftContainerRef} style={{ marginTop: 12, fontSize: 15, lineHeight: 1.8, position: 'relative', width: '100%', maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
                 {sectionType === 'writing' ? (
                   <>
                   {/* Prompt (top) - Pastel blue background to distinguish from student answer */}
@@ -2470,6 +2613,10 @@ const AIGenerateFeedback = () => {
                       borderRadius: 12,
                       border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
                       padding: 16,
+                      width: '100%',
+                      maxWidth: '100%',
+                      overflowX: 'hidden',
+                      boxSizing: 'border-box',
                     }}
                   >
                   
@@ -2495,9 +2642,13 @@ const AIGenerateFeedback = () => {
                           minHeight: 120,
                           maxHeight: 420,
                           overflowY: 'auto',
+                          overflowX: 'hidden',
                           position: 'relative',
                           userSelect: 'text',
                           cursor: 'text',
+                          width: '100%',
+                          maxWidth: '100%',
+                          boxSizing: 'border-box',
                         }}
                         onMouseUp={(e) => {
                           if (section?.id && !isImageOnly && !isReadOnly) {
@@ -2787,12 +2938,16 @@ const AIGenerateFeedback = () => {
                   : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(244, 240, 255, 0.95) 100%)',
                 backdropFilter: 'blur(10px)',
                 minHeight: 540,
+                width: '100%',
+                maxWidth: '100%',
+                overflowX: 'hidden',
+                boxSizing: 'border-box',
               }}
-              bodyStyle={{ maxHeight: 750, overflowY: 'auto', padding: 16 }}
+              bodyStyle={{ maxHeight: 750, overflowY: 'auto', overflowX: 'hidden', padding: 16 }}
             >
 
-              {/* Mode chooser - chỉ hiển thị cho writing, không hiển thị cho speaking */}
-              {rightMode === null && !isReadOnly && sectionType !== 'speaking' && (
+              {/* Mode chooser */}
+              {rightMode === null && !isReadOnly && (
                 <div style={{ padding: 16, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 420 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 520 }}>
                     <Card
@@ -2934,11 +3089,7 @@ const AIGenerateFeedback = () => {
                       }}>
                         <Text strong>{t('dailyChallenge.pronunciationResult')}</Text>
                       </div>
-                      <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                      gap: 12
-                      }}>
+                      <div className="speaking-scores-grid">
                         {[{
                           label: t('dailyChallenge.pronunciation'),
                           key: 'pronunciationScore',
@@ -2951,6 +3102,14 @@ const AIGenerateFeedback = () => {
                           label: t('dailyChallenge.fluency'),
                           key: 'fluencyScore',
                           value: manualSpeakingScores.fluencyScore ?? null
+                        },{
+                          label: t('dailyChallenge.completeness'),
+                          key: 'completenessScore',
+                          value: manualSpeakingScores.completenessScore ?? null
+                        },{
+                          label: t('dailyChallenge.prosody'),
+                          key: 'prosodyScore',
+                          value: manualSpeakingScores.prosodyScore ?? null
                         }].map((item, idx) => {
                           const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
                           return (
@@ -3251,6 +3410,445 @@ const AIGenerateFeedback = () => {
                       <span>{scoreError}</span>
                     </div>
                   )}
+                  {sectionType === 'speaking' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {/* Speaking pre-generation hero panel */}
+                      {!hasAIGenerated && (
+                        <div
+                          style={{
+                            marginTop: 8,
+                            padding: 24,
+                            borderRadius: 16,
+                            border: `2px dashed ${primaryColor}40`,
+                            background: theme === 'sun' ? 'rgba(113,179,253,0.06)' : 'rgba(167,139,250,0.08)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            gap: 12
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 72,
+                              height: 72,
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: theme === 'sun'
+                                ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                                : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                              boxShadow: theme === 'sun' ? '0 6px 18px rgba(60,153,255,0.25)' : '0 6px 18px rgba(131,119,160,0.25)'
+                            }}
+                          >
+                            <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
+                          </div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.aiSpeakingAssistant')}</div>
+                          <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
+                            {t('dailyChallenge.assessPronunciation')}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+                            {!isReadOnly && (
+                              <Button
+                                type="primary"
+                                icon={<ThunderboltOutlined />}
+                                loading={isGenerating}
+                                onClick={handleGenerateAI}
+                                style={{
+                                  height: 40,
+                                  borderRadius: 8,
+                                  padding: '0 16px',
+                                  background: theme === 'sun'
+                                    ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                                    : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                                  border: 'none',
+                                  color: '#000',
+                                  boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                                }}
+                              >
+                                {t('dailyChallenge.generateWithAI')}
+                              </Button>
+                            )}
+                            <Typography.Text style={{
+                              fontSize: '12px',
+                              fontStyle: 'italic',
+                              color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                              marginTop: '8px',
+                              textAlign: 'center',
+                              display: 'block',
+                              width: '100%'
+                            }}>
+                              {t('dailyChallenge.theGeneratedContentIsForReferenceOnly')}
+                            </Typography.Text>
+                            <Typography.Text style={{
+                              fontSize: '12px',
+                              fontStyle: 'italic',
+                              color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                              marginTop: '4px',
+                              textAlign: 'center',
+                              display: 'block',
+                              width: '100%'
+                            }}>
+                              {t('dailyChallenge.imageNotSupportedInPrompt')}
+                            </Typography.Text>
+                          </div>
+                        </div>
+                      )}
+                      {hasAIGenerated && speakingResult && (
+                        <div style={{ marginTop: 0 }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            color: theme === 'sun' ? '#1E40AF' : '#8377A0'
+                          }}>
+                            <Text strong>{t('dailyChallenge.pronunciationResult')}</Text>
+                          </div>
+                          <div className="speaking-scores-grid" style={{ marginTop: 8 }}>
+                            {[{
+                              label: t('dailyChallenge.pronunciation'),
+                              value: Number.isFinite(Number(speakingResult?.pronunciationScore)) ? speakingResult.pronunciationScore : '-'
+                            },{
+                              label: t('dailyChallenge.accuracy'),
+                              value: Number.isFinite(Number(speakingResult?.accuracyScore)) ? speakingResult.accuracyScore : '-'
+                            },{
+                              label: t('dailyChallenge.fluency'),
+                              value: Number.isFinite(Number(speakingResult?.fluencyScore)) ? speakingResult.fluencyScore : '-'
+                            },{
+                              label: t('dailyChallenge.completeness'),
+                              value: Number.isFinite(Number(speakingResult?.completenessScore)) ? speakingResult.completenessScore : '-'
+                            },{
+                              label: t('dailyChallenge.prosody'),
+                              value: Number.isFinite(Number(speakingResult?.prosodyScore)) ? speakingResult.prosodyScore : '-'
+                            }].map((item, idx) => {
+                              const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
+                              return (
+                              <div
+                                key={`${item.label}-${idx}`}
+                                style={{
+                                  borderRadius: 12,
+                                  padding: '12px 14px',
+                                  background: ss.bg,
+                                  border: `1px solid ${ss.border}`
+                                }}
+                              >
+                                <div style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 600 }}>{item.label}</div>
+                                <div style={{ fontSize: 20, fontWeight: 700, color: theme === 'sun' ? '#0f172a' : '#1F2937', marginTop: 2 }}>{item.value}</div>
+                              </div>
+                              );
+                            })}
+                          </div>
+                          {/* Actual Audio Transcript and Polished Transcript - Stacked */}
+                          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {/* Actual Audio Transcript - Top */}
+                            {Array.isArray(speakingResult?.words) && speakingResult.words.length > 0 && (
+                              <div 
+                                className="transcript-scrollable"
+                                style={{
+                                  borderRadius: 12,
+                                  padding: 16,
+                                  background: theme === 'sun' ? '#FFF4E6' : 'rgba(167, 139, 250, 0.12)',
+                                  border: theme === 'sun' ? '1px solid rgba(255, 193, 7, 0.25)' : '1px solid rgba(167, 139, 250, 0.25)',
+                                  maxHeight: '300px',
+                                  overflowY: 'auto',
+                                  display: 'flex',
+                                  flexDirection: 'column'
+                                }}
+                              >
+                                <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
+                                  {t('dailyChallenge.actualAudioTranscript')}
+                                </Text>
+                                <div style={{ 
+                                  lineHeight: 4,
+                                  fontSize: 14,
+                                  wordBreak: 'break-word',
+                                  flex: 1
+                                }}>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    flexWrap: 'wrap', 
+                                    gap: '8px 4px',
+                                    alignItems: 'baseline'
+                                  }}>
+                                    {(() => {
+                                      // Try to use recognizedText with punctuation if available
+                                      const parsedTokens = speakingResult?.recognizedText 
+                                        ? parseTranscriptWithPunctuation(speakingResult.recognizedText, speakingResult.words)
+                                        : null;
+
+                                      if (parsedTokens && parsedTokens.length > 0) {
+                                        // Render with punctuation from recognizedText
+                                        // Group words with their following punctuation
+                                        const elements = [];
+                                        let elementIdx = 0;
+                                        for (let i = 0; i < parsedTokens.length; i++) {
+                                          const token = parsedTokens[i];
+                                          
+                                          if (token.type === 'space') {
+                                            elements.push(
+                                              <span key={`token-${elementIdx++}`}>{token.content}</span>
+                                            );
+                                            continue;
+                                          }
+                                          
+                                          if (token.type === 'punctuation') {
+                                            // Standalone punctuation (shouldn't happen often, but handle it)
+                                            elements.push(
+                                              <span 
+                                                key={`token-${elementIdx++}`}
+                                                style={{
+                                                  color: theme === 'sun' ? '#0f172a' : '#F3F4F6',
+                                                  fontSize: '16px',
+                                                  fontWeight: 700,
+                                                  display: 'inline'
+                                                }}
+                                              >
+                                                {token.content}
+                                              </span>
+                                            );
+                                            continue;
+                                          }
+
+                                          // token.type === 'word'
+                                          const w = token.word;
+                                          const accuracyScore = w && Number.isFinite(Number(w?.accuracyScore)) ? Number(w.accuracyScore) : null;
+                                          
+                                          // Check if next token is punctuation to attach it
+                                          const nextToken = parsedTokens[i + 1];
+                                          const punctuationAfter = (nextToken && nextToken.type === 'punctuation') ? nextToken.content : '';
+                                          
+                                          // Determine color based on accuracy score only
+                                          let wordColor = theme === 'sun' ? '#0f172a' : '#F3F4F6';
+                                          let scoreColor = theme === 'sun' ? '#666' : '#999';
+                                          
+                                          if (accuracyScore !== null) {
+                                            if (accuracyScore >= 80) {
+                                              wordColor = theme === 'sun' ? '#15803D' : '#16A34A'; // Green - darker
+                                              scoreColor = theme === 'sun' ? '#166534' : '#15803D';
+                                            } else if (accuracyScore >= 60) {
+                                              wordColor = theme === 'sun' ? '#D97706' : '#F59E0B'; // Orange - darker
+                                              scoreColor = theme === 'sun' ? '#B45309' : '#D97706';
+                                            } else {
+                                              wordColor = theme === 'sun' ? '#DC2626' : '#EF4444'; // Red - darker
+                                              scoreColor = theme === 'sun' ? '#B91C1C' : '#DC2626';
+                                            }
+                                          }
+                                          
+                                          // Skip next token if it's punctuation (we're including it here)
+                                          if (punctuationAfter) {
+                                            i++; // Skip the punctuation token
+                                          }
+                                          
+                                          elements.push(
+                                            <span
+                                              key={`word-inline-${elementIdx++}`}
+                                              style={{
+                                                position: 'relative',
+                                                display: 'inline-flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                margin: '0 1px',
+                                                padding: '0 2px',
+                                                verticalAlign: 'baseline',
+                                                lineHeight: 1
+                                              }}
+                                            >
+                                              {/* Accuracy Score above word */}
+                                              <span
+                                                style={{
+                                                  fontSize: '11px',
+                                                  fontWeight: 500,
+                                                  color: scoreColor ? `${scoreColor}99` : (theme === 'sun' ? '#999' : '#888'),
+                                                  lineHeight: 1,
+                                                  marginBottom: '-2px',
+                                                  whiteSpace: 'nowrap',
+                                                }}
+                                              >
+                                                {accuracyScore !== null ? `${Math.round(accuracyScore)}%` : '-'}
+                                              </span>
+                                              {/* Word with punctuation attached */}
+                                              <span
+                                                style={{
+                                                  color: wordColor,
+                                                  fontWeight: 700,
+                                                  fontSize: '16px',
+                                                  lineHeight: 1.2,
+                                                  marginTop: '-1px'
+                                                }}
+                                              >
+                                                {token.content}
+                                                {punctuationAfter && (
+                                                  <span style={{ 
+                                                    color: wordColor,
+                                                    marginLeft: 0
+                                                  }}>
+                                                    {punctuationAfter}
+                                                  </span>
+                                                )}
+                                              </span>
+                                            </span>
+                                          );
+                                        }
+                                        return elements;
+                                      } else {
+                                        // Fallback to original logic if recognizedText is not available
+                                        return speakingResult.words.map((w, idx) => {
+                                          const accuracyScore = Number.isFinite(Number(w?.accuracyScore)) ? Number(w.accuracyScore) : null;
+                                          
+                                          // Determine color based on accuracy score only
+                                          let wordColor = theme === 'sun' ? '#0f172a' : '#F3F4F6';
+                                          let scoreColor = theme === 'sun' ? '#666' : '#999';
+                                          
+                                          if (accuracyScore !== null) {
+                                            if (accuracyScore >= 80) {
+                                              wordColor = theme === 'sun' ? '#15803D' : '#16A34A'; // Green - darker
+                                              scoreColor = theme === 'sun' ? '#166534' : '#15803D';
+                                            } else if (accuracyScore >= 60) {
+                                              wordColor = theme === 'sun' ? '#D97706' : '#F59E0B'; // Orange - darker
+                                              scoreColor = theme === 'sun' ? '#B45309' : '#D97706';
+                                            } else {
+                                              wordColor = theme === 'sun' ? '#DC2626' : '#EF4444'; // Red - darker
+                                              scoreColor = theme === 'sun' ? '#B91C1C' : '#DC2626';
+                                            }
+                                          }
+                                          
+                                          return (
+                                            <span
+                                              key={`word-inline-${idx}`}
+                                              style={{
+                                                position: 'relative',
+                                                display: 'inline-flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                margin: '0 1px',
+                                                padding: '0 2px',
+                                                verticalAlign: 'baseline',
+                                                lineHeight: 1
+                                              }}
+                                            >
+                                              {/* Accuracy Score above word */}
+                                              <span
+                                                style={{
+                                                  fontSize: '11px',
+                                                  fontWeight: 500,
+                                                  color: scoreColor ? `${scoreColor}99` : (theme === 'sun' ? '#999' : '#888'),
+                                                  lineHeight: 1,
+                                                  marginBottom: '-2px',
+                                                  whiteSpace: 'nowrap',
+                                                }}
+                                              >
+                                                {accuracyScore !== null ? `${Math.round(accuracyScore)}%` : '-'}
+                                              </span>
+                                              {/* Word */}
+                                              <span
+                                                style={{
+                                                  color: wordColor,
+                                                  fontWeight: 700,
+                                                  fontSize: '18px',
+                                                  lineHeight: 1.2,
+                                                  marginTop: '-1px'
+                                                }}
+                                              >
+                                                {w?.word || ''}
+                                              </span>
+                                            </span>
+                                          );
+                                        });
+                                      }
+                                    })()}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {/* Polished Transcript - Bottom */}
+                            {speakingResult?.referenceText && (
+                              <div 
+                                className="transcript-scrollable"
+                                style={{
+                                  borderRadius: 12,
+                                  padding: 16,
+                                  background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
+                                  border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
+                                  maxHeight: '300px',
+                                  overflowY: 'auto',
+                                  display: 'flex',
+                                  flexDirection: 'column'
+                                }}
+                              >
+                                <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
+                                  {t('dailyChallenge.polishedTranscript')}
+                                </Text>
+                                <div style={{
+                                  fontSize: 14,
+                                  lineHeight: 1.6,
+                                  color: theme === 'sun' ? '#0f172a' : '#d1cde8',
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word',
+                                  flex: 1
+                                }}>
+                                  {speakingResult.referenceText}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {/* Score moved to header row next to Back button */}
+                          <div style={{ marginTop: 4 }}>
+                      <Text strong>{t('dailyChallenge.feedback')}</Text>
+                      {sectionType === 'writing' ? (
+                        <div className="feedback-editor-wrap" style={{ marginTop: 6, borderRadius: 12, border: `2px solid ${primaryColor}80`, background: theme === 'sun' ? primaryColorWithAlpha : 'rgba(244, 240, 255, 0.15)' }}>
+                          <CKEditor
+                            editor={ClassicEditor}
+                            data={feedback}
+                            onChange={(event, editor) => setFeedback(editor.getData())}
+                            disabled={isReadOnly}
+                            config={{
+                              toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
+                              removePlugins: ['StickyToolbar'],
+                              isReadOnly: isReadOnly
+                            }}
+                            onReady={(editor) => {
+                              try {
+                                const el = editor.ui?.getEditableElement?.();
+                                if (el) {
+                                  el.style.minHeight = '300px';
+                                  el.style.color = '#000';
+                                }
+                              } catch {}
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ 
+                          marginTop: 6, 
+                          borderRadius: 12, 
+                          border: `2px solid ${primaryColor}80`, 
+                          background: theme === 'sun' ? '#ffffff' : 'rgba(255, 255, 255, 0.95)',
+                          padding: 16,
+                          minHeight: '100px'
+                        }}>
+                          {feedback && (
+                            <div 
+                              style={{ 
+                                fontSize: 14, 
+                                lineHeight: 1.7, 
+                                color: theme === 'sun' ? '#333' : '#1F2937'
+                              }}
+                              dangerouslySetInnerHTML={{ __html: feedback }}
+                            />
+                          )}
+                          {!feedback && (
+                            <div style={{ fontSize: 14, lineHeight: 1.7, color: theme === 'sun' ? '#999' : '#666', fontStyle: 'italic' }}>
+                              {t('dailyChallenge.noFeedbackAvailable')}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {/* Writing: pre-generation hero panel */}
                   {sectionType === 'writing' && !hasAIGenerated && (
                     <div
@@ -3317,6 +3915,17 @@ const AIGenerateFeedback = () => {
                           width: '100%'
                         }}>
                           {t('dailyChallenge.theGeneratedContentIsForReferenceOnly')}
+                        </Typography.Text>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '4px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          {t('dailyChallenge.imageNotSupportedInPrompt')}
                         </Typography.Text>
                       </div>
                     </div>
@@ -3417,6 +4026,87 @@ const AIGenerateFeedback = () => {
                       )}
                     </>
                   )}
+
+                  {!isReadOnly && sectionType === 'speaking' && hasAIGenerated && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 24,
+                        borderRadius: 16,
+                        border: `2px dashed ${primaryColor}40`,
+                        background: theme === 'sun' ? 'rgba(113,179,253,0.06)' : 'rgba(167,139,250,0.08)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        gap: 12
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 72,
+                          height: 72,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: theme === 'sun'
+                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                          boxShadow: theme === 'sun' ? '0 6px 18px rgba(60,153,255,0.25)' : '0 6px 18px rgba(131,119,160,0.25)'
+                        }}
+                      >
+                        <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.aiSpeakingAssistant')}</div>
+                      <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
+                        {t('dailyChallenge.regeneratePronunciationAnalysis')}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+                        <Button
+                          type="primary"
+                          icon={<ThunderboltOutlined />}
+                          loading={isGenerating}
+                          onClick={handleGenerateAI}
+                          style={{
+                            height: 40,
+                            borderRadius: 8,
+                            padding: '0 16px',
+                            background: theme === 'sun'
+                              ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
+                              : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
+                            border: 'none',
+                            color: '#000',
+                            boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
+                          }}
+                        >
+                          Regenerate with AI
+                        </Button>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '8px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          The generated content is for reference only.
+                        </Typography.Text>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '4px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          {t('dailyChallenge.imageNotSupportedInPrompt')}
+                        </Typography.Text>
+                      </div>
+                    </div>
+                  )}
                   {/* Button stays at very bottom (speaking handled by hero panels) */}
                   {sectionType === 'writing' ? (
                     !isReadOnly && hasAIGenerated ? (
@@ -3485,6 +4175,17 @@ const AIGenerateFeedback = () => {
                         }}>
                           The generated content is for reference only.
                         </Typography.Text>
+                        <Typography.Text style={{
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
+                          marginTop: '4px',
+                          textAlign: 'center',
+                          display: 'block',
+                          width: '100%'
+                        }}>
+                          {t('dailyChallenge.imageNotSupportedInPrompt')}
+                        </Typography.Text>
                       </div>
                     </div>
                     ) : null
@@ -3514,479 +4215,6 @@ const AIGenerateFeedback = () => {
                       </div>
                     )
                   )}
-                </div>
-              )}
-
-              {/* Speaking mode: combined manual + AI interface */}
-              {rightMode === 'speaking' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Text strong>{t('dailyChallenge.weight')}</Text>
-                      <Input
-                        type="number"
-                        value={score}
-                        onChange={handleScoreChange}
-                        min={0}
-                        max={questionWeight}
-                        step={0.1}
-                        placeholder="0"
-                        status={scoreError ? 'error' : ''}
-                        disabled={isReadOnly}
-                        style={{
-                          width: 120,
-                          borderRadius: 8,
-                          border: scoreError 
-                            ? `2px solid ${theme === 'sun' ? '#ff4d4f' : '#ff7875'}` 
-                            : `2px solid ${primaryColor}40`,
-                          background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.08)',
-                        }}
-                      />
-                      <span style={{ fontSize: '16px', color: theme === 'sun' ? '#666' : '#999', fontWeight: 500 }}>
-                        / {questionWeight}
-                      </span>
-                    </div>
-                  </div>
-                  {scoreError && (
-                    <div style={{ 
-                      fontSize: '12px', 
-                      color: theme === 'sun' ? '#ff4d4f' : '#ff7875',
-                      marginLeft: 4,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4
-                    }}>
-                      <span>⚠️</span>
-                      <span>{scoreError}</span>
-                    </div>
-                  )}
-                  
-                  {/* Pronunciation Result - cho phép người dùng input trực tiếp */}
-                  <div style={{ marginTop: 0 }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      color: theme === 'sun' ? '#1E40AF' : '#8377A0',
-                      marginBottom: 12
-                    }}>
-                      <Text strong>{t('dailyChallenge.pronunciationResult')}</Text>
-                    </div>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                      gap: 12
-                    }}>
-                      {[{
-                        label: t('dailyChallenge.pronunciation'),
-                        key: 'pronunciationScore',
-                        value: manualSpeakingScores.pronunciationScore ?? speakingResult?.pronunciationScore ?? null
-                      },{
-                        label: t('dailyChallenge.accuracy'),
-                        key: 'accuracyScore',
-                        value: manualSpeakingScores.accuracyScore ?? speakingResult?.accuracyScore ?? null
-                      },{
-                        label: t('dailyChallenge.fluency'),
-                        key: 'fluencyScore',
-                        value: manualSpeakingScores.fluencyScore ?? speakingResult?.fluencyScore ?? null
-                      }].map((item, idx) => {
-                        const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
-                        return (
-                          <div
-                            key={`speaking-${item.key}-${idx}`}
-                            style={{
-                              borderRadius: 12,
-                              padding: '12px 14px',
-                              background: ss.bg,
-                              border: `1px solid ${ss.border}`
-                            }}
-                          >
-                            <div style={{ fontSize: 12, color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontWeight: 600, marginBottom: 8 }}>{item.label}</div>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={10}
-                              step={0.1}
-                              value={item.value === null || item.value === undefined ? '' : item.value}
-                              onChange={(e) => handleManualSpeakingScoreChange(item.key, e.target.value)}
-                              placeholder="0"
-                              disabled={isReadOnly}
-                              style={{
-                                width: '100%',
-                                borderRadius: 8,
-                                border: `2px solid ${primaryColor}40`,
-                                background: theme === 'sun' ? '#fff' : 'rgba(255,255,255,0.15)',
-                                fontSize: 16,
-                                fontWeight: 600
-                              }}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Actual Audio Transcript và Polished Transcript - chỉ hiển thị khi đã generate */}
-                  {hasAIGenerated && speakingResult && (
-                    <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {/* Actual Audio Transcript */}
-                      {Array.isArray(speakingResult?.words) && speakingResult.words.length > 0 && (
-                        <div 
-                          className="transcript-scrollable"
-                          style={{
-                            borderRadius: 12,
-                            padding: 16,
-                            background: theme === 'sun' ? '#FFF4E6' : 'rgba(167, 139, 250, 0.12)',
-                            border: theme === 'sun' ? '1px solid rgba(255, 193, 7, 0.25)' : '1px solid rgba(167, 139, 250, 0.25)',
-                            maxHeight: '300px',
-                            overflowY: 'auto',
-                            display: 'flex',
-                            flexDirection: 'column'
-                          }}
-                        >
-                          <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
-                            {t('dailyChallenge.actualAudioTranscript')}
-                          </Text>
-                          <div style={{ 
-                            lineHeight: 4,
-                            fontSize: 14,
-                            wordBreak: 'break-word',
-                            flex: 1
-                          }}>
-                            <div style={{ 
-                              display: 'flex', 
-                              flexWrap: 'wrap', 
-                              gap: '8px 4px',
-                              alignItems: 'baseline'
-                            }}>
-                              {(() => {
-                                const parsedTokens = speakingResult?.recognizedText 
-                                  ? parseTranscriptWithPunctuation(speakingResult.recognizedText, speakingResult.words)
-                                  : null;
-
-                                if (parsedTokens && parsedTokens.length > 0) {
-                                  const elements = [];
-                                  let elementIdx = 0;
-                                  for (let i = 0; i < parsedTokens.length; i++) {
-                                    const token = parsedTokens[i];
-                                    
-                                    if (token.type === 'space') {
-                                      elements.push(<span key={`token-${elementIdx++}`}>{token.content}</span>);
-                                      continue;
-                                    }
-                                    
-                                    if (token.type === 'punctuation') {
-                                      elements.push(
-                                        <span 
-                                          key={`token-${elementIdx++}`}
-                                          style={{
-                                            color: theme === 'sun' ? '#0f172a' : '#F3F4F6',
-                                            fontSize: '16px',
-                                            fontWeight: 700,
-                                            display: 'inline'
-                                          }}
-                                        >
-                                          {token.content}
-                                        </span>
-                                      );
-                                      continue;
-                                    }
-
-                                    const w = token.word;
-                                    const accuracyScore = w && Number.isFinite(Number(w?.accuracyScore)) ? Number(w.accuracyScore) : null;
-                                    const nextToken = parsedTokens[i + 1];
-                                    const punctuationAfter = (nextToken && nextToken.type === 'punctuation') ? nextToken.content : '';
-                                    
-                                    let wordColor = theme === 'sun' ? '#0f172a' : '#F3F4F6';
-                                    let scoreColor = theme === 'sun' ? '#666' : '#999';
-                                    
-                                    if (accuracyScore !== null) {
-                                      if (accuracyScore >= 80) {
-                                        wordColor = '#29845d';
-                                        scoreColor = '#29845d';
-                                      } else if (accuracyScore >= 60) {
-                                        wordColor = '#b78533';
-                                        scoreColor = '#b78533';
-                                      } else {
-                                        wordColor = '#760204';
-                                        scoreColor = '#760204';
-                                      }
-                                    }
-                                    
-                                    if (punctuationAfter) {
-                                      i++;
-                                    }
-                                    
-                                    elements.push(
-                                      <span
-                                        key={`word-inline-${elementIdx++}`}
-                                        style={{
-                                          position: 'relative',
-                                          display: 'inline-flex',
-                                          flexDirection: 'column',
-                                          alignItems: 'center',
-                                          margin: '0 1px',
-                                          padding: '0 2px',
-                                          verticalAlign: 'baseline',
-                                          lineHeight: 1
-                                        }}
-                                      >
-                                        <span
-                                          style={{
-                                            fontSize: '11px',
-                                            fontWeight: 500,
-                                            color: scoreColor ? `${scoreColor}99` : (theme === 'sun' ? '#999' : '#888'),
-                                            lineHeight: 1,
-                                            marginBottom: '-2px',
-                                            whiteSpace: 'nowrap',
-                                          }}
-                                        >
-                                          {accuracyScore !== null ? `${Math.round(accuracyScore)}%` : '-'}
-                                        </span>
-                                        <span
-                                          style={{
-                                            color: wordColor,
-                                            fontWeight: 700,
-                                            fontSize: '16px',
-                                            lineHeight: 1.2,
-                                            marginTop: '-1px'
-                                          }}
-                                        >
-                                          {token.content}
-                                          {punctuationAfter && (
-                                            <span style={{ color: wordColor, marginLeft: 0 }}>
-                                              {punctuationAfter}
-                                            </span>
-                                          )}
-                                        </span>
-                                      </span>
-                                    );
-                                  }
-                                  return elements;
-                                } else {
-                                  return speakingResult.words.map((w, idx) => {
-                                    const accuracyScore = Number.isFinite(Number(w?.accuracyScore)) ? Number(w.accuracyScore) : null;
-                                    let wordColor = theme === 'sun' ? '#0f172a' : '#F3F4F6';
-                                    let scoreColor = theme === 'sun' ? '#666' : '#999';
-                                    
-                                    if (accuracyScore !== null) {
-                                      if (accuracyScore >= 80) {
-                                        wordColor = '#29845d';
-                                        scoreColor = '#29845d';
-                                      } else if (accuracyScore >= 60) {
-                                        wordColor = '#b78533';
-                                        scoreColor = '#b78533';
-                                      } else {
-                                        wordColor = '#760204';
-                                        scoreColor = '#760204';
-                                      }
-                                    }
-                                    
-                                    return (
-                                      <span
-                                        key={`word-inline-${idx}`}
-                                        style={{
-                                          position: 'relative',
-                                          display: 'inline-flex',
-                                          flexDirection: 'column',
-                                          alignItems: 'center',
-                                          margin: '0 1px',
-                                          padding: '0 2px',
-                                          verticalAlign: 'baseline',
-                                          lineHeight: 1
-                                        }}
-                                      >
-                                        <span
-                                          style={{
-                                            fontSize: '11px',
-                                            fontWeight: 500,
-                                            color: scoreColor ? `${scoreColor}99` : (theme === 'sun' ? '#999' : '#888'),
-                                            lineHeight: 1,
-                                            marginBottom: '-2px',
-                                            whiteSpace: 'nowrap',
-                                          }}
-                                        >
-                                          {accuracyScore !== null ? `${Math.round(accuracyScore)}%` : '-'}
-                                        </span>
-                                        <span
-                                          style={{
-                                            color: wordColor,
-                                            fontWeight: 700,
-                                            fontSize: '18px',
-                                            lineHeight: 1.2,
-                                            marginTop: '-1px'
-                                          }}
-                                        >
-                                          {w?.word || ''}
-                                        </span>
-                                      </span>
-                                    );
-                                  });
-                                }
-                              })()}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {/* Polished Transcript */}
-                      {speakingResult?.referenceText && (
-                        <div 
-                          className="transcript-scrollable"
-                          style={{
-                            borderRadius: 12,
-                            padding: 16,
-                            background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
-                            border: theme === 'sun' ? '1px solid rgba(24, 144, 255, 0.2)' : '1px solid rgba(138, 122, 255, 0.3)',
-                            maxHeight: '300px',
-                            overflowY: 'auto',
-                            display: 'flex',
-                            flexDirection: 'column'
-                          }}
-                        >
-                          <Text strong style={{ fontSize: 14, color: theme === 'sun' ? '#1E40AF' : '#8377A0', marginBottom: 8, display: 'block' }}>
-                            {t('dailyChallenge.polishedTranscript')}
-                          </Text>
-                          <div style={{
-                            fontSize: 14,
-                            lineHeight: 1.6,
-                            color: theme === 'sun' ? '#0f172a' : '#d1cde8',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            flex: 1
-                          }}>
-                            {speakingResult.referenceText}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Generate/Regenerate AI Speaking Assistant hero panel - hiển thị sau transcript */}
-                  {!isReadOnly && (
-                    <div
-                      style={{
-                        marginTop: 12,
-                        padding: 24,
-                        borderRadius: 16,
-                        border: `2px dashed ${primaryColor}40`,
-                        background: theme === 'sun' ? 'rgba(113,179,253,0.06)' : 'rgba(167,139,250,0.08)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        gap: 12
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 72,
-                          height: 72,
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: theme === 'sun'
-                            ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                            : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                          boxShadow: theme === 'sun' ? '0 6px 18px rgba(60,153,255,0.25)' : '0 6px 18px rgba(131,119,160,0.25)'
-                        }}
-                      >
-                        <span style={{ fontSize: 28, color: '#fff' }}>✨</span>
-                      </div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: theme === 'sun' ? '#1E40AF' : '#8377A0' }}>{t('dailyChallenge.aiSpeakingAssistant')}</div>
-                      <div style={{ maxWidth: 520, fontSize: 15, color: theme === 'sun' ? '#334155' : '#1F2937' }}>
-                        {hasAIGenerated 
-                          ? (t('dailyChallenge.regeneratePronunciationAnalysis') || 'Regenerate pronunciation analysis')
-                          : t('dailyChallenge.assessPronunciation')}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-                        <Button
-                          type="primary"
-                          icon={<ThunderboltOutlined />}
-                          loading={isGenerating}
-                          onClick={handleGenerateAI}
-                          style={{
-                            height: 40,
-                            borderRadius: 8,
-                            padding: '0 16px',
-                            background: theme === 'sun'
-                              ? 'linear-gradient(135deg, #66AEFF, #3C99FF)'
-                              : 'linear-gradient(135deg, #B5B0C0 19%, #A79EBB 64%, #8377A0 75%, #ACA5C0 97%, #6D5F8F 100%)',
-                            border: 'none',
-                            color: '#000',
-                            boxShadow: theme === 'sun' ? '0 2px 8px rgba(60, 153, 255, 0.3)' : '0 2px 8px rgba(131, 119, 160, 0.3)'
-                          }}
-                        >
-                          {hasAIGenerated ? t('dailyChallenge.regenerateWithAI') : t('dailyChallenge.generateWithAI')}
-                        </Button>
-                        <Typography.Text style={{
-                          fontSize: '12px',
-                          fontStyle: 'italic',
-                          color: theme === 'sun' ? '#64748b' : '#94a3b8',
-                          marginTop: '8px',
-                          textAlign: 'center',
-                          display: 'block',
-                          width: '100%'
-                        }}>
-                          {t('dailyChallenge.theGeneratedContentIsForReferenceOnly')}
-                        </Typography.Text>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Feedback editor - người dùng tự input */}
-                  <div style={{ marginTop: 16 }}>
-                    <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>{t('dailyChallenge.feedback')}</Text>
-                    <div
-                      style={{
-                        borderRadius: 16,
-                        padding: 20,
-                        border: theme === 'sun'
-                          ? '2px solid rgba(78, 205, 196, 0.55)'
-                          : '2px solid rgba(76, 201, 240, 0.45)',
-                        background: theme === 'sun'
-                          ? 'linear-gradient(140deg, rgba(229, 250, 246, 0.95) 0%, rgba(204, 244, 237, 0.9) 100%)'
-                          : 'linear-gradient(140deg, rgba(40, 56, 90, 0.92) 0%, rgba(46, 70, 110, 0.9) 55%, rgba(52, 82, 131, 0.9) 100%)',
-                        boxShadow: theme === 'sun'
-                          ? '0 6px 18px rgba(78, 205, 196, 0.22)'
-                          : '0 6px 18px rgba(46, 70, 110, 0.3)'
-                      }}
-                    >
-                      <div
-                        className="feedback-editor-wrap"
-                        style={{
-                          borderRadius: 12,
-                          border: theme === 'sun'
-                            ? '2px solid rgba(78, 205, 196, 0.55)'
-                            : '2px solid rgba(76, 201, 240, 0.45)',
-                          background: theme === 'sun'
-                            ? 'linear-gradient(180deg, rgba(78, 205, 196, 0.28) 0%, rgba(123, 223, 215, 0.18) 100%)'
-                            : 'linear-gradient(180deg, rgba(58, 90, 140, 0.32) 0%, rgba(70, 104, 160, 0.26) 100%)'
-                        }}
-                      >
-                        <CKEditor
-                          editor={ClassicEditor}
-                          data={feedback}
-                          onChange={(event, editor) => setFeedback(editor.getData())}
-                          disabled={isReadOnly}
-                          config={{
-                            toolbar: { items: ['undo', 'redo', '|', 'paragraph', '|', 'bold', 'italic', '|', 'bulletedList', 'numberedList', '|', 'imageUpload'] },
-                            removePlugins: ['StickyToolbar'],
-                            isReadOnly: isReadOnly
-                          }}
-                          onReady={(editor) => {
-                            try {
-                              const el = editor.ui?.getEditableElement?.();
-                              if (el) {
-                                el.style.minHeight = '300px';
-                                el.style.color = '#000';
-                              }
-                            } catch {}
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
             </Card>
@@ -4106,7 +4334,7 @@ const AIGenerateFeedback = () => {
               textAlign: 'center',
               padding: '10px 0',
             }}>
-            Edit feedback
+            {t('dailyChallenge.editFeedback')}
           </div>
         }
         open={editModalVisible}
@@ -4232,7 +4460,7 @@ const AIGenerateFeedback = () => {
           {sectionType === 'speaking' && (
             <div>
               <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>{t('dailyChallenge.pronunciationScores')}</Text>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+              <div className="speaking-scores-grid">
                 {[{
                   label: t('dailyChallenge.pronunciation'),
                   key: 'pronunciationScore',
@@ -4242,6 +4470,12 @@ const AIGenerateFeedback = () => {
                 },{
                   label: t('dailyChallenge.fluency'),
                   key: 'fluencyScore',
+                },{
+                  label: t('dailyChallenge.completeness'),
+                  key: 'completenessScore',
+                },{
+                  label: t('dailyChallenge.prosody'),
+                  key: 'prosodyScore',
                 }].map((item, idx) => {
                   const ss = speakingStyles[item.label] || { bg: theme === 'sun' ? 'rgba(24,144,255,0.06)' : 'rgba(244,240,255,0.10)', border: theme === 'sun' ? 'rgba(24,144,255,0.25)' : 'rgba(138,122,255,0.25)' };
                   const currentValue = editSpeakingScores[item.key] ?? null;
@@ -4374,7 +4608,7 @@ const AIGenerateFeedback = () => {
           {sectionType === 'writing' && (
             <div>
               <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>{t('dailyChallenge.criteriaFeedback')}</Text>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+              <div className="writing-criteria-grid">
                 {WRITING_CRITERIA_KEYS.map((item) => {
                   const data = editWritingCriteria?.[item.key] || {};
                   const currentFeedback = data?.feedback || '';
