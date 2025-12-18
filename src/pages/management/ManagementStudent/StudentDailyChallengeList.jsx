@@ -319,20 +319,15 @@ const StudentDailyChallengeList = () => {
     return result;
   }, []);
 
-  // Build filtered full list (type/search) - only PUBLISHED challenges shown that have reached startDate
+  // Build filtered full list (type/search) - only challenges that have reached startDate
   const filteredAllChallenges = useMemo(() => {
     const now = new Date();
     
-    // First filter: only PUBLISHED challenges that have reached startDate
-    const publishedAndStarted = allChallenges.filter((challenge) => {
+    // First filter: only challenges that have reached startDate
+    const startedChallenges = allChallenges.filter((challenge) => {
       // Empty lessons (lessons without challenges) should always be shown
       if (challenge.isEmptyLesson) {
         return true;
-      }
-
-      // Must be PUBLISHED status
-      if (challenge.status !== 'PUBLISHED') {
-        return false;
       }
 
       // Must have reached startDate (startDate <= currentDate)
@@ -349,13 +344,13 @@ const StudentDailyChallengeList = () => {
 
     // Second filter: apply search text if provided
     if (!searchDebounce || searchDebounce.trim() === "") {
-      return publishedAndStarted;
+      return startedChallenges;
     }
 
     // Pre-compute lowercase search text for better performance
     const searchLower = searchDebounce.toLowerCase();
 
-    return publishedAndStarted.filter((challenge) => {
+    return startedChallenges.filter((challenge) => {
       // Empty lessons (lessons without challenges) should always be shown
       if (challenge.isEmptyLesson) {
         const matchesSearch = challenge.lessonName?.toLowerCase().includes(searchLower);
