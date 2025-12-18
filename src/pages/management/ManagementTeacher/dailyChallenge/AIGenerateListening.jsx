@@ -340,27 +340,55 @@ const [errorMessage, setErrorMessage] = useState('');
         }
         case 'FILL_IN_THE_BLANK':
         case 'DROPDOWN':
-        case 'DRAG_AND_DROP':
-          return { id: nextId(), type, title: `Question ${counter}`, question: q?.question || q?.questionText || '', questionText: q?.questionText || q?.question || '', content: { data: Array.isArray(q?.content?.data) ? q.content.data : [] }, points: q?.points ?? q?.weight ?? q?.score ?? 1 };
-        case 'REARRANGE': {
+        case 'DRAG_AND_DROP': {
+          const textRaw = q?.questionText || q?.question || '';
           const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
-          // Map positionId -> value (giữ đúng mapping từ backend)
-          const posToVal = new Map();
+          // Collect all positionIds from content.data to remove stray tokens
+          const positionIds = new Set();
           contentItems.forEach(it => {
-            if (it && it.positionId) {
-              posToVal.set(String(it.positionId).replace(/^pos_/, ''), it.value);
+            if (it?.positionId) {
+              // Add both with and without "pos_" prefix
+              const posId = String(it.positionId);
+              positionIds.add(posId);
+              positionIds.add(posId.replace(/^pos_/, ''));
             }
           });
-          const text = q?.questionText || q?.question || '';
-          // Lấy thứ tự đúng theo placeholder trong questionText ([[pos_x]])
-          const ids = [];
-          const re = /\[\[pos_([a-zA-Z0-9]+)\]\]/g;
-          let m;
-          while ((m = re.exec(text)) !== null) {
-            ids.push(m[1]);
-          }
-          const words = ids.map(id => posToVal.get(id)).filter(Boolean);
-          // Shuffle chỉ phần available words hiển thị cho học sinh
+          // Clean rare backend artifacts like literal "positionId" tokens or positionId tokens appearing as standalone words
+          const cleanArtifacts = (val) => {
+            let cleaned = String(val || '')
+              // drop the literal word positionId
+              .replace(/\bpositionId\b/gi, '');
+            
+            // Remove positionId tokens that appear as standalone words (not in [[pos_xxx]] placeholders)
+            if (positionIds.size > 0) {
+              positionIds.forEach(posId => {
+                // Escape special regex characters
+                const escaped = posId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                // Remove as whole word only (not part of placeholder)
+                cleaned = cleaned.replace(new RegExp(`\\b${escaped}\\b`, 'g'), '');
+              });
+            }
+            
+            return cleaned
+              .replace(/\s+/g, ' ')
+              .trim();
+          };
+          const text = cleanArtifacts(textRaw);
+          return {
+            id: nextId(),
+            type,
+            title: `Question ${counter}`,
+            question: text,
+            questionText: text,
+            content: { data: contentItems },
+            points: q?.points ?? q?.weight ?? q?.score ?? 1
+          };
+        }
+        case 'REARRANGE': {
+          const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
+          // Đáp án đúng = thứ tự words trong content.data
+          const words = contentItems.map(it => it?.value ?? '').filter(Boolean);
+          // Học sinh sẽ thấy bản shuffle ở khu vực "Available words"
           const shuffled = (() => {
             const copy = [...words];
             for (let i = copy.length - 1; i > 0; i--) {
@@ -369,14 +397,15 @@ const [errorMessage, setErrorMessage] = useState('');
             }
             return copy;
           })();
+          const text = q?.questionText || q?.question || '';
           return {
             id: nextId(),
             type: 'REARRANGE',
             title: `Question ${counter}`,
             question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
             questionText: text,
-            sourceItems: shuffled,   // availableWords: bị shuffle
-            correctOrder: words,     // thứ tự đúng: y nguyên backend
+            sourceItems: shuffled,
+            correctOrder: words,
             content: { data: contentItems },
             points: q?.points ?? q?.weight ?? q?.score ?? 1,
           };
@@ -2251,37 +2280,12 @@ const [errorMessage, setErrorMessage] = useState('');
                                 const posToCorrect = new Map();
                                 items.filter(it => it.positionId && it.correct === true).forEach((it) => { posToCorrect.set(String(it.positionId), it.value); });
                                 if (/\[\[pos_/.test(text)) {
-                                  const parts = text.split(/(\[\[pos_([a-zA-Z0-9]+)\]\])/g);
+                                  // Use non-capturing group to avoid including capturing groups in split result
+                                  const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
                                   return parts.map((part, idx) => {
                                     const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                                     if (!m) {
-                                      // Remove alphanumeric codes that are not valid words
-                                      // These patterns appear after placeholders like g7h8i9, j1k213, m4n506, p7q8r9
-                                      let cleanPart = part
-                                        // Remove patterns that mix letters and numbers (2-10 chars) - these are codes, not words
-                                        // Match alphanumeric strings that have both letters and numbers
-                                        .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
-                                          // Only remove if it contains BOTH letters and numbers (mixed pattern)
-                                          // Don't remove pure words (only letters) or pure numbers
-                                          const hasLetter = /[a-zA-Z]/.test(match);
-                                          const hasNumber = /[0-9]/.test(match);
-                                          
-                                          // Remove if it's a mix of letters and numbers (like g7h8i9, j1k213)
-                                          if (hasLetter && hasNumber) {
-                                            // Additional check: if it looks like a valid word (e.g., "2nd", "3rd", "1st")
-                                            // Keep common ordinal patterns
-                                            if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
-                                              return match;
-                                            }
-                                            // Remove the mixed alphanumeric code
-                                            return '';
-                                          }
-                                          return match;
-                                        })
-                                        // Clean up multiple spaces that might result from removals
-                                        .replace(/\s+/g, ' ')
-                                        .trim();
-                                      return <span key={idx} className="html-content" dangerouslySetInnerHTML={{ __html: cleanPart }} />;
+                                      return <span key={idx} className="html-content" dangerouslySetInnerHTML={{ __html: part }} />;
                                     }
                                     const val = posToCorrect.get(m[1]) || '';
                                     return (
@@ -2289,29 +2293,8 @@ const [errorMessage, setErrorMessage] = useState('');
                                     );
                                   });
                                 }
-                                // Also clean the text when no placeholders
-                                let cleanText = text.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '___');
-                                // Remove alphanumeric codes that mix letters and numbers
-                                cleanText = cleanText
-                                  .replace(/\b[a-zA-Z0-9]{2,10}\b/g, (match) => {
-                                    // Only remove if it contains BOTH letters and numbers (mixed pattern)
-                                    const hasLetter = /[a-zA-Z]/.test(match);
-                                    const hasNumber = /[0-9]/.test(match);
-                                    
-                                    // Remove if it's a mix of letters and numbers (like g7h8i9, j1k213)
-                                    if (hasLetter && hasNumber) {
-                                      // Keep common ordinal patterns
-                                      if (/^(1st|2nd|3rd|[4-9]th)$/i.test(match)) {
-                                        return match;
-                                      }
-                                      // Remove the mixed alphanumeric code
-                                      return '';
-                                    }
-                                    return match;
-                                  })
-                                  // Clean up multiple spaces
-                                  .replace(/\s+/g, ' ')
-                                  .trim();
+                                // Fallback: replace placeholders with underscores if no placeholders match
+                                const cleanText = text.replace(/\[\[pos_[a-zA-Z0-9]+\]\]/g, '___');
                                 return <span className="html-content" dangerouslySetInnerHTML={{ __html: cleanText }} />;
                               })()}
                             </div>

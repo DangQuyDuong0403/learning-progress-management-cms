@@ -716,8 +716,39 @@ const AIGenerateQuestions = () => {
             };
           }
           case 'DRAG_AND_DROP': {
-            const text = q?.questionText || q?.question || '';
+            const textRaw = q?.questionText || q?.question || '';
             const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
+            // Collect all positionIds from content.data to remove stray tokens
+            const positionIds = new Set();
+            contentItems.forEach(it => {
+              if (it?.positionId) {
+                // Add both with and without "pos_" prefix
+                const posId = String(it.positionId);
+                positionIds.add(posId);
+                positionIds.add(posId.replace(/^pos_/, ''));
+              }
+            });
+            // Clean rare backend artifacts like literal "positionId" tokens or positionId tokens appearing as standalone words
+            const cleanArtifacts = (val) => {
+              let cleaned = String(val || '')
+                // drop the literal word positionId
+                .replace(/\bpositionId\b/gi, '');
+              
+              // Remove positionId tokens that appear as standalone words (not in [[pos_xxx]] placeholders)
+              if (positionIds.size > 0) {
+                positionIds.forEach(posId => {
+                  // Escape special regex characters
+                  const escaped = posId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  // Remove as whole word only (not part of placeholder)
+                  cleaned = cleaned.replace(new RegExp(`\\b${escaped}\\b`, 'g'), '');
+                });
+              }
+              
+              return cleaned
+                .replace(/\s+/g, ' ')
+                .trim();
+            };
+            const text = cleanArtifacts(textRaw);
             // correct values mapped to their position
             const correctMap = {};
             const correctValues = [];
@@ -3779,11 +3810,13 @@ const AIGenerateQuestions = () => {
                                  });
                                  // Render by placeholder if exists, else fallback to underscores
                                 if (/\[\[pos_/.test(text)) {
+                                  // Use non-capturing group to avoid including capturing groups in split result
+                                  // This prevents positionId tokens (e.g., "enwj0c") from appearing as separate array elements
                                   const parts = text.split(/(\[\[pos_[a-zA-Z0-9]+\]\])/g);
                                    return parts.map((part, idx) => {
                                      const m = part.match(/^\[\[pos_([a-zA-Z0-9]+)\]\]$/);
                                     if (!m) {
-                                      // Hiển thị nguyên văn phần text (không cố gắng xoá code/gibberish để tránh xoá nhầm)
+                                      // Hiển thị nguyên văn phần text (giống như DROPDOWN và FILL_IN_THE_BLANK)
                                       return (
                                         <span
                                           key={idx}
