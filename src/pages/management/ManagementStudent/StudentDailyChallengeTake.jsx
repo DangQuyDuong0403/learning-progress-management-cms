@@ -8150,6 +8150,7 @@ const StudentDailyChallengeTake = () => {
     challengeName: location.state?.challengeName || 'Daily Challenge',
     className: location.state?.lessonName || null,
   });
+  const [classData, setClassData] = useState(null);
   const questionRefs = useRef({});
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
   const [submitConfirmLoading, setSubmitConfirmLoading] = useState(false);
@@ -8190,6 +8191,29 @@ const StudentDailyChallengeTake = () => {
   const violationCountRef = useRef(new Map()); // Track violation count per type: { 'tab_switch': 1, 'copy': 0, ... }
   const pendingLogsRef = useRef([]); // Store logs that need to be sent to backend
   const [isAntiCheatEnabled, setIsAntiCheatEnabled] = useState(false);
+
+  // Fetch class data for header/title display
+  useEffect(() => {
+    const resolvedClassId = classIdForRedirect || location.state?.classId;
+    if (!resolvedClassId) return;
+
+    const fetchClassData = async () => {
+      try {
+        const response = await classManagementApi.getClassDetail(resolvedClassId);
+        const data = response?.data?.data ?? response?.data ?? null;
+        if (data) {
+          setClassData({
+            id: data.id ?? resolvedClassId,
+            name: data.className ?? data.name ?? data.title ?? `Class ${resolvedClassId}`,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching class data for StudentDailyChallengeTake:', error);
+      }
+    };
+
+    fetchClassData();
+  }, [classIdForRedirect, location.state?.classId]);
 
   // Resolve feature flags (shuffle / anti-cheat) from navigation state in a backward-compatible way
   const resolvedShuffleQuestions = React.useMemo(() => {
@@ -8341,7 +8365,8 @@ const StudentDailyChallengeTake = () => {
   
   // Set page title: "Class Name / Daily Challenge Name"
   const titleParts = [];
-  if (challengeInfo.className) titleParts.push(challengeInfo.className);
+  const classNameForTitle = classData?.name || location.state?.className || null;
+  if (classNameForTitle) titleParts.push(classNameForTitle);
   if (challengeInfo.challengeName) titleParts.push(challengeInfo.challengeName);
   usePageTitle(titleParts.length ? titleParts : '');
   
@@ -10635,8 +10660,9 @@ const StudentDailyChallengeTake = () => {
   };
 
   // Custom Header Component
-  const subtitle = (challengeInfo.className && challengeInfo.challengeName)
-    ? `${challengeInfo.className} / ${challengeInfo.challengeName}`
+  const headerClassName = classData?.name || location.state?.className || null;
+  const subtitle = (headerClassName && challengeInfo.challengeName)
+    ? `${headerClassName} / ${challengeInfo.challengeName}`
     : (challengeInfo.challengeName || 'Daily Challenge');
   const customHeader = (
     <header className={`themed-header ${theme}-header`}>

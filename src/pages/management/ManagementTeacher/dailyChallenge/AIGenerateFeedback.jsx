@@ -9,6 +9,7 @@ import { useSelector } from 'react-redux';
 import ThemedLayout from '../../../../component/teacherlayout/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import dailyChallengeApi from '../../../../apis/backend/dailyChallengeManagement';
+import classManagementApi from '../../../../apis/backend/classManagement';
 import { spaceToast } from '../../../../component/SpaceToastify';
 import usePageTitle from '../../../../hooks/usePageTitle';
 
@@ -154,11 +155,14 @@ const AIGenerateFeedback = () => {
   const { id: challengeId, submissionId: routeSubmissionId, submissionQuestionId: routeSubmissionQuestionId } = useParams();
   const { user } = useSelector((state) => state.auth);
   
+  // Role flags
+  const roleLower = user?.role?.toLowerCase() || '';
+  const isStudent = roleLower === 'student' || roleLower === 'test_taker';
+  
   // Check if user is in read-only mode (Student, Test Taker, Manager)
   const isReadOnly = useMemo(() => {
-    const role = user?.role?.toLowerCase();
-    return role === 'student' || role === 'test_taker' || role === 'manager';
-  }, [user?.role]);
+    return isStudent || roleLower === 'manager';
+  }, [isStudent, roleLower]);
 
   // From navigation state or query params if provided
   const params = new URLSearchParams(location.search || '');
@@ -175,6 +179,9 @@ const AIGenerateFeedback = () => {
   const classIdFromQuery = params.get('classId');
   const classNameFromQuery = params.get('className');
   const challengeNameFromQuery = params.get('challengeName');
+  const resolvedClassId = classIdFromState || classIdFromQuery || null;
+
+  const [classData, setClassData] = useState(null);
 
   const primaryColor = theme === 'sun' ? '#1890ff' : '#8B5CF6';
   const primaryColorWithAlpha = theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.1)';
@@ -341,12 +348,18 @@ const AIGenerateFeedback = () => {
   const [className, setClassName] = useState(classNameFromState || classNameFromQuery || null);
   const [challengeName, setChallengeName] = useState(challengeNameFromState || challengeNameFromQuery || null);
   const [studentName, setStudentName] = useState(nav.studentName || null);
-
-  // Dynamic page title: "Class Name / Daily Challenge Name / Submission (Student)"
+  
+  // Dynamic page title:
+  // - Teacher / Teaching Assistant / Manager: "Class Name / Daily Challenge Name / Submission (Student)"
+  // - Student / Test Taker:                "Class Name / Daily Challenge Name"
   const titleParts = [];
-  if (className) titleParts.push(className);
+  const classNameForTitle = classData?.name || className;
+  if (classNameForTitle) titleParts.push(classNameForTitle);
   if (challengeName) titleParts.push(challengeName);
-  if (studentName) titleParts.push(studentName);
+  // Only append submission (student) name for non-student roles
+  if (!isStudent && studentName) {
+    titleParts.push(studentName);
+  }
   usePageTitle(titleParts.length ? titleParts : '');
 
   // Update class context when location.search or location.state changes
@@ -900,6 +913,28 @@ const AIGenerateFeedback = () => {
   const leftContainerRef = React.useRef(null);
   const popoverRef = React.useRef(null);
   const [commentPopover, setCommentPopover] = useState({ visible: false, x: 0, y: 0, feedback: null });
+
+  // Fetch class data for accurate class name (avoid mixing with lesson name)
+  useEffect(() => {
+    if (!resolvedClassId) return;
+
+    const fetchClassData = async () => {
+      try {
+        const response = await classManagementApi.getClassDetail(resolvedClassId);
+        const data = response?.data?.data ?? response?.data ?? null;
+        if (data) {
+          setClassData({
+            id: data.id ?? resolvedClassId,
+            name: data.className ?? data.name ?? data.title ?? `Class ${resolvedClassId}`,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching class data for AIGenerateFeedback:', error);
+      }
+    };
+
+    fetchClassData();
+  }, [resolvedClassId]);
 
   const handleCommentInputChange = useCallback((event, editor) => {
     const value = editor ? editor.getData() : (event?.target?.value || '');
@@ -2333,10 +2368,16 @@ const AIGenerateFeedback = () => {
                 }}>
                   {(() => {
                     const parts = [];
-                    if (className) parts.push(className);
+                    const headerClassName = classData?.name || className;
+                    if (headerClassName) parts.push(headerClassName);
                     if (challengeName) parts.push(challengeName);
-                    if (studentName) parts.push(studentName);
-                    return parts.length > 0 ? parts.join(' / ') : (t('dailyChallenge.feedbackAndGrading') !== 'dailyChallenge.feedbackAndGrading' ? t('dailyChallenge.feedbackAndGrading') : 'Feedback & Grading');
+                    // Only append student name for non-student roles
+                    if (!isStudent && studentName) parts.push(studentName);
+                    return parts.length > 0
+                      ? parts.join(' / ')
+                      : (t('dailyChallenge.feedbackAndGrading') !== 'dailyChallenge.feedbackAndGrading'
+                          ? t('dailyChallenge.feedbackAndGrading')
+                          : 'Feedback & Grading');
                   })()}
                 </h2>
               </div>
