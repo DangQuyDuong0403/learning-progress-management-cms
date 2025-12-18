@@ -639,9 +639,13 @@ const SortablePassageItem = memo(
                     `}</style>
                     <div
                       className="transcript-content"
-                      style={{ wordBreak: 'break-word' }}
+                      style={{ 
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-line' // Preserve newlines from \n characters
+                      }}
                       dangerouslySetInnerHTML={{
-                        __html: passage.transcript || passage.content || 'No transcript available'
+                        __html: (passage.transcript || passage.content || 'No transcript available')
+                          .replace(/\n/g, '<br/>') // Convert \n to <br/> for proper line breaks
                       }}
                     />
                   </div>
