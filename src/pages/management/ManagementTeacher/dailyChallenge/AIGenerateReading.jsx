@@ -850,12 +850,14 @@ const AIGenerateReading = () => {
       // axiosClient already unwraps response.data, so res is already the data object
       const responseData = res?.data || res;
       
-      // Handle error field: if error is not null, show error toast
+      // Handle error field: if error is not null, show error modal
       if (responseData?.error != null) {
-        const errorMessage = typeof responseData.error === 'string' 
+        const errorMsg = typeof responseData.error === 'string' 
           ? responseData.error 
           : (responseData.error?.message || JSON.stringify(responseData.error));
-        spaceToast.error(errorMessage);
+        setErrorMessage(errorMsg);
+        setErrorVisible(true);
+        setGenerationProgress(0);
         setIsGenerating(false);
         return;
       }
