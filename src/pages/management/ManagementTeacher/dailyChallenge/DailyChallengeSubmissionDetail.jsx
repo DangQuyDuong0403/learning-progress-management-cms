@@ -46,6 +46,7 @@ import { useTheme } from "../../../../contexts/ThemeContext";
 import { useDailyChallengeMenu } from "../../../../contexts/DailyChallengeMenuContext";
 import usePageTitle from "../../../../hooks/usePageTitle";
 import { dailyChallengeApi } from "../../../../apis/apis";
+import classManagementApi from "../../../../apis/backend/classManagement";
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import { useSelector } from 'react-redux';
@@ -135,8 +136,29 @@ const DailyChallengeSubmissionDetail = () => {
     return '/teacher';
   }, [isStudent, normalizedRole]);
   
-  // Set page title
-  usePageTitle('Daily Challenge - Submission Detail');
+  const [classData, setClassData] = useState(null);
+  
+  // Dynamic page title:
+  // - Teacher / Teaching Assistant / Manager: "Class Name / Daily Challenge Name / Submission (Student)"
+  // - Student / Test Taker:                "Class Name / Daily Challenge Name"
+  const params = new URLSearchParams(location.search || '');
+  const resolvedClassId = location.state?.classId || params.get('classId') || null;
+  const classNameFromContext = isStudent
+    ? (classData?.name || location.state?.className || params.get('className') || null)
+    : (dailyChallengeData?.className || location.state?.className || params.get('className') || null);
+  const subtitle = dailyChallengeData?.subtitle || '';
+  const challengeNameFromContext = classNameFromContext 
+    ? (subtitle.includes(' / ') ? subtitle.split(' / ').slice(1).join(' / ') : subtitle || params.get('challengeName') || null)
+    : (subtitle.includes(' / ') ? subtitle.split(' / ')[1] : (subtitle || params.get('challengeName') || null));
+  const titleParts = [];
+  if (classNameFromContext) titleParts.push(classNameFromContext);
+  if (challengeNameFromContext) titleParts.push(challengeNameFromContext);
+  // Only append submission (student) name for non-student roles
+  if (!isStudent) {
+    const submissionNameForTitle = location.state?.studentName || null;
+    if (submissionNameForTitle) titleParts.push(submissionNameForTitle);
+  }
+  usePageTitle(titleParts.length ? titleParts : '');
   
   const [loading, setLoading] = useState(false);
   const [submissionData, setSubmissionData] = useState(null);
@@ -204,6 +226,28 @@ const DailyChallengeSubmissionDetail = () => {
   const [antiCheatSelectedDate, setAntiCheatSelectedDate] = useState(null); // JS Date or null
   const [antiCheatPage, setAntiCheatPage] = useState(1);
   const [antiCheatPageSize, setAntiCheatPageSize] = useState(20);
+
+  // Fetch class data for student/test-taker title when needed
+  useEffect(() => {
+    if (!isStudent || !resolvedClassId) return;
+
+    const fetchClassData = async () => {
+      try {
+        const response = await classManagementApi.getClassDetail(resolvedClassId);
+        const data = response?.data?.data ?? response?.data ?? null;
+        if (data) {
+          setClassData({
+            id: data.id ?? resolvedClassId,
+            name: data.className ?? data.name ?? data.title ?? `Class ${resolvedClassId}`,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching class data for DailyChallengeSubmissionDetail:', error);
+      }
+    };
+
+    fetchClassData();
+  }, [isStudent, resolvedClassId]);
   
   // Cache existing grading per submissionQuestionId
   const [gradingBySubmissionQuestionId, setGradingBySubmissionQuestionId] = useState({});
@@ -4697,22 +4741,17 @@ useEffect(() => {
               textShadow: theme === 'sun' ? '0 0 5px rgba(30, 64, 175, 0.3)' : '0 0 15px rgba(134, 134, 134, 0.8)'
             }}>
               {(() => {
-                // Priority: Use location.state if available (when navigating back from AIGenerateFeedback)
-                // Otherwise use dailyChallengeData or fallback to default
-                let base;
-                if (location?.state?.className && location?.state?.challengeName) {
-                  // Build from location.state: "className / challengeName"
-                  base = `${location.state.className} / ${location.state.challengeName}`;
-                } else if (location?.state?.challengeName) {
-                  // Only challengeName available
-                  base = location.state.challengeName;
-                } else if (location?.state?.className) {
-                  // Only className available
-                  base = location.state.className;
-                } else {
-                  // Fallback to dailyChallengeData or default
-                  base = dailyChallengeData?.subtitle || t('dailyChallenge.dailyChallengeManagement');
+                // Build header title similar to page title: "Class / Challenge / Student" (for non-student roles)
+                const parts = [];
+                const headerClassName = classNameFromContext;
+                if (headerClassName) parts.push(headerClassName);
+                if (challengeNameFromContext) parts.push(challengeNameFromContext);
+                if (!isStudent && location?.state?.studentName) {
+                  parts.push(location.state.studentName);
                 }
+                const base = parts.length > 0
+                  ? parts.join(' / ')
+                  : (dailyChallengeData?.subtitle || t('dailyChallenge.dailyChallengeManagement'));
                 
                 const student = location?.state?.studentName || submissionData?.student?.name || '';
                 return student ? `${base} / ${student}` : base;

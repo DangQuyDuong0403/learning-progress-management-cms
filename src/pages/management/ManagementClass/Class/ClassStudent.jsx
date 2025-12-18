@@ -82,8 +82,8 @@ const ClassStudent = () => {
   const [students, setStudents] = useState([]);
   const [classData, setClassData] = useState(null);
   
-  // Set page title with class name if available
-  usePageTitle(classData?.name ? ['Class Students', classData.name] : 'Class Students');
+  // Set page title to class name only
+  usePageTitle(classData?.name || '');
   
   // Check if class is finished (hide add, import, delete buttons)
   const isClassFinished = contextViewOnly || classMenuData?.status === 'FINISHED' || classData?.status === 'FINISHED';

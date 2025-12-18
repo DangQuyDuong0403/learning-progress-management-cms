@@ -72,8 +72,8 @@ const ClassActivities = () => {
   const [activities, setActivities] = useState([]);
   const [classData, setClassData] = useState(null);
   
-  // Set page title with class name if available
-  usePageTitle(classData?.name ? ['Class Activities', classData.name] : 'Class Activities');
+  // Set page title to class name only
+  usePageTitle(classData?.name || '');
   
   // Pagination state
   const [pagination, setPagination] = useState({

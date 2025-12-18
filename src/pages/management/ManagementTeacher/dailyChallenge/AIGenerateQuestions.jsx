@@ -50,8 +50,8 @@ const AIGenerateQuestions = () => {
   const { user } = useSelector((state) => state.auth);
   const [hierarchy, setHierarchy] = useState(null);
   
-  // Set page title
-  usePageTitle('AI Question Generation');
+  // Title parts for "Class Name / Daily Challenge Name"
+  const titleParts = [];
   
   // Parse aiSource from URL query first (so copy-paste link keeps mode), then from navigation state
   const initialAiSource = useMemo(() => {
@@ -68,14 +68,23 @@ const AIGenerateQuestions = () => {
   }, [location.search, location.state?.aiSource]);
 
   // Get data from navigation state (fallback to query / id). This is mostly for header display.
-  const [challengeInfo] = useState({
-    classId: location.state?.classId || null,
-    className: location.state?.className || null,
-    challengeId: location.state?.challengeId || id,
-    challengeName: location.state?.challengeName || null,
-    challengeType: location.state?.challengeType || null,
-    aiSource: initialAiSource, // 'settings' or 'file'
+  const [challengeInfo] = useState(() => {
+    const params = new URLSearchParams(location.search || '');
+    const info = {
+      classId: location.state?.classId || params.get('classId') || null,
+      className: location.state?.className || params.get('className') || null,
+      challengeId: location.state?.challengeId || id,
+      challengeName: location.state?.challengeName || params.get('challengeName') || null,
+      challengeType: location.state?.challengeType || null,
+      aiSource: initialAiSource, // 'settings' or 'file'
+    };
+    if (info.className) titleParts.push(info.className);
+    if (info.challengeName) titleParts.push(info.challengeName);
+    return info;
   });
+  
+  // Set page title: "Class Name / Daily Challenge Name"
+  usePageTitle(titleParts.length ? titleParts : '');
   
   // State for prompt input
   const [promptDescription, setPromptDescription] = useState("");
