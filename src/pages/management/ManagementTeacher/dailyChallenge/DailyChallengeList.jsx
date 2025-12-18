@@ -59,8 +59,8 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const [dailyChallenges, setDailyChallenges] = useState([]);
   const [classData, setClassData] = useState(null); // Store class data
   
-  // Set page title with class name if available
-  usePageTitle(classData?.name ? ['Daily Challenge Management', classData.name] : 'Daily Challenge Management');
+  // Set page title to class name only
+  usePageTitle(classData?.name || '');
   // Check if class is finished (view-only mode)
   const isClassFinished = classData?.status === 'FINISHED';
   const [searchText, setSearchText] = useState("");

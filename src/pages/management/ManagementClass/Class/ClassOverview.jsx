@@ -40,8 +40,8 @@ const ClassOverview = () => {
   const [loading, setLoading] = useState(false);
   const [classData, setClassData] = useState(null);
   
-  // Set page title with class name if available
-  usePageTitle(classData?.name ? ['Class Overview', classData.name] : 'Class Overview');
+  // Set page title to class name only
+  usePageTitle(classData?.name || '');
 
   const fetchClassData = useCallback(async () => {
     try {

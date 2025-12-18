@@ -226,8 +226,8 @@ const TeacherClassChapterDragEdit = () => {
 	const [classInfo, setClassInfo] = useState(null);
 	const [isInitialLoading, setIsInitialLoading] = useState(true);
 	
-	// Set page title with class name if available
-	usePageTitle(classInfo?.name ? ['Edit Chapter Order', classInfo.name] : 'Edit Chapter Order');
+	// Set page title to class name only
+	usePageTitle(classInfo?.name || '');
 
 	// Determine route prefix based on user role
 	const getRoutePrefix = () => {

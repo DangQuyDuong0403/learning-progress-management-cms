@@ -46,8 +46,22 @@ const DailyChallengeSubmissionList = () => {
   const { enterDailyChallengeMenu, exitDailyChallengeMenu, updateChallengeCount, dailyChallengeData } = useDailyChallengeMenu();
   const isManager = normalizedRole === 'manager';
   
-  // Set page title
-  usePageTitle('Daily Challenge Management / Submissions');
+  // Local challenge info derived from navigation state or query params
+  const [challengeInfo] = useState(() => {
+    const params = new URLSearchParams(location.search || '');
+    return {
+      classId: location.state?.classId || params.get('classId') || null,
+      className: location.state?.className || params.get('className') || null,
+      challengeId: location.state?.challengeId || params.get('challengeId') || id,
+      challengeName: location.state?.challengeName || params.get('challengeName') || null,
+    };
+  });
+  
+  // Set page title: "Class Name / Daily Challenge Name"
+  const titleParts = [];
+  if (challengeInfo.className) titleParts.push(challengeInfo.className);
+  if (challengeInfo.challengeName) titleParts.push(challengeInfo.challengeName);
+  usePageTitle(titleParts.length ? titleParts : '');
   
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);

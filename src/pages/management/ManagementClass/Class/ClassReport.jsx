@@ -83,8 +83,8 @@ const ClassReport = () => {
   const [loading, setLoading] = useState(true);
   const [classData, setClassData] = useState(null);
   
-  // Set page title with class name if available
-  usePageTitle(classData?.name ? ['Class Report', classData.name] : 'Class Report');
+  // Set page title to class name only
+  usePageTitle(classData?.name || '');
   const [overviewData, setOverviewData] = useState(null);
   const [roleDistributionData, setRoleDistributionData] = useState([]);
   const [teacherActivityData, setTeacherActivityData] = useState([]);
