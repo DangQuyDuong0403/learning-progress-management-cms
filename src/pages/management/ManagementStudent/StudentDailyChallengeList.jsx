@@ -24,6 +24,7 @@ import dailyChallengeApiBackend from "../../../apis/backend/dailyChallengeManage
 import { spaceToast } from "../../../component/SpaceToastify";
 import { useSelector } from "react-redux";
 import CustomCursor from "../../../component/cursor/CustomCursor";
+import usePageTitle from "../../../hooks/usePageTitle";
 
 // Transform API response data to match UI structure
 const transformApiData = (apiData) => {
@@ -159,6 +160,9 @@ const StudentDailyChallengeList = () => {
     }
     return defaultMessage || t('common.errorOccurred', 'An error occurred');
   }, [t]);
+
+  // Set page title to class name only
+  usePageTitle(classData?.name || '');
 
   // Load data from API
   useEffect(() => {

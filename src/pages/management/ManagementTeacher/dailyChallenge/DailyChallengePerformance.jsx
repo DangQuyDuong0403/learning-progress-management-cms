@@ -113,8 +113,11 @@ const DailyChallengePerformance = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, location.search, id, dailyChallengeData?.className]);
   
-  // Set page title
-  usePageTitle('Daily Challenge Management / Performance');
+  // Set page title: "Class Name / Daily Challenge Name"
+  const titleParts = [];
+  if (challengeInfo.className) titleParts.push(challengeInfo.className);
+  if (challengeInfo.challengeName) titleParts.push(challengeInfo.challengeName);
+  usePageTitle(titleParts.length ? titleParts : '');
   
   const [loading, setLoading] = useState(false);
   const [performanceData, setPerformanceData] = useState({

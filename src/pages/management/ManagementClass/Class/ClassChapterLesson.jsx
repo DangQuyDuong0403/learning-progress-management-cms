@@ -76,8 +76,8 @@ const ClassChapterLesson = () => {
 	const [loading, setLoading] = useState(false);
 	const [classData, setClassData] = useState(null);
 	
-	// Set page title with class name if available
-	usePageTitle(classData?.name ? ['Class Chapter & Lesson', classData.name] : 'Class Chapter & Lesson');
+	// Set page title to class name only
+	usePageTitle(classData?.name || '');
 	const [chapterData, setChapterData] = useState(null);
 	const [lessons, setLessons] = useState([]);
 	const [searchText, setSearchText] = useState('');

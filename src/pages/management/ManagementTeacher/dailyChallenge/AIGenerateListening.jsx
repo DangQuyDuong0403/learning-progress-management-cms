@@ -31,9 +31,9 @@ const AIGenerateListening = () => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { user } = useSelector((state) => state.auth);
-
-  usePageTitle('AI Question Generation');
-
+  
+  const titleParts = [];
+  
   const initialAiSource = useMemo(() => {
     try {
       const search = new URLSearchParams(location.search || '');
@@ -47,14 +47,23 @@ const AIGenerateListening = () => {
     return location.state?.aiSource || null;
   }, [location.search, location.state?.aiSource]);
 
-  const challengeInfo = useMemo(() => ({
-    classId: location.state?.classId || null,
-    className: location.state?.className || null,
-    challengeId: location.state?.challengeId || id,
-    challengeName: location.state?.challengeName || null,
-    challengeType: 'LISTENING',
-    aiSource: initialAiSource, // 'settings' or 'file'
-  }), [id, location.state?.classId, location.state?.className, location.state?.challengeId, location.state?.challengeName, initialAiSource]);
+  const challengeInfo = useMemo(() => {
+    const params = new URLSearchParams(location.search || '');
+    const info = {
+      classId: location.state?.classId || params.get('classId') || null,
+      className: location.state?.className || params.get('className') || null,
+      challengeId: location.state?.challengeId || id,
+      challengeName: location.state?.challengeName || params.get('challengeName') || null,
+      challengeType: 'LISTENING',
+      aiSource: initialAiSource, // 'settings' or 'file'
+    };
+    titleParts.length = 0;
+    if (info.className) titleParts.push(info.className);
+    if (info.challengeName) titleParts.push(info.challengeName);
+    return info;
+  }, [id, location.state?.classId, location.state?.className, location.state?.challengeId, location.state?.challengeName, initialAiSource, location.search]);
+  
+  usePageTitle(titleParts.length ? titleParts : '');
 
   const [prompt, setPrompt] = useState(""); // Transcript content
   const [description, setDescription] = useState(""); // Description field
