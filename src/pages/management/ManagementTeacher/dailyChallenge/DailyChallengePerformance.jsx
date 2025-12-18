@@ -58,7 +58,7 @@ const truncateQuestionText = (text, maxLength = 80) => {
 const DailyChallengePerformance = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { id } = useParams();
+  const { id, classId: classIdFromParams } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
@@ -75,7 +75,7 @@ const DailyChallengePerformance = () => {
       challengeName: params.get('challengeName'),
     };
     return {
-      classId: location.state?.classId || qp.classId || null,
+      classId: location.state?.classId || qp.classId || classIdFromParams || null,
       className: location.state?.className || qp.className || dailyChallengeData?.className || null,
       challengeId: location.state?.challengeId || id,
       challengeName: location.state?.challengeName || qp.challengeName || null,
@@ -94,7 +94,7 @@ const DailyChallengePerformance = () => {
     };
     
     // Check if we need to update challengeInfo
-    const newClassId = location.state?.classId || qp.classId;
+    const newClassId = location.state?.classId || qp.classId || classIdFromParams || null;
     const newClassName = location.state?.className || qp.className || dailyChallengeData?.className;
     const newChallengeName = location.state?.challengeName || qp.challengeName;
     
@@ -111,7 +111,7 @@ const DailyChallengePerformance = () => {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, location.search, id, dailyChallengeData?.className]);
+  }, [location.state, location.search, id, dailyChallengeData?.className, classIdFromParams]);
   
   // Set page title: "Class Name / Daily Challenge Name"
   const titleParts = [];
@@ -202,29 +202,94 @@ const DailyChallengePerformance = () => {
 
   // Fetch challenge info from API if not available in state
   const fetchChallengeInfo = useCallback(async () => {
-    // If we already have all info, no need to fetch
-    if (challengeInfo.challengeName && challengeInfo.className) {
+    // Nếu đã có đầy đủ thông tin (bao gồm classId) thì không cần fetch nữa
+    if (challengeInfo.classId && challengeInfo.challengeName && challengeInfo.className) {
       return;
     }
 
     try {
-      // Fetch challenge detail from API
+      // 1) Gọi API lấy chi tiết challenge
       const response = await dailyChallengeApi.getDailyChallengeById(id);
-      
       const data = response?.data;
+
       if (data) {
-        setChallengeInfo(prev => ({
-          ...prev,
-          challengeId: data.id || id,
-          challengeName: data.challengeName || data.name || data.title || prev.challengeName,
-          challengeType: data.challengeType || data.type || prev.challengeType,
-          // Note: API might not return class info directly, may need additional fetch
-        }));
+        // Ưu tiên lấy classId trực tiếp từ response (nếu có)
+        let extractedClassId =
+          data.classId ||
+          data.classLesson?.classId ||
+          data.classLesson?.class?.id ||
+          null;
+
+        // Lấy className nếu có
+        let extractedClassName =
+          data.className ||
+          data.classLesson?.className ||
+          data.classLesson?.class?.name ||
+          null;
+
+        // Cập nhật state lần 1 với thông tin cơ bản
+        setChallengeInfo((prev) => {
+          const updatedInfo = {
+            ...prev,
+            challengeId: data.id || id,
+            challengeName:
+              data.challengeName || data.name || data.title || prev.challengeName,
+            challengeType: data.challengeType || data.type || prev.challengeType,
+            classId: prev.classId || extractedClassId || null,
+            className: prev.className || extractedClassName || null,
+            lessonName:
+              prev.lessonName ||
+              data.classLessonName ||
+              data.lessonName ||
+              data.classLesson?.classLessonName ||
+              null,
+          };
+
+          return updatedInfo;
+        });
+
+        // 2) Nếu sau bước trên vẫn chưa có classId hoặc className → gọi getChallengeHierarchy để lấy thêm thông tin phân cấp
+        if (!extractedClassId || !extractedClassName) {
+          try {
+            const hierRes = await dailyChallengeApi.getChallengeHierarchy(data.id || id);
+            const hierData =
+              hierRes?.data?.data || hierRes?.data || hierRes || null;
+
+            if (hierData) {
+              const hierarchyClassId =
+                hierData.classId ||
+                hierData.class?.id ||
+                hierData.clazz?.id ||
+                null;
+              const hierarchyClassName =
+                hierData.className ||
+                hierData.class?.name ||
+                hierData.clazz?.name ||
+                null;
+
+              if (hierarchyClassId || hierarchyClassName) {
+                setChallengeInfo((prev) => {
+                  const updatedInfo = {
+                    ...prev,
+                    classId: prev.classId || hierarchyClassId || null,
+                    className: prev.className || hierarchyClassName || null,
+                  };
+                  return updatedInfo;
+                });
+              }
+            }
+          } catch (hierErr) {
+            console.warn(
+              'DailyChallengePerformance - Could not fetch hierarchy to resolve classId:',
+              hierErr
+            );
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching challenge info:', error);
     }
-  }, [id, challengeInfo.challengeName, challengeInfo.className]);
+  }, [id, challengeInfo.classId, challengeInfo.className, challengeInfo.challengeName]);
 
   // Calculate distribution by submission status (not started, completed, late, etc.)
   const calculateAttemptDistribution = (scores, submissionStats) => {
@@ -610,35 +675,23 @@ const DailyChallengePerformance = () => {
   // Enter/exit daily challenge menu mode
   useEffect(() => {
     // Determine back path based on classId
-    // Also preserve pagination state from location.state for restoring when navigating back
     const getBackPath = () => {
-      // Preserve state from location.state (contains pagination info from DailyChallengeList)
-      const savedState = location.state || {};
-      const preservedState = {
-        ...savedState,
-        // Keep pagination state if it exists
-        currentPage: savedState.currentPage,
-        pageSize: savedState.pageSize,
-        searchText: savedState.searchText,
-        typeFilter: savedState.typeFilter,
-        statusFilter: savedState.statusFilter,
-      };
+      // Ưu tiên lấy classId từ URL params nếu có, sau đó mới đến state
+      const effectiveClassId = challengeInfo.classId || classIdFromParams || null;
       
-      if (challengeInfo.classId) {
+      if (effectiveClassId) {
         // If coming from class-specific daily challenges, go back to that list
         // Route: /teacher/classes/daily-challenges/:classId
         const userRole = user?.role?.toLowerCase();
         const path = userRole === 'teacher' || userRole === 'teaching_assistant'
-          ? `/teacher/classes/daily-challenges/${challengeInfo.classId}`
-          : `/manager/classes/daily-challenges/${challengeInfo.classId}`;
+          ? `/teacher/classes/daily-challenges/${effectiveClassId}`
+          : `/manager/classes/daily-challenges/${effectiveClassId}`;
         
-        // Store preserved state in a way that ThemedHeader can access it
-        // We'll modify the context to include state, or use a ref
         return path;
       } else {
         // Otherwise, go back to general daily challenges list
         const userRole = user?.role?.toLowerCase();
-        return userRole === 'teacher' || userRole === 'teaching_assistant' 
+        const path = userRole === 'teacher' || userRole === 'teaching_assistant' 
           ? '/teacher/daily-challenges' 
           : '/manager/daily-challenges';
       }
@@ -681,7 +734,7 @@ const DailyChallengePerformance = () => {
     return () => {
       exitDailyChallengeMenu();
     };
-  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, challengeInfo, user, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName]);
+  }, [enterDailyChallengeMenu, exitDailyChallengeMenu, challengeInfo, user, dailyChallengeData?.subtitle, dailyChallengeData?.className, location?.state?.className, location?.state?.challengeName, classIdFromParams]);
 
   useEffect(() => {
     if (challengeInfo.challengeId || id) {

@@ -94,6 +94,7 @@ const ROUTER_PAGE = {
 	MANAGER_CLASS_CHAPTER_LESSONS_EDIT_ORDER: '/manager/classes/chapters/:classId/lessons/:chapterId/edit-order',
 	MANAGER_CLASS_DAILY_CHALLENGES: '/manager/classes/daily-challenges/:classId',
 	MANAGER_DAILY_CHALLENGE_DETAIL: '/manager/daily-challenges/detail/:id',
+	MANAGER_CLASS_DAILY_CHALLENGE_DETAIL: '/manager/classes/daily-challenges/:classId/detail/:id',
 	MANAGER_DAILY_CHALLENGE_CONTENT: '/manager/daily-challenges/detail/:id/content',
 	MANAGER_DAILY_CHALLENGE_SUBMISSIONS: '/manager/daily-challenges/detail/:id/submissions',
 	MANAGER_DAILY_CHALLENGE_SUBMISSION_DETAIL: '/manager/daily-challenges/detail/:id/submissions/:submissionId',
@@ -152,6 +153,7 @@ const ROUTER_PAGE = {
     TEACHER_CREATE_AI_READING_WITH_ID: '/teacher/daily-challenges/create/ai-reading/:id',
     TEACHER_CREATE_AI_LISTENING_WITH_ID: '/teacher/daily-challenges/create/ai-listening/:id',
 	TEACHER_CLASS_DAILY_CHALLENGES: '/teacher/classes/daily-challenges/:classId',
+	TEACHER_CLASS_DAILY_CHALLENGE_DETAIL: '/teacher/classes/daily-challenges/:classId/detail/:id',
 	// Teaching Assistant Daily Challenge Routes
 	TEACHING_ASSISTANT_DAILY_CHALLENGES: '/teaching-assistant/daily-challenges',
 	TEACHING_ASSISTANT_DAILY_CHALLENGE_DETAIL: '/teaching-assistant/daily-challenges/detail/:id',
@@ -176,6 +178,7 @@ const ROUTER_PAGE = {
     TEACHING_ASSISTANT_CREATE_AI_READING_WITH_ID: '/teaching-assistant/daily-challenges/create/ai-reading/:id',
     TEACHING_ASSISTANT_CREATE_AI_LISTENING_WITH_ID: '/teaching-assistant/daily-challenges/create/ai-listening/:id',
 	TEACHING_ASSISTANT_CLASS_DAILY_CHALLENGES: '/teaching-assistant/classes/daily-challenges/:classId',
+	TEACHING_ASSISTANT_CLASS_DAILY_CHALLENGE_DETAIL: '/teaching-assistant/classes/daily-challenges/:classId/detail/:id',
 };
 
 export default ROUTER_PAGE;

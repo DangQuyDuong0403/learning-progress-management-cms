@@ -798,10 +798,18 @@ const DailyChallengeList = ({ readOnly = false }) => {
       }
       
       if (challengeId) {
+        // Nếu đang ở context theo class thì trong URL sẽ có classId param
+        const effectiveClassId = classId || null;
+
+        // Nếu có classId thì dùng route có classId trong URL, để sau này paste link vẫn biết class
+        const detailPath = effectiveClassId
+          ? `/teacher/classes/daily-challenges/${effectiveClassId}/detail/${challengeId}`
+          : `/teacher/daily-challenges/detail/${challengeId}`;
+
         // Redirect to performance screen of the newly created challenge
-        navigate(`/teacher/daily-challenges/detail/${challengeId}`, {
+        navigate(detailPath, {
           state: {
-            classId: classId,
+            classId: effectiveClassId,
             className: classData?.name,
             challengeId: challengeId,
             challengeName: newChallenge.challengeName,
@@ -826,8 +834,10 @@ const DailyChallengeList = ({ readOnly = false }) => {
   const handleViewClick = (challenge) => {
     // Navigate with state containing class and challenge information
     // Also save currentPage to restore when navigating back
+    const effectiveClassId = classId || null;
+
     const savedState = {
-      classId: classId,
+      classId: effectiveClassId,
       className: classData?.name,
       challengeId: challenge.id,
       challengeName: challenge.title,
@@ -838,11 +848,20 @@ const DailyChallengeList = ({ readOnly = false }) => {
       typeFilter: typeFilter, // Save type filter
       statusFilter: statusFilter, // Save status filter
     };
+
     // Determine route based on user role
     const userRole = user?.role?.toLowerCase();
-    const detailPath = userRole === 'manager' 
-      ? `/manager/daily-challenges/detail/${challenge.id}`
-      : `/teacher/daily-challenges/detail/${challenge.id}`;
+    let detailPath;
+
+    if (userRole === 'manager') {
+      detailPath = effectiveClassId
+        ? `/manager/classes/daily-challenges/${effectiveClassId}/detail/${challenge.id}`
+        : `/manager/daily-challenges/detail/${challenge.id}`;
+    } else {
+      detailPath = effectiveClassId
+        ? `/teacher/classes/daily-challenges/${effectiveClassId}/detail/${challenge.id}`
+        : `/teacher/daily-challenges/detail/${challenge.id}`;
+    }
     
     navigate(detailPath, {
       state: savedState
