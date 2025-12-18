@@ -3048,8 +3048,11 @@ const DailyChallengeContent = () => {
     lessonName: location.state?.lessonName || null,
   });
   
-  // Set page title
-  usePageTitle('Daily Challenge Management / Content');
+  // Set page title: "Class Name / Daily Challenge Name"
+  const titleParts = [];
+  if (challengeInfo.className) titleParts.push(challengeInfo.className);
+  if (challengeInfo.challengeName) titleParts.push(challengeInfo.challengeName);
+  usePageTitle(titleParts.length ? titleParts : '');
   
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);

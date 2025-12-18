@@ -10,6 +10,7 @@ import ThemedLayout from '../../../../component/teacherlayout/ThemedLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import dailyChallengeApi from '../../../../apis/backend/dailyChallengeManagement';
 import { spaceToast } from '../../../../component/SpaceToastify';
+import usePageTitle from '../../../../hooks/usePageTitle';
 
 const { Title, Text } = Typography;
 
@@ -340,6 +341,13 @@ const AIGenerateFeedback = () => {
   const [className, setClassName] = useState(classNameFromState || classNameFromQuery || null);
   const [challengeName, setChallengeName] = useState(challengeNameFromState || challengeNameFromQuery || null);
   const [studentName, setStudentName] = useState(nav.studentName || null);
+
+  // Dynamic page title: "Class Name / Daily Challenge Name / Submission (Student)"
+  const titleParts = [];
+  if (className) titleParts.push(className);
+  if (challengeName) titleParts.push(challengeName);
+  if (studentName) titleParts.push(studentName);
+  usePageTitle(titleParts.length ? titleParts : '');
 
   // Update class context when location.search or location.state changes
   useEffect(() => {

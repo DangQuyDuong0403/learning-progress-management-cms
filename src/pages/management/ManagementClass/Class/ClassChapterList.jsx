@@ -72,8 +72,8 @@ const TeacherClassChapterList = () => {
 	const [chapters, setChapters] = useState([]);
 	const [classInfo, setClassInfo] = useState(null);
 	
-	// Set page title with class name if available
-	usePageTitle(classInfo?.name ? ['Chapter Management', classInfo.name] : 'Chapter Management');
+	// Set page title to class name only
+	usePageTitle(classInfo?.name || '');
 	const isClassFinished = isViewOnly || classMenuData?.status === 'FINISHED' || classInfo?.status === 'FINISHED';
 	const viewOnlyMessage = t('classDetail.viewOnly') || 'Class has finished. View-only mode.';
 	const [searchText, setSearchText] = useState('');

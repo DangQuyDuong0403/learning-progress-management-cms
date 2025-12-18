@@ -70,8 +70,8 @@ const ClassTeachers = () => {
   const [teachers, setTeachers] = useState([]);
   const [classData, setClassData] = useState(null);
   
-  // Set page title with class name if available
-  usePageTitle(classData?.name ? ['Class Teachers', classData.name] : 'Class Teachers');
+  // Set page title to class name only
+  usePageTitle(classData?.name || '');
   const isClassFinished = isViewOnly || classMenuData?.status === 'FINISHED' || classData?.status === 'FINISHED';
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState(["ACTIVE"]); // Changed to array to support multiple statuses

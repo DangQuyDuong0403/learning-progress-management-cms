@@ -135,8 +135,19 @@ const DailyChallengeSubmissionDetail = () => {
     return '/teacher';
   }, [isStudent, normalizedRole]);
   
-  // Set page title
-  usePageTitle('Daily Challenge - Submission Detail');
+  // Dynamic page title: "Class Name / Daily Challenge Name / Submission (Student)"
+  const params = new URLSearchParams(location.search || '');
+  const classNameFromContext = dailyChallengeData?.className || location.state?.className || params.get('className') || null;
+  const subtitle = dailyChallengeData?.subtitle || '';
+  const challengeNameFromContext = classNameFromContext 
+    ? (subtitle.includes(' / ') ? subtitle.split(' / ').slice(1).join(' / ') : subtitle || params.get('challengeName') || null)
+    : (subtitle.includes(' / ') ? subtitle.split(' / ')[1] : (subtitle || params.get('challengeName') || null));
+  const submissionNameForTitle = location.state?.studentName || submissionData?.student?.name || null;
+  const titleParts = [];
+  if (classNameFromContext) titleParts.push(classNameFromContext);
+  if (challengeNameFromContext) titleParts.push(challengeNameFromContext);
+  if (submissionNameForTitle) titleParts.push(submissionNameForTitle);
+  usePageTitle(titleParts.length ? titleParts : '');
   
   const [loading, setLoading] = useState(false);
   const [submissionData, setSubmissionData] = useState(null);

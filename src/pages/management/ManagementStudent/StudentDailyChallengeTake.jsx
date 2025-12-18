@@ -8339,7 +8339,11 @@ const StudentDailyChallengeTake = () => {
   );
   const [allowTranslateOnScreen, setAllowTranslateOnScreen] = useState(false);
   
-  usePageTitle('Daily Challenge - Take Challenge');
+  // Set page title: "Class Name / Daily Challenge Name"
+  const titleParts = [];
+  if (challengeInfo.className) titleParts.push(challengeInfo.className);
+  if (challengeInfo.challengeName) titleParts.push(challengeInfo.challengeName);
+  usePageTitle(titleParts.length ? titleParts : '');
   
   // Transform draft API response (sectionDetails format) to sections format
   const transformDraftResponseToSectionsFormat = (draftResponse, challengeType) => {
