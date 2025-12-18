@@ -390,6 +390,11 @@ const AIGenerateFeedback = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [warningVisible, setWarningVisible] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
+  const warningActionRef = React.useRef(null);
+  const [errorVisible, setErrorVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   // Speaking-specific controls
   const [speakingReferenceText, setSpeakingReferenceText] = useState('');
   const [speakingResult, setSpeakingResult] = useState(null);
@@ -2077,44 +2082,77 @@ const AIGenerateFeedback = () => {
         }
         const payload = { submissionQuestionId: writingSubmissionQuestionId };
         const res = await dailyChallengeApi.generateAIFeedback(payload);
-        const raw = res?.data?.data || res?.data || {};
-        const overallFeedback = raw?.overallFeedback || raw?.feedback || '';
-        const aiComments = Array.isArray(raw?.comments) ? raw.comments : [];
-        // criteria feedback for writing - format and combine with overall feedback
-        const criteriaFeedback = raw?.criteriaFeedback || null;
-        // Store criteria separately for UI rendering
-        setWritingCriteria(criteriaFeedback || null);
-        if (overallFeedback) setFeedback(overallFeedback);
-        // Check if answer is image-only - don't save highlights for images
-        const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
-        let mappedComments = [];
-        if (section?.id && aiComments.length > 0 && !isOnlyImageUrl(answerText)) {
-          mappedComments = aiComments
-            .map((c) => ({
-              id: c?.id || `feedback-${Date.now()}-${Math.random()}`,
-              startIndex: Number(c?.startIndex ?? 0),
-              endIndex: Number(c?.endIndex ?? 0),
-              comment: String(c?.comment || ''),
-              timestamp: c?.timestamp || new Date().toISOString(),
-            }))
-            .filter(fb => fb.endIndex > fb.startIndex && fb.comment);
-          if (mappedComments.length > 0) {
-            setWritingSectionFeedbacks(prev => ({ ...prev, [section.id]: mappedComments }));
-          }
+        const responseData = res?.data || res;
+
+        // Handle error field: if error is not null, show error modal
+        if (responseData?.error != null) {
+          const errorMsg = typeof responseData.error === 'string'
+            ? responseData.error
+            : (responseData.error?.message || JSON.stringify(responseData.error));
+          setErrorMessage(errorMsg);
+          setErrorVisible(true);
+          setGenerationProgress(0);
+          setIsGenerating(false);
+          return;
         }
-        setHasAIGenerated(true);
-        // Save generated data to sessionStorage for persistence
-        saveAIGeneratedData(writingSubmissionQuestionId, {
-          feedback: overallFeedback,
-          writingCriteria: criteriaFeedback,
-          writingSectionFeedbacks: section?.id ? { [section.id]: mappedComments } : {},
-          hasAIGenerated: true,
-          sectionType: 'writing',
-        });
-        setGenerationProgress(100);
-        // Small delay to show 100% before closing
-        await new Promise(resolve => setTimeout(resolve, 300));
-        spaceToast.success(getBackendMessage(res) || t('dailyChallenge.aiFeedbackGenerated'));
+
+        // Handle warning field: if error is null and warning exists, show confirmation modal
+        if (responseData?.error == null && responseData?.warning) {
+          const warningMsg = typeof responseData.warning === 'string'
+            ? responseData.warning
+            : (responseData.warning?.message || JSON.stringify(responseData.warning));
+          warningActionRef.current = async () => {
+            await processWritingResponse(responseData, writingSubmissionQuestionId);
+          };
+          setWarningMessage(warningMsg);
+          setWarningVisible(true);
+          return;
+        }
+
+        // No error and no warning, process normally
+        await processWritingResponse(responseData, writingSubmissionQuestionId);
+
+        async function processWritingResponse(data, submissionQuestionIdForSave) {
+          const raw = data?.data?.data || data?.data || data || {};
+          const overallFeedback = raw?.overallFeedback || raw?.feedback || '';
+          const aiComments = Array.isArray(raw?.comments) ? raw.comments : [];
+          const criteriaFeedback = raw?.criteriaFeedback || null;
+
+          setWritingCriteria(criteriaFeedback || null);
+          if (overallFeedback) setFeedback(overallFeedback);
+
+          // Check if answer is image-only - don't save highlights for images
+          const answerText = (studentAnswer?.text || studentAnswer?.essay || buildPromptFromContent() || '').trim();
+          let mappedComments = [];
+          if (section?.id && aiComments.length > 0 && !isOnlyImageUrl(answerText)) {
+            mappedComments = aiComments
+              .map((c) => ({
+                id: c?.id || `feedback-${Date.now()}-${Math.random()}`,
+                startIndex: Number(c?.startIndex ?? 0),
+                endIndex: Number(c?.endIndex ?? 0),
+                comment: String(c?.comment || ''),
+                timestamp: c?.timestamp || new Date().toISOString(),
+              }))
+              .filter(fb => fb.endIndex > fb.startIndex && fb.comment);
+            if (mappedComments.length > 0) {
+              setWritingSectionFeedbacks(prev => ({ ...prev, [section.id]: mappedComments }));
+            }
+          }
+          setHasAIGenerated(true);
+
+          // Save generated data to sessionStorage for persistence
+          saveAIGeneratedData(submissionQuestionIdForSave, {
+            feedback: overallFeedback,
+            writingCriteria: criteriaFeedback,
+            writingSectionFeedbacks: section?.id ? { [section.id]: mappedComments } : {},
+            hasAIGenerated: true,
+            sectionType: 'writing',
+          });
+          setGenerationProgress(100);
+          // Small delay to show 100% before closing
+          await new Promise(resolve => setTimeout(resolve, 300));
+          spaceToast.success(getBackendMessage(res) || t('dailyChallenge.aiFeedbackGenerated'));
+        }
       } else if (sectionType === 'speaking') {
         // Speaking pronunciation assessment - chỉ generate pronunciation scores, không generate feedback
         const audioUrl = studentAnswer?.audioUrl || studentAnswer?.audio;
@@ -2131,34 +2169,64 @@ const AIGenerateFeedback = () => {
         // Log request payload
         const requestPayload = { audioUrl, questionText: cleanedQuestionText, referenceText: refText };
         const res = await dailyChallengeApi.assessPronunciation(requestPayload);
-        
-        const data = res?.data?.data || res?.data || {};
-        
-        // Chỉ update pronunciation scores vào manualSpeakingScores và speakingResult
-        // KHÔNG set feedback từ AI - người dùng tự input feedback
-        setSpeakingResult(data || null);
-        setManualSpeakingScores({
-          pronunciationScore: typeof data?.pronunciationScore === 'number' ? data.pronunciationScore : null,
-          accuracyScore: typeof data?.accuracyScore === 'number' ? data.accuracyScore : null,
-          fluencyScore: typeof data?.fluencyScore === 'number' ? data.fluencyScore : null,
-        });
-        setHasAIGenerated(true);
-        
-        // Save generated pronunciation scores to sessionStorage for persistence
-        // Note: Don't save feedback - user inputs feedback manually
-        const speakingSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
-        if (speakingSubmissionQuestionId) {
-          saveAIGeneratedData(speakingSubmissionQuestionId, {
-            // Don't save feedback - user inputs it manually
-            speakingResult: data,
-            hasAIGenerated: true,
-            sectionType: 'speaking',
-          });
+        const responseData = res?.data || res;
+
+        // Handle error field: if error is not null, show error modal
+        if (responseData?.error != null) {
+          const errorMsg = typeof responseData.error === 'string'
+            ? responseData.error
+            : (responseData.error?.message || JSON.stringify(responseData.error));
+          setErrorMessage(errorMsg);
+          setErrorVisible(true);
+          setGenerationProgress(0);
+          setIsGenerating(false);
+          return;
         }
-        setGenerationProgress(100);
-        // Small delay to show 100% before closing
-        await new Promise(resolve => setTimeout(resolve, 300));
-        spaceToast.success(getBackendMessage(res) || t('dailyChallenge.pronunciationAssessed'));
+
+        // Handle warning field: if error is null and warning exists, show confirmation modal
+        if (responseData?.error == null && responseData?.warning) {
+          const warningMsg = typeof responseData.warning === 'string'
+            ? responseData.warning
+            : (responseData.warning?.message || JSON.stringify(responseData.warning));
+          warningActionRef.current = async () => {
+            await processSpeakingResponse(responseData);
+          };
+          setWarningMessage(warningMsg);
+          setWarningVisible(true);
+          return;
+        }
+
+        // No error and no warning, process normally
+        await processSpeakingResponse(responseData);
+
+        async function processSpeakingResponse(data) {
+          const payloadData = data?.data?.data || data?.data || data || {};
+
+          // Chỉ update pronunciation scores vào manualSpeakingScores và speakingResult
+          // KHÔNG set feedback từ AI - người dùng tự input feedback
+          setSpeakingResult(payloadData || null);
+          setManualSpeakingScores({
+            pronunciationScore: typeof payloadData?.pronunciationScore === 'number' ? payloadData.pronunciationScore : null,
+            accuracyScore: typeof payloadData?.accuracyScore === 'number' ? payloadData.accuracyScore : null,
+            fluencyScore: typeof payloadData?.fluencyScore === 'number' ? payloadData.fluencyScore : null,
+          });
+          setHasAIGenerated(true);
+
+          // Save generated pronunciation scores to sessionStorage for persistence
+          // Note: Don't save feedback - user inputs feedback manually
+          const speakingSubmissionQuestionId = submissionQuestionId || prefill?.submissionQuestionId || null;
+          if (speakingSubmissionQuestionId) {
+            saveAIGeneratedData(speakingSubmissionQuestionId, {
+              speakingResult: payloadData,
+              hasAIGenerated: true,
+              sectionType: 'speaking',
+            });
+          }
+          setGenerationProgress(100);
+          // Small delay to show 100% before closing
+          await new Promise(resolve => setTimeout(resolve, 300));
+          spaceToast.success(getBackendMessage(res) || t('dailyChallenge.pronunciationAssessed'));
+        }
       } else {
         spaceToast.error('AI grading hiện chỉ hỗ trợ cho Writing và Speaking');
       }
@@ -2310,7 +2378,180 @@ const AIGenerateFeedback = () => {
   }, [submissionQuestionId, prefill?.submissionQuestionId, section, writingSectionFeedbacks, score, questionWeight, sectionType, feedback, writingCriteria, buildFeedbackPayloadForSave, handleBack, getBackendMessage, t]);
 
   return (
-    <ThemedLayout
+    <>
+      {/* Warning modal (for backend warnings) */}
+      <Modal
+        title={
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 0',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '30px',
+                lineHeight: 1,
+              }}
+            >
+              ⚠️
+            </span>
+            <span
+              style={{
+                fontSize: '28px',
+                fontWeight: 600,
+                color: 'rgb(24, 144, 255)',
+              }}
+            >
+              {t('dailyChallenge.warning', 'Warning')}
+            </span>
+          </div>
+        }
+        open={warningVisible}
+        centered
+        maskClosable={false}
+        okText={t('dailyChallenge.continue', 'Continue')}
+        cancelText={t('dailyChallenge.cancel', 'Cancel')}
+        width={500}
+        bodyStyle={{
+          padding: '30px 40px',
+          fontSize: '16px',
+          lineHeight: '1.6',
+          textAlign: 'center',
+        }}
+        okButtonProps={{
+          style: {
+            background: theme === 'sun'
+              ? 'rgb(113, 179, 253)'
+              : 'linear-gradient(135deg, #7228d9 0%, #9c88ff 100%)',
+            borderColor: theme === 'sun' ? 'rgb(113, 179, 253)' : '#7228d9',
+            color: theme === 'sun' ? '#000' : '#fff',
+            borderRadius: '6px',
+            height: '40px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '0 30px',
+            transition: 'all 0.3s ease',
+            boxShadow: 'none',
+          },
+        }}
+        cancelButtonProps={{
+          style: {
+            height: '40px',
+            fontWeight: '500',
+            fontSize: '16px',
+            padding: '0 30px',
+            borderRadius: '6px',
+          },
+        }}
+        onOk={async () => {
+          try {
+            if (typeof warningActionRef.current === 'function') {
+              await warningActionRef.current();
+            }
+          } finally {
+            setWarningVisible(false);
+          }
+        }}
+        onCancel={() => {
+          setWarningVisible(false);
+          setIsGenerating(false);
+          setGenerationProgress(0);
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            {warningMessage}
+          </Typography.Paragraph>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            Are you sure you want to continue?
+          </Typography.Paragraph>
+        </div>
+      </Modal>
+
+      {/* Error modal (for backend errors) */}
+      <Modal
+        title={
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 0',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '30px',
+                lineHeight: 1,
+              }}
+            >
+              ❌
+            </span>
+            <span
+              style={{
+                fontSize: '28px',
+                fontWeight: 600,
+                color: '#ff4d4f',
+              }}
+            >
+              {t('dailyChallenge.error', 'Error')}
+            </span>
+          </div>
+        }
+        open={errorVisible}
+        centered
+        maskClosable={false}
+        footer={[
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => {
+              setErrorVisible(false);
+              setIsGenerating(false);
+              setGenerationProgress(0);
+            }}
+            style={{
+              background: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+              borderColor: theme === 'sun' ? '#ff4d4f' : '#ff7875',
+              color: '#fff',
+              borderRadius: '6px',
+              height: '40px',
+              fontWeight: '500',
+              fontSize: '16px',
+              padding: '0 30px',
+              transition: 'all 0.3s ease',
+              boxShadow: 'none',
+            }}
+          >
+            {t('common.close', 'Close')}
+          </Button>,
+        ]}
+        width={500}
+        bodyStyle={{
+          padding: '30px 40px',
+          fontSize: '16px',
+          lineHeight: '1.6',
+          textAlign: 'center',
+        }}
+        onCancel={() => {
+          setErrorVisible(false);
+          setIsGenerating(false);
+          setGenerationProgress(0);
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            {errorMessage}
+          </Typography.Paragraph>
+        </div>
+      </Modal>
+
+      <ThemedLayout
       customHeader={(
         <header className={`themed-header ${theme}-header`}>
           <nav className="themed-navbar">
@@ -4686,6 +4927,7 @@ const AIGenerateFeedback = () => {
         </>
       )}
     </ThemedLayout>
+    </>
   );
 };
 
