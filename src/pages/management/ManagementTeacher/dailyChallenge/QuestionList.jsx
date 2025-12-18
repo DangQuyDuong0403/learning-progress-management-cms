@@ -4832,9 +4832,18 @@ const DailyChallengeContent = () => {
       : normalizedRole === 'teaching_assistant'
         ? '/teaching-assistant'
         : '/teacher';
-    navigate(`${rolePrefix}/daily-challenges/detail/${id}`, {
-      state: challengeInfo
-    });
+
+    // Nếu có classId thì ưu tiên dùng route có classId trong URL
+    if (challengeInfo.classId) {
+      navigate(
+        `${rolePrefix}/classes/daily-challenges/${challengeInfo.classId}/detail/${id}`,
+        { state: challengeInfo }
+      );
+    } else {
+      navigate(`${rolePrefix}/daily-challenges/detail/${id}`, {
+        state: challengeInfo
+      });
+    }
   };
 
   // Only export is exposed in UI; import actions are disabled/hidden
