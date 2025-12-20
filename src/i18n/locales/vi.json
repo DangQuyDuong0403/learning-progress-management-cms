@@ -2966,6 +2966,7 @@
     "editTeacher": "Chỉnh sửa giáo viên",
     "deleteTeacher": "Xóa giáo viên",
     "teacherList": "Danh sách giáo viên",
+    "loadingClasses": "Đang tải danh sách lớp...",
     "classAlreadyHasTeacher": "Lớp \"{{className}}\" đã có giáo viên. Vui lòng chọn lớp khác.",
     "stt": "STT",
     "teacherInfo": "Thông tin giáo viên",
