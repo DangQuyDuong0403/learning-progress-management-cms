@@ -363,7 +363,7 @@ const LevelList = () => {
 
 	const hasVisibleLevels = levels.length > 0;
 	const publishButtonDisabled = !hasVisibleLevels || isAllPublished;
-	const showEditPositionsButton = hasVisibleLevels && !isAllPublished;
+	const showEditPositionsButton = !isAllPublished;
 
 	return (
 		<ThemedLayout>
