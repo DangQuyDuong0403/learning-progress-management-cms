@@ -74,7 +74,6 @@ const ChapterListPage = () => {
 		uploading: false,
 		progress: 0,
 		error: null,
-		chapter: null,
 	});
 
 	// Loading states for buttons
@@ -330,14 +329,13 @@ const ChapterListPage = () => {
 		}));
 	};
 
-	const handleOpenLessonImportModal = (chapter) => {
+	const handleOpenLessonImportModal = () => {
 		setLessonImportModal({
 			visible: true,
 			fileList: [],
 			uploading: false,
 			progress: 0,
 			error: null,
-			chapter,
 		});
 	};
 
@@ -589,10 +587,6 @@ const ChapterListPage = () => {
 
 	const handleLessonValidateFile = async () => {
 		if (lessonValidateLoading) return;
-		if (!lessonImportModal.chapter) {
-			spaceToast.warning('Please select a chapter before importing lessons');
-			return;
-		}
 		if (lessonImportModal.fileList.length === 0) {
 			spaceToast.warning(t('lessonManagement.selectFileToValidate'));
 			return;
@@ -621,7 +615,7 @@ const ChapterListPage = () => {
 
 			const formData = new FormData();
 			formData.append('file', file);
-			formData.append('chapterId', lessonImportModal.chapter.id);
+			formData.append('syllabusId', syllabusId);
 			
 			const response = await syllabusManagementApi.validateLessonImportFile(formData);
 
@@ -691,10 +685,6 @@ const ChapterListPage = () => {
 
 	const handleLessonImportOk = async () => {
 		if (lessonImportModal.uploading) return;
-		if (!lessonImportModal.chapter) {
-			spaceToast.warning('Please select a chapter before importing lessons');
-			return;
-		}
 		if (lessonImportModal.fileList.length === 0) {
 			spaceToast.warning(t('lessonManagement.selectFileToImport'));
 			return;
@@ -721,7 +711,7 @@ const ChapterListPage = () => {
 		try {
 			const formData = new FormData();
 			formData.append('file', file);
-			formData.append('chapterId', lessonImportModal.chapter.id);
+			formData.append('syllabusId', syllabusId);
 			
 			const progressInterval = setInterval(() => {
 				setLessonImportModal(prev => ({
@@ -752,7 +742,6 @@ const ChapterListPage = () => {
 					uploading: false,
 					progress: 0,
 					error: null,
-					chapter: null,
 				});
 			}, 1000);
 			
@@ -796,7 +785,6 @@ const ChapterListPage = () => {
 			uploading: false,
 			progress: 0,
 			error: null,
-			chapter: null,
 		});
 	};
 
@@ -910,14 +898,6 @@ const ChapterListPage = () => {
 							onClick={() => handleViewLessons(record)}
 						/>
 					</Tooltip>
-					<Tooltip title={t('lessonManagement.importLessons')}>
-						<Button
-							type="text"
-							size="small"
-							icon={<DownloadOutlined style={{ fontSize: '25px' }} />}
-							onClick={() => handleOpenLessonImportModal(record)}
-						/>
-					</Tooltip>
 				</Space>
 			),
 		},
@@ -1005,6 +985,13 @@ const ChapterListPage = () => {
 								onClick={handleImport}
 							>
 								{t('chapterManagement.importChapters')}
+							</Button>
+							<Button
+								icon={<DownloadOutlined />}
+								className={`import-button ${theme}-import-button`}
+								onClick={handleOpenLessonImportModal}
+							>
+								{t('lessonManagement.importLessons')}
 							</Button>
 							<Button
 								icon={<DragOutlined />}
@@ -1482,11 +1469,6 @@ const ChapterListPage = () => {
 					</Button>
 				]}>
 				<div style={{ padding: '20px 0' }}>
-					{lessonImportModal.chapter && (
-						<div style={{ textAlign: 'center', marginBottom: '12px', fontSize: '16px', color: '#666' }}>
-							Importing lessons for chapter: <strong>{lessonImportModal.chapter.name}</strong>
-						</div>
-					)}
 					<div style={{ textAlign: 'center', marginBottom: '20px' }}>
 						<Button
 							type="dashed"
