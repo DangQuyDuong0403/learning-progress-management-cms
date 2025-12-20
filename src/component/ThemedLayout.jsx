@@ -116,7 +116,7 @@ const ThemedLayout = ({ children, hideSidebar = false }) => {
           collapsible={false}
           className={`themed-sider ${theme}-sider`}
           style={{
-            overflow: 'auto',
+            overflow: 'hidden',
             height: '100vh',
             position: 'fixed',
             left: 0,
