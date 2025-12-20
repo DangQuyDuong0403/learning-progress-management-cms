@@ -2982,6 +2982,7 @@
     "deleteTeacher": "Delete Teacher",
     "teacherList": "Teacher List",
     "stt": "No",
+    "loadingClasses": "Loading classes...",
     "classAlreadyHasTeacher": "Class \"{{className}}\" already has a teacher. Please select a different class.",
     "bulkUpdateSuccess": "Bulk update completed successfully",
     "bulkUpdateError": "Failed to update teacher statuses",
