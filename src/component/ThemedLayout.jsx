@@ -8,6 +8,8 @@ import ThemedSidebar from './ThemedSidebar';
 import ThemedHeader from './ThemedHeader';
 import ROUTER_PAGE from '../constants/router';
 import './ThemedLayout.css';
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
+import 'overlayscrollbars/overlayscrollbars.css';
 
 const { Sider, Content } = AntLayout;
 
@@ -208,11 +210,6 @@ const ThemedLayout = ({ children, hideSidebar = false }) => {
           zIndex: 1
         }}
       >
-        {/* Themed Header */}
-        <div style={{ position: 'relative', zIndex: 10000 }}>
-          <ThemedHeader />
-        </div>
-
         {/* Background Elements */}
         <div className="bg-element-1"></div>
         {/* <div className="bg-element-2"></div> */}
@@ -227,50 +224,79 @@ const ThemedLayout = ({ children, hideSidebar = false }) => {
         <Content
           className={`themed-content ${theme}-content`}
           style={{
-            padding: '20px 0',
+            padding: `0px 0px 0px 10px`,
             borderRadius: '8px',
-            minHeight: 'calc(100vh - 112px)',
+            minHeight: 'calc(100vh - 1px)',
             height: 'auto',
+            overflow: 'visible',
             width: '100%',
             maxWidth: '100%',
-            overflowY: 'auto',
-            overflowX: 'hidden',
             position: 'relative',
             zIndex: 1
           }}
         >
-          {children}
-          
-          {/* Sun Theme Background Decorations - Only for Sun Theme */}
-          {theme === 'sun' && (
-            <>
-              <div className="sun-decoration-icon">
-                <img 
-                  src="/img/icon-sun1.png" 
-                  alt="Sun Decoration" 
-                  className="sun-icon-image" 
-                />
-              </div>
-              <div className="astronaut-decoration-icon">
-                <img 
-                  src="/img/astronut-11.png" 
-                  alt="Astronaut Decoration" 
-                  className="astronaut-icon-image" 
-                />
-              </div>
-            </>
-          )}
-          
-          {/* Space Theme Background Decorations - Only for Space Theme */}
-          {theme === 'space' && (
-            <div className="space-astronaut-decoration-icon">
-              <img 
-                src="/img/astro.png" 
-                alt="Space Astronaut Decoration" 
-                className="space-astronaut-icon-image" 
-              />
+          <OverlayScrollbarsComponent
+            options={{
+              scrollbars: {
+                autoHide: 'never',
+                autoHideSuspend: false,
+                theme: 'os-theme-custom',
+                visibility: 'visible',
+                pointers: ['mouse', 'touch', 'pen']
+              },
+              overflow: { 
+                x: 'hidden', 
+                y: 'scroll'  // Use 'scroll' instead of 'auto' to always show scrollbar
+              }
+            }}
+            style={{ 
+              height: 'calc(100vh - 1px)',
+              maxHeight: 'calc(100vh - 1px)',
+              width: '100%',
+              overflow: 'auto',
+              position: 'relative'
+            }}
+            className={`themed-content-scrollbar ${theme}-content-scrollbar`}
+          >
+            {/* Themed Header */}
+            <div style={{ position: 'fixed', top: 0, left: sidebarWidth, width: mainWidth, zIndex: 10000 }}>
+              <ThemedHeader />
             </div>
-          )}
+            <div style={{ paddingTop: '80px' }}>
+              {children}
+            </div>
+            
+            {/* Sun Theme Background Decorations - Only for Sun Theme */}
+            {theme === 'sun' && (
+              <>
+                <div className="sun-decoration-icon">
+                  <img 
+                    src="/img/icon-sun1.png" 
+                    alt="Sun Decoration" 
+                    className="sun-icon-image" 
+                  />
+                </div>
+                <div className="astronaut-decoration-icon">
+                  <img 
+                    src="/img/astronut-11.png" 
+                    alt="Astronaut Decoration" 
+                    className="astronaut-icon-image" 
+                  />
+                </div>
+              </>
+            )}
+            
+            {/* Space Theme Background Decorations - Only for Space Theme */}
+            {theme === 'space' && (
+              <div className="space-astronaut-decoration-icon">
+                <img 
+                  src="/img/astro.png" 
+                  alt="Space Astronaut Decoration" 
+                  className="space-astronaut-icon-image" 
+                />
+              </div>
+            )}
+          </OverlayScrollbarsComponent>
         </Content>
       </AntLayout>
     </AntLayout>
