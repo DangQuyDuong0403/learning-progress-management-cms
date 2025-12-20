@@ -1314,6 +1314,23 @@ const renderDragDropQuestionInline = (question, theme) => {
 };
 
 // Helper function to render Rearrange question with inline replacements
+// Helper function for deterministic shuffle with seed
+const seededShuffle = (array, seed) => {
+  const copy = [...array];
+  // Simple seeded random number generator
+  let currentSeed = seed;
+  const seededRandom = () => {
+    currentSeed = (currentSeed * 9301 + 49297) % 233280;
+    return currentSeed / 233280;
+  };
+  
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(seededRandom() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
 const renderRearrangeQuestionInline = (question, theme) => {
   if (!question.questionText || !question.content?.data) {
     return question.questionText || question.question;
@@ -2567,9 +2584,53 @@ const SortableQuestionItem = memo(
             (() => {
               const textColor = theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)';
               const borderColor = theme === 'sun' ? '#66AEFF' : '#A78BFA';
-              const values = Array.isArray(question.content?.data)
-                ? question.content.data.map((i) => i?.value).filter(Boolean)
-                : [];
+              
+              // Get content items and sort by positionId order from questionText
+              const contentItems = Array.isArray(question.content?.data) ? question.content.data : [];
+              const questionText = question.questionText || '';
+              
+              // Extract position order from questionText if available
+              let sortedItems = contentItems;
+              if (questionText && /\[\[pos_/.test(questionText)) {
+                const positionOrder = [];
+                const positionMatches = questionText.matchAll(/\[\[pos_([a-zA-Z0-9]+)\]\]/g);
+                for (const match of positionMatches) {
+                  positionOrder.push(match[1]);
+                }
+                
+                // Build a map of positionId -> item for quick lookup
+                const positionMap = new Map();
+                contentItems.forEach(item => {
+                  if (item?.positionId) {
+                    positionMap.set(String(item.positionId), item);
+                  }
+                });
+                
+                // Sort items according to the order in questionText
+                sortedItems = [];
+                positionOrder.forEach(posId => {
+                  const item = positionMap.get(String(posId));
+                  if (item) {
+                    sortedItems.push(item);
+                  }
+                });
+                
+                // If there are items not in questionText, append them at the end
+                contentItems.forEach(item => {
+                  if (item?.positionId && !positionOrder.includes(String(item.positionId))) {
+                    sortedItems.push(item);
+                  }
+                });
+              }
+              
+              // Get values in correct order for "Drop the words here in order:"
+              const values = sortedItems.map((i) => i?.value).filter(Boolean);
+              
+              // Shuffle values for "Drag these words to the slots above:" using deterministic shuffle with seed
+              // Use question.id as seed to ensure same shuffle order on every render
+              const seed = question.id ? String(question.id).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 12345;
+              const shuffledValues = seededShuffle(values, seed);
+              
               const count = values.length || 3;
               const correctBorderColor = 'rgba(82, 196, 26, 0.7)';
               return (
@@ -2641,7 +2702,7 @@ const SortableQuestionItem = memo(
                       Drag these words to the slots above:
                     </div>
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                      {values.map((val, idx) => (
+                      {shuffledValues.map((val, idx) => (
                         <div
                           key={idx}
                           style={{

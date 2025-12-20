@@ -384,10 +384,48 @@ const AIGenerateReading = () => {
           };
         }
         case 'REARRANGE': {
+          // Use questionText
+          const text = q?.questionText || q?.question || '';
           const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
-          // Đáp án đúng = thứ tự words trong content.data
-          const words = contentItems.map(it => it?.value ?? '').filter(Boolean);
-          const shuffled = (() => {
+          
+          // Extract position order from questionText (e.g., [[pos_a1b2]] [[pos_c3d4]] ...)
+          const positionOrder = [];
+          const positionMatches = text.matchAll(/\[\[pos_([a-zA-Z0-9]+)\]\]/g);
+          for (const match of positionMatches) {
+            positionOrder.push(match[1]);
+          }
+          
+          // Build a map of positionId -> item for quick lookup
+          const positionMap = new Map();
+          contentItems.forEach(item => {
+            if (item?.positionId) {
+              positionMap.set(String(item.positionId), item);
+            }
+          });
+          
+          // Sort contentItems according to the order in questionText
+          const sortedItems = [];
+          positionOrder.forEach(posId => {
+            const item = positionMap.get(String(posId));
+            if (item) {
+              sortedItems.push(item);
+            }
+          });
+          
+          // If there are items not in questionText, append them at the end
+          contentItems.forEach(item => {
+            if (item?.positionId && !positionOrder.includes(String(item.positionId))) {
+              sortedItems.push(item);
+            }
+          });
+          
+          // Use sorted items to get correct order
+          const words = sortedItems.length > 0 
+            ? sortedItems.map(it => it.value)
+            : contentItems.map(it => it.value);
+          
+          // Shuffle for sourceItems (available words)
+          const shuffledWords = (() => {
             const copy = [...words];
             for (let i = copy.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1));
@@ -395,17 +433,17 @@ const AIGenerateReading = () => {
             }
             return copy;
           })();
-          const text = q?.questionText || q?.question || '';
+          
           return {
             id: nextId(),
             type: 'REARRANGE',
             title: `Question ${counter}`,
-            // Human-friendly instruction (không hiện placeholder)
+            // Show human-friendly instruction; keep placeholders only in questionText
             question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
-            questionText: text,
-            sourceItems: shuffled,   // available words (đã shuffle)
-            correctOrder: words,     // đáp án đúng
-            content: { data: contentItems },
+            questionText: text || '',
+            sourceItems: shuffledWords, // Available words (được shuffle)
+            correctOrder: words,        // Thứ tự đúng theo questionText
+            content: { data: sortedItems.length > 0 ? sortedItems : contentItems },
             points: q?.points ?? q?.weight ?? q?.score ?? 1,
           };
         }
@@ -763,7 +801,6 @@ const AIGenerateReading = () => {
           case 'FILL_IN_THE_BLANK':
           case 'DROPDOWN':
           case 'DRAG_AND_DROP':
-          case 'REARRANGE':
           case 'REWRITE':
             return {
               questionText: q.questionText || q.question || '',
@@ -773,6 +810,92 @@ const AIGenerateReading = () => {
               content: { data: toData(q.content?.data, { forFill: q.type === 'FILL_IN_THE_BLANK' }) },
               toBeDeleted: false,
             };
+          case 'REARRANGE': {
+            const rawItems = toData(q.content?.data);
+            // sanitize: require positionId and value; normalize positionId to plain number/string
+            const sanitizedItems = rawItems
+              .filter((it) => it && it.value && it.positionId !== undefined && it.positionId !== null && String(it.positionId).trim() !== '')
+              .map((it) => ({
+                ...it,
+                positionId: String(it.positionId).replace(/^pos_/, ''),
+              }));
+            
+            // Get order from questionText if it contains placeholders, otherwise use correctOrder
+            let sortedItems = sanitizedItems;
+            const questionTextWithPlaceholders = q.questionText || q.question || '';
+            
+            if (/\[\[pos_/.test(questionTextWithPlaceholders)) {
+              // Parse position order from questionText
+              const positionOrder = [];
+              const positionMatches = questionTextWithPlaceholders.matchAll(/\[\[pos_([a-zA-Z0-9]+)\]\]/g);
+              for (const match of positionMatches) {
+                positionOrder.push(match[1]);
+              }
+              
+              // Build a map of positionId -> item for quick lookup
+              const positionMap = new Map();
+              sanitizedItems.forEach(item => {
+                if (item?.positionId) {
+                  positionMap.set(String(item.positionId), item);
+                }
+              });
+              
+              // Sort items according to the order in questionText
+              sortedItems = [];
+              positionOrder.forEach(posId => {
+                const item = positionMap.get(String(posId));
+                if (item) {
+                  sortedItems.push(item);
+                }
+              });
+              
+              // If there are items not in questionText, append them at the end
+              sanitizedItems.forEach(item => {
+                if (item?.positionId && !positionOrder.includes(String(item.positionId))) {
+                  sortedItems.push(item);
+                }
+              });
+            } else if (Array.isArray(q.correctOrder) && q.correctOrder.length > 0) {
+              // Fallback: use correctOrder to determine sequence
+              const valueToItem = new Map();
+              sanitizedItems.forEach(item => {
+                if (item?.value) {
+                  valueToItem.set(String(item.value), item);
+                }
+              });
+              
+              sortedItems = [];
+              q.correctOrder.forEach(value => {
+                const item = valueToItem.get(String(value));
+                if (item) {
+                  sortedItems.push(item);
+                }
+              });
+              
+              // Append any remaining items
+              sanitizedItems.forEach(item => {
+                if (!q.correctOrder.includes(item.value)) {
+                  sortedItems.push(item);
+                }
+              });
+            }
+            
+            // Backend requires placeholders [[pos_X]] present in questionText
+            const placeholderText = sortedItems.length
+              ? sortedItems
+                  .map((it) => `[[pos_${it.positionId}]]`)
+                  .join(' ')
+              : (questionTextWithPlaceholders || '');
+            
+            return {
+              questionText: placeholderText,
+              orderNumber,
+              weight: q.points || 1,
+              questionType: 'REARRANGE',
+              content: { data: sortedItems },
+              toBeDeleted: false,
+            };
+          }
           default:
             return { questionText: q.question || '', orderNumber, weight: 1, questionType: 'MULTIPLE_CHOICE', content: { data: [] }, toBeDeleted: false };
         }
