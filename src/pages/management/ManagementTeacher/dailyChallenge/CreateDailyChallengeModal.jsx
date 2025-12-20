@@ -37,19 +37,9 @@ const SimpleDailyChallengeModal = ({
   const [form] = Form.useForm();
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [lessons, setLessons] = useState([]);
-  const [namePrefix, setNamePrefix] = useState('');
   
   // Check if challengeType is already set from modal
   const challengeTypeAlreadySet = !!lessonData?.challengeType;
-  
-  // Prefix options based on challenge types
-  const prefixOptions = [
-    { value: '[Grammar&Vocabulary]', label: t('dailyChallenge.typeNames.GV', 'Grammar & Vocabulary') },
-    { value: '[Speaking]', label: t('dailyChallenge.typeNames.SP', 'Speaking') },
-    { value: '[Writing]', label: t('dailyChallenge.typeNames.WR', 'Writing') },
-    { value: '[Reading]', label: t('dailyChallenge.typeNames.RE', 'Reading') },
-    { value: '[Listening]', label: t('dailyChallenge.typeNames.LI', 'Listening') },
-  ];
   // Populate lessons from parent list when available
   useEffect(() => {
     if (visible) {
@@ -61,7 +51,7 @@ const SimpleDailyChallengeModal = ({
     }
   }, [visible, lessonsFromList]);
 
-  // Auto-populate lesson and challengeType when lessonData is provided
+  // Auto-populate lesson, challengeType, and challengeName when lessonData is provided
   useEffect(() => {
     if (visible && lessonData) {
       const fieldsToSet = {};
@@ -74,9 +64,10 @@ const SimpleDailyChallengeModal = ({
       // Set challengeType if it exists (when coming from type selection modal)
       if (lessonData.challengeType) {
         fieldsToSet.challengeType = lessonData.challengeType;
-        // Auto-set prefix based on challenge type
+        
+        // Auto-set challengeName with prefix based on challenge type
         const prefixMap = {
-          'GV': '[Grammar&Vocabulary]',
+          'GV': '[Grammar & Vocabulary]',
           'SP': '[Speaking]',
           'WR': '[Writing]',
           'RE': '[Reading]',
@@ -84,14 +75,15 @@ const SimpleDailyChallengeModal = ({
         };
         const autoPrefix = prefixMap[lessonData.challengeType];
         if (autoPrefix) {
-          setNamePrefix(autoPrefix);
+          // Always set challengeName with prefix when coming from type selection
+          fieldsToSet.challengeName = autoPrefix;
         }
       }
       
       form.setFieldsValue(fieldsToSet);
     } else if (!visible) {
-      // Reset prefix when modal closes
-      setNamePrefix('');
+      // Reset form when modal closes
+      form.resetFields();
     }
   }, [visible, lessonData, form]);
 
@@ -106,13 +98,9 @@ const SimpleDailyChallengeModal = ({
       // Ensure challengeType is set - use from lessonData if not in form values
       const challengeType = values.challengeType || lessonData?.challengeType;
       
-      // Combine prefix with challenge name
-      const finalChallengeName = namePrefix 
-        ? `${namePrefix} ${values.challengeName}`.trim()
-        : values.challengeName;
-      
+      // Use challengeName as is (already includes prefix if set from type selection)
       const challengeData = {
-        challengeName: finalChallengeName,
+        challengeName: values.challengeName,
         classLessonId: values.classLessonId,
         description: values.description,
         challengeType: challengeType,
@@ -147,29 +135,9 @@ const SimpleDailyChallengeModal = ({
 
   const handleModalCancel = () => {
     form.resetFields();
-    setNamePrefix('');
     setIsButtonDisabled(false);
     onCancel();
   };
-  
-  // Auto-update prefix when challengeType changes in form
-  const challengeTypeValue = Form.useWatch('challengeType', form);
-  useEffect(() => {
-    const challengeType = challengeTypeValue || lessonData?.challengeType;
-    if (challengeType) {
-      const prefixMap = {
-        'GV': '[Grammar&Vocabulary]',
-        'SP': '[Speaking]',
-        'WR': '[Writing]',
-        'RE': '[Reading]',
-        'LI': '[Listening]',
-      };
-      const autoPrefix = prefixMap[challengeType];
-      if (autoPrefix) {
-        setNamePrefix(autoPrefix);
-      }
-    }
-  }, [challengeTypeValue, lessonData?.challengeType]);
 
   return (
     <Modal
@@ -258,7 +226,7 @@ const SimpleDailyChallengeModal = ({
         style={{ marginTop: '24px' }}
       >
         <Row gutter={16}>
-          <Col span={24}>
+          <Col span={12}>
             <Form.Item
               label={
                 <span>
@@ -273,41 +241,15 @@ const SimpleDailyChallengeModal = ({
                   message: t('dailyChallenge.challengeNameRequired'),
                 },
               ]}>
-              <div style={{ display: 'flex', gap: 0, alignItems: 'stretch' }}>
-                <Select
-                  value={namePrefix}
-                  onChange={setNamePrefix}
-                  style={{ 
-                    width: '40%', 
-                    height: '40px',
-                    borderRadius: '6px 0 0 6px',
-                    borderRight: 'none',
-                    marginRight: '-3px'
-                  }}
-                  placeholder={t('dailyChallenge.selectPrefix', 'Select prefix')}
-                  allowClear
-                >
-                  {prefixOptions.map(option => (
-                    <Option key={option.value} value={option.value}>
-                      {option.value}
-                    </Option>
-                  ))}
-                </Select>
-                <Input 
-                  placeholder={t('dailyChallenge.challengeNamePlaceholder')}
-                  style={{ 
-                    width: '60%', 
-                    height: '40px', 
-                    borderRadius: '0 6px 6px 0',
-                  }}
-                />
-              </div>
+              <Input 
+                placeholder={t('dailyChallenge.challengeNamePlaceholder')}
+                style={{ 
+                  height: '40px',
+                }}
+              />
             </Form.Item>
           </Col>
-        </Row>
-        
-        <Row gutter={16}>
-          <Col span={24}>
+          <Col span={12}>
             <Form.Item
               label={
                 <span>

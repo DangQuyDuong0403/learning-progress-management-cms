@@ -2104,6 +2104,7 @@
     "writingSection": "Phần Viết",
     "speakingSection": "Phần Nói",
     "question": "Câu hỏi",
+    "questionListButton": "Danh sách câu hỏi",
     "point": "điểm",
     "points": "điểm",
     "readingSectionTitle": "Đọc {{index}}: Câu hỏi {{start}}-{{end}}",

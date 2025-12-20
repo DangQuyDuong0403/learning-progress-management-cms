@@ -841,7 +841,7 @@ const DailyChallengePerformance = () => {
               });
             }}
           >
-            {t('dailyChallenge.question')}
+            {t('dailyChallenge.questionListButton')}
           </Button>
           <Button
             className={`dcpr-tab-button ${theme}-dcpr-tab-button`}
