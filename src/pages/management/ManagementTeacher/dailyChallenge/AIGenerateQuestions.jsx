@@ -6,6 +6,7 @@ import {
   Card,
   Tooltip,
   Modal,
+  Spin,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -172,7 +173,6 @@ const AIGenerateQuestions = () => {
   
   const [saving, setSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   // Local selections for interactive preview of Dropdown type
   const [dropdownSelections, setDropdownSelections] = useState({});
@@ -790,10 +790,44 @@ const AIGenerateQuestions = () => {
             // Use questionText
             const text = q?.questionText || q?.question || '';
             const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
-            // For REARRANGE:
-            // - correctOrder: giữ nguyên thứ tự từ backend (đây là thứ tự đúng)
-            // - sourceItems: shuffle để hiển thị ở "available words"
-            const words = contentItems.map(it => it.value);
+            
+            // Extract position order from questionText (e.g., [[pos_a1b2]] [[pos_c3d4]] ...)
+            const positionOrder = [];
+            const positionMatches = text.matchAll(/\[\[pos_([a-zA-Z0-9]+)\]\]/g);
+            for (const match of positionMatches) {
+              positionOrder.push(match[1]);
+            }
+            
+            // Build a map of positionId -> item for quick lookup
+            const positionMap = new Map();
+            contentItems.forEach(item => {
+              if (item?.positionId) {
+                positionMap.set(String(item.positionId), item);
+              }
+            });
+            
+            // Sort contentItems according to the order in questionText
+            const sortedItems = [];
+            positionOrder.forEach(posId => {
+              const item = positionMap.get(String(posId));
+              if (item) {
+                sortedItems.push(item);
+              }
+            });
+            
+            // If there are items not in questionText, append them at the end
+            contentItems.forEach(item => {
+              if (item?.positionId && !positionOrder.includes(String(item.positionId))) {
+                sortedItems.push(item);
+              }
+            });
+            
+            // Use sorted items to get correct order
+            const words = sortedItems.length > 0 
+              ? sortedItems.map(it => it.value)
+              : contentItems.map(it => it.value);
+            
+            // Shuffle for sourceItems (available words)
             const shuffledWords = (() => {
               const copy = [...words];
               for (let i = copy.length - 1; i > 0; i--) {
@@ -802,6 +836,7 @@ const AIGenerateQuestions = () => {
               }
               return copy;
             })();
+            
             return {
               id: nextId(),
               type: 'REARRANGE',
@@ -810,8 +845,8 @@ const AIGenerateQuestions = () => {
               question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
               questionText: text || '',
               sourceItems: shuffledWords, // Available words (được shuffle)
-              correctOrder: words,        // Thứ tự đúng theo backend (không sort lại)
-              content: { data: contentItems },
+              correctOrder: words,        // Thứ tự đúng theo questionText
+              content: { data: sortedItems.length > 0 ? sortedItems : contentItems },
               points: q?.points ?? q?.weight ?? q?.score ?? 1,
             };
           }
@@ -856,7 +891,6 @@ const AIGenerateQuestions = () => {
     
     try {
       setIsGenerating(true);
-      setGenerationProgress(0);
       setShowPreview(false);
       // Prepare level value: for Camkey levels, send ID as string; for others, send the value directly
       const levelValue = selectedLevel ? String(selectedLevel) : '';
@@ -886,7 +920,6 @@ const AIGenerateQuestions = () => {
           : (responseData.error?.message || JSON.stringify(responseData.error));
         setErrorMessage(errorMsg);
         setErrorVisible(true);
-        setGenerationProgress(0);
         setIsGenerating(false);
         return;
       }
@@ -929,7 +962,6 @@ const AIGenerateQuestions = () => {
         }
         
         const normalized = normalizeQuestionsFromAI(rawList);
-        setGenerationProgress(100);
         // Small delay to show 100% before closing
         await new Promise(resolve => setTimeout(resolve, 300));
         if (!normalized.length) {
@@ -942,7 +974,6 @@ const AIGenerateQuestions = () => {
           spaceToast.success(t('dailyChallenge.aiQuestionsGenerated') || 'AI questions generated successfully!');
         }
         setIsGenerating(false);
-        setGenerationProgress(0);
       }
       
     } catch (error) {
@@ -951,7 +982,6 @@ const AIGenerateQuestions = () => {
       spaceToast.error(beErr || error?.response?.data?.error || t('dailyChallenge.failedToGenerateQuestions', 'Failed to generate AI questions'));
     } finally {
       setIsGenerating(false);
-      setGenerationProgress(0);
     }
   }, [promptDescription, challengeInfo.challengeId, id, questionTypeConfigs, normalizeQuestionsFromAI, selectedLevel, lessonFocus, customLessonFocus, vocabularyList, getBackendMessage, t]);
 
@@ -963,7 +993,6 @@ const AIGenerateQuestions = () => {
     }
     try {
       setIsGenerating(true);
-      setGenerationProgress(0);
       setShowPreview(false);
       const res = await dailyChallengeApi.parseQuestionsFromFile(uploadedFile, promptDescription || '');
       // axiosClient already unwraps response.data, so res is already the data object
@@ -976,7 +1005,6 @@ const AIGenerateQuestions = () => {
           : (responseData.error?.message || JSON.stringify(responseData.error));
         setErrorMessage(errorMsg);
         setErrorVisible(true);
-        setGenerationProgress(0);
         setIsGenerating(false);
         return;
       }
@@ -1014,7 +1042,6 @@ const AIGenerateQuestions = () => {
         }
         
         const normalized = normalizeQuestionsFromAI(rawList);
-        setGenerationProgress(100);
         // Small delay to show 100% before closing
         await new Promise(resolve => setTimeout(resolve, 300));
         if (!normalized.length) {
@@ -1027,7 +1054,6 @@ const AIGenerateQuestions = () => {
           spaceToast.success(t('dailyChallenge.questionsGeneratedFromFile', 'Questions generated from file'));
         }
         setIsGenerating(false);
-        setGenerationProgress(0);
       }
     } catch (err) {
       console.error('Generate from file error:', err);
@@ -1035,30 +1061,9 @@ const AIGenerateQuestions = () => {
       spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToGenerateFromFile', 'Failed to generate from file'));
     } finally {
       setIsGenerating(false);
-      setGenerationProgress(0);
     }
   }, [uploadedFile, promptDescription, normalizeQuestionsFromAI, getBackendMessage, t]);
 
-  // Simulate progress when generating
-  useEffect(() => {
-    let progressInterval = null;
-    if (isGenerating) {
-      setGenerationProgress(0);
-      progressInterval = setInterval(() => {
-        setGenerationProgress((prev) => {
-          if (prev >= 90) {
-            return prev; // Stop at 90% until API call completes
-          }
-          // Increment progress with decreasing speed
-          const increment = prev < 30 ? 3 : prev < 60 ? 2 : 1;
-          return Math.min(prev + increment, 90);
-        });
-      }, 200);
-    }
-    return () => {
-      if (progressInterval) clearInterval(progressInterval);
-    };
-  }, [isGenerating]);
 
   // Handle save
   const handleSave = useCallback(async () => {
@@ -1167,25 +1172,86 @@ const AIGenerateQuestions = () => {
           case 'REARRANGE': {
             const rawItems = toContentData(q.content?.data);
             // sanitize: require positionId and value; normalize positionId to plain number/string
-            const items = rawItems
+            const sanitizedItems = rawItems
               .filter((it) => it && it.value && it.positionId !== undefined && it.positionId !== null && String(it.positionId).trim() !== '')
               .map((it) => ({
                 ...it,
                 positionId: String(it.positionId).replace(/^pos_/, ''),
-              }))
-              .sort((a, b) => (Number(a.positionId) || 0) - (Number(b.positionId) || 0));
+              }));
+            
+            // Get order from questionText if it contains placeholders, otherwise use correctOrder
+            let sortedItems = sanitizedItems;
+            const questionTextWithPlaceholders = q.questionText || q.question || '';
+            
+            if (/\[\[pos_/.test(questionTextWithPlaceholders)) {
+              // Parse position order from questionText
+              const positionOrder = [];
+              const positionMatches = questionTextWithPlaceholders.matchAll(/\[\[pos_([a-zA-Z0-9]+)\]\]/g);
+              for (const match of positionMatches) {
+                positionOrder.push(match[1]);
+              }
+              
+              // Build a map of positionId -> item for quick lookup
+              const positionMap = new Map();
+              sanitizedItems.forEach(item => {
+                if (item?.positionId) {
+                  positionMap.set(String(item.positionId), item);
+                }
+              });
+              
+              // Sort items according to the order in questionText
+              sortedItems = [];
+              positionOrder.forEach(posId => {
+                const item = positionMap.get(String(posId));
+                if (item) {
+                  sortedItems.push(item);
+                }
+              });
+              
+              // If there are items not in questionText, append them at the end
+              sanitizedItems.forEach(item => {
+                if (item?.positionId && !positionOrder.includes(String(item.positionId))) {
+                  sortedItems.push(item);
+                }
+              });
+            } else if (Array.isArray(q.correctOrder) && q.correctOrder.length > 0) {
+              // Fallback: use correctOrder to determine sequence
+              const valueToItem = new Map();
+              sanitizedItems.forEach(item => {
+                if (item?.value) {
+                  valueToItem.set(String(item.value), item);
+                }
+              });
+              
+              sortedItems = [];
+              q.correctOrder.forEach(value => {
+                const item = valueToItem.get(String(value));
+                if (item) {
+                  sortedItems.push(item);
+                }
+              });
+              
+              // Append any remaining items
+              sanitizedItems.forEach(item => {
+                if (!q.correctOrder.includes(item.value)) {
+                  sortedItems.push(item);
+                }
+              });
+            }
+            
             // Backend requires placeholders [[pos_X]] present in questionText
-            const placeholderText = items.length
-              ? items
+            const placeholderText = sortedItems.length
+              ? sortedItems
                   .map((it) => `[[pos_${it.positionId}]]`)
                   .join(' ')
-              : (q.questionText || q.question || '');
+              : (questionTextWithPlaceholders || '');
+            
             return {
               questionText: placeholderText,
               orderNumber,
               weight: q.points || 1,
               questionType: 'REARRANGE',
-              content: { data: items },
+              content: { data: sortedItems },
               toBeDeleted: false,
             };
           }
@@ -1778,7 +1844,6 @@ const AIGenerateQuestions = () => {
         onCancel={() => {
           setWarningVisible(false);
           setIsGenerating(false);
-          setGenerationProgress(0);
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1830,7 +1895,6 @@ const AIGenerateQuestions = () => {
             onClick={() => {
               setErrorVisible(false);
               setIsGenerating(false);
-              setGenerationProgress(0);
             }}
             style={{
               background: theme === 'sun' ? '#ff4d4f' : '#ff7875',
@@ -1858,7 +1922,6 @@ const AIGenerateQuestions = () => {
         onCancel={() => {
           setErrorVisible(false);
           setIsGenerating(false);
-          setGenerationProgress(0);
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1889,18 +1952,6 @@ const AIGenerateQuestions = () => {
           />
         </div>
       )}
-      <style>
-        {`
-          @keyframes astroBounce {
-            0%, 100% {
-              transform: translateY(-50%) translateY(0);
-            }
-            50% {
-              transform: translateY(-50%) translateY(-8px);
-            }
-          }
-        `}
-      </style>
       <div
         className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}
         style={mainContentStyle}
@@ -3290,93 +3341,21 @@ const AIGenerateQuestions = () => {
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div style={{ width: '100%', padding: '0 8px' }}>
-                    <div style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
-                      {/* Progress Bar Background */}
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '32px',
-                          borderRadius: '16px',
-                          background: theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.15)',
-                          position: 'relative',
-                          overflow: 'visible',
-                          border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(139, 92, 246, 0.2)'}`
-                        }}
-                      >
-                        {/* Progress Fill with Gradient */}
-                        <div
-                          style={{
-                            width: `${generationProgress}%`,
-                            height: '100%',
-                            background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)',
-                            borderRadius: '14px',
-                            transition: 'width 0.3s ease',
-                            position: 'relative',
-                            boxShadow: '0 2px 8px rgba(255, 165, 0, 0.3)',
-                            overflow: 'visible'
-                          }}
-                        >
-                          {/* Astro Image on Progress Bar */}
-                          {generationProgress > 0 && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                right: '-20px',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                width: '48px',
-                                height: '48px',
-                                zIndex: 10,
-                                animation: 'astroBounce 1s ease-in-out infinite'
-                              }}
-                            >
-                              <img
-                                src="/img/astro.png"
-                                alt="Astro"
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'contain',
-                                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {/* Percentage Text */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          fontSize: '14px',
-                          fontWeight: 700,
-                          color: theme === 'sun' ? '#0F172A' : '#FFFFFF',
-                          textShadow: theme === 'sun'
-                            ? '0 1px 2px rgba(255, 255, 255, 0.9)'
-                            : '0 1px 2px rgba(0, 0, 0, 0.6)',
-                          zIndex: 5,
-                          pointerEvents: 'none'
-                        }}
-                      >
-                        {generationProgress}%
-                      </div>
-                    </div>
+                  {/* Loading Spinner */}
+                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                    <Spin 
+                      size="large" 
+                      style={{ 
+                        color: primaryColor 
+                      }}
+                    />
                     <div style={{ 
-                      fontSize: '13px', 
-                      color: theme === 'sun' ? '#94a3b8' : '#64748b', 
+                      fontSize: '14px', 
+                      color: theme === 'sun' ? '#64748b' : '#94a3b8', 
                       fontWeight: 400,
-                      marginTop: '4px',
                       textAlign: 'center'
                     }}>
-                      {generationProgress < 30 ? t('dailyChallenge.analyzingPrompt', 'Analyzing prompt...') :
-                       generationProgress < 60 ? t('dailyChallenge.creatingQuestions', 'Creating questions...') :
-                       generationProgress < 90 ? t('dailyChallenge.finalizingContent', 'Finalizing content...') :
-                       t('dailyChallenge.almostDone', 'Almost done...')}
+                      {t('dailyChallenge.pleaseWait', 'Please wait...')}
                     </div>
                   </div>
                 </div>
@@ -4384,4 +4363,5 @@ const AIGenerateQuestions = () => {
 };
 
 export default AIGenerateQuestions;
+
 

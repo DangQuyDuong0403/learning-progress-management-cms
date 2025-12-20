@@ -7,6 +7,7 @@ import {
   Tooltip,
   Typography,
   Modal,
+  Spin,
 } from "antd";
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
@@ -96,7 +97,6 @@ const AIGenerateReading = () => {
   const [passagePrompt, setPassagePrompt] = useState("");
   const [numParagraphs] = useState(1);
   const [generatingPassage, setGeneratingPassage] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
   const [passage, setPassage] = useState("");
   // passage input mode: always 'manual' - user must add passage manually
   const [passageMode, setPassageMode] = useState('manual');
@@ -384,10 +384,48 @@ const AIGenerateReading = () => {
           };
         }
         case 'REARRANGE': {
+          // Use questionText
+          const text = q?.questionText || q?.question || '';
           const contentItems = Array.isArray(q?.content?.data) ? q.content.data : [];
-          // Đáp án đúng = thứ tự words trong content.data
-          const words = contentItems.map(it => it?.value ?? '').filter(Boolean);
-          const shuffled = (() => {
+          
+          // Extract position order from questionText (e.g., [[pos_a1b2]] [[pos_c3d4]] ...)
+          const positionOrder = [];
+          const positionMatches = text.matchAll(/\[\[pos_([a-zA-Z0-9]+)\]\]/g);
+          for (const match of positionMatches) {
+            positionOrder.push(match[1]);
+          }
+          
+          // Build a map of positionId -> item for quick lookup
+          const positionMap = new Map();
+          contentItems.forEach(item => {
+            if (item?.positionId) {
+              positionMap.set(String(item.positionId), item);
+            }
+          });
+          
+          // Sort contentItems according to the order in questionText
+          const sortedItems = [];
+          positionOrder.forEach(posId => {
+            const item = positionMap.get(String(posId));
+            if (item) {
+              sortedItems.push(item);
+            }
+          });
+          
+          // If there are items not in questionText, append them at the end
+          contentItems.forEach(item => {
+            if (item?.positionId && !positionOrder.includes(String(item.positionId))) {
+              sortedItems.push(item);
+            }
+          });
+          
+          // Use sorted items to get correct order
+          const words = sortedItems.length > 0 
+            ? sortedItems.map(it => it.value)
+            : contentItems.map(it => it.value);
+          
+          // Shuffle for sourceItems (available words)
+          const shuffledWords = (() => {
             const copy = [...words];
             for (let i = copy.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1));
@@ -395,17 +433,17 @@ const AIGenerateReading = () => {
             }
             return copy;
           })();
-          const text = q?.questionText || q?.question || '';
+          
           return {
             id: nextId(),
             type: 'REARRANGE',
             title: `Question ${counter}`,
-            // Human-friendly instruction (không hiện placeholder)
+            // Show human-friendly instruction; keep placeholders only in questionText
             question: t('dailyChallenge.rearrangeWordsByDragging', 'Rearrange the words by dragging them into the correct order:'),
-            questionText: text,
-            sourceItems: shuffled,   // available words (đã shuffle)
-            correctOrder: words,     // đáp án đúng
-            content: { data: contentItems },
+            questionText: text || '',
+            sourceItems: shuffledWords, // Available words (được shuffle)
+            correctOrder: words,        // Thứ tự đúng theo questionText
+            content: { data: sortedItems.length > 0 ? sortedItems : contentItems },
             points: q?.points ?? q?.weight ?? q?.score ?? 1,
           };
         }
@@ -512,7 +550,6 @@ const AIGenerateReading = () => {
     }
     try {
       setGeneratingPassage(true);
-      setGenerationProgress(0);
       const payload = {
         challengeId: challengeInfo.challengeId,
         numberOfParagraphs: Number(numParagraphs) || 1,
@@ -526,7 +563,6 @@ const AIGenerateReading = () => {
       const text = data?.passage || data?.content || data?.sectionsContent || '';
       if (!text) throw new Error('No passage returned');
       // Keep generated passage internally; do not overwrite the user's prompt
-      setGenerationProgress(100);
       // Small delay to show 100% before closing
       await new Promise(resolve => setTimeout(resolve, 300));
       setPassage(text);
@@ -547,7 +583,6 @@ const AIGenerateReading = () => {
       spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToGeneratePassage', 'Failed to generate passage'));
     } finally {
       setGeneratingPassage(false);
-      setGenerationProgress(0);
     }
   }, [challengeInfo.challengeId, description, passagePrompt, numParagraphs, selectedLevel, vocabularyList, getBackendMessage, t]);
 
@@ -589,7 +624,6 @@ const AIGenerateReading = () => {
     }));
     try {
       setIsGenerating(true);
-      setGenerationProgress(0);
       setShowPreview(false);
       // Prepare level value: for Camkey levels, send ID as string; for others, send the value directly
       const levelValue = selectedLevel ? String(selectedLevel) : '';
@@ -622,7 +656,6 @@ const AIGenerateReading = () => {
           : (responseData.error?.message || JSON.stringify(responseData.error));
         setErrorMessage(errorMsg);
         setErrorVisible(true);
-        setGenerationProgress(0);
         setIsGenerating(false);
         return;
       }
@@ -660,7 +693,6 @@ const AIGenerateReading = () => {
         }
         
         const normalized = normalizeQuestionsFromAI(rawList);
-        setGenerationProgress(100);
         // Small delay to show 100% before closing
         await new Promise(resolve => setTimeout(resolve, 300));
         if (!normalized.length) {
@@ -676,7 +708,6 @@ const AIGenerateReading = () => {
           spaceToast.success(successMsg);
         }
         setIsGenerating(false);
-        setGenerationProgress(0);
       }
     } catch (err) {
       console.error('Generate content-based questions error:', err);
@@ -684,30 +715,10 @@ const AIGenerateReading = () => {
       spaceToast.error(beErr || err?.response?.data?.error || t('dailyChallenge.failedToGenerateQuestions', 'Failed to generate questions'));
     } finally {
       setIsGenerating(false);
-      setGenerationProgress(0);
     }
   }, [challengeInfo.challengeId, passage, passagePrompt, questionTypeConfigs, t, normalizeQuestionsFromAI, selectedLevel, description, getBackendMessage]);
 
   // Simulate progress when generating
-  useEffect(() => {
-    let progressInterval = null;
-    if (isGenerating || generatingPassage) {
-      setGenerationProgress(0);
-      progressInterval = setInterval(() => {
-        setGenerationProgress((prev) => {
-          if (prev >= 90) {
-            return prev; // Stop at 90% until API call completes
-          }
-          // Increment progress with decreasing speed
-          const increment = prev < 30 ? 3 : prev < 60 ? 2 : 1;
-          return Math.min(prev + increment, 90);
-        });
-      }, 200);
-    }
-    return () => {
-      if (progressInterval) clearInterval(progressInterval);
-    };
-  }, [isGenerating, generatingPassage]);
 
   // Save generated questions into a section
   const handleSave = useCallback(async () => {
@@ -763,7 +774,6 @@ const AIGenerateReading = () => {
           case 'FILL_IN_THE_BLANK':
           case 'DROPDOWN':
           case 'DRAG_AND_DROP':
-          case 'REARRANGE':
           case 'REWRITE':
             return {
               questionText: q.questionText || q.question || '',
@@ -773,6 +783,92 @@ const AIGenerateReading = () => {
               content: { data: toData(q.content?.data, { forFill: q.type === 'FILL_IN_THE_BLANK' }) },
               toBeDeleted: false,
             };
+          case 'REARRANGE': {
+            const rawItems = toData(q.content?.data);
+            // sanitize: require positionId and value; normalize positionId to plain number/string
+            const sanitizedItems = rawItems
+              .filter((it) => it && it.value && it.positionId !== undefined && it.positionId !== null && String(it.positionId).trim() !== '')
+              .map((it) => ({
+                ...it,
+                positionId: String(it.positionId).replace(/^pos_/, ''),
+              }));
+            
+            // Get order from questionText if it contains placeholders, otherwise use correctOrder
+            let sortedItems = sanitizedItems;
+            const questionTextWithPlaceholders = q.questionText || q.question || '';
+            
+            if (/\[\[pos_/.test(questionTextWithPlaceholders)) {
+              // Parse position order from questionText
+              const positionOrder = [];
+              const positionMatches = questionTextWithPlaceholders.matchAll(/\[\[pos_([a-zA-Z0-9]+)\]\]/g);
+              for (const match of positionMatches) {
+                positionOrder.push(match[1]);
+              }
+              
+              // Build a map of positionId -> item for quick lookup
+              const positionMap = new Map();
+              sanitizedItems.forEach(item => {
+                if (item?.positionId) {
+                  positionMap.set(String(item.positionId), item);
+                }
+              });
+              
+              // Sort items according to the order in questionText
+              sortedItems = [];
+              positionOrder.forEach(posId => {
+                const item = positionMap.get(String(posId));
+                if (item) {
+                  sortedItems.push(item);
+                }
+              });
+              
+              // If there are items not in questionText, append them at the end
+              sanitizedItems.forEach(item => {
+                if (item?.positionId && !positionOrder.includes(String(item.positionId))) {
+                  sortedItems.push(item);
+                }
+              });
+            } else if (Array.isArray(q.correctOrder) && q.correctOrder.length > 0) {
+              // Fallback: use correctOrder to determine sequence
+              const valueToItem = new Map();
+              sanitizedItems.forEach(item => {
+                if (item?.value) {
+                  valueToItem.set(String(item.value), item);
+                }
+              });
+              
+              sortedItems = [];
+              q.correctOrder.forEach(value => {
+                const item = valueToItem.get(String(value));
+                if (item) {
+                  sortedItems.push(item);
+                }
+              });
+              
+              // Append any remaining items
+              sanitizedItems.forEach(item => {
+                if (!q.correctOrder.includes(item.value)) {
+                  sortedItems.push(item);
+                }
+              });
+            }
+            
+            // Backend requires placeholders [[pos_X]] present in questionText
+            const placeholderText = sortedItems.length
+              ? sortedItems
+                  .map((it) => `[[pos_${it.positionId}]]`)
+                  .join(' ')
+              : (questionTextWithPlaceholders || '');
+            
+            return {
+              questionText: placeholderText,
+              orderNumber,
+              weight: q.points || 1,
+              questionType: 'REARRANGE',
+              content: { data: sortedItems },
+              toBeDeleted: false,
+            };
+          }
           default:
             return { questionText: q.question || '', orderNumber, weight: 1, questionType: 'MULTIPLE_CHOICE', content: { data: [] }, toBeDeleted: false };
         }
@@ -857,7 +953,6 @@ const AIGenerateReading = () => {
           : (responseData.error?.message || JSON.stringify(responseData.error));
         setErrorMessage(errorMsg);
         setErrorVisible(true);
-        setGenerationProgress(0);
         setIsGenerating(false);
         return;
       }
@@ -1148,7 +1243,6 @@ const AIGenerateReading = () => {
         onCancel={() => {
           setWarningVisible(false);
           setIsGenerating(false);
-          setGenerationProgress(0);
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1200,7 +1294,6 @@ const AIGenerateReading = () => {
             onClick={() => {
               setErrorVisible(false);
               setIsGenerating(false);
-              setGenerationProgress(0);
             }}
             style={{
               background: theme === 'sun' ? '#ff4d4f' : '#ff7875',
@@ -1228,7 +1321,6 @@ const AIGenerateReading = () => {
         onCancel={() => {
           setErrorVisible(false);
           setIsGenerating(false);
-          setGenerationProgress(0);
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1261,15 +1353,6 @@ const AIGenerateReading = () => {
       )}
       <style>
         {`
-          @keyframes astroBounce {
-            0%, 100% {
-              transform: translateY(-50%) translateY(0);
-            }
-            50% {
-              transform: translateY(-50%) translateY(-8px);
-            }
-          }
-          
           /* Fix CKEditor toolbar position - prevent floating/sticky behavior */
           .passage-ckeditor-wrapper .ck-editor {
             position: relative !important;
@@ -2243,94 +2326,21 @@ const AIGenerateReading = () => {
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div style={{ width: '100%', padding: '0 8px' }}>
-                    <div style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '32px',
-                          borderRadius: '16px',
-                          background: theme === 'sun' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(139, 92, 246, 0.15)',
-                          position: 'relative',
-                          overflow: 'visible',
-                          border: `2px solid ${theme === 'sun' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(139, 92, 246, 0.2)'}`
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: `${generationProgress}%`,
-                            height: '100%',
-                            background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)',
-                            borderRadius: '14px',
-                            transition: 'width 0.3s ease',
-                            position: 'relative',
-                            boxShadow: '0 2px 8px rgba(255, 165, 0, 0.3)',
-                            overflow: 'visible'
-                          }}
-                        >
-                          {generationProgress > 0 && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                right: '-20px',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                width: '48px',
-                                height: '48px',
-                                zIndex: 10,
-                                animation: 'astroBounce 1s ease-in-out infinite'
-                              }}
-                            >
-                              <img
-                                src="/img/astro.png"
-                                alt="Astro"
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'contain',
-                                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          fontSize: '14px',
-                          fontWeight: 700,
-                          color: theme === 'sun' ? '#0F172A' : '#FFFFFF',
-                          textShadow: theme === 'sun'
-                            ? '0 1px 2px rgba(255, 255, 255, 0.9)'
-                            : '0 1px 2px rgba(0, 0, 0, 0.6)',
-                          zIndex: 5,
-                          pointerEvents: 'none'
-                        }}
-                      >
-                        {generationProgress}%
-                      </div>
-                    </div>
+                  {/* Loading Spinner */}
+                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                    <Spin 
+                      size="large" 
+                      style={{ 
+                        color: primaryColor 
+                      }}
+                    />
                     <div style={{ 
-                      fontSize: '13px', 
-                      color: theme === 'sun' ? '#94a3b8' : '#64748b', 
+                      fontSize: '14px', 
+                      color: theme === 'sun' ? '#64748b' : '#94a3b8', 
                       fontWeight: 400,
-                      marginTop: '4px',
                       textAlign: 'center'
                     }}>
-                      {generatingPassage 
-                        ? (generationProgress < 30 ? t('dailyChallenge.analyzingSettings', 'Analyzing settings...') :
-                           generationProgress < 60 ? t('dailyChallenge.creatingPassage', 'Creating passage...') :
-                           generationProgress < 90 ? t('dailyChallenge.finalizingContent', 'Finalizing content...') :
-                           t('dailyChallenge.almostDone', 'Almost done...'))
-                        : (generationProgress < 30 ? t('dailyChallenge.analyzingPassage', 'Analyzing passage...') :
-                           generationProgress < 60 ? t('dailyChallenge.creatingQuestions', 'Creating questions...') :
-                           generationProgress < 90 ? t('dailyChallenge.finalizingContent', 'Finalizing content...') :
-                           t('dailyChallenge.almostDone', 'Almost done...'))}
+                      {t('dailyChallenge.pleaseWait', 'Please wait...')}
                     </div>
                   </div>
                 </div>

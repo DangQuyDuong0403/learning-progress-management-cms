@@ -1028,6 +1028,8 @@ const DailyChallengeSubmissionDetail = () => {
           section.sectionsContent.replace(/<[^>]*>/g, '').trim().length > 120 &&
           !/(choose|select|dropdown|drag|drop|fill|rearrange|rewrite)/i.test(section.sectionsContent || '');
         const hasRewriteQuestion = (sectionDetail.questionResults || []).some(q => q?.questionType === 'REWRITE');
+        const hasWritingQuestion = (sectionDetail.questionResults || []).some(q => q?.questionType === 'WRITING');
+        const hasSpeakingQuestion = (sectionDetail.questionResults || []).some(q => q?.questionType === 'SPEAKING');
 
         let sectionType = 'listening'; // default
         // 1) Strong signals by explicit title first
@@ -1040,8 +1042,10 @@ const DailyChallengeSubmissionDetail = () => {
         } else if (sectionTitle.includes('listening')) {
           sectionType = 'listening';
         } else {
-          // 2) Heuristics as fallback
-          if (hasAudio) sectionType = 'listening';
+          // 2) Heuristics as fallback - check question types first (strongest signal)
+          if (hasWritingQuestion) sectionType = 'writing';
+          else if (hasSpeakingQuestion) sectionType = 'speaking';
+          else if (hasAudio) sectionType = 'listening';
           else if (hasRewriteQuestion) sectionType = 'writing';
           else if (hasLongPassage) sectionType = 'reading';
         }
@@ -4462,11 +4466,18 @@ useEffect(() => {
       // Strip HTML from student answer for comparison and display
       const studentAnswerText = stripHtml(studentAnswer);
       
+      // Helper function to normalize text for comparison (remove trailing punctuation)
+      const normalizeForComparison = (text) => {
+        if (!text) return '';
+        // Remove trailing punctuation marks (.,!?;:) and trim
+        return text.replace(/[.,!?;:]+$/, '').trim().toLowerCase();
+      };
+      
       const isCorrect = (() => {
         if (!studentAnswerText || correctAnswers.length === 0) return false;
-        const normalizedStudent = studentAnswerText.toLowerCase();
+        const normalizedStudent = normalizeForComparison(studentAnswerText);
         return correctAnswers.some(correct => 
-          correct.toLowerCase() === normalizedStudent
+          normalizeForComparison(correct) === normalizedStudent
         );
       })();
       
