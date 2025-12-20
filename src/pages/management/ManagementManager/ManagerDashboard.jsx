@@ -64,6 +64,14 @@ const TEACHER_STATUS_TEXTS = {
   critical: { en: 'Critical', vi: 'Khẩn cấp' },
 };
 
+const ACCOUNT_STATUS_TEXTS = {
+  active: { en: 'Active', vi: 'Đang hoạt động' },
+  inactive: { en: 'Inactive', vi: 'Không hoạt động' },
+  pending: { en: 'Pending', vi: 'Đang chờ' },
+  suspended: { en: 'Suspended', vi: 'Tạm ngưng' },
+  banned: { en: 'Banned', vi: 'Bị cấm' },
+};
+
 const ManagerDashboard = () => {
   const { theme } = useTheme();
   const { i18n } = useTranslation();
@@ -138,6 +146,19 @@ const ManagerDashboard = () => {
     (status) => {
       const key = String(status || '').toLowerCase();
       const entry = TEACHER_STATUS_TEXTS[key];
+      if (entry) {
+        return translate(entry.en, entry.vi);
+      }
+      const fallback = formatEnumLabel(status);
+      return translate(fallback, fallback);
+    },
+    [formatEnumLabel, translate]
+  );
+
+  const localizeAccountStatus = useCallback(
+    (status) => {
+      const key = String(status || '').toLowerCase();
+      const entry = ACCOUNT_STATUS_TEXTS[key];
       if (entry) {
         return translate(entry.en, entry.vi);
       }
@@ -829,7 +850,7 @@ const ManagerDashboard = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {Object.entries(statusBreakdown).map(([status, count]) => (
                     <div key={status} style={{ display: 'flex', justifyContent: 'space-between', color: '#374151', fontWeight: 600 }}>
-                      <span>{status}</span>
+                      <span>{localizeAccountStatus(status)}</span>
                       <span>{count ?? 0}</span>
                     </div>
                   ))}
