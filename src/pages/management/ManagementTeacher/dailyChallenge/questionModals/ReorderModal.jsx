@@ -649,7 +649,12 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   }, [questionData, visible, parseQuestionText, createBlankElement, updateBlankNumbers, createShuffledWords]);
 
   const handlePaste = useCallback((e) => {
-    // Prevent all paste
+    // Allow paste in blank input fields
+    if (e.target.classList?.contains('blank-input')) {
+      return; // Allow normal paste in blank input fields
+    }
+    
+    // Prevent paste in editor (only blanks can be inserted via popup)
     e.preventDefault();
     return false;
   }, []);
@@ -970,14 +975,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     const hasEmptyBlanks = blanks.some(blank => !blank.answer || !blank.answer.trim());
     if (hasEmptyBlanks) {
       spaceToast.warning(t('dailyChallenge.pleaseFillInAllItemAnswers', 'Please fill in all item answers'));
-      return;
-    }
-
-    // Validate duplicate blank answers
-    const blankAnswers = blanks.map(blank => (blank.answer || '').toLowerCase().trim());
-    const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
-    if (duplicates.length > 0) {
-      spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateItemAnswers', 'Cannot create duplicate answers. Please ensure all item answers are unique.'));
       return;
     }
 
