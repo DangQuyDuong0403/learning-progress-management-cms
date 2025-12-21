@@ -3903,7 +3903,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
-  const [recordingType, setRecordingType] = useState('audio'); // 'audio' | 'video'
+  const [recordingType, setRecordingType] = useState('audio'); // 'audio' only
   const [recordingMode, setRecordingMode] = useState(null); // current mode if actively recording
   const [livePreviewStream, setLivePreviewStream] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -3913,6 +3913,13 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const recordingTimerRef = useRef(null);
   const isMountedRef = useRef(true); // Track if component is still mounted
   const MAX_RECORDING_TIME = 180; // 3 minutes in seconds
+
+  // Format recording time to MM:SS
+  const formatRecordingTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Helper function to extract URL from upload response
   const extractUrlFromResponse = (uploadRes) => {
@@ -3984,11 +3991,9 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
       spaceToast.error('Please remove the uploaded files before recording');
       return;
     }
-    const constraints = mode === 'video'
-      ? { audio: true, video: { width: 1280, height: 720, facingMode: 'user' } }
-      : { audio: true };
+    const constraints = { audio: true };
     if (!navigator?.mediaDevices?.getUserMedia) {
-      spaceToast.error('Browser does not support recording audio or video.');
+      spaceToast.error('Browser does not support recording audio.');
       return;
     }
     navigator.mediaDevices.getUserMedia(constraints)
@@ -3997,20 +4002,16 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
         mediaRecorderRef.current = mediaRecorder;
 
         audioChunksRef.current = [];
-        setRecordingMode(mode);
-        setRecordingType(mode);
-        if (mode === 'video') {
-          setLivePreviewStream(stream);
-        } else {
-          setLivePreviewStream(null);
-        }
+        setRecordingMode('audio');
+        setRecordingType('audio');
+        setLivePreviewStream(null);
 
         mediaRecorder.ondataavailable = (event) => {
           audioChunksRef.current.push(event.data);
         };
 
         mediaRecorder.onstop = async () => {
-          const mimeType = mode === 'video' ? 'video/webm' : 'audio/webm';
+          const mimeType = 'audio/webm';
           const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
           // Create temporary blob URL for preview
           const tempUrl = URL.createObjectURL(audioBlob);
@@ -4020,7 +4021,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
           // Keep in audioUrl (recording section), don't move to uploadedFiles
           try {
             const ext = 'webm';
-            const file = new File([audioBlob], `speaking-${mode}-${Date.now()}.${ext}`, { 
+            const file = new File([audioBlob], `speaking-audio-${Date.now()}.${ext}`, { 
               type: audioBlob.type || mimeType 
             });
             
@@ -4152,16 +4153,16 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
       })
       .catch(err => {
         console.error('Error accessing media devices:', err);
-        let message = 'Không thể truy cập micro/camera. Vui lòng kiểm tra quyền truy cập thiết bị.';
+        let message = 'Unable to access microphone. Please check device permissions.';
         const errorName = err?.name || err?.code;
         if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
-          message = 'Bạn đã từ chối quyền micro/camera. Hãy cho phép quyền trong trình duyệt và thử lại.';
+          message = 'Microphone permission denied. Please allow microphone access in your browser and try again.';
         } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
-          message = 'Không tìm thấy micro/camera. Vui lòng kiểm tra thiết bị đã kết nối đúng chưa.';
+          message = 'Microphone not found. Please check if the device is properly connected.';
         } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
-          message = 'Thiết bị micro/camera hiện đang được sử dụng bởi ứng dụng khác.';
+          message = 'Microphone is currently being used by another application.';
         } else if (String(err?.message || '').includes('Only secure origins')) {
-          message = 'Trình duyệt yêu cầu truy cập qua HTTPS để bật micro/camera. Hãy mở bài thi bằng kết nối HTTPS.';
+          message = 'Browser requires HTTPS connection to enable microphone. Please open the test using HTTPS connection.';
         }
         spaceToast.error(message);
         
@@ -4291,23 +4292,21 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     }
     const files = Array.from(event.target.files);
     
-    const MAX_AUDIO_SIZE = 3 * 1024 * 1024;
-    const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
-    const invalidTypeFiles = files.filter(f => detectMediaKindFromFile(f) === 'unknown');
+    const MAX_AUDIO_SIZE = 5 * 1024 * 1024;
+    const invalidTypeFiles = files.filter(f => {
+      const kind = detectMediaKindFromFile(f);
+      return kind !== 'audio';
+    });
     if (invalidTypeFiles.length > 0) {
       const names = invalidTypeFiles.map(f => f.name).join(', ');
-      spaceToast.error(`Only accept audio (MP3/WebM) and video (MP4/WebM). Invalid files: ${names}`);
+      spaceToast.error(`Only accept audio files (MP3/WebM). Invalid files: ${names}`);
       event.target.value = '';
       return;
     }
-    const oversizeFiles = files.filter(f => {
-      const kind = detectMediaKindFromFile(f);
-      const limit = kind === 'video' ? MAX_VIDEO_SIZE : MAX_AUDIO_SIZE;
-      return f.size > limit;
-    });
+    const oversizeFiles = files.filter(f => f.size > MAX_AUDIO_SIZE);
     if (oversizeFiles.length > 0) {
       const names = oversizeFiles.map(f => f.name).join(', ');
-      spaceToast.error('Size limit is 3MB for audio and 100MB for video. Exceeded limit: ' + names);
+      spaceToast.error('Size limit is 5MB for audio. Exceeded limit: ' + names);
       event.target.value = '';
       return;
     }
@@ -4662,26 +4661,6 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
               </div>
             )}
 
-            {isRecording && recordingMode === 'video' && livePreviewStream && (
-              <div style={{ marginBottom: '16px' }}>
-                <video
-                  ref={liveVideoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  style={{
-                    width: '100%',
-                    maxHeight: '320px',
-                    borderRadius: '12px',
-                    background: '#000'
-                  }}
-                />
-                <div style={{ marginTop: '6px', fontSize: '13px', color: theme === 'sun' ? '#1E40AF' : '#8B5CF6' }}>
-                  Đang ghi hình...
-                </div>
-              </div>
-            )}
-
             {/* Recording Controls */}
             {!isViewOnly && uploadedFiles.length === 0 && (
               <div style={{ marginBottom: '16px' }}>
@@ -4691,55 +4670,39 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                   gap: '16px',
                   flexWrap: 'wrap'
                 }}>
-                  {['audio', 'video'].map((mode) => {
-                    const isModeRecording = isRecording && recordingMode === mode;
-                    const disabled = isRecording && recordingMode !== mode;
-                    return (
-                      <button
-                        key={mode}
-                        onClick={() => {
-                          if (isModeRecording) {
-                            stopRecording();
-                          } else if (!isRecording) {
-                            startRecording(mode);
-                          }
-                        }}
-                        disabled={disabled}
-                        style={{
-                          width: '120px',
-                          height: '120px',
-                          borderRadius: '50%',
-                          border: 'none',
-                          background: disabled
-                            ? '#d9d9d9'
-                            : (isModeRecording ? '#ff4d4f' : 'rgb(227, 244, 255)'),
-                          color: disabled ? '#666' : '#0f172a',
-                          cursor: disabled ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          margin: '0 8px 16px',
-                          boxShadow: disabled
-                            ? 'none'
-                            : (isModeRecording
-                              ? '0 0 20px rgba(255, 77, 79, 0.5)'
-                              : '0 4px 12px rgba(24, 144, 255, 0.3)'),
-                          transition: 'all 0.3s ease'
-                        }}
-                      >
-                        <span style={{ fontSize: '32px' }}>
-                          {mode === 'audio' ? '🎙' : '📹'}
-                        </span>
-                        <span style={{ fontSize: '12px', fontWeight: 600 }}>
-                          {isModeRecording
-                            ? 'Stop'
-                            : mode === 'audio' ? 'Record Audio' : 'Record Video'}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  <button
+                    onClick={() => {
+                      if (isRecording) {
+                        stopRecording();
+                      } else {
+                        startRecording('audio');
+                      }
+                    }}
+                    style={{
+                      width: '120px',
+                      height: '120px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      background: isRecording ? '#ff4d4f' : 'rgb(227, 244, 255)',
+                      color: '#0f172a',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      margin: '0 8px 16px',
+                      boxShadow: isRecording
+                        ? '0 0 20px rgba(255, 77, 79, 0.5)'
+                        : '0 4px 12px rgba(24, 144, 255, 0.3)',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: '32px' }}>🎙</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                      {isRecording ? 'Stop' : 'Record Audio'}
+                    </span>
+                  </button>
                 </div>
                 <div style={{
                   fontSize: '12px',
@@ -4747,8 +4710,20 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                   textAlign: 'center'
                 }}>
                   {isRecording 
-                    ? (recordingMode === 'video' ? 'Click the video button to stop' : 'Click the audio button to stop')
-                    : 'Choose audio or video to record'}
+                    ? (
+                      <div>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '600',
+                          color: theme === 'sun' ? '#ff4d4f' : '#ff4d4f',
+                          marginBottom: '4px'
+                        }}>
+                          Recording: {formatRecordingTime(recordingTime)}
+                        </div>
+                        <div>Click the button to stop recording</div>
+                      </div>
+                    )
+                    : 'Click to start recording audio'}
                 </div>
               </div>
             )}
@@ -4762,7 +4737,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                 color: theme === 'sun' ? '#333' : '#1F2937',
                 marginBottom: '16px'
               }}>
-                Upload Audio/Video File (Optional):
+                Upload Audio File (Optional):
               </div>
               
               <div style={{
@@ -4771,7 +4746,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                 <input
                   type="file"
                   id="speaking-audio-upload"
-                  accept="audio/*,video/*"
+                  accept="audio/*"
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                 />
@@ -4815,13 +4790,13 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                     color: theme === 'sun' ? '#1E40AF' : '#8377A0',
                     marginBottom: '4px'
                   }}>
-                    Upload Audio / Video
+                    Upload Audio
                   </div>
                   <div style={{ 
                     fontSize: '13px',
                     color: theme === 'sun' ? '#666' : '#999'
                   }}>
-                    MP3/WebM ≤ 3MB hoặc MP4/WebM video ≤ 100MB
+                    MP3/WebM ≤ 5MB
                   </div>
                 </label>
               </div>
@@ -5020,7 +4995,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
   const triggerAutoSave = useContext(AutoSaveTriggerContext);
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
-  const [recordingType, setRecordingType] = useState('audio'); // 'audio' | 'video'
+  const [recordingType, setRecordingType] = useState('audio'); // 'audio' only
   const [recordingMode, setRecordingMode] = useState(null); // current mode if actively recording
   const [livePreviewStream, setLivePreviewStream] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -5033,6 +5008,13 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
   const recordingTimerRef = useRef(null);
   const isMountedRef = useRef(true); // Track if component is still mounted
   const MAX_RECORDING_TIME = 180; // 3 minutes in seconds
+
+  // Format recording time to MM:SS
+  const formatRecordingTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Helper function to extract URL from upload response
   const extractUrlFromResponse = (uploadRes) => {
@@ -5108,11 +5090,9 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
       spaceToast.error('Please remove the uploaded files before recording');
       return;
     }
-    const constraints = mode === 'video'
-      ? { audio: true, video: { width: 1280, height: 720, facingMode: 'user' } }
-      : { audio: true };
+    const constraints = { audio: true };
     if (!navigator?.mediaDevices?.getUserMedia) {
-      spaceToast.error('Browser does not support recording audio or video.');
+      spaceToast.error('Browser does not support recording audio.');
       return;
     }
     navigator.mediaDevices.getUserMedia(constraints)
@@ -5121,20 +5101,16 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
         mediaRecorderRef.current = mediaRecorder;
 
         audioChunksRef.current = [];
-        setRecordingMode(mode);
-        setRecordingType(mode);
-        if (mode === 'video') {
-          setLivePreviewStream(stream);
-        } else {
-          setLivePreviewStream(null);
-        }
+        setRecordingMode('audio');
+        setRecordingType('audio');
+        setLivePreviewStream(null);
 
         mediaRecorder.ondataavailable = (event) => {
           audioChunksRef.current.push(event.data);
         };
 
         mediaRecorder.onstop = async () => {
-          const mimeType = mode === 'video' ? 'video/webm' : 'audio/webm';
+          const mimeType = 'audio/webm';
           const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
           // Create temporary blob URL for preview
           const tempUrl = URL.createObjectURL(audioBlob);
@@ -5144,7 +5120,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
           // Keep in audioUrl (recording section), don't move to uploadedFiles
           try {
             const ext = 'webm';
-            const file = new File([audioBlob], `speaking-${mode}-${Date.now()}.${ext}`, { 
+            const file = new File([audioBlob], `speaking-audio-${Date.now()}.${ext}`, { 
               type: audioBlob.type || mimeType 
             });
             
@@ -5276,16 +5252,16 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
       })
       .catch(err => {
         console.error('Error accessing media devices:', err);
-        let message = 'Không thể truy cập micro/camera. Vui lòng kiểm tra quyền truy cập thiết bị.';
+        let message = 'Unable to access microphone. Please check device permissions.';
         const errorName = err?.name || err?.code;
         if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
-          message = 'Bạn đã từ chối quyền micro/camera. Hãy cho phép quyền trong trình duyệt và thử lại.';
+          message = 'Microphone permission denied. Please allow microphone access in your browser and try again.';
         } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
-          message = 'Không tìm thấy micro/camera. Vui lòng kiểm tra thiết bị đã kết nối đúng chưa.';
+          message = 'Microphone not found. Please check if the device is properly connected.';
         } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
-          message = 'Thiết bị micro/camera hiện đang được sử dụng bởi ứng dụng khác.';
+          message = 'Microphone is currently being used by another application.';
         } else if (String(err?.message || '').includes('Only secure origins')) {
-          message = 'Trình duyệt yêu cầu truy cập qua HTTPS để bật micro/camera. Hãy mở bài thi bằng kết nối HTTPS.';
+          message = 'Browser requires HTTPS connection to enable microphone. Please open the test using HTTPS connection.';
         }
         spaceToast.error(message);
         
@@ -5969,26 +5945,6 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
               </div>
             )}
 
-            {isRecording && recordingMode === 'video' && livePreviewStream && (
-              <div style={{ marginBottom: '16px' }}>
-                <video
-                  ref={liveVideoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  style={{
-                    width: '100%',
-                    maxHeight: '320px',
-                    borderRadius: '12px',
-                    background: '#000'
-                  }}
-                />
-                <div style={{ marginTop: '6px', fontSize: '13px', color: theme === 'sun' ? '#1E40AF' : '#8B5CF6' }}>
-                  Đang ghi hình...
-                </div>
-              </div>
-            )}
-
             {/* Recording Controls */}
             {!isViewOnly && uploadedFiles.length === 0 && (
               <div style={{ marginBottom: '16px' }}>
@@ -5998,55 +5954,39 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                   gap: '16px',
                   flexWrap: 'wrap'
                 }}>
-                  {['audio', 'video'].map((mode) => {
-                    const isModeRecording = isRecording && recordingMode === mode;
-                    const disabled = isRecording && recordingMode !== mode;
-                    return (
-                      <button
-                        key={mode}
-                        onClick={() => {
-                          if (isModeRecording) {
-                            stopRecording();
-                          } else if (!isRecording) {
-                            startRecording(mode);
-                          }
-                        }}
-                        disabled={disabled}
-                        style={{
-                          width: '120px',
-                          height: '120px',
-                          borderRadius: '50%',
-                          border: 'none',
-                          background: disabled
-                            ? '#d9d9d9'
-                            : (isModeRecording ? '#ff4d4f' : 'rgb(227, 244, 255)'),
-                          color: disabled ? '#666' : '#0f172a',
-                          cursor: disabled ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          margin: '0 8px 16px',
-                          boxShadow: disabled
-                            ? 'none'
-                            : (isModeRecording
-                              ? '0 0 20px rgba(255, 77, 79, 0.5)'
-                              : '0 4px 12px rgba(24, 144, 255, 0.3)'),
-                          transition: 'all 0.3s ease'
-                        }}
-                      >
-                        <span style={{ fontSize: '32px' }}>
-                          {mode === 'audio' ? '🎙' : '📹'}
-                        </span>
-                        <span style={{ fontSize: '12px', fontWeight: 600 }}>
-                          {isModeRecording
-                            ? 'Stop'
-                            : mode === 'audio' ? 'Record Audio' : 'Record Video'}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  <button
+                    onClick={() => {
+                      if (isRecording) {
+                        stopRecording();
+                      } else {
+                        startRecording('audio');
+                      }
+                    }}
+                    style={{
+                      width: '120px',
+                      height: '120px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      background: isRecording ? '#ff4d4f' : 'rgb(227, 244, 255)',
+                      color: '#0f172a',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      margin: '0 8px 16px',
+                      boxShadow: isRecording
+                        ? '0 0 20px rgba(255, 77, 79, 0.5)'
+                        : '0 4px 12px rgba(24, 144, 255, 0.3)',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: '32px' }}>🎙</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                      {isRecording ? 'Stop' : 'Record Audio'}
+                    </span>
+                  </button>
                 </div>
                 <div style={{
                   fontSize: '12px',
@@ -6054,8 +5994,20 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                   textAlign: 'center'
                 }}>
                   {isRecording 
-                    ? (recordingMode === 'video' ? 'Click the video button to stop' : 'Click the audio button to stop')
-                    : 'Choose audio or video to record'}
+                    ? (
+                      <div>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '600',
+                          color: theme === 'sun' ? '#ff4d4f' : '#ff4d4f',
+                          marginBottom: '4px'
+                        }}>
+                          Recording: {formatRecordingTime(recordingTime)}
+                        </div>
+                        <div>Click the button to stop recording</div>
+                      </div>
+                    )
+                    : 'Click to start recording audio'}
                 </div>
               </div>
             )}
@@ -6069,7 +6021,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                 color: theme === 'sun' ? '#333' : '#1F2937',
                 marginBottom: '16px'
               }}>
-                Upload Audio/Video File (Optional):
+                Upload Audio File (Optional):
               </div>
               
               <div style={{
@@ -6078,7 +6030,7 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                 <input
                   type="file"
                   id="speaking-with-audio-upload"
-                  accept="audio/*,video/*"
+                  accept="audio/*"
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                 />
@@ -6122,13 +6074,13 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                     color: theme === 'sun' ? '#1E40AF' : '#8377A0',
                     marginBottom: '4px'
                   }}>
-                    Upload Audio / Video
+                    Upload Audio
                   </div>
                   <div style={{ 
                     fontSize: '13px',
                     color: theme === 'sun' ? '#666' : '#999'
                   }}>
-                    MP3/WebM ≤ 3MB hoặc MP4/WebM video ≤ 50MB
+                    MP3/WebM ≤ 5MB
                   </div>
                 </label>
               </div>
