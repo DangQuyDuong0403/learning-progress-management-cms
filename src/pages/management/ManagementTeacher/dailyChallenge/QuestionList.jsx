@@ -69,6 +69,7 @@ import {
   DropdownModal,
   DragDropModal,
   ReorderModal,
+  EditReorderModal,
   RewriteModal,
 } from "./questionModals";
 
@@ -4038,7 +4039,12 @@ const DailyChallengeContent = () => {
             modalType = 'drag-drop';
             break;
           case 'REARRANGE':
-            modalType = 'reorder';
+            // Use EditReorderModal for in-progress, finished, or published status
+            if (status === 'in-progress' || status === 'finished' || status === 'published') {
+              modalType = 'edit-reorder';
+            } else {
+              modalType = 'reorder';
+            }
             break;
           case 'REWRITE':
             modalType = 'rewrite';
@@ -4053,7 +4059,7 @@ const DailyChallengeContent = () => {
       }
       return prev;
     });
-  }, []);
+  }, [status]);
 
   const handleDeleteQuestion = useCallback((questionId) => {
     // Filter questions and passages to match the displayed order (same logic as filteredQuestions/filteredPassages)
@@ -5871,6 +5877,14 @@ const DailyChallengeContent = () => {
       
       <DragDropModal
         visible={modalVisible && currentModalType === "drag-drop"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+        questionData={editingQuestion}
+        challengeStatus={status}
+      />
+      
+      <EditReorderModal
+        visible={modalVisible && currentModalType === "edit-reorder"}
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}

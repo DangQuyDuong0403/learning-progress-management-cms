@@ -57,7 +57,7 @@ const throttle = (func, limit) => {
 
 const DragDropModal = ({ visible, onCancel, onSave, questionData = null, challengeStatus = 'draft' }) => {
 	const { t } = useTranslation();
-	const isReadOnly = challengeStatus === 'in-progress' || challengeStatus === 'finished';
+	const isReadOnly = challengeStatus === 'published' || challengeStatus === 'in-progress' || challengeStatus === 'finished';
 	const [editorContent, setEditorContent] = useState([]);
 	const [blanks, setBlanks] = useState([]);
 	const [incorrectOptions, setIncorrectOptions] = useState([]);

@@ -55,7 +55,7 @@ const throttle = (func, limit) => {
 
 const FillBlankModal = ({ visible, onCancel, onSave, questionData = null, challengeStatus = 'draft' }) => {
 	const { t } = useTranslation();
-	const isReadOnly = challengeStatus === 'in-progress' || challengeStatus === 'finished';
+	const isReadOnly = challengeStatus === 'published' || challengeStatus === 'in-progress' || challengeStatus === 'finished';
 	const [blanks, setBlanksState] = useState([]);
     const [weight, setWeight] = useState(1);
 	const [questionCharCount, setQuestionCharCount] = useState(0);
