@@ -549,6 +549,13 @@ const [errorMessage, setErrorMessage] = useState('');
       return;
     }
     
+    // Validate total number of questions does not exceed 50
+    const totalQuestions = selectedConfigs.reduce((sum, c) => sum + (Number(c.numberOfQuestions) || 0), 0);
+    if (totalQuestions > 50) {
+      spaceToast.error(t('dailyChallenge.maxQuestionsExceeded', 'Maximum total of 50 questions is allowed'));
+      return;
+    }
+    
     if (!prompt.trim()) {
       const enterPromptMsg = t('dailyChallenge.pleaseEnterPrompt', {
         defaultValue: 'Please enter a prompt',
@@ -2533,9 +2540,7 @@ const [errorMessage, setErrorMessage] = useState('');
                       <>
                         <div style={{ display: 'flex', gap: '24px', minHeight: '300px' }}>
                           <div style={{ flex: '1', padding: '20px', background: theme === 'sun' ? '#f9f9f9' : 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}` }}>
-                            <Typography.Text style={{ fontSize: '14px', fontWeight: 350, marginBottom: '16px', display: 'block', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)' }}>
-                              {t('dailyChallenge.completeSentenceByDragging', 'Complete the sentence by dragging words into the blanks:')}
-                            </Typography.Text>
+                           
                             <div style={{ fontSize: '15px', fontWeight: 350, lineHeight: '2.4', color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)', marginBottom: '16px' }}>
                               {(() => {
                                 const text = question.questionText || question.sentence || '';

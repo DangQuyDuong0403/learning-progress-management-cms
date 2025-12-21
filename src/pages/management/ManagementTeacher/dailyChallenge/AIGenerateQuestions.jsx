@@ -888,6 +888,12 @@ const AIGenerateQuestions = () => {
       spaceToast.error(t('dailyChallenge.atLeastOneQuestionTypeConfig', 'At least one question type config is required'));
       return;
     }
+    // Validate total number of questions does not exceed 50
+    const totalQuestions = selectedConfigs.reduce((sum, c) => sum + (Number(c.numberOfQuestions) || 0), 0);
+    if (totalQuestions > 50) {
+      spaceToast.error(t('dailyChallenge.maxQuestionsExceeded', 'Maximum total of 50 questions is allowed'));
+      return;
+    }
     
     try {
       setIsGenerating(true);
@@ -3772,15 +3778,7 @@ const AIGenerateQuestions = () => {
                             borderRadius: '12px',
                             border: `1px solid ${theme === 'sun' ? '#e8e8e8' : 'rgba(255, 255, 255, 0.1)'}`,
                           }}>
-                            <Typography.Text style={{ 
-                              fontSize: '14px', 
-                              fontWeight: 350,
-                              marginBottom: '16px',
-                              display: 'block',
-                              color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)'
-                            }}>
-                              {t('dailyChallenge.completeSentenceByDragging', 'Complete the sentence by dragging words into the blanks:')}
-                            </Typography.Text>
+                       
 
                             <div style={{ 
                               fontSize: '15px', 
