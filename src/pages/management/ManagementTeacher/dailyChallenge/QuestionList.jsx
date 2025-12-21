@@ -620,7 +620,7 @@ const SortablePassageItem = memo(
                       lineHeight: '1.8',
                       color: theme === 'sun' ? '#333' : '#333',
                       textAlign: 'justify',
-                      maxHeight: '300px',
+                      maxHeight: '370px',
                       overflowY: 'auto',
                       scrollbarWidth: 'thin',
                       scrollbarColor: theme === 'sun' 
@@ -2508,7 +2508,7 @@ const SortableQuestionItem = memo(
                       className="question-text-content"
                       style={{
                         fontSize: '15px',
-                        fontWeight: 350,
+                        fontWeight: 350,  
                         lineHeight: '1.8',
                         color: textColor
                       }}
@@ -4869,28 +4869,47 @@ const DailyChallengeContent = () => {
     let label = 'questions';
 
     if (type === 'GV') {
+      // Grammar & Vocabulary: count individual questions
       count = filteredQuestions.length;
       label = 'questions';
     } else if (type === 'RE') {
-      count = filteredPassages.length;
-      label = 'reading sections';
+      // Reading: count total questions in all passages (use passages, not filteredPassages to get all questions)
+      count = passages.reduce((total, passage) => {
+        // Skip deleted passages
+        if (passage.toBeDeleted) return total;
+        const passageQuestions = passage.questions || [];
+        // Filter out deleted questions
+        const validQuestions = passageQuestions.filter(q => !q.toBeDeleted);
+        return total + validQuestions.length;
+      }, 0);
+      label = 'questions';
     } else if (type === 'LI') {
-      count = filteredPassages.filter(p => p.type === 'LISTENING_PASSAGE').length;
-      label = 'listening sections';
+      // Listening: count total questions in all listening passages (use passages, not filteredPassages)
+      const listeningPassages = passages.filter(p => !p.toBeDeleted && p.type === 'LISTENING_PASSAGE');
+      count = listeningPassages.reduce((total, passage) => {
+        const passageQuestions = passage.questions || [];
+        // Filter out deleted questions
+        const validQuestions = passageQuestions.filter(q => !q.toBeDeleted);
+        return total + validQuestions.length;
+      }, 0);
+      label = 'questions';
     } else if (type === 'WR') {
-      count = filteredPassages.length;
-      label = 'writing';
+      // Writing: count passages (each passage = 1 question, like GV) - use passages, not filteredPassages
+      count = passages.filter(p => !p.toBeDeleted).length;
+      label = 'questions';
     } else if (type === 'SP') {
-      count = filteredPassages.filter(p => p.type === 'SPEAKING_PASSAGE').length;
-      label = 'speaking';
+      // Speaking: count speaking passages (each passage = 1 question, like GV) - use passages, not filteredPassages
+      count = passages.filter(p => !p.toBeDeleted && p.type === 'SPEAKING_PASSAGE').length;
+      label = 'questions';
     } else {
+      // Default: count individual questions
       count = filteredQuestions.length;
       label = 'questions';
     }
 
     const remaining = Math.max(0, 100 - (Number(count) || 0));
     return { count, label, remaining };
-  }, [challengeDetails?.challengeType, filteredQuestions, filteredPassages]);
+  }, [challengeDetails?.challengeType, filteredQuestions, passages]);
 
   // Handle back button click - Navigate to Performance page with state
   const handleBackToDailyChallenges = () => {
