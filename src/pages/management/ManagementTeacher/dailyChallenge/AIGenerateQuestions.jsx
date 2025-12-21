@@ -1109,6 +1109,46 @@ const AIGenerateQuestions = () => {
         return items;
       };
 
+      // Helper function to add duplicate indices (1), (2) to duplicate values
+      const addDuplicateIndices = (items) => {
+        if (!Array.isArray(items) || items.length === 0) return items;
+
+        // Count occurrences of each value (case-insensitive, trimmed, only for items with correct: true and positionId)
+        const valueCounts = new Map();
+        items.forEach((item) => {
+          if (item && item.positionId && item.correct === true) {
+            const normalizedValue = String(item.value || '').toLowerCase().trim();
+            if (normalizedValue) {
+              valueCounts.set(normalizedValue, (valueCounts.get(normalizedValue) || 0) + 1);
+            }
+          }
+        });
+
+        // Track current index for each value
+        const valueIndices = new Map();
+        
+        // Add duplicate index to items
+        return items.map((item) => {
+          if (!item || !item.positionId || item.correct !== true) {
+            return item; // Skip items without positionId or incorrect items
+          }
+          
+          const normalizedValue = String(item.value || '').toLowerCase().trim();
+          const count = valueCounts.get(normalizedValue) || 0;
+          
+          if (count > 1 && normalizedValue) {
+            // This value appears multiple times, add index
+            const currentIndex = (valueIndices.get(normalizedValue) || 0) + 1;
+            valueIndices.set(normalizedValue, currentIndex);
+            return {
+              ...item,
+              value: `${item.value} (${currentIndex})`,
+            };
+          }
+          return item;
+        });
+      };
+
       const transformQuestionToApiFormat = (q, orderNumber) => {
         const toContentData = (data, { forFill } = {}) => {
           const items = Array.isArray(data) ? data : [];
@@ -1166,15 +1206,19 @@ const AIGenerateQuestions = () => {
               content: { data: toContentData(q.content?.data) },
               toBeDeleted: false,
             };
-          case 'DRAG_AND_DROP':
+          case 'DRAG_AND_DROP': {
+            const rawItems = toContentData(q.content?.data);
+            // Add duplicate indices for drag and drop
+            const itemsWithDuplicateIndices = addDuplicateIndices(rawItems);
             return {
               questionText: q.questionText || q.question || '',
               orderNumber,
               weight: q.points || 1,
               questionType: 'DRAG_AND_DROP',
-              content: { data: toContentData(q.content?.data) },
+              content: { data: itemsWithDuplicateIndices },
               toBeDeleted: false,
             };
+          }
           case 'REARRANGE': {
             const rawItems = toContentData(q.content?.data);
             // sanitize: require positionId and value; normalize positionId to plain number/string
@@ -1245,9 +1289,12 @@ const AIGenerateQuestions = () => {
               });
             }
             
+            // Add duplicate indices for rearrange items
+            const sortedItemsWithDuplicateIndices = addDuplicateIndices(sortedItems);
+            
             // Backend requires placeholders [[pos_X]] present in questionText
-            const placeholderText = sortedItems.length
-              ? sortedItems
+            const placeholderText = sortedItemsWithDuplicateIndices.length
+              ? sortedItemsWithDuplicateIndices
                   .map((it) => `[[pos_${it.positionId}]]`)
                   .join(' ')
               : (questionTextWithPlaceholders || '');
@@ -1257,7 +1304,7 @@ const AIGenerateQuestions = () => {
               orderNumber,
               weight: q.points || 1,
               questionType: 'REARRANGE',
-              content: { data: sortedItems },
+              content: { data: sortedItemsWithDuplicateIndices },
               toBeDeleted: false,
             };
           }

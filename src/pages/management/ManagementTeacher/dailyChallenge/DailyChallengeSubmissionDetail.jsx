@@ -1230,8 +1230,9 @@ const DailyChallengeSubmissionDetail = () => {
                     );
                   }
                   
-                  // Use matched item's value, or fallback to submittedValue
-                  const finalValue = matchedItem?.value || submittedValue;
+                  // Always use submittedValue to show what student actually selected
+                  // Don't replace with matchedItem.value as that would show wrong answer
+                  const finalValue = submittedValue;
                   
                   if (finalValue) {
                     // Map with "pos_" prefix (as used in questionText like [[pos_autu87]])
@@ -1252,7 +1253,8 @@ const DailyChallengeSubmissionDetail = () => {
                   
                   if (matchedItem?.positionId) {
                     const posId = String(matchedItem.positionId).replace(/^pos_/, '');
-                    const value = matchedItem.value || submittedValue;
+                    // Always use submittedValue to show what student actually selected
+                    const value = submittedValue;
                     dragDropAnswers[`pos_${posId}`] = value;
                     dragDropAnswers[posId] = value;
                   }
@@ -2560,7 +2562,8 @@ useEffect(() => {
     // DRAG_AND_DROP for sections
     if (q.type === 'DRAG_AND_DROP') {
       const contentData = q.content?.data || [];
-      const studentAnswerObj = studentAnswers?.[q.id] || {};
+      // Try both q.id and q.questionId to get student answer
+      const studentAnswerObj = studentAnswers?.[q.id] || studentAnswers?.[q.questionId] || {};
       
       const renderDragDropForSection = () => {
         const parts = [];

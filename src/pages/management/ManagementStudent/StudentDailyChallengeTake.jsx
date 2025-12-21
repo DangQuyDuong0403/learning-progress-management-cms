@@ -11068,9 +11068,21 @@ const StudentDailyChallengeTake = () => {
 
   // Navigate to question
   const scrollToQuestion = (questionId) => {
+    if (!questionId) return;
     const element = questionRefs.current[questionId];
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Use setTimeout to ensure DOM is ready
+      setTimeout(() => {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+      }, 100);
+    } else {
+      // Try to find element by data attribute as fallback
+      const fallbackElement = document.querySelector(`[data-question-id="${questionId}"]`);
+      if (fallbackElement) {
+        setTimeout(() => {
+          fallbackElement.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+        }, 100);
+      }
     }
   };
 
@@ -11544,7 +11556,7 @@ const StudentDailyChallengeTake = () => {
             <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: 'rgb(24, 144, 255)', margin: 0 }}>{t('dailyChallenge.questions')}</h3>
           </div>
           <div style={{ 
-            maxHeight: 'calc(100vh - 280px)', 
+            maxHeight: 'calc(100vh - 14 0px)', 
             overflowY: 'auto',
             paddingRight: '8px'
           }}>
@@ -11574,7 +11586,9 @@ const StudentDailyChallengeTake = () => {
                         // For nested questions, try to scroll to the question directly first
                         const questionElement = questionRefs.current[item.id];
                         if (questionElement) {
-                          questionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          setTimeout(() => {
+                            questionElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                          }, 100);
                         } else {
                           // Fallback: scroll to section if question ref not found
                           scrollToQuestion(item.parentSection);
@@ -11737,7 +11751,7 @@ const StudentDailyChallengeTake = () => {
                 )}
                 {/* Dynamic questions preview (hide complex sections) */}
                 {sortedQuestions.map((q, idx) => (
-                  <div key={q.id} ref={el => (questionRefs.current[`q-${q.id}`] = el)}>
+                  <div key={q.id} ref={el => (questionRefs.current[`gv-${q.id}`] = el)}>
                     {q.type === 'MULTIPLE_CHOICE' && (
                       <MultipleChoiceContainer theme={theme} data={q} globalQuestionNumber={globalQuestionNumbers?.get(q.id)} />
                     )}
