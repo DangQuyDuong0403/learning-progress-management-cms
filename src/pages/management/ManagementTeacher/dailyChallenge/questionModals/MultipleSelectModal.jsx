@@ -100,7 +100,7 @@ const MultipleSelectModal = ({
 	saving = false,
 	challengeStatus = 'draft',
 }) => {
-	const isReadOnly = challengeStatus === 'in-progress' || challengeStatus === 'finished';
+	const isReadOnly = challengeStatus === 'published' || challengeStatus === 'in-progress' || challengeStatus === 'finished';
 	const { t } = useTranslation();
 	
 	// Custom upload adapter for CKEditor to convert images to base64
