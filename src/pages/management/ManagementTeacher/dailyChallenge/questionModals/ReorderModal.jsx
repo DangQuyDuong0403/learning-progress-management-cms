@@ -649,7 +649,12 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   }, [questionData, visible, parseQuestionText, createBlankElement, updateBlankNumbers, createShuffledWords]);
 
   const handlePaste = useCallback((e) => {
-    // Prevent all paste
+    // Allow paste in blank input fields
+    if (e.target.classList?.contains('blank-input')) {
+      return; // Allow normal paste in blank input fields
+    }
+    
+    // Prevent paste in editor (only blanks can be inserted via popup)
     e.preventDefault();
     return false;
   }, []);
