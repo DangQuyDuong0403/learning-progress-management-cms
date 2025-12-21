@@ -338,7 +338,7 @@ const SortablePassageItem = memo(
             >
               {passage.weight} weight
             </div>
-            {!isManager && (status === 'draft' || status === 'published') && !isClassFinished && (
+            {!isManager && (status === 'draft' || status === 'published' || status === 'in-progress' || status === 'finished') && !isClassFinished && (
               <Space size="small">
                 <Tooltip title="Update">
                   <Button
@@ -2309,7 +2309,7 @@ const SortableQuestionItem = memo(
             <div style={{ width: 120, textAlign: 'right', fontWeight: 600 }}>
               {question.weight} weight
             </div>
-            {!isManager && (status === 'draft' || status === 'published') && !isClassFinished && (
+            {!isManager && (status === 'draft' || status === 'published' || status === 'in-progress' || status === 'finished') && !isClassFinished && (
               <Space size="small">
                 <Tooltip title="Update">
                   <Button
