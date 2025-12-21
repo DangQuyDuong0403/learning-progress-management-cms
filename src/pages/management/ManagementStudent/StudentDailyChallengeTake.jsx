@@ -693,7 +693,7 @@ useEffect(() => {
                                     style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6', flexShrink: 0 }}
                                   />
                                   {q.type !== 'TRUE_OR_FALSE' && (
-                                    <span style={{ fontWeight: 600, flexShrink: 0 }}>{key}.</span>
+                                    <span style={{ fontWeight: 600, flexShrink: 0 }}>{opt.displayKey || opt.key || key}.</span>
                                   )}
                                   <span 
                                     className="option-text"
@@ -1611,7 +1611,7 @@ useEffect(() => {
                             fontWeight: '600',
                             fontSize: '16px'
                           }}>
-                            {option.key}.
+                            {option.displayKey || option.key}.
                           </span>
                           <Typography.Text style={{ 
                             fontSize: '14px',
@@ -1702,7 +1702,7 @@ useEffect(() => {
                                 fontWeight: '600',
                                 fontSize: '16px'
                               }}>
-                                {option.key}.
+                                {option.displayKey || option.key}.
                               </span>
                               <Typography.Text style={{ 
                                 fontSize: '14px',
@@ -2739,7 +2739,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
                                 fontWeight: '600',
                                 fontSize: '16px'
                               }}>
-                                {option.key}.
+                                {option.displayKey || option.key}.
                               </span>
                               <span 
                                 className="option-text"
@@ -2824,7 +2824,7 @@ const ListeningSectionItem = ({ question, index, theme, sectionScore, globalQues
                                     fontWeight: '600',
                                     fontSize: '16px'
                                   }}>
-                                    {option.key}.
+                                    {option.displayKey || option.key}.
                                   </span>
                                   <span 
                                     className="option-text"
@@ -4292,7 +4292,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     const files = Array.from(event.target.files);
     
     const MAX_AUDIO_SIZE = 3 * 1024 * 1024;
-    const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
+    const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
     const invalidTypeFiles = files.filter(f => detectMediaKindFromFile(f) === 'unknown');
     if (invalidTypeFiles.length > 0) {
       const names = invalidTypeFiles.map(f => f.name).join(', ');
@@ -4307,7 +4307,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     });
     if (oversizeFiles.length > 0) {
       const names = oversizeFiles.map(f => f.name).join(', ');
-      spaceToast.error('Size limit is 3MB for audio and 5MB for video. Exceeded limit: ' + names);
+      spaceToast.error('Size limit is 3MB for audio and 100MB for video. Exceeded limit: ' + names);
       event.target.value = '';
       return;
     }
@@ -4821,7 +4821,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                     fontSize: '13px',
                     color: theme === 'sun' ? '#666' : '#999'
                   }}>
-                    MP3/WebM ≤ 3MB hoặc MP4/WebM video ≤ 5MB
+                    MP3/WebM ≤ 3MB hoặc MP4/WebM video ≤ 100MB
                   </div>
                 </label>
               </div>
@@ -6333,17 +6333,20 @@ const MultipleChoiceContainer = ({ theme, data, globalQuestionNumber }) => {
   const normalizedOptions = React.useMemo(() => {
     const fallbackOptions = ['A','B','C','D'].map((k, i) => ({
       key: k,
-      text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i]
+      text: ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Can Tho'][i],
+      displayKey: k
     }));
     const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
       ? data.content.data.map((d, idx) => ({
           key: d.id || d.key || d.value || `opt_${idx}`,
-          text: d.value
+          text: d.value,
+          displayKey: d.displayKey || String.fromCharCode(65 + idx)
         }))
       : null;
     const baseOptions = optionsFromApi || contentOpts || fallbackOptions;
     return baseOptions.map((opt, idx) => {
       const valueKey = String(opt.valueKey || opt.key || opt.id || (opt.text ?? opt.value) || `opt_${idx}`);
+      // Preserve displayKey from original option, don't reassign based on new index
       const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
       const text = typeof opt.text === 'string'
         ? opt.text
@@ -6565,16 +6568,18 @@ const MultipleSelectContainer = ({ theme, data, globalQuestionNumber }) => {
   const optionsFromApi = Array.isArray(data?.options) && data.options.length > 0 ? data.options : null;
 
   const normalizedOptions = React.useMemo(() => {
-    const fallbackOptions = ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i] }));
+    const fallbackOptions = ['A','B','C','D'].map((k,i)=>({ key:k, text: ['Vietnam','Thailand','Japan','Malaysia'][i], displayKey: k }));
     const contentOpts = Array.isArray(data?.content?.data) && data.content.data.length > 0
       ? data.content.data.map((d, idx) => ({
           key: d.id || d.key || d.value || `opt_${idx}`,
-          text: d.value
+          text: d.value,
+          displayKey: d.displayKey || String.fromCharCode(65 + idx)
         }))
       : null;
     const baseOptions = optionsFromApi || contentOpts || fallbackOptions;
     return baseOptions.map((opt, idx) => {
       const valueKey = String(opt.valueKey || opt.key || opt.id || (opt.text ?? opt.value) || `opt_${idx}`);
+      // Preserve displayKey from original option, don't reassign based on new index
       const displayKey = opt.displayKey || String.fromCharCode(65 + idx);
       const text = typeof opt.text === 'string'
         ? opt.text
@@ -8517,23 +8522,33 @@ const transformApiDataToComponentFormat = (apiResponse, challengeType) => {
 
     if (sectionQuestions.length === 0) return;
 
-    // Helper function to transform options from {id, value} to {key, text}
+    // Helper function to transform options from {id, value} to {key, text, displayKey}
     const transformOptions = (contentData, questionType) => {
       if (!Array.isArray(contentData) || contentData.length === 0) return [];
       
-      // For TRUE_OR_FALSE, convert {id, value} to {key, text} format
+      // For TRUE_OR_FALSE, convert {id, value} to {key, text, displayKey} format
       if (questionType === 'TRUE_OR_FALSE') {
-        return contentData.map(opt => ({
-          key: opt.id || (opt.value === 'True' ? 'A' : 'B'),
-          text: opt.value || ''
-        }));
+        return contentData.map((opt, idx) => {
+          const originalKey = opt.id || (opt.value === 'True' ? 'A' : 'B');
+          return {
+            key: originalKey,
+            originalKey: originalKey, // Save original key for shuffle mapping
+            text: opt.value || '',
+            displayKey: opt.displayKey || (opt.value === 'True' ? 'A' : 'B')
+          };
+        });
       }
       
-      // For other types, convert {id, value} to {key, text} format
-      return contentData.map(opt => ({
-        key: opt.id || opt.key || String.fromCharCode(65 + contentData.indexOf(opt)),
-        text: opt.value || opt.text || ''
-      }));
+      // For other types, convert {id, value} to {key, text, displayKey} format
+      return contentData.map((opt, idx) => {
+        const originalKey = opt.id || opt.key || opt.originalKey || String.fromCharCode(65 + idx);
+        return {
+          key: originalKey,
+          originalKey: originalKey, // Save original key for shuffle mapping
+          text: opt.value || opt.text || '',
+          displayKey: opt.displayKey || String.fromCharCode(65 + idx)
+        };
+      });
     };
 
     // Check questionType and resourceType to determine section type
@@ -9511,21 +9526,43 @@ const StudentDailyChallengeTake = () => {
                     
                     const shuffledQuestion = { ...question };
                     
-                    // Shuffle options array if it exists and assign display keys while preserving original ids
+                    // Shuffle options array if it exists
                     if (shuffledQuestion.options && Array.isArray(shuffledQuestion.options)) {
-                      const shuffled = shuffle([...shuffledQuestion.options]);
+                      // Save original key for each option before shuffling
+                      const optionsWithOriginalKey = shuffledQuestion.options.map((opt, idx) => ({
+                        ...opt,
+                        originalKey: opt.originalKey || opt.key || opt.id || String.fromCharCode(65 + idx)
+                      }));
+                      // Shuffle the options
+                      const shuffled = shuffle([...optionsWithOriginalKey]);
+                      // Assign new displayKey as A, B, C, D based on NEW position after shuffle
+                      // But keep originalKey for submission mapping
                       shuffledQuestion.options = shuffled.map((opt, idx) => ({
                         ...opt,
-                        displayKey: opt.displayKey || String.fromCharCode(65 + idx)
+                        displayKey: String.fromCharCode(65 + idx), // Always A, B, C, D in order
+                        key: opt.originalKey // Keep original key for submission
                       }));
                     }
                     
                     // Shuffle content.data array if it exists (used for options in some question types)
-                    // Note: content.data will be mapped to options with A, B, C, D keys during rendering
                     if (shuffledQuestion.content?.data && Array.isArray(shuffledQuestion.content.data)) {
+                      // Save original key/id for each item before shuffling
+                      const dataWithOriginalKey = shuffledQuestion.content.data.map((d, idx) => ({
+                        ...d,
+                        originalKey: d.originalKey || d.id || d.key || String.fromCharCode(65 + idx)
+                      }));
+                      // Shuffle the data
+                      const shuffled = shuffle([...dataWithOriginalKey]);
+                      // Assign new displayKey as A, B, C, D based on NEW position after shuffle
+                      // But keep originalKey/id for submission mapping
                       shuffledQuestion.content = {
                         ...shuffledQuestion.content,
-                        data: shuffle([...shuffledQuestion.content.data])
+                        data: shuffled.map((d, idx) => ({
+                          ...d,
+                          displayKey: String.fromCharCode(65 + idx), // Always A, B, C, D in order
+                          id: d.originalKey, // Keep original id for submission
+                          key: d.originalKey // Keep original key for submission
+                        }))
                       };
                     }
                     
