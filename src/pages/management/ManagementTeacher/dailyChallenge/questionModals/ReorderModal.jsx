@@ -978,14 +978,6 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       return;
     }
 
-    // Validate duplicate blank answers
-    const blankAnswers = blanks.map(blank => (blank.answer || '').toLowerCase().trim());
-    const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
-    if (duplicates.length > 0) {
-      spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateItemAnswers', 'Cannot create duplicate answers. Please ensure all item answers are unique.'));
-      return;
-    }
-
     // Build correct answer from blanks in order
     const correctAnswer = blanks.map(blank => blank.answer).join(' ');
 
