@@ -14,7 +14,7 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
 
 // Memoized Option Card to minimize re-renders while typing
-const OptionCard = memo(({ option, index, optionEditorConfig, getPlainText, onRemove, onToggleCorrect, onChange, optionEditorsRef, t }) => {
+const OptionCard = memo(({ option, index, optionEditorConfig, getPlainText, onRemove, onToggleCorrect, onChange, optionEditorsRef, t, isReadOnly }) => {
 	const [isHovered, setIsHovered] = useState(false);
 	return (
 		<div
@@ -67,6 +67,7 @@ const OptionCard = memo(({ option, index, optionEditorConfig, getPlainText, onRe
 						danger
 						icon={<DeleteOutlined />}
 						onClick={(e) => { e.stopPropagation(); onRemove(option.id); }}
+						disabled={isReadOnly}
 						style={{ background: 'rgba(255, 77, 79, 0.9)', color: 'white', border: 'none', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}
 					/>
 				</Tooltip>
@@ -97,7 +98,9 @@ const MultipleSelectModal = ({
 	onSave,
 	questionData = null,
 	saving = false,
+	challengeStatus = 'draft',
 }) => {
+	const isReadOnly = challengeStatus === 'in-progress' || challengeStatus === 'finished';
 	const { t } = useTranslation();
 	
 	// Custom upload adapter for CKEditor to convert images to base64
@@ -686,6 +689,7 @@ const MultipleSelectModal = ({
 						<Button
 							icon={<PlusOutlined />}
 							onClick={handleAddOption}
+							disabled={isReadOnly}
 							style={{
 								height: '40px',
 								borderRadius: '8px',
@@ -697,7 +701,7 @@ const MultipleSelectModal = ({
 								background: 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))',
 								color: '#000000',
 								boxShadow: '0 2px 8px rgba(60, 153, 255, 0.2)',
-								opacity: 0.9
+								opacity: isReadOnly ? 0.5 : 0.9
 							}}
 						>
 							{t('dailyChallenge.addOption', 'Add Option')}
@@ -725,6 +729,7 @@ const MultipleSelectModal = ({
                         onChange={handleOptionEditorChange}
                         optionEditorsRef={optionEditorsRef}
                         t={t}
+                        isReadOnly={isReadOnly}
                     />
                 ))}
 

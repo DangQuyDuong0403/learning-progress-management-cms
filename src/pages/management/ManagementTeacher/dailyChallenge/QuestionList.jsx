@@ -5831,6 +5831,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <MultipleSelectModal
@@ -5839,6 +5840,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <TrueFalseModal
@@ -5855,6 +5857,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <DropdownModal
@@ -5863,6 +5866,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <DragDropModal
@@ -5871,6 +5875,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <ReorderModal
@@ -5879,6 +5884,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <RewriteModal
@@ -5887,6 +5893,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
 
       {/* Delete Confirmation Modal */}

@@ -30,8 +30,9 @@ const debounce = (func, wait) => {
 };
 
 
-const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
+const ReorderModal = ({ visible, onCancel, onSave, questionData = null, challengeStatus = 'draft' }) => {
   const { t } = useTranslation();
+  const isReadOnly = challengeStatus === 'in-progress' || challengeStatus === 'finished';
   const MAX_ITEMS = 10;
   const [weight, setWeight] = useState(1);
   const [shuffledWords, setShuffledWords] = useState([]);
@@ -236,6 +237,12 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const handleDeleteBlankElement = useCallback((blankId) => {
     if (!editorRef.current) return;
 
+    // Check if read-only mode
+    if (isReadOnly) {
+      spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+      return;
+    }
+
     // prevent duplicate deletions racing from blur + click
     if (deletionInProgressRef.current.has(blankId)) return;
     deletionInProgressRef.current.add(blankId);
@@ -268,7 +275,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     
     // Refocus editor
     editorRef.current.focus();
-  }, [updateBlankNumbers, createShuffledWords]);
+  }, [updateBlankNumbers, createShuffledWords, isReadOnly]);
 
   // Check if cursor is inside a blank element
   const isCursorInsideBlank = useCallback(() => {
@@ -295,8 +302,8 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       return;
     }
 
-    // Don't show popup if cursor is inside a blank
-    if (isCursorInsideBlank()) {
+    // Don't show popup if cursor is inside a blank or in read-only mode
+    if (isCursorInsideBlank() || isReadOnly) {
       setShowBlankPopup(false);
       return;
     }
@@ -327,7 +334,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       savedRangeRef.current = range.cloneRange();
       setShowBlankPopup(true);
     }
-  }, [isCursorInsideBlank]);
+  }, [isCursorInsideBlank, isReadOnly]);
 
   // Debounced version - only update popup after user stops typing for 150ms
   const updatePopupPosition = useMemo(
@@ -519,9 +526,11 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      // mark deletion initiated by button to avoid blur double-delete
-      span.setAttribute('data-deleting-by-button', 'true');
-      handleDeleteBlankElement(blank.id);
+      if (!isReadOnly) {
+        // mark deletion initiated by button to avoid blur double-delete
+        span.setAttribute('data-deleting-by-button', 'true');
+        handleDeleteBlankElement(blank.id);
+      }
     });
     deleteBtn.addEventListener('mousedown', (e) => {
       e.preventDefault();
@@ -575,7 +584,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     span.expandBlank = expandBlank;
 
     return span;
-  }, [handleBlankAnswerChange, handleDeleteBlankElement, updatePopupPosition]);
+  }, [handleBlankAnswerChange, handleDeleteBlankElement, updatePopupPosition, isReadOnly]);
 
   // Initialize from questionData (robustly waits for editor to mount)
   useEffect(() => {
@@ -678,6 +687,13 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
   const insertBlankAtCursor = useCallback(() => {
     if (!editorRef.current || !savedRangeRef.current) return;
 
+    // Check if read-only mode
+    if (isReadOnly) {
+      spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+      setShowBlankPopup(false);
+      return;
+    }
+
     // Enforce maximum number of items
     if (blanks.length >= MAX_ITEMS) {
       spaceToast.warning(t('dailyChallenge.youCanAddUpToItems', 'You can add up to {{max}} items.', { max: MAX_ITEMS }));
@@ -769,7 +785,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
     // Hide popup
     setShowBlankPopup(false);
-  }, [blanks, blankColors, createBlankElement, isCursorInsideBlank, updateBlankNumbers, createShuffledWords]);
+  }, [blanks, blankColors, createBlankElement, isCursorInsideBlank, updateBlankNumbers, createShuffledWords, isReadOnly]);
 
   const handleEditorClick = useCallback((e) => {
     // Only set cursor if there's no current selection
@@ -995,14 +1011,50 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     
     const questionText = sortedBlanks.map(blank => `[[pos_${blank.positionId}]]`).join(' ');
 
+    // Calculate duplicate indices for blanks (to add (1), (2) to duplicate values when saving)
+    // Count occurrences of each answer value (case-insensitive, trimmed)
+    const valueCounts = new Map();
+    sortedBlanks.forEach((blank) => {
+      const normalizedValue = (blank.answer || '').toLowerCase().trim();
+      if (normalizedValue) {
+        valueCounts.set(normalizedValue, (valueCounts.get(normalizedValue) || 0) + 1);
+      }
+    });
+
+    // Track current index for each value
+    const valueIndices = new Map();
+    const blanksWithDuplicateIndicesForSave = sortedBlanks.map((blank) => {
+      const normalizedValue = (blank.answer || '').toLowerCase().trim();
+      const count = valueCounts.get(normalizedValue) || 0;
+      
+      if (count > 1 && normalizedValue) {
+        // This value appears multiple times, add index
+        const currentIndex = (valueIndices.get(normalizedValue) || 0) + 1;
+        valueIndices.set(normalizedValue, currentIndex);
+        return {
+          ...blank,
+          duplicateIndex: currentIndex,
+        };
+      }
+      return blank;
+    });
+
     // Create content.data array with positionId only
-    // Use sortedBlanks to ensure correct order
-    const contentData = sortedBlanks.map((blank, index) => ({
-      id: `opt${index + 1}`,
-      value: blank.answer,
-      positionId: blank.positionId,
-      correct: true
-    }));
+    // Use sortedBlanks to ensure correct order, but add (1), (2) to duplicate values
+    const contentData = blanksWithDuplicateIndicesForSave.map((blank, index) => {
+      // If duplicate, add (1), (2) to the value
+      let valueToSave = blank.answer || '';
+      if (blank.duplicateIndex) {
+        valueToSave = `${valueToSave} (${blank.duplicateIndex})`;
+      }
+      
+      return {
+        id: `opt${index + 1}`,
+        value: valueToSave,
+        positionId: blank.positionId,
+        correct: true
+      };
+    });
 
     const newQuestionData = {
       id: questionData?.id || Date.now(),
@@ -1041,6 +1093,40 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
     setWeight(1);
     onCancel();
   };
+
+  // Calculate duplicate indices for shuffled words display (add (1), (2) for duplicate values)
+  const shuffledWordsWithDuplicateIndices = useMemo(() => {
+    if (!shuffledWords || shuffledWords.length === 0) return [];
+
+    // Count occurrences of each word text (case-insensitive, trimmed)
+    const valueCounts = new Map();
+    shuffledWords.forEach((word) => {
+      const normalizedValue = (word.text || '').toLowerCase().trim();
+      if (normalizedValue) {
+        valueCounts.set(normalizedValue, (valueCounts.get(normalizedValue) || 0) + 1);
+      }
+    });
+
+    // Track current index for each value
+    const valueIndices = new Map();
+
+    // Add duplicate index to each word
+    return shuffledWords.map((word) => {
+      const normalizedValue = (word.text || '').toLowerCase().trim();
+      const count = valueCounts.get(normalizedValue) || 0;
+      
+      if (count > 1 && normalizedValue) {
+        // This value appears multiple times, add index
+        const currentIndex = (valueIndices.get(normalizedValue) || 0) + 1;
+        valueIndices.set(normalizedValue, currentIndex);
+        return {
+          ...word,
+          duplicateIndex: currentIndex,
+        };
+      }
+      return word;
+    });
+  }, [shuffledWords]);
 
   // Hide popup when clicking outside
   useEffect(() => {
@@ -1248,7 +1334,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                   icon={<ThunderboltOutlined />}
                   onClick={insertBlankAtCursor}
                   size="small"
-                  disabled={blanks.length >= MAX_ITEMS}
+                  disabled={blanks.length >= MAX_ITEMS || isReadOnly}
                   style={{
                     background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
                     border: 'none',
@@ -1257,6 +1343,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                     alignItems: 'center',
                     gap: '4px',
                     color: '#000000',
+                    opacity: (blanks.length >= MAX_ITEMS || isReadOnly) ? 0.5 : 1,
                   }}
                 >
                   {blanks.length >= MAX_ITEMS ? t('dailyChallenge.maxItems', 'Max {{max}} items', { max: MAX_ITEMS }) : t('dailyChallenge.addItem', 'Add Item')}
@@ -1324,7 +1411,7 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                 gap: '12px',
                 justifyContent: 'center'
               }}>
-                {shuffledWords.map((word) => (
+                {shuffledWordsWithDuplicateIndices.map((word) => (
                   <div
                     key={word.id}
                     draggable
@@ -1344,9 +1431,9 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                       userSelect: 'none',
                       boxShadow: `0 2px 8px ${word.color}40`,
                       maxWidth: '200px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'translateY(-2px)';
@@ -1357,7 +1444,22 @@ const ReorderModal = ({ visible, onCancel, onSave, questionData = null }) => {
                       e.currentTarget.style.boxShadow = `0 2px 8px ${word.color}40`;
                     }}
                   >
-                    {word.text}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {word.text}
+                    </span>
+                    {word.duplicateIndex && (
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          color: '#999',
+                          fontWeight: 500,
+                          flexShrink: 0,
+                          opacity: 0.7,
+                        }}
+                      >
+                        ({word.duplicateIndex})
+                      </span>
+                    )}
             </div>
           ))}
         </div>

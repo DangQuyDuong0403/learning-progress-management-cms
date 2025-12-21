@@ -55,8 +55,9 @@ const throttle = (func, limit) => {
 	};
 };
 
-const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
+const DragDropModal = ({ visible, onCancel, onSave, questionData = null, challengeStatus = 'draft' }) => {
 	const { t } = useTranslation();
+	const isReadOnly = challengeStatus === 'in-progress' || challengeStatus === 'finished';
 	const [editorContent, setEditorContent] = useState([]);
 	const [blanks, setBlanks] = useState([]);
 	const [incorrectOptions, setIncorrectOptions] = useState([]);
@@ -670,8 +671,8 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
-		// Don't show popup if cursor is inside a blank
-		if (isCursorInsideBlank()) {
+		// Don't show popup if cursor is inside a blank or in read-only mode
+		if (isCursorInsideBlank() || isReadOnly) {
 			setShowBlankPopup(false);
 			return;
 		}
@@ -702,7 +703,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			savedRangeRef.current = range.cloneRange();
 			setShowBlankPopup(true);
 		}
-	}, [isCursorInsideBlank]);
+	}, [isCursorInsideBlank, isReadOnly]);
 
 	// Debounced version - only update popup after user stops typing for 150ms
 	const updatePopupPosition = useMemo(
@@ -852,6 +853,12 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		(blankId) => {
 			if (!editorRef.current) return;
 
+			// Check if read-only mode
+			if (isReadOnly) {
+				spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+				return;
+			}
+
 			// prevent duplicate deletions racing from blur + click
 			if (deletionInProgressRef.current.has(blankId)) return;
 			deletionInProgressRef.current.add(blankId);
@@ -881,7 +888,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Refocus editor
 			editorRef.current.focus();
 		},
-		[updateBlankNumbers]
+		[updateBlankNumbers, isReadOnly]
 	);
 
 	// Create blank element
@@ -1062,8 +1069,10 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				e.preventDefault();
 				e.stopPropagation();
 				e.stopImmediatePropagation();
-				span.setAttribute('data-deleting-by-button', 'true');
-				handleDeleteBlankElement(blank.id);
+				if (!isReadOnly) {
+					span.setAttribute('data-deleting-by-button', 'true');
+					handleDeleteBlankElement(blank.id);
+				}
 			});
 			deleteBtn.addEventListener('mousedown', (e) => {
 				e.preventDefault();
@@ -1114,7 +1123,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 			return span;
 		},
-		[handleBlankAnswerChange, handleDeleteBlankElement, blankColors]
+		[handleBlankAnswerChange, handleDeleteBlankElement, blankColors, isReadOnly]
 	);
 
 	// Throttled blank check - only run once every 100ms
@@ -1198,6 +1207,11 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				}
 
 				if (patternIndex !== -1) {
+					// Check if read-only mode
+					if (isReadOnly) {
+						spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+						break;
+					}
 					// Found a pattern in this text node
 
 					// Create blank
@@ -1283,7 +1297,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				}
 			}
 		},
-		[blanks, blankColors, createBlankElement, setBlanks, updateBlankNumbers]
+		[blanks, blankColors, createBlankElement, setBlanks, updateBlankNumbers, isReadOnly]
 	);
 
 	// Debounced pattern finder - run after user stops typing for 50ms
@@ -1335,6 +1349,12 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Insert blank at saved cursor position
 	const insertBlankAtCursor = useCallback(() => {
+		// Check if read-only mode
+		if (isReadOnly) {
+			spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+			setShowBlankPopup(false);
+			return;
+		}
 		if (blanks.length >= MAX_BLANKS) {
 			spaceToast.warning(t('dailyChallenge.maximum10BlanksAllowed', 'Maximum 10 blanks allowed'));
 			setShowBlankPopup(false);
@@ -1427,6 +1447,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		createBlankElement,
 		isCursorInsideBlank,
 		updateBlankNumbers,
+		isReadOnly,
 	]);
 
 	// Handle paste (including images)
@@ -1505,14 +1526,6 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
-		// Validate duplicate blank answers
-		const blankAnswers = blanks.map(blank => (blank.answer || '').toLowerCase().trim());
-		const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
-		if (duplicates.length > 0) {
-			spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateAnswersBlanks', 'Cannot create duplicate answers. Please ensure all blank answers are unique.'));
-			return;
-		}
-
 		// Validate: check if there are more than 10 incorrect options
 		if (incorrectOptions.length > MAX_INCORRECT_OPTIONS) {
 			spaceToast.warning(t('dailyChallenge.maximum10IncorrectOptionsPerDropdown', 'Maximum 10 incorrect options allowed per dropdown. Please remove an option before adding a new one.') + ' ' + t('dailyChallenge.removeExcessOptions', 'Please remove excess options before saving.'));
@@ -1528,25 +1541,38 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
-		// Validate duplicate incorrect options
-		const duplicateIncorrect = incorrectTexts.filter((text, index) => incorrectTexts.indexOf(text) !== index);
-		if (duplicateIncorrect.length > 0) {
-			spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateIncorrectOptions', 'Cannot create duplicate incorrect options. Please ensure all options are unique.'));
-			return;
-		}
-
-		// Validate that blank answers don't duplicate incorrect options
-		const blankAnswersLower = blankAnswers.filter(text => text);
-		const hasDuplicateWithIncorrect = blankAnswersLower.some(blankAnswer => incorrectTexts.includes(blankAnswer));
-		if (hasDuplicateWithIncorrect) {
-			spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateAnswersBlanks', 'Cannot create duplicate answers. Please ensure all blank answers are unique.'));
-			return;
-		}
-
 		// Build backend format by traversing DOM (preserve HTML)
 		let questionText = '';
 		const contentData = [];
 		let answerIndex = 1;
+
+		// Calculate duplicate indices for blanks (to add (1), (2) to duplicate values when saving)
+		// Count occurrences of each answer value (case-insensitive, trimmed)
+		const valueCounts = new Map();
+		orderedBlanks.forEach((blank) => {
+			const normalizedValue = (blank.answer || '').toLowerCase().trim();
+			if (normalizedValue) {
+				valueCounts.set(normalizedValue, (valueCounts.get(normalizedValue) || 0) + 1);
+			}
+		});
+
+		// Track current index for each value
+		const valueIndices = new Map();
+		const blanksWithDuplicateIndicesForSave = orderedBlanks.map((blank) => {
+			const normalizedValue = (blank.answer || '').toLowerCase().trim();
+			const count = valueCounts.get(normalizedValue) || 0;
+			
+			if (count > 1 && normalizedValue) {
+				// This value appears multiple times, add index
+				const currentIndex = (valueIndices.get(normalizedValue) || 0) + 1;
+				valueIndices.set(normalizedValue, currentIndex);
+				return {
+					...blank,
+					duplicateIndex: currentIndex,
+				};
+			}
+			return blank;
+		});
 
 		// Process each child node
 		// isTopLevel: true if this is a top-level node (direct child of editor), false if nested
@@ -1559,9 +1585,17 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					// This is a blank - replace with placeholder
 					const blank = blanks.find((b) => b.id === blankId);
 					if (blank) {
+						// Find if this blank has duplicate index
+						const blankWithIndex = blanksWithDuplicateIndicesForSave.find((b) => b.id === blankId);
+						// If duplicate, add (1), (2) to the value
+						let valueToSave = blank.answer || '';
+						if (blankWithIndex && blankWithIndex.duplicateIndex) {
+							valueToSave = `${valueToSave} (${blankWithIndex.duplicateIndex})`;
+						}
+						
 						contentData.push({
 							id: `ans${answerIndex}`,
-							value: blank.answer,
+							value: valueToSave,
 							positionId: blank.positionId,
 							correct: true,
 						});
@@ -1977,6 +2011,40 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 		return ordered;
 	}, [blanks]);
+
+	// Calculate duplicate indices for display (add (1), (2) for duplicate values)
+	const blanksWithDuplicateIndices = useMemo(() => {
+		if (!orderedBlanks || orderedBlanks.length === 0) return [];
+
+		// Count occurrences of each answer value (case-insensitive, trimmed)
+		const valueCounts = new Map();
+		orderedBlanks.forEach((blank) => {
+			const normalizedValue = (blank.answer || '').toLowerCase().trim();
+			if (normalizedValue) {
+				valueCounts.set(normalizedValue, (valueCounts.get(normalizedValue) || 0) + 1);
+			}
+		});
+
+		// Track current index for each value
+		const valueIndices = new Map();
+
+		// Add duplicate index to each blank
+		return orderedBlanks.map((blank) => {
+			const normalizedValue = (blank.answer || '').toLowerCase().trim();
+			const count = valueCounts.get(normalizedValue) || 0;
+			
+			if (count > 1 && normalizedValue) {
+				// This value appears multiple times, add index
+				const currentIndex = (valueIndices.get(normalizedValue) || 0) + 1;
+				valueIndices.set(normalizedValue, currentIndex);
+				return {
+					...blank,
+					duplicateIndex: currentIndex,
+				};
+			}
+			return blank;
+		});
+	}, [orderedBlanks]);
 
 	// Hide popup when clicking outside
 	useEffect(() => {
@@ -2540,6 +2608,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 									icon={<ThunderboltOutlined />}
 									onClick={insertBlankAtCursor}
 									size='small'
+									disabled={isReadOnly}
 									style={{
 										background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
 										border: 'none',
@@ -2548,6 +2617,7 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 										alignItems: 'center',
 										gap: '4px',
 										color: '#000000',
+										opacity: isReadOnly ? 0.5 : 1,
 									}}>
 									+ {t('dailyChallenge.blank', 'Blank')}
 								</Button>
@@ -2591,8 +2661,8 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 									flexDirection: 'column',
 									gap: '8px',
 								}}>
-									{orderedBlanks.length > 0 ? (
-										orderedBlanks.map((blank, index) => (
+									{blanksWithDuplicateIndices.length > 0 ? (
+										blanksWithDuplicateIndices.map((blank, index) => (
 											<div
 												key={blank.id}
 												style={{
@@ -2622,7 +2692,8 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 												}}>
 													{index + 1}
 												</span>
-										<Input
+										<div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+											<Input
 																value={(blank.answer || '').slice(0, 50)}
 																onChange={(e) => {
 																	const v = (e.target.value || '').slice(0, 50);
@@ -2638,6 +2709,20 @@ const DragDropModal = ({ visible, onCancel, onSave, questionData = null }) => {
 												lineHeight: '27px',
 											}}
 										/>
+										{blank.duplicateIndex && (
+											<span
+												style={{
+													fontSize: '10px',
+													color: '#999',
+													fontWeight: 500,
+													flexShrink: 0,
+													opacity: 0.7,
+												}}
+											>
+												({blank.duplicateIndex})
+											</span>
+										)}
+										</div>
 										<span
 											style={{
 												fontSize: '12px',
