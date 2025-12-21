@@ -2694,7 +2694,7 @@
     "pickNewDeadlineForSelectedSubmissions": "Pick a new deadline for the selected submissions.",
     "selectAll": "Select all",
     "clearSelection": "Clear selection",
-    "onlyPendingOrDraftCanBeExtendedNewDeadlineMustBeFuture": "Only submissions in pending, draft can be extended. The new deadline must be in the future.",
+    "onlyPendingOrDraftCanBeExtendedNewDeadlineMustBeFuture": "Only submissions in pending, draft, or missed can be extended. The new deadline must be in the future.",
     "classSubmissionList": "Class submission list",
     "code": "Code",
     "noStudentCode": "No student code",
