@@ -32,7 +32,7 @@ const debounce = (func, wait) => {
 
 const ReorderModal = ({ visible, onCancel, onSave, questionData = null, challengeStatus = 'draft' }) => {
   const { t } = useTranslation();
-  const isReadOnly = challengeStatus === 'in-progress' || challengeStatus === 'finished';
+  const isReadOnly = challengeStatus === 'published' || challengeStatus === 'in-progress' || challengeStatus === 'finished';
   const MAX_ITEMS = 10;
   const [weight, setWeight] = useState(1);
   const [shuffledWords, setShuffledWords] = useState([]);

@@ -76,7 +76,7 @@ const MultipleChoiceModal = ({
 	challengeStatus = 'draft',
 }) => {
 	const { t } = useTranslation();
-	const isReadOnly = challengeStatus === 'in-progress' || challengeStatus === 'finished';
+	const isReadOnly = challengeStatus === 'published' || challengeStatus === 'in-progress' || challengeStatus === 'finished';
 	
 	// Custom upload adapter for CKEditor to convert images to base64
 	function CustomUploadAdapterPlugin(editor) {

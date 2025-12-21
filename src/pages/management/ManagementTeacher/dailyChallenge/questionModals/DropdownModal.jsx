@@ -57,7 +57,7 @@ const throttle = (func, limit) => {
 
 const DropdownModal = ({ visible, onCancel, onSave, questionData = null, challengeStatus = 'draft' }) => {
 	const { t } = useTranslation();
-	const isReadOnly = challengeStatus === 'in-progress' || challengeStatus === 'finished';
+	const isReadOnly = challengeStatus === 'published' || challengeStatus === 'in-progress' || challengeStatus === 'finished';
 	const [editorContent, setEditorContent] = useState([]);
 	const [dropdowns, setDropdowns] = useState([]);
     const [weight, setWeight] = useState(1);
