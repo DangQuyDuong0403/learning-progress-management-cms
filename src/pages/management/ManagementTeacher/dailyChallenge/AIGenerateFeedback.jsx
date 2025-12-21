@@ -2997,8 +2997,8 @@ const AIGenerateFeedback = () => {
                           ) : null}
                           {/* Transcript Content (with [[dur_X]] removed) - Pastel blue background for prompt */}
                           <div
+                            className="html-content"
                             style={{
-                              whiteSpace: 'pre-wrap',
                               color: theme === 'sun' ? 'rgb(15, 23, 42)' : 'rgb(45, 27, 105)',
                               background: theme === 'sun' ? '#E8F4FD' : 'rgba(138, 122, 255, 0.15)',
                               borderRadius: 12,
@@ -3009,6 +3009,7 @@ const AIGenerateFeedback = () => {
                               userSelect: 'text',
                               cursor: 'text',
                               marginBottom: 16,
+                              lineHeight: 1.7,
                             }}
                             onMouseUp={(e) => {
                               if (section?.id) {
@@ -3020,9 +3021,8 @@ const AIGenerateFeedback = () => {
                                 setTextSelection({ visible: false, sectionId: null, startIndex: null, endIndex: null, position: { x: 0, y: 0 } });
                               }, 0);
                             }}
-                          >
-                            {renderHtmlAsOrderedTextAndImages(durationInfo.cleanedContent)}
-                          </div>
+                            dangerouslySetInnerHTML={{ __html: durationInfo.cleanedContent }}
+                          />
                           
                           {/* Student's Audio Recording - Pastel yellow/cream background for student submission */}
                           <div style={{
