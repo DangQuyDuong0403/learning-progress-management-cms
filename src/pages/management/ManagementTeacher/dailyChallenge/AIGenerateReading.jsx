@@ -109,7 +109,6 @@ const AIGenerateReading = () => {
     'FILL_IN_THE_BLANK',
     'DROPDOWN',
     'DRAG_AND_DROP',
-    'REARRANGE',
   ], []);
   const [questionTypeConfigs, setQuestionTypeConfigs] = useState(
     () => allQuestionTypes.map((qt) => ({ questionType: qt, numberOfQuestions: 0 }))
@@ -244,7 +243,6 @@ const AIGenerateReading = () => {
     { value: "FILL_IN_THE_BLANK", label: t('dailyChallenge.fillBlank') || 'Fill in the Blank', icon: '✏️', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "DROPDOWN", label: t('dailyChallenge.dropdown') || 'Dropdown', icon: '📋', color: primaryColor, bgColor: primaryColorWithAlpha },
     { value: "DRAG_AND_DROP", label: t('dailyChallenge.dragAndDrop') || 'Drag and Drop', icon: '🔄', color: primaryColor, bgColor: primaryColorWithAlpha },
-    { value: "REARRANGE", label: t('dailyChallenge.rearrange') || 'Rearrange', icon: '🔀', color: primaryColor, bgColor: primaryColorWithAlpha },
   ], [t, primaryColor, primaryColorWithAlpha]);
 
   // Level options constants
