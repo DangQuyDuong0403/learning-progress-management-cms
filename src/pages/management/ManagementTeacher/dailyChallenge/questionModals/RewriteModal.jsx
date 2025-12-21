@@ -19,7 +19,7 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import './MultipleChoiceModal.css';
 
 // Memoized Answer Card to minimize re-renders while typing
-const AnswerCard = memo(({ answer, index, answerEditorConfig, getPlainText, onRemove, onChange, answerEditorsRef, canDelete, onHover, t }) => {
+const AnswerCard = memo(({ answer, index, answerEditorConfig, getPlainText, onRemove, onChange, answerEditorsRef, canDelete, onHover, t, isReadOnly }) => {
   const [isHovered, setIsHovered] = useState(false);
   return (
     <div
@@ -60,6 +60,7 @@ const AnswerCard = memo(({ answer, index, answerEditorConfig, getPlainText, onRe
               danger
               icon={<DeleteOutlined />}
               onClick={(e) => { e.stopPropagation(); onRemove(answer.id); }}
+              disabled={isReadOnly}
               style={{
                 background: 'rgba(255, 77, 79, 0.9)', color: 'white', border: 'none', borderRadius: '8px',
                 width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px'
@@ -90,8 +91,9 @@ const AnswerCard = memo(({ answer, index, answerEditorConfig, getPlainText, onRe
   );
 }, (prev, next) => prev.answer === next.answer && prev.index === next.index);
 
-const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
+const RewriteModal = ({ visible, onCancel, onSave, questionData = null, challengeStatus = 'draft' }) => {
   const { t } = useTranslation();
+  const isReadOnly = challengeStatus === 'published' || challengeStatus === 'in-progress' || challengeStatus === 'finished';
   
   // Custom upload adapter for CKEditor to convert images to base64
   function CustomUploadAdapterPlugin(editor) {
@@ -710,6 +712,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
           <Button
             icon={<PlusOutlined />}
             onClick={handleAddAnswer}
+            disabled={isReadOnly}
             style={{
               height: '40px',
               borderRadius: '8px',
@@ -721,7 +724,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
               background: 'linear-gradient(135deg, rgba(102, 174, 255, 0.6), rgba(60, 153, 255, 0.6))',
                 color: '#000000',
               boxShadow: '0 2px 8px rgba(60, 153, 255, 0.2)',
-              opacity: 0.9
+              opacity: isReadOnly ? 0.5 : 0.9
               }}
             >
               {t('dailyChallenge.addAnswer', 'Add Answer')}
@@ -746,6 +749,7 @@ const RewriteModal = ({ visible, onCancel, onSave, questionData = null }) => {
               canDelete={correctAnswers.length > 1}
               onHover={(id) => setHoveredAnswer(id)}
               t={t}
+              isReadOnly={isReadOnly}
             />
           ))}
         </div>

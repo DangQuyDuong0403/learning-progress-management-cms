@@ -69,6 +69,7 @@ import {
   DropdownModal,
   DragDropModal,
   ReorderModal,
+  EditReorderModal,
   RewriteModal,
 } from "./questionModals";
 
@@ -4038,7 +4039,12 @@ const DailyChallengeContent = () => {
             modalType = 'drag-drop';
             break;
           case 'REARRANGE':
-            modalType = 'reorder';
+            // Use EditReorderModal for in-progress, finished, or published status
+            if (status === 'in-progress' || status === 'finished' || status === 'published') {
+              modalType = 'edit-reorder';
+            } else {
+              modalType = 'reorder';
+            }
             break;
           case 'REWRITE':
             modalType = 'rewrite';
@@ -4053,7 +4059,7 @@ const DailyChallengeContent = () => {
       }
       return prev;
     });
-  }, []);
+  }, [status]);
 
   const handleDeleteQuestion = useCallback((questionId) => {
     // Filter questions and passages to match the displayed order (same logic as filteredQuestions/filteredPassages)
@@ -5831,6 +5837,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <MultipleSelectModal
@@ -5839,6 +5846,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <TrueFalseModal
@@ -5855,6 +5863,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <DropdownModal
@@ -5863,6 +5872,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <DragDropModal
@@ -5870,7 +5880,16 @@ const DailyChallengeContent = () => {
         onCancel={handleModalCancel}
         onSave={handleModalSave}
         questionData={editingQuestion}
+        challengeStatus={status}
+      />
+      
+      <EditReorderModal
+        visible={modalVisible && currentModalType === "edit-reorder"}
+        onCancel={handleModalCancel}
+        onSave={handleModalSave}
+        questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <ReorderModal
@@ -5879,6 +5898,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
       
       <RewriteModal
@@ -5887,6 +5907,7 @@ const DailyChallengeContent = () => {
         onSave={handleModalSave}
         questionData={editingQuestion}
         saving={savingQuestion}
+        challengeStatus={status}
       />
 
       {/* Delete Confirmation Modal */}

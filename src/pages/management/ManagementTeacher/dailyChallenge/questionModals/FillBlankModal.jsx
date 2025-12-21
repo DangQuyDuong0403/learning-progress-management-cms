@@ -53,8 +53,9 @@ const throttle = (func, limit) => {
 	};
 };
 
-const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
+const FillBlankModal = ({ visible, onCancel, onSave, questionData = null, challengeStatus = 'draft' }) => {
 	const { t } = useTranslation();
+	const isReadOnly = challengeStatus === 'published' || challengeStatus === 'in-progress' || challengeStatus === 'finished';
 	const [blanks, setBlanksState] = useState([]);
     const [weight, setWeight] = useState(1);
 	const [questionCharCount, setQuestionCharCount] = useState(0);
@@ -677,11 +678,11 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
-		// Don't show popup if cursor is inside a blank
-		if (isCursorInsideBlank()) {
-			setShowBlankPopup(false);
-			return;
-		}
+			// Don't show popup if cursor is inside a blank or in read-only mode
+			if (isCursorInsideBlank() || isReadOnly) {
+				setShowBlankPopup(false);
+				return;
+			}
 
 		const range = selection.getRangeAt(0);
 		const rect = range.getBoundingClientRect();
@@ -709,7 +710,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			savedRangeRef.current = range.cloneRange();
 			setShowBlankPopup(true);
 		}
-	}, [isCursorInsideBlank]);
+	}, [isCursorInsideBlank, isReadOnly]);
 
 	// Debounced version - only update popup after user stops typing for 150ms
 	const updatePopupPosition = useMemo(
@@ -790,6 +791,12 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		(blankId) => {
 			if (!editorRef.current) return;
 
+			// Check if read-only mode
+			if (isReadOnly) {
+				spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+				return;
+			}
+
 			// prevent duplicate deletions racing from blur + click
 			if (deletionInProgressRef.current.has(blankId)) return;
 			deletionInProgressRef.current.add(blankId);
@@ -819,7 +826,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			// Refocus editor
 			editorRef.current.focus();
 		},
-		[setBlanks, updateBlankNumbers]
+		[setBlanks, updateBlankNumbers, isReadOnly]
 	);
 
 	// Create blank element (needed for findAndReplacePattern)
@@ -1002,8 +1009,10 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				e.preventDefault();
 				e.stopPropagation();
 				e.stopImmediatePropagation();
-				span.setAttribute('data-deleting-by-button', 'true');
-				handleDeleteBlankElement(blank.id);
+				if (!isReadOnly) {
+					span.setAttribute('data-deleting-by-button', 'true');
+					handleDeleteBlankElement(blank.id);
+				}
 			});
 			deleteBtn.addEventListener('mousedown', (e) => {
 				e.preventDefault();
@@ -1054,7 +1063,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 			return span;
 		},
-		[handleBlankAnswerChange, handleDeleteBlankElement, blankColors]
+		[handleBlankAnswerChange, handleDeleteBlankElement, blankColors, isReadOnly]
 	);
 
 	// Find and replace pattern in text nodes without affecting existing blanks
@@ -1103,12 +1112,17 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 					patternIndex = bracketIndex;
 				}
 
-					if (patternIndex !== -1) {
-						// Respect maximum of 10 blanks
-						if (blanksRef.current.length >= 10) {
-							spaceToast.warning(t('dailyChallenge.maximum10BlanksAllowed', 'Maximum 10 blanks allowed'));
-							break;
-						}
+				if (patternIndex !== -1) {
+					// Check if read-only mode
+					if (isReadOnly) {
+						spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+						break;
+					}
+					// Respect maximum of 10 blanks
+					if (blanksRef.current.length >= 10) {
+						spaceToast.warning(t('dailyChallenge.maximum10BlanksAllowed', 'Maximum 10 blanks allowed'));
+						break;
+					}
 					// Found a pattern in this text node
 
 					// Create blank
@@ -1194,7 +1208,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				}
 			}
 		},
-		[blanks, blankColors, createBlankElement, setBlanks, updateBlankNumbers]
+		[blanks, blankColors, createBlankElement, setBlanks, updateBlankNumbers, isReadOnly]
 	);
 
 	// Throttled blank check - only run once every 100ms
@@ -1273,6 +1287,13 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Insert blank at saved cursor position
 	const insertBlankAtCursor = useCallback(() => {
 		if (!editorRef.current || !savedRangeRef.current) return;
+
+		// Check if read-only mode
+		if (isReadOnly) {
+			spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+			setShowBlankPopup(false);
+			return;
+		}
 
 		// Limit to maximum of 10 blanks
 		if (blanksRef.current.length >= 10) {
@@ -1367,6 +1388,7 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		isCursorInsideBlank,
 		updateBlankNumbers,
 		setBlanks,
+		isReadOnly,
 	]);
 
 	// Handle editor click to deselect image and ensure cursor
@@ -1462,14 +1484,6 @@ const FillBlankModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		);
 		if (hasEmptyBlanks) {
 			spaceToast.warning(t('dailyChallenge.pleaseFillInAllBlankAnswers', 'Please fill in all blank answers'));
-			return;
-		}
-
-		// Validate duplicate blank answers
-		const blankAnswers = blanks.map(blank => (blank.answer || '').toLowerCase().trim());
-		const duplicates = blankAnswers.filter((text, index) => text && blankAnswers.indexOf(text) !== index);
-		if (duplicates.length > 0) {
-			spaceToast.warning(t('dailyChallenge.cannotCreateDuplicateAnswersBlanks', 'Cannot create duplicate answers. Please ensure all blank answers are unique.'));
 			return;
 		}
 
@@ -2415,6 +2429,7 @@ useEffect(() => {
 									icon={<ThunderboltOutlined />}
 									onClick={insertBlankAtCursor}
 									size='small'
+									disabled={isReadOnly}
 									style={{
 										background: 'linear-gradient(135deg, #66AEFF, #3C99FF)',
 										border: 'none',
@@ -2423,6 +2438,7 @@ useEffect(() => {
 										alignItems: 'center',
 										gap: '4px',
 										color: '#000000',
+										opacity: isReadOnly ? 0.5 : 1,
 									}}>
 									+ {t('dailyChallenge.blank', 'Blank')}
 								</Button>

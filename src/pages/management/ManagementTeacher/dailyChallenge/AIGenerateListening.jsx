@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Input, Tooltip, Typography, Upload, Space, Modal, Spin } from "antd";
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, SaveOutlined, ThunderboltOutlined, CheckOutlined, CloudUploadOutlined, CloseOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ThemedLayout from "../../../../component/teacherlayout/ThemedLayout";
@@ -115,6 +117,50 @@ const [errorMessage, setErrorMessage] = useState('');
     setContentVisible(true);
   }, []);
 
+  // Custom upload adapter for CKEditor to convert images to base64
+  function CustomUploadAdapterPlugin(editor) {
+    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+      return {
+        upload: () => {
+          return loader.file.then(file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              resolve({ default: reader.result });
+            };
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+          }));
+        },
+        abort: () => {}
+      };
+    };
+  }
+
+  // CKEditor config for transcript editor
+  const transcriptEditorConfig = useMemo(() => ({
+    toolbar: {
+      items: [
+        'undo', 'redo', '|',
+        'heading', '|',
+        'bold', 'italic', 'underline', '|',
+        'bulletedList', 'numberedList', '|',
+        'link', 'imageUpload', '|',
+        'blockQuote', '|',
+        'alignment', '|',
+        'fontSize', 'fontColor', 'fontBackgroundColor'
+      ],
+      shouldNotGroupWhenFull: true, // Disable toolbar collapse/grouping
+      removeItems: ['insertTable'] // Remove table button
+    },
+    removePlugins: ['StickyToolbar', 'Table', 'TableToolbar', 'TableProperties', 'TableCellProperties'],
+    extraPlugins: [CustomUploadAdapterPlugin],
+    // Disable floating toolbar behavior
+    ui: {
+      viewportOffset: {
+        top: 0
+      }
+    }
+  }), []);
 
   // Helper function to extract backend error messages
   const getBackendMessage = useCallback((resOrErr) => {
@@ -1153,6 +1199,105 @@ const [errorMessage, setErrorMessage] = useState('');
           />
         </div>
       )}
+      <style>
+        {`
+          /* Fix CKEditor toolbar position - prevent floating/sticky behavior */
+          .transcript-ckeditor-wrapper .ck-editor {
+            position: relative !important;
+          }
+          
+          .transcript-ckeditor-wrapper .ck-editor__top {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            transform: none !important;
+            transition: none !important;
+            z-index: auto !important;
+            width: 100% !important;
+          }
+          
+          .transcript-ckeditor-wrapper .ck-toolbar {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            transform: none !important;
+            transition: none !important;
+            z-index: auto !important;
+            width: 100% !important;
+          }
+          
+          .transcript-ckeditor-wrapper .ck-sticky-panel {
+            position: relative !important;
+          }
+          
+          .transcript-ckeditor-wrapper .ck-sticky-panel__content {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            transform: none !important;
+            transition: none !important;
+          }
+          
+          /* Fix text color and background for CKEditor content */
+          .transcript-ckeditor-wrapper .ck-content {
+            color: #000000 !important;
+            background: #ffffff !important;
+            min-height: 450px !important;
+            max-height: 450px !important;
+            overflow-y: scroll !important;
+            overflow-x: hidden !important;
+          }
+          
+          .transcript-ckeditor-wrapper .ck-editor__editable {
+            color: #000000 !important;
+            background: #ffffff !important;
+            min-height: 450px !important;
+            max-height: 450px !important;
+            overflow-y: scroll !important;
+            overflow-x: hidden !important;
+            height: 450px !important;
+          }
+          
+          .transcript-ckeditor-wrapper .ck-editor__main {
+            min-height: 450px !important;
+            max-height: 450px !important;
+            overflow-y: scroll !important;
+            overflow-x: hidden !important;
+            height: 450px !important;
+          }
+          
+          /* Force scrollbar to always show */
+          .transcript-ckeditor-wrapper .ck-content::-webkit-scrollbar,
+          .transcript-ckeditor-wrapper .ck-editor__editable::-webkit-scrollbar,
+          .transcript-ckeditor-wrapper .ck-editor__main::-webkit-scrollbar {
+            width: 12px !important;
+            display: block !important;
+          }
+          
+          .transcript-ckeditor-wrapper .ck-content::-webkit-scrollbar-track,
+          .transcript-ckeditor-wrapper .ck-editor__editable::-webkit-scrollbar-track,
+          .transcript-ckeditor-wrapper .ck-editor__main::-webkit-scrollbar-track {
+            background: #f1f1f1 !important;
+            border-radius: 6px !important;
+          }
+          
+          .transcript-ckeditor-wrapper .ck-content::-webkit-scrollbar-thumb,
+          .transcript-ckeditor-wrapper .ck-editor__editable::-webkit-scrollbar-thumb,
+          .transcript-ckeditor-wrapper .ck-editor__main::-webkit-scrollbar-thumb {
+            background: #888 !important;
+            border-radius: 6px !important;
+          }
+          
+          .transcript-ckeditor-wrapper .ck-content::-webkit-scrollbar-thumb:hover,
+          .transcript-ckeditor-wrapper .ck-editor__editable::-webkit-scrollbar-thumb:hover,
+          .transcript-ckeditor-wrapper .ck-editor__main::-webkit-scrollbar-thumb:hover {
+            background: #555 !important;
+          }
+        `}
+      </style>
       <div
         className={`ai-generate-wrapper allow-motion ${theme}-ai-generate-wrapper`}
         style={mainContentStyle}
@@ -1629,13 +1774,72 @@ const [errorMessage, setErrorMessage] = useState('');
                   <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
                     {t('dailyChallenge.transcript', 'Transcript')}
                   </Typography.Text>
-                 <TextArea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  autoSize={{ minRows: 10, maxRows: 14 }}
-                  placeholder={t('dailyChallenge.pleaseAddTranscript', 'Please add transcript')}
-                    style={{ marginTop: 0, fontSize: '14px', borderRadius: '8px', border: `2px solid ${primaryColor}99`, background: theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)', outline: 'none', boxShadow: 'none', minHeight: '300px' }}
-                />
+                  <div className={`transcript-ckeditor-wrapper ${theme}-transcript-ckeditor-wrapper`} style={{
+                    marginTop: 0,
+                    borderRadius: '12px',
+                    border: `2px solid ${primaryColor}99`,
+                    background: theme === 'sun'
+                      ? 'rgba(240, 249, 255, 0.5)'
+                      : 'rgba(244, 240, 255, 0.3)',
+                    padding: '12px',
+                    overflow: 'visible',
+                    position: 'relative'
+                  }}>
+                    <CKEditor
+                      editor={ClassicEditor}
+                      data={prompt}
+                      onChange={(event, editor) => {
+                        const data = editor.getData();
+                        setPrompt(data);
+                      }}
+                      config={{
+                        ...transcriptEditorConfig,
+                        placeholder: t('dailyChallenge.pleaseAddTranscript', 'Please add transcript')
+                      }}
+                      onReady={(editor) => {
+                        try {
+                          const el = editor.ui?.getEditableElement?.();
+                          if (el) {
+                            el.style.minHeight = '450px';
+                            el.style.maxHeight = '450px';
+                            el.style.height = '450px';
+                            el.style.overflowY = 'scroll';
+                            el.style.overflowX = 'hidden';
+                            el.style.color = '#000000';
+                            el.style.fontSize = '15px';
+                            el.style.background = '#ffffff';
+                          }
+                          // Also set height for the main editor container
+                          const mainElement = editor.ui?.getEditableElement?.()?.closest('.ck-editor__main');
+                          if (mainElement) {
+                            mainElement.style.height = '450px';
+                            mainElement.style.maxHeight = '450px';
+                            mainElement.style.overflowY = 'scroll';
+                            mainElement.style.overflowX = 'hidden';
+                          }
+                          // Fix toolbar position - prevent floating/sticky behavior
+                          const toolbar = editor.ui?.view?.toolbar?.element;
+                          if (toolbar) {
+                            toolbar.style.position = 'relative';
+                            toolbar.style.top = 'auto';
+                            toolbar.style.zIndex = 'auto';
+                            toolbar.style.transform = 'none';
+                            toolbar.style.transition = 'none';
+                          }
+                          // Also fix the editor container
+                          const editorElement = editor.sourceElement?.parentElement;
+                          if (editorElement) {
+                            const ckeditorElement = editorElement.closest('.ck-editor');
+                            if (ckeditorElement) {
+                              ckeditorElement.style.position = 'relative';
+                            }
+                          }
+                        } catch (e) {
+                          console.error('CKEditor onReady error:', e);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
               </Card>
               ) : (
@@ -1777,13 +1981,59 @@ const [errorMessage, setErrorMessage] = useState('');
                     <Typography.Text style={{ display: 'block', marginBottom: '8px', color: theme === 'sun' ? '#1E40AF' : '#8377A0', fontSize: '16px', fontWeight: 400 }}>
                       {t('dailyChallenge.transcript', 'Transcript')}
                     </Typography.Text>
-                    <TextArea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      autoSize={{ minRows: 10, maxRows: 14 }}
-                      placeholder={t('dailyChallenge.pleaseAddTranscript', 'Please add transcript')}
-                      style={{ marginTop: 0, fontSize: '14px', borderRadius: '8px', border: `2px solid ${primaryColor}99`, background: theme === 'sun' ? 'rgba(240, 249, 255, 0.5)' : 'rgba(244, 240, 255, 0.3)', outline: 'none', boxShadow: 'none', minHeight: '300px' }}
-                    />
+                    <div className={`transcript-ckeditor-wrapper ${theme}-transcript-ckeditor-wrapper`} style={{
+                      marginTop: 0,
+                      borderRadius: '12px',
+                      border: `2px solid ${primaryColor}99`,
+                      background: theme === 'sun'
+                        ? 'rgba(240, 249, 255, 0.5)'
+                        : 'rgba(244, 240, 255, 0.3)',
+                      padding: '12px',
+                      overflow: 'visible',
+                      position: 'relative'
+                    }}>
+                      <CKEditor
+                        editor={ClassicEditor}
+                        data={prompt}
+                        onChange={(event, editor) => {
+                          const data = editor.getData();
+                          setPrompt(data);
+                        }}
+                        config={{
+                          ...transcriptEditorConfig,
+                          placeholder: t('dailyChallenge.pleaseAddTranscript', 'Please add transcript')
+                        }}
+                        onReady={(editor) => {
+                          try {
+                            const el = editor.ui?.getEditableElement?.();
+                            if (el) {
+                              el.style.minHeight = '300px';
+                              el.style.color = '#000000';
+                              el.style.fontSize = '15px';
+                            }
+                            // Fix toolbar position - prevent floating/sticky behavior
+                            const toolbar = editor.ui?.view?.toolbar?.element;
+                            if (toolbar) {
+                              toolbar.style.position = 'relative';
+                              toolbar.style.top = 'auto';
+                              toolbar.style.zIndex = 'auto';
+                              toolbar.style.transform = 'none';
+                              toolbar.style.transition = 'none';
+                            }
+                            // Also fix the editor container
+                            const editorElement = editor.sourceElement?.parentElement;
+                            if (editorElement) {
+                              const ckeditorElement = editorElement.closest('.ck-editor');
+                              if (ckeditorElement) {
+                                ckeditorElement.style.position = 'relative';
+                              }
+                            }
+                          } catch (e) {
+                            console.error('CKEditor onReady error:', e);
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                 </Card>
               )}

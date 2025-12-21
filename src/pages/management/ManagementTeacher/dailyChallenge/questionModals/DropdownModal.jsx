@@ -55,8 +55,9 @@ const throttle = (func, limit) => {
 	};
 };
 
-const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
+const DropdownModal = ({ visible, onCancel, onSave, questionData = null, challengeStatus = 'draft' }) => {
 	const { t } = useTranslation();
+	const isReadOnly = challengeStatus === 'published' || challengeStatus === 'in-progress' || challengeStatus === 'finished';
 	const [editorContent, setEditorContent] = useState([]);
 	const [dropdowns, setDropdowns] = useState([]);
     const [weight, setWeight] = useState(1);
@@ -492,6 +493,11 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 	// Handle delete dropdown from DOM
 	const handleDeleteDropdownElement = useCallback(
 		(dropdownId) => {
+			// Check if read-only mode
+			if (isReadOnly) {
+				spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+				return;
+			}
 
 			// Check if deletion is already in progress for this dropdown
 			if (deletionInProgressRef.current.has(dropdownId)) {
@@ -543,7 +549,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 				editorRef.current.focus();
 			}
 		},
-		[updateDropdownNumbers]
+		[updateDropdownNumbers, isReadOnly]
 	);
 
 	// Create dropdown element
@@ -777,12 +783,17 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 			return span;
 		},
-		[handleDropdownAnswerChange, handleDeleteDropdownElement]
+		[handleDropdownAnswerChange, handleDeleteDropdownElement, isReadOnly]
 	);
 
 	// Find and replace pattern in text nodes without affecting existing dropdowns
-	const findAndReplacePattern = useCallback(
+		const findAndReplacePattern = useCallback(
 		(element) => {
+			// Check if read-only mode
+			if (isReadOnly) {
+				spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+				return;
+			}
 			// Enforce maximum dropdowns
 			const MAX_DROPDOWNS = 10;
 			if (dropdowns.length >= MAX_DROPDOWNS) {
@@ -1267,8 +1278,8 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			return;
 		}
 
-		// Don't show popup if cursor is inside a dropdown
-		if (isCursorInsideDropdown()) {
+		// Don't show popup if cursor is inside a dropdown or in read-only mode
+		if (isCursorInsideDropdown() || isReadOnly) {
 			setShowDropdownPopup(false);
 			return;
 		}
@@ -1299,7 +1310,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 			savedRangeRef.current = range.cloneRange();
 			setShowDropdownPopup(true);
 		}
-	}, [isCursorInsideDropdown]);
+	}, [isCursorInsideDropdown, isReadOnly]);
 
 	// Debounced version - only update popup after user stops typing for 150ms
 	const updatePopupPosition = useMemo(
@@ -1517,6 +1528,12 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 
 	// Insert dropdown at saved cursor position
 	const insertDropdownAtCursor = useCallback(() => {
+		// Check if read-only mode
+		if (isReadOnly) {
+			spaceToast.warning(t('dailyChallenge.cannotModifyBlanksInProgress', 'Cannot add or remove blanks when challenge is in progress or finished'));
+			setShowDropdownPopup(false);
+			return;
+		}
 		const MAX_DROPDOWNS = 10;
 		if (dropdowns.length >= MAX_DROPDOWNS) {
 			spaceToast.warning(`Maximum ${MAX_DROPDOWNS} dropdowns allowed`);
@@ -1614,6 +1631,7 @@ const DropdownModal = ({ visible, onCancel, onSave, questionData = null }) => {
 		createDropdownElement,
 		isCursorInsideDropdown,
 		updateDropdownNumbers,
+		isReadOnly,
 	]);
 
 	// Handle save
