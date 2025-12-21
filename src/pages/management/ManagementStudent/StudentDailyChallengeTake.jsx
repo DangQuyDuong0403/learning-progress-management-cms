@@ -3914,6 +3914,13 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
   const isMountedRef = useRef(true); // Track if component is still mounted
   const MAX_RECORDING_TIME = 180; // 3 minutes in seconds
 
+  // Format recording time to MM:SS
+  const formatRecordingTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Helper function to extract URL from upload response
   const extractUrlFromResponse = (uploadRes) => {
     // Try multiple possible paths in order of likelihood
@@ -4703,7 +4710,19 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                   textAlign: 'center'
                 }}>
                   {isRecording 
-                    ? 'Click the button to stop recording'
+                    ? (
+                      <div>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '600',
+                          color: theme === 'sun' ? '#ff4d4f' : '#ff4d4f',
+                          marginBottom: '4px'
+                        }}>
+                          Recording: {formatRecordingTime(recordingTime)}
+                        </div>
+                        <div>Click the button to stop recording</div>
+                      </div>
+                    )
                     : 'Click to start recording audio'}
                 </div>
               </div>
@@ -4989,6 +5008,13 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
   const recordingTimerRef = useRef(null);
   const isMountedRef = useRef(true); // Track if component is still mounted
   const MAX_RECORDING_TIME = 180; // 3 minutes in seconds
+
+  // Format recording time to MM:SS
+  const formatRecordingTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Helper function to extract URL from upload response
   const extractUrlFromResponse = (uploadRes) => {
@@ -5968,7 +5994,19 @@ const SpeakingWithAudioSectionItem = ({ question, index, theme, sectionScore, is
                   textAlign: 'center'
                 }}>
                   {isRecording 
-                    ? 'Click the button to stop recording'
+                    ? (
+                      <div>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '600',
+                          color: theme === 'sun' ? '#ff4d4f' : '#ff4d4f',
+                          marginBottom: '4px'
+                        }}>
+                          Recording: {formatRecordingTime(recordingTime)}
+                        </div>
+                        <div>Click the button to stop recording</div>
+                      </div>
+                    )
                     : 'Click to start recording audio'}
                 </div>
               </div>
