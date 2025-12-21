@@ -693,7 +693,7 @@ useEffect(() => {
                                     style={{ width: '18px', height: '18px', accentColor: theme === 'sun' ? '#1890ff' : '#8B5CF6', flexShrink: 0 }}
                                   />
                                   {q.type !== 'TRUE_OR_FALSE' && (
-                                    <span style={{ fontWeight: 600, flexShrink: 0 }}>{key}.</span>
+                                    <span style={{ fontWeight: 600, flexShrink: 0 }}>{opt.displayKey || opt.key || key}.</span>
                                   )}
                                   <span 
                                     className="option-text"
@@ -4292,7 +4292,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     const files = Array.from(event.target.files);
     
     const MAX_AUDIO_SIZE = 3 * 1024 * 1024;
-    const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
+    const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
     const invalidTypeFiles = files.filter(f => detectMediaKindFromFile(f) === 'unknown');
     if (invalidTypeFiles.length > 0) {
       const names = invalidTypeFiles.map(f => f.name).join(', ');
@@ -4307,7 +4307,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
     });
     if (oversizeFiles.length > 0) {
       const names = oversizeFiles.map(f => f.name).join(', ');
-      spaceToast.error('Size limit is 3MB for audio and 5MB for video. Exceeded limit: ' + names);
+      spaceToast.error('Size limit is 3MB for audio and 100MB for video. Exceeded limit: ' + names);
       event.target.value = '';
       return;
     }
@@ -4821,7 +4821,7 @@ const SpeakingSectionItem = ({ question, index, theme, isViewOnly }) => {
                     fontSize: '13px',
                     color: theme === 'sun' ? '#666' : '#999'
                   }}>
-                    MP3/WebM ≤ 3MB hoặc MP4/WebM video ≤ 5MB
+                    MP3/WebM ≤ 3MB hoặc MP4/WebM video ≤ 100MB
                   </div>
                 </label>
               </div>
