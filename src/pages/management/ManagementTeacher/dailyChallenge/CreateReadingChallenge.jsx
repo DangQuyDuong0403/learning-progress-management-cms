@@ -464,6 +464,85 @@ const CreateReadingChallenge = () => {
       });
       }
 
+      // Remove duplicates for fill-blank, dropdown, drag-drop, reorder questions
+      // Only for Reading and Listening challenges
+      if ((!isWritingChallenge && !isSpeakingChallenge) && transformedQuestions && transformedQuestions.length > 0) {
+        const questionTypesToCheck = ['FILL_IN_THE_BLANK', 'DROPDOWN', 'DRAG_AND_DROP', 'REARRANGE'];
+        
+        transformedQuestions = transformedQuestions.map((question, questionIndex) => {
+          // Only process questions that need duplicate checking
+          if (!questionTypesToCheck.includes(question.questionType)) {
+            return question;
+          }
+          
+          // Skip if no content.data
+          if (!question.content || !Array.isArray(question.content.data) || question.content.data.length === 0) {
+            return question;
+          }
+          
+          // Collect all items from other questions of the same type
+          const seenInOtherQuestions = new Set();
+          
+          transformedQuestions.forEach((otherQuestion, otherIndex) => {
+            if (otherIndex !== questionIndex && 
+                otherQuestion.questionType === question.questionType &&
+                otherQuestion.content && 
+                Array.isArray(otherQuestion.content.data)) {
+              otherQuestion.content.data.forEach(item => {
+                // Create a unique key for comparison
+                // For all types, we check by positionId + value combination
+                const itemKey = `${item.positionId || ''}_${String(item.value || '').trim().toLowerCase()}`;
+                if (itemKey && itemKey !== '_') {
+                  seenInOtherQuestions.add(itemKey);
+                }
+              });
+            }
+          });
+          
+          // Filter out duplicates: remove items that exist in other questions
+          // BUT keep duplicates within the same question (especially for dropdown with different positionIds)
+          const filteredData = question.content.data.filter((item, itemIndex) => {
+            const itemKey = `${item.positionId || ''}_${String(item.value || '').trim().toLowerCase()}`;
+            
+            if (!itemKey || itemKey === '_') return true; // Keep items without valid keys
+            
+            // If this item exists in other questions, remove it
+            if (seenInOtherQuestions.has(itemKey)) {
+              return false;
+            }
+            
+            // For items within the same question, check for duplicates
+            // For dropdown: allow duplicates if they have different positionIds (same value, different positions)
+            // For others: remove duplicates within same question
+            if (question.questionType === 'DROPDOWN') {
+              // Dropdown: check if we've seen this exact positionId + value combination before
+              // If yes, it's a duplicate and should be removed
+              // But allow same value with different positionIds (that's normal for dropdown)
+              const seenInThisQuestion = question.content.data.slice(0, itemIndex).some(prevItem => {
+                const prevKey = `${prevItem.positionId || ''}_${String(prevItem.value || '').trim().toLowerCase()}`;
+                return prevKey === itemKey; // Same positionId + value = duplicate
+              });
+              return !seenInThisQuestion; // Remove if duplicate (same positionId + value) within same question
+            } else {
+              // Other types: check if we've seen this item before in this question
+              const seenInThisQuestion = question.content.data.slice(0, itemIndex).some(prevItem => {
+                const prevKey = `${prevItem.positionId || ''}_${String(prevItem.value || '').trim().toLowerCase()}`;
+                return prevKey === itemKey;
+              });
+              return !seenInThisQuestion; // Remove if duplicate within same question
+            }
+          });
+          
+          return {
+            ...question,
+            content: {
+              ...question.content,
+              data: filteredData
+            }
+          };
+        });
+      }
+
       // For speaking challenges, inject [[dur_3]] placeholder into the content
       // This needs to be done for both section content and question text
       let finalContent = passage.content;
