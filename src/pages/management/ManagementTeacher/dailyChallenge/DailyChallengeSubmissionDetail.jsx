@@ -1322,6 +1322,7 @@ const DailyChallengeSubmissionDetail = () => {
             orderNumber: q.orderNumber || 0,
             hasSubmissionData: questionHasSubmission,
             submittedContentCount: questionHasSubmission ? submittedContent.length : 0,
+            submittedContent: q.submittedContent || (submittedContentRaw ? { data: submittedContentRaw } : undefined),
           };
         });
 
@@ -1732,19 +1733,49 @@ useEffect(() => {
     const navigation = [];
     let questionNumber = 1;
 
+    // Helper function to check if question has submitted content
+    const hasSubmittedData = (questionType, submittedContentRaw) => {
+      if (!submittedContentRaw) return false;
+      const entries = Array.isArray(submittedContentRaw) ? submittedContentRaw : [submittedContentRaw];
+      return entries.some((entry) => {
+        if (!entry) return false;
+        const rawId = entry.id;
+        const rawValue = entry.value;
+        const rawText = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+        const idText = typeof rawId === 'string' ? rawId.trim() : rawId;
+        switch (questionType) {
+          case 'MULTIPLE_CHOICE':
+          case 'TRUE_OR_FALSE':
+          case 'MULTIPLE_SELECT':
+          case 'DROPDOWN':
+          case 'DRAG_AND_DROP':
+          case 'REARRANGE':
+            return Boolean(idText) || Boolean(rawText);
+          case 'FILL_IN_THE_BLANK':
+          case 'REWRITE':
+            return Boolean(rawText);
+          default:
+            return Boolean(idText) || Boolean(rawText);
+        }
+      });
+    };
+
     // Grammar & Vocabulary questions
     if (questions.length > 0) {
       const start = questionNumber;
       const end = start + questions.length - 1;
       // Add individual questions directly (no header)
       questions.forEach((q, qIdx) => {
+        const submittedContentRaw = q.submittedContent?.data;
+        const hasSubmittedContent = hasSubmittedData(q.questionType, submittedContentRaw);
         navigation.push({ 
           id: `gv-${q.id}`, 
           type: 'question', 
           title: `Question ${start + qIdx}`,
           questionNumber: start + qIdx,
           points: q.points || 0,
-          receivedScore: q.receivedScore || 0
+          receivedScore: q.receivedScore || 0,
+          hasSubmittedContent
         });
       });
       questionNumber = end + 1;
@@ -1767,6 +1798,8 @@ useEffect(() => {
         // Add individual questions
         if (s.questions && s.questions.length > 0) {
           s.questions.forEach((q, qIdx) => {
+            const submittedContentRaw = q.submittedContent?.data;
+            const hasSubmittedContent = hasSubmittedData(q.questionType, submittedContentRaw);
             navigation.push({ 
               id: `reading-${idx + 1}-q-${q.id || qIdx}`, 
               type: 'question', 
@@ -1774,7 +1807,8 @@ useEffect(() => {
               parentSection: `reading-${idx + 1}`,
               questionNumber: start + qIdx,
               points: q.points || 0,
-              receivedScore: q.receivedScore || 0
+              receivedScore: q.receivedScore || 0,
+              hasSubmittedContent
             });
         });
         }
@@ -1799,6 +1833,8 @@ useEffect(() => {
         // Add individual questions
         if (s.questions && s.questions.length > 0) {
           s.questions.forEach((q, qIdx) => {
+            const submittedContentRaw = q.submittedContent?.data;
+            const hasSubmittedContent = hasSubmittedData(q.questionType, submittedContentRaw);
             navigation.push({ 
               id: `listening-${idx + 1}-q-${q.id || qIdx}`, 
               type: 'question', 
@@ -1806,7 +1842,8 @@ useEffect(() => {
               parentSection: `listening-${idx + 1}`,
               questionNumber: start + qIdx,
               points: q.points || 0,
-              receivedScore: q.receivedScore || 0
+              receivedScore: q.receivedScore || 0,
+              hasSubmittedContent
             });
         });
         }
@@ -1819,6 +1856,11 @@ useEffect(() => {
       writingSections.forEach((s, idx) => {
         const received = (s.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
         const total = (s.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+        // Check if any question in section has submitted content
+        const hasAnySubmittedContent = (s.questions || []).some((q) => {
+          const submittedContentRaw = q.submittedContent?.data;
+          return hasSubmittedData(q.questionType, submittedContentRaw);
+        });
         // Add section header with question-like style
         navigation.push({ 
           id: `writing-${idx + 1}`, 
@@ -1827,7 +1869,8 @@ useEffect(() => {
           sectionIndex: idx,
           sectionType: 'writing',
           points: total,
-          receivedScore: received
+          receivedScore: received,
+          hasSubmittedContent: hasAnySubmittedContent
         });
       });
     }
@@ -1837,6 +1880,11 @@ useEffect(() => {
       speakingSections.forEach((s, idx) => {
         const received = (s.questions || []).reduce((sum, q) => sum + (q.receivedScore || 0), 0);
         const total = (s.questions || []).reduce((sum, q) => sum + (q.points || 0), 0);
+        // Check if any question in section has submitted content
+        const hasAnySubmittedContent = (s.questions || []).some((q) => {
+          const submittedContentRaw = q.submittedContent?.data;
+          return hasSubmittedData(q.questionType, submittedContentRaw);
+        });
         // Add section header with question-like style
         navigation.push({ 
           id: `speaking-${idx + 1}`, 
@@ -1845,7 +1893,8 @@ useEffect(() => {
           sectionIndex: idx,
           sectionType: 'speaking',
           points: total,
-          receivedScore: received
+          receivedScore: received,
+          hasSubmittedContent: hasAnySubmittedContent
         });
       });
     }
@@ -2330,16 +2379,18 @@ useEffect(() => {
           'display:inline-block',
           'min-width:120px',
           'max-width:200px',
-          'min-height:32px',
+          'height:32px',
           'padding:4px 12px',
           'margin:0 8px',
           'border-radius:8px',
           'box-sizing:border-box',
-          'text-align:center',
-          'vertical-align:middle',
-          'line-height:1.4',
           'font-size:14px',
           'font-weight:600',
+          'cursor:not-allowed',
+          'outline:none',
+          'vertical-align:middle',
+          'text-align:center',
+          'text-align-last:center',
           'word-wrap:break-word',
           'overflow-wrap:break-word',
           'word-break:break-word',
@@ -2424,7 +2475,7 @@ useEffect(() => {
             studentAnswerText &&
             studentAnswerText.toLowerCase() === correctAnswerText.toLowerCase();
           const isUnanswered = !studentAnswerText;
-          const displayValue = isUnanswered ? (correctAnswerText || '—') : studentAnswerText;
+          const displayedValue = isUnanswered ? correctAnswerText : studentAnswerText;
 
           const ddBg = isCorrect
             ? (theme === 'sun' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.15)')
@@ -2434,9 +2485,16 @@ useEffect(() => {
           const ddBorder = isCorrect ? 'rgb(82, 196, 26)' : (isUnanswered ? '#faad14' : 'rgb(255, 77, 79)');
           const ddColor = isUnanswered ? '#faad14' : (isCorrect ? '#52c41a' : '#ff4d4f');
 
-          let replacement = `<span style="${baseStyles};background:${ddBg};border:2px solid ${ddBorder};color:${ddColor};">${escapeHtmlSimple(displayValue)}</span>`;
+          // Create options HTML for select dropdown
+          const optionsHtml = optionValues.map(opt => 
+            `<option value="${escapeHtmlSimple(opt)}" ${opt === displayedValue ? 'selected' : ''}>${escapeHtmlSimple(opt)}</option>`
+          ).join('');
 
-          if (!isCorrect && !isUnanswered && correctAnswerText) {
+          let replacement = `<select disabled style="${baseStyles};background:${ddBg};border:2px solid ${ddBorder};color:${ddColor};cursor:not-allowed;outline:none;">${optionsHtml}</select>`;
+
+          // Only show side answer when answered wrong; for unanswered it's inside select
+          const shouldShowCorrectAnswerHint = Boolean(correctAnswerText) && !isCorrect && !isUnanswered;
+          if (shouldShowCorrectAnswerHint) {
             const extraStyle = [
               'font-size:15px',
               'color:#52c41a',
@@ -2447,21 +2505,6 @@ useEffect(() => {
               'display:inline-block'
             ].join(';');
             replacement += `<span style="${extraStyle}">${escapeHtmlSimple(correctAnswerText)}</span>`;
-          }
-
-          if (optionValues.length) {
-            const listStyle = [
-              'display:inline-flex',
-              'gap:4px',
-              'margin-left:8px',
-              'font-size:12px',
-              'color:#999999',
-              'vertical-align:middle'
-            ].join(';');
-            const optionsHtml = optionValues
-              .map(opt => `<span style="padding:2px 6px;border:1px solid rgba(0,0,0,0.15);border-radius:4px;display:inline-block;">${escapeHtmlSimple(opt)}</span>`)
-              .join('');
-            replacement += `<span style="${listStyle}">${optionsHtml}</span>`;
           }
 
           return replacement;
@@ -5791,6 +5834,7 @@ useEffect(() => {
                             // Calculate points color and badge style
                             const points = item.points || 0;
                             const receivedScore = item.receivedScore || 0;
+                            const hasSubmittedContent = item.hasSubmittedContent || false;
                             let badgeConfig = {
                               color: '#999999',
                               bgColor: theme === 'sun' ? 'rgba(153, 153, 153, 0.1)' : 'rgba(153, 153, 153, 0.2)',
@@ -5813,12 +5857,22 @@ useEffect(() => {
                                   borderColor: '#faad14'
                                 };
                               } else if (receivedScore === 0) {
-                                // Xám (chưa làm)
-                                badgeConfig = {
-                                  color: '#999999',
-                                  bgColor: theme === 'sun' ? 'rgba(153, 153, 153, 0.1)' : 'rgba(153, 153, 153, 0.2)',
-                                  borderColor: '#999999'
-                                };
+                                // Kiểm tra xem có submittedContent hay không
+                                if (hasSubmittedContent) {
+                                  // Đỏ (làm sai - có submittedContent nhưng điểm = 0)
+                                  badgeConfig = {
+                                    color: '#ff4d4f',
+                                    bgColor: theme === 'sun' ? 'rgba(255, 77, 79, 0.15)' : 'rgba(255, 77, 79, 0.25)',
+                                    borderColor: '#ff4d4f'
+                                  };
+                                } else {
+                                  // Xám (chưa làm - không có submittedContent)
+                                  badgeConfig = {
+                                    color: '#999999',
+                                    bgColor: theme === 'sun' ? 'rgba(153, 153, 153, 0.1)' : 'rgba(153, 153, 153, 0.2)',
+                                    borderColor: '#999999'
+                                  };
+                                }
                               } else {
                                 // Đỏ (sai)
                                 badgeConfig = {
