@@ -2672,7 +2672,7 @@
     "failedToResetSubmissions": "Không thể đặt lại bài nộp",
     "onlySubmittedGradedOrMissedCanBeReset": "Chỉ các bài nộp đã nộp, đã chấm điểm mới có thể được đặt lại.",
     "noEligibleSubmissionsToReset": "Hiện tại không có bài nộp nào đủ điều kiện để đặt lại.",
-    "onlyPendingOrDraftCanBeExtended": "Chỉ các bài nộp ở trạng thái Pending hoặc Draft mới có thể được gia hạn.",
+    "onlyPendingOrDraftCanBeExtended": "Chỉ các bài nộp ở trạng thái pending hoặc draft mới có thể được gia hạn.",
     "noEligibleSubmissionsToExtend": "Hiện tại không có bài nộp nào đủ điều kiện để gia hạn.",
     "pickNewDeadlineForSelectedSubmissions": "Chọn thời hạn mới cho các bài nộp đã chọn.",
     "selectAll": "Chọn tất cả",
