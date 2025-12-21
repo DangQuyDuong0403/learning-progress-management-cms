@@ -450,7 +450,7 @@ Good luck with your writing!`,
 
 
 // Section Question Component for Reading/Listening sections
-const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }) => {
+const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1, onQuestionRef }) => {
   const { t } = useTranslation();
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
@@ -607,8 +607,13 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
           <div style={{ padding: '20px' }}>
             {/* Questions List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {question.questions.map((q, qIndex) => (
-                <div key={q.id} style={{
+              {question.questions.map((q, qIndex) => {
+                const questionRefId = `reading-${index + 1}-q-${q.id || qIndex}`;
+                return (
+                <div 
+                  key={q.id} 
+                  ref={onQuestionRef ? (el) => onQuestionRef(questionRefId, el) : null}
+                  style={{
                   padding: '16px',
                   background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
                   borderRadius: '8px',
@@ -1605,19 +1610,20 @@ const SectionQuestionItem = ({ question, index, theme, startQuestionNumber = 1 }
                     </div>
                     </>
                   )}
-                </div>
-              ))}
+                  </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
     </>
   );
 };
 
 // Listening Section Component
-const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 }) => {
+const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1, onQuestionRef }) => {
   const { t } = useTranslation();
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [droppedItems, setDroppedItems] = useState({});
@@ -2017,8 +2023,13 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
             <div style={{ padding: '20px' }}>
               {/* Questions List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {question.questions.map((q, qIndex) => (
-                  <div key={q.id} style={{
+                {question.questions.map((q, qIndex) => {
+                  const questionRefId = `listening-${index + 1}-q-${q.id || qIndex}`;
+                  return (
+                  <div 
+                    key={q.id} 
+                    ref={onQuestionRef ? (el) => onQuestionRef(questionRefId, el) : null}
+                    style={{
                     padding: '16px',
                     background: theme === 'sun' ? '#f8f9fa' : 'rgba(255, 255, 255, 0.05)',
                     borderRadius: '8px',
@@ -2578,7 +2589,8 @@ const ListeningSectionItem = ({ question, index, theme, startQuestionNumber = 1 
                       </>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -6053,48 +6065,118 @@ const StudentPreview = () => {
     }
   };
 
-  // Build question navigation list (only single questions)
+  // Build question navigation list (similar to DailyChallengeSubmissionDetail)
   const getQuestionNavigation = () => {
     const navigation = [];
     let questionNumber = 1;
+
+    // Grammar & Vocabulary questions
+    if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR' || challengeType === 'RE')) {
+      const sortedQuestions = [...questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+      sortedQuestions.forEach((q, qIdx) => {
+        navigation.push({ 
+          id: `gv-${q.id}`, 
+          type: 'question', 
+          title: `Question ${questionNumber + qIdx}`,
+          questionNumber: questionNumber + qIdx,
+          questionId: q.id
+        });
+      });
+      questionNumber += sortedQuestions.length;
+    }
+
     // Reading sections
     if (readingSections.length > 0) {
       readingSections.forEach((s, idx) => {
         const count = s.questions?.length || 0;
         const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
-        navigation.push({ id: `reading-${idx + 1}`, type: 'section', title: t('dailyChallenge.readingSectionTitle', `Reading ${idx + 1}: Question ${start}-${end}`, { index: idx + 1, start, end }) });
+        // Add section header
+        navigation.push({ 
+          id: `reading-${idx + 1}`, 
+          type: 'section-header', 
+          title: `Reading ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'reading'
+        });
+        // Add individual questions
+        if (s.questions && s.questions.length > 0) {
+          const sortedQuestions = [...s.questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+          sortedQuestions.forEach((q, qIdx) => {
+            navigation.push({ 
+              id: `reading-${idx + 1}-q-${q.id || qIdx}`, 
+              type: 'question', 
+              title: `Question ${start + qIdx}`,
+              parentSection: `reading-${idx + 1}`,
+              questionNumber: start + qIdx,
+              questionId: q.id
+            });
+          });
+        }
         questionNumber = end + 1;
       });
     }
+
     // Listening sections
     if (listeningSections.length > 0) {
       listeningSections.forEach((s, idx) => {
         const count = s.questions?.length || 0;
-      const start = questionNumber;
+        const start = questionNumber;
         const end = count > 0 ? start + count - 1 : start;
-        navigation.push({ id: `listening-${idx + 1}`, type: 'section', title: t('dailyChallenge.listeningSectionTitle', `Listening ${idx + 1}: Question ${start}-${end}`, { index: idx + 1, start, end }) });
-      questionNumber = end + 1;
+        // Add section header
+        navigation.push({ 
+          id: `listening-${idx + 1}`, 
+          type: 'section-header', 
+          title: `Listening ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'listening'
+        });
+        // Add individual questions
+        if (s.questions && s.questions.length > 0) {
+          const sortedQuestions = [...s.questions].sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0) || ((a.id || 0) - (b.id || 0)));
+          sortedQuestions.forEach((q, qIdx) => {
+            navigation.push({ 
+              id: `listening-${idx + 1}-q-${q.id || qIdx}`, 
+              type: 'question', 
+              title: `Question ${start + qIdx}`,
+              parentSection: `listening-${idx + 1}`,
+              questionNumber: start + qIdx,
+              questionId: q.id
+            });
+          });
+        }
+        questionNumber = end + 1;
       });
     }
+
     // Writing sections
     if (writingSections.length > 0) {
       writingSections.forEach((s, idx) => {
-        navigation.push({ id: `writing-${idx + 1}`, type: 'section', title: t('dailyChallenge.writingSectionTitle', `Writing ${idx + 1}`, { index: idx + 1 }) });
+        navigation.push({ 
+          id: `writing-${idx + 1}`, 
+          type: 'question', 
+          title: `Writing ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'writing',
+          questionId: s.id
+        });
       });
     }
+
     // Speaking sections
     if (speakingSections.length > 0) {
       speakingSections.forEach((s, idx) => {
-        navigation.push({ id: `speaking-${idx + 1}`, type: 'section', title: t('dailyChallenge.speakingSectionTitle', `Speaking ${idx + 1}`, { index: idx + 1 }) });
+        navigation.push({ 
+          id: `speaking-${idx + 1}`, 
+          type: 'question', 
+          title: `Speaking ${idx + 1}`,
+          sectionIndex: idx,
+          sectionType: 'speaking',
+          questionId: s.id
+        });
       });
     }
-    // Individual questions (GV etc.)
-    if (!(challengeType === 'LI' || challengeType === 'SP' || challengeType === 'WR')) {
-      questions.forEach((q) => {
-        navigation.push({ id: `q-${q.id}`, type: 'question', title: `${t('dailyChallenge.question', 'Question')} ${questionNumber++}` });
-      });
-    }
+
     return navigation;
   };
 
@@ -6231,20 +6313,101 @@ const StudentPreview = () => {
 
         {/* Question Sidebar */}
         <div className={`question-sidebar ${theme}-question-sidebar ${isSidebarOpen ? 'open' : ''}`}>
-          <div className="question-sidebar-header">
-            <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: '#000000' }}>{t('dailyChallenge.questions', 'Questions')}</h3>
+          <div className="question-sidebar-header" style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: theme === 'sun' ? '2px solid rgba(113, 179, 253, 0.15)' : '2px solid rgba(138, 122, 255, 0.15)' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', color: 'rgb(24, 144, 255)', margin: 0 }}>{t('dailyChallenge.questions')}</h3>
           </div>
-          <div className="question-sidebar-list">
-            {questionNav.map((item) => (
-              <div
-                key={item.id}
-                className={`question-sidebar-item ${item.type === 'section' ? 'question-sidebar-section' : ''}`}
-                onClick={() => scrollToQuestion(item.id)}
-                style={{ fontWeight: 'normal', textAlign: 'center', color: '#000000' }}
-              >
-                {item.title}
-              </div>
-            ))}
+          <div style={{ 
+            maxHeight: 'calc(100vh - 280px)', 
+            overflowY: 'auto',
+            paddingRight: '8px'
+          }}>
+            <div className="question-sidebar-list">
+              {questionNav.map((item) => {
+                const isSectionHeader = item.type === 'section-header';
+                const isNestedQuestion = item.type === 'question' && item.parentSection;
+                const isWritingOrSpeaking = item.type === 'question' && (item.sectionType === 'writing' || item.sectionType === 'speaking');
+                const isGrammarQuestion = item.type === 'question' && item.id?.startsWith('gv-');
+                const shouldHaveQuestionStyle = isNestedQuestion || isWritingOrSpeaking || isGrammarQuestion;
+                
+                return (
+                  <div
+                    key={item.id}
+                    className={`question-sidebar-item ${item.type === 'section' || item.type === 'section-header' ? 'question-sidebar-section' : ''}`}
+                    onClick={() => {
+                      if (isNestedQuestion && item.parentSection) {
+                        // For nested questions, try to scroll to the question directly first
+                        const questionElement = questionRefs.current[item.id];
+                        if (questionElement) {
+                          questionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        } else {
+                          // Fallback: scroll to section if question ref not found
+                          scrollToQuestion(item.parentSection);
+                        }
+                      } else {
+                        scrollToQuestion(item.id);
+                      }
+                    }}
+                    style={{ 
+                      fontWeight: isSectionHeader ? 600 : 'normal', 
+                      textAlign: shouldHaveQuestionStyle ? 'left' : 'center', 
+                      color: theme === 'sun' ? '#000000' : '#FFFFFF',
+                      padding: shouldHaveQuestionStyle ? '8px 10px 8px 24px' : '10px',
+                      marginBottom: '4px',
+                      cursor: 'pointer',
+                      borderRadius: '6px',
+                      transition: 'all 0.2s ease',
+                      transform: 'none',
+                      fontSize: isSectionHeader ? '15px' : '14px',
+                      backgroundColor: isSectionHeader 
+                        ? (theme === 'sun' ? 'rgba(24, 144, 255, 0.12)' : 'rgba(138, 122, 255, 0.25)')
+                        : 'transparent',
+                      boxShadow: isSectionHeader 
+                        ? (theme === 'sun' ? '0 2px 4px rgba(24, 144, 255, 0.1)' : '0 2px 4px rgba(138, 122, 255, 0.2)')
+                        : 'none',
+                      borderLeft: shouldHaveQuestionStyle 
+                        ? `3px solid ${theme === 'sun' ? '#1890ff' : '#8B5CF6'}`
+                        : 'none',
+                      display: 'flex',
+                      justifyContent: shouldHaveQuestionStyle ? 'space-between' : 'center',
+                      alignItems: 'center',
+                      position: 'relative'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (isSectionHeader) {
+                        e.currentTarget.style.backgroundColor = theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.18)' 
+                          : 'rgba(138, 122, 255, 0.35)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 3px 6px rgba(24, 144, 255, 0.15)' 
+                          : '0 3px 6px rgba(138, 122, 255, 0.3)';
+                      } else {
+                        e.currentTarget.style.backgroundColor = theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.08)' 
+                          : 'rgba(138, 122, 255, 0.15)';
+                        if (!isSectionHeader) {
+                          e.currentTarget.style.transform = 'translateX(2px)';
+                        }
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (isSectionHeader) {
+                        e.currentTarget.style.backgroundColor = theme === 'sun' 
+                          ? 'rgba(24, 144, 255, 0.12)' 
+                          : 'rgba(138, 122, 255, 0.25)';
+                        e.currentTarget.style.boxShadow = theme === 'sun' 
+                          ? '0 2px 4px rgba(24, 144, 255, 0.1)' 
+                          : '0 2px 4px rgba(138, 122, 255, 0.2)';
+                      } else {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.transform = 'translateX(0)';
+                      }
+                    }}
+                  >
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

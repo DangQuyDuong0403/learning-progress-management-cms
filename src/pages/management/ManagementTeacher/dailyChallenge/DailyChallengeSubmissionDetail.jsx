@@ -1057,15 +1057,30 @@ const DailyChallengeSubmissionDetail = () => {
           receivedScore += q.receivedScore || 0;
           
           // Count correct, incorrect, unanswered
+          // Check if submittedContent exists and has data
           const submittedContentRaw = q.submittedContent?.data;
-          const questionHasSubmission = hasSubmittedData(q.questionType, submittedContentRaw);
+          const hasSubmittedContent = submittedContentRaw && 
+            Array.isArray(submittedContentRaw) && 
+            submittedContentRaw.length > 0 &&
+            submittedContentRaw.some(item => {
+              // Check if item has meaningful data (either id or value)
+              const hasId = item?.id != null && String(item.id).trim() !== '';
+              const hasValue = item?.value != null && String(item.value).trim() !== '';
+              return hasId || hasValue;
+            });
 
-          if (q.receivedScore > 0) {
-            correctCount++;
-          } else if (questionHasSubmission) {
-            incorrectCount++;
-          } else {
+          if (!hasSubmittedContent) {
+            // No submitted content = unanswered
             unansweredCount++;
+          } else {
+            // Has submitted content - check if correct or incorrect based on score
+            const maxScore = q.score || 0;
+            const received = q.receivedScore || 0;
+            if (received >= maxScore && maxScore > 0) {
+              correctCount++;
+            } else {
+              incorrectCount++;
+            }
           }
 
           const questionContent = q.questionContent?.data || [];
@@ -1320,8 +1335,8 @@ const DailyChallengeSubmissionDetail = () => {
             points: q.score || 0,
             receivedScore: q.receivedScore || 0,
             orderNumber: q.orderNumber || 0,
-            hasSubmissionData: questionHasSubmission,
-            submittedContentCount: questionHasSubmission ? submittedContent.length : 0,
+            hasSubmissionData: hasSubmittedContent,
+            submittedContentCount: hasSubmittedContent ? submittedContent.length : 0,
             submittedContent: q.submittedContent || (submittedContentRaw ? { data: submittedContentRaw } : undefined),
           };
         });
@@ -1466,9 +1481,10 @@ const DailyChallengeSubmissionDetail = () => {
           score: apiSubmissionData.score != null ? apiSubmissionData.score : receivedScore,
           totalPoints: apiSubmissionData.totalPoints != null ? apiSubmissionData.totalPoints : receivedScore,
           maxPoints: apiSubmissionData.maxPoints != null ? apiSubmissionData.maxPoints : totalScore,
-          correctCount: apiSubmissionData.correctCount != null ? apiSubmissionData.correctCount : correctCount,
-          incorrectCount: apiSubmissionData.incorrectCount != null ? apiSubmissionData.incorrectCount : incorrectCount,
-          unansweredCount: apiSubmissionData.unansweredCount != null ? apiSubmissionData.unansweredCount : unansweredCount,
+          // Calculate counts from submittedContent data, not from API
+          correctCount: correctCount,
+          incorrectCount: incorrectCount,
+          unansweredCount: unansweredCount,
           accuracy: apiSubmissionData.accuracy != null ? apiSubmissionData.accuracy : (totalScore > 0 ? Math.round((receivedScore / totalScore) * 100) : 0),
           timeSpent: apiSubmissionData.timeSpent != null ? apiSubmissionData.timeSpent : (apiSubmissionData.timeUsed || 0),
           submittedAt: apiSubmissionData.submittedAt || apiSubmissionData.submittedDate || null,
@@ -1493,9 +1509,7 @@ const DailyChallengeSubmissionDetail = () => {
           const score = hasFinalScoreField ? gradingData.finalScore : gradingData.totalScore;
           const maxPointsFromGrading = gradingData.maxPossibleWeight ?? gradingData.maxPossibleScore;
           const accuracyPct = gradingData.scorePercentage != null ? Math.round(gradingData.scorePercentage) : undefined;
-          const correct = gradingData.correctAnswers;
-          const incorrect = gradingData.wrongAnswers;
-          const unanswered = (gradingData.skipped || 0) + (gradingData.empty || 0);
+          // Note: We calculate correct/incorrect/unanswered counts from submittedContent, not from grading API
           const penaltyApplied = gradingData.penaltyApplied ?? 0;
           const rawScore = gradingData.rawScore ?? score;
 
@@ -1513,9 +1527,10 @@ const DailyChallengeSubmissionDetail = () => {
               score: scoreProvided ? (score ?? null) : prev.submission?.score,
               totalPoints: scoreProvided ? (score ?? null) : prev.submission?.totalPoints,
               maxPoints: maxPointsFromGrading ?? prev.submission?.maxPoints,
-              correctCount: correct ?? prev.submission?.correctCount,
-              incorrectCount: incorrect ?? prev.submission?.incorrectCount,
-              unansweredCount: unanswered ?? prev.submission?.unansweredCount,
+              // Keep our calculated counts based on submittedContent, don't override with grading API
+              correctCount: prev.submission?.correctCount,
+              incorrectCount: prev.submission?.incorrectCount,
+              unansweredCount: prev.submission?.unansweredCount,
               accuracy: accuracyPct ?? prev.submission?.accuracy,
               penaltyApplied: penaltyApplied,
               rawScore: rawScore,
@@ -5248,6 +5263,8 @@ useEffect(() => {
                             {(() => {
                               const penaltyApplied = submission.penaltyApplied ?? 0;
                               if (penaltyApplied > 0) {
+                                // Convert to percentage and round to 1 decimal place
+                                const penaltyPercent = (penaltyApplied * 100).toFixed(1);
                                 return (
                                   <div
                                     style={{
@@ -5265,7 +5282,7 @@ useEffect(() => {
                                         : '0 2px 6px rgba(229, 62, 62, 0.35)'
                                     }}
                                   >
-                                    -{Math.round(penaltyApplied * 100)}%
+                                    -{penaltyPercent}%
                                   </div>
                                 );
                               }

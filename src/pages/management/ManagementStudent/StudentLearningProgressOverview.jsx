@@ -605,16 +605,26 @@ const StudentLearningProgressOverview = () => {
       .map((c) => ({
         ...c,
         _dateValue: c.submittedAt ? new Date(c.submittedAt).getTime() : Number.POSITIVE_INFINITY,
+        _challengeId: c.challengeId || 0,
       }))
-      .sort((a, b) => a._dateValue - b._dateValue)
+      .sort((a, b) => {
+        // First sort by submittedAt (submitted challenges first)
+        if (a._dateValue !== b._dateValue) {
+          return a._dateValue - b._dateValue;
+        }
+        // If both have null submittedAt or same date, sort by challengeId
+        return a._challengeId - b._challengeId;
+      })
       .map((c, idx) => ({
-        label: `DC${idx + 1}`,
+        label: `DC${idx + 1}`, // Short label for X-axis
         challengeName: c.challengeName,
         challengeType: c.challengeType,
         submissionStatus: c.submissionStatus,
         isLate: c.isLate,
         submittedAt: c.submittedAt,
-        score10: (Number(c.score) || 0) / 10,
+        challengeId: c.challengeId,
+        // Score is already on 0-10 scale from API, don't divide by 10
+        score10: Number(c.score) || 0,
       }));
     return withOrder;
   }, [challengeDetailData, challengeTypeFilter]);
@@ -1181,25 +1191,24 @@ const StudentLearningProgressOverview = () => {
                     ) : (
                       <>
                         <ResponsiveContainer>
-                          <LineChart data={challengeLineData} margin={{ top: 20, right: 30, bottom: 60, left: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <LineChart data={challengeLineData} margin={{ top: 20, right: 30, bottom: 50, left: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
                             <XAxis 
                               dataKey="label" 
-                              tick={{ fontSize: 12, dy: 8 }}
-                              label={{ value: 'Challenges over time', position: 'bottom', offset: 18 }}
+                              tick={{ fontSize: 13, fill: theme === 'sun' ? '#374151' : '#e5e7eb', fontWeight: 500 }}
+                              height={60}
+                              interval={0}
+                              label={{ value: 'Challenges over time', position: 'bottom', offset: 10, style: { fontSize: 13, fill: theme === 'sun' ? '#6b7280' : '#9ca3af' } }}
                             />
                             <YAxis 
                               domain={[0, 10]}
                               ticks={[0, 2, 4, 6, 8, 10]}
-                              tick={{ fontSize: 12 }}
-                              label={{ value: 'Score (0-10)', angle: -90, position: 'insideLeft' }}
+                              tick={{ fontSize: 13, fill: theme === 'sun' ? '#374151' : '#e5e7eb', fontWeight: 500 }}
+                              label={{ value: 'Score (0-10)', angle: -90, position: 'insideLeft', style: { fontSize: 13, fill: theme === 'sun' ? '#6b7280' : '#9ca3af' } }}
                             />
                             <ReTooltip 
-                              formatter={(value, name, props) => {
-                                return [`${Number(value).toFixed(1)}`, 'Score'];
-                              }}
-                              labelFormatter={(label, payload) => {
-                                if (!payload || !payload[0]) return label;
+                              content={({ active, payload }) => {
+                                if (!active || !payload || !payload.length) return null;
                                 const p = payload[0].payload;
                                 const typeMap = {
                                   GV: 'Vocabulary',
@@ -1216,23 +1225,72 @@ const StudentLearningProgressOverview = () => {
                                       hour: '2-digit',
                                       minute: '2-digit',
                                     })
-                                  : '-';
-                                return `${label} • ${typeMap[p.challengeType] || p.challengeType} • ${dateStr}`;
+                                  : 'Not submitted';
+                                
+                                const tooltipBackground = theme === 'sun' ? '#ffffff' : '#1e293b';
+                                const tooltipBorder = theme === 'sun' ? '#e5e7eb' : 'rgba(255,255,255,0.1)';
+                                const primaryText = theme === 'sun' ? '#111827' : '#f1f5f9';
+                                const secondaryText = theme === 'sun' ? '#6b7280' : '#94a3b8';
+                                const accentBg = theme === 'sun' ? '#f3f4f6' : 'rgba(255,255,255,0.05)';
+                                
+                                return (
+                                  <div
+                                    style={{
+                                      background: tooltipBackground,
+                                      borderRadius: 12,
+                                      padding: 16,
+                                      boxShadow: theme === 'sun' ? '0 10px 25px rgba(0,0,0,0.1)' : '0 10px 25px rgba(0,0,0,0.5)',
+                                      border: `1px solid ${tooltipBorder}`,
+                                      minWidth: 280,
+                                      maxWidth: 400,
+                                    }}
+                                  >
+                                    <div style={{ fontSize: 15, fontWeight: 600, color: primaryText, marginBottom: 8, lineHeight: 1.4 }}>
+                                      {p.challengeName || `Challenge ${p.challengeId || ''}`}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: accentBg, borderRadius: 6 }}>
+                                        <span style={{ fontSize: 12, color: secondaryText }}>Score</span>
+                                        <span style={{ fontSize: 16, fontWeight: 700, color: getScoreColor(p.score10) }}>
+                                          {Number(p.score10).toFixed(1)}/10
+                                        </span>
+                                      </div>
+                                      <div style={{ fontSize: 11, color: secondaryText, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <div>Status: <span style={{ fontWeight: 500, color: primaryText }}>{p.submissionStatus}</span></div>
+                                        <div>Submitted: <span style={{ fontWeight: 500, color: primaryText }}>{dateStr}</span></div>
+                                        {p.isLate && <div style={{ color: '#ef4444', fontWeight: 500 }}>⚠️ Late submission</div>}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
                               }}
+                              cursor={{ stroke: '#6366f1', strokeWidth: 1, strokeDasharray: '5 5' }}
                             />
                             <Line 
                               type="monotone"
                               dataKey="score10"
                               stroke={
-                                challengeTypeFilter === 'GV' ? '#A5B4FC' :
-                                challengeTypeFilter === 'RE' ? '#86EFAC' :
-                                challengeTypeFilter === 'LI' ? '#FDE68A' :
-                                challengeTypeFilter === 'WR' ? '#C4B5FD' :
-                                '#FCA5A5'
+                                challengeTypeFilter === 'GV' ? '#6366f1' :
+                                challengeTypeFilter === 'RE' ? '#10b981' :
+                                challengeTypeFilter === 'LI' ? '#f59e0b' :
+                                challengeTypeFilter === 'WR' ? '#8b5cf6' :
+                                '#ef4444'
                               }
-                              strokeWidth={2.5}
-                              dot={{ r: 4, fill: '#3B82F6' }}
-                              activeDot={{ r: 6, fill: '#2563EB' }}
+                              strokeWidth={3}
+                              dot={{ r: 5, fill: '#fff', strokeWidth: 2, stroke: (
+                                challengeTypeFilter === 'GV' ? '#6366f1' :
+                                challengeTypeFilter === 'RE' ? '#10b981' :
+                                challengeTypeFilter === 'LI' ? '#f59e0b' :
+                                challengeTypeFilter === 'WR' ? '#8b5cf6' :
+                                '#ef4444'
+                              ) }}
+                              activeDot={{ r: 7, fill: '#fff', strokeWidth: 3, stroke: (
+                                challengeTypeFilter === 'GV' ? '#6366f1' :
+                                challengeTypeFilter === 'RE' ? '#10b981' :
+                                challengeTypeFilter === 'LI' ? '#f59e0b' :
+                                challengeTypeFilter === 'WR' ? '#8b5cf6' :
+                                '#ef4444'
+                              ) }}
                               name="Score (0-10)"
                             />
                           </LineChart>
